@@ -1,0 +1,191 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: deployment
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: system-endpoint
+  namespace: deployment
+type: Opaque
+data:
+  OS_USERNAME: YWRtaW4=
+  OS_PASSWORD: U3Q4cmxpbmdYKg==
+stringData:
+  OS_REGION_NAME: RegionOne
+  OS_PROJECT_DOMAIN_NAME: Default
+  OS_PROJECT_NAME: admin
+  OS_KEYSTONE_REGION_NAME: RegionOne
+  OS_IDENTITY_API_VERSION: "3"
+  OS_AUTH_TYPE: password
+  OS_AUTH_URL: http://192.168.204.2:5000/v3
+  OS_ENDPOINT_TYPE: internalURL
+  OS_INTERFACE: internal
+---
+kind: System
+apiVersion: starlingx.windriver.com/v1beta1
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  description: Virtual Box Standard System
+  location: vbox
+  contact: info@windriver.com
+  ntpServers:
+    - 0.pool.ntp.org
+    - 1.pool.ntp.org
+    - 2.pool.ntp.org
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0
+  namespace: deployment
+spec:
+  type: vlan
+  description: group0 data networks for the tenant1 networks.
+  mtu: 1500
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0b
+  namespace: deployment
+spec:
+  type: vlan
+  description: group0 data networks for the shared internal networks.
+  mtu: 1500
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data1
+  namespace: deployment
+spec:
+  type: vlan
+  description: group0 data networks for the tenant2 networks.
+  mtu: 1500
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-ext0
+  namespace: deployment
+spec:
+  type: vlan
+  description: group0 data networks for the external networks.
+  mtu: 1500
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  personality: controller
+  subfunctions:
+    - controller
+    - worker
+  administrativeState: unlocked
+  installOutput: text
+  console: tty0
+  bootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+  rootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+  labels:
+    openstack-control-plane: enabled
+    openstack-compute-node: enabled
+    openvswitch: enabled
+    sriov: enabled
+  processors:
+    - node: 0
+      functions:
+        - function: vswitch
+          count: 0
+  provisioningMode: static
+  storage:
+    osds:
+      - function: osd
+        path: /dev/disk/by-path/pci-0000:00:0d.0-ata-2.0
+    volumeGroups:
+      - name: nova-local
+        physicalVolumes:
+          - type: partition
+            path: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+            size: 4
+  interfaces:
+    ethernet:
+      - name: mgmt0
+        class: platform
+        platformNetworks:
+          - mgmt
+          - cluster-host
+        port:
+          name: enp0s8
+      - name: oam0
+        class: platform
+        platformNetworks:
+          - oam
+        port:
+          name: enp0s3
+      - name: data0
+        class: data
+        dataNetworks:
+          - group0-data0
+          - group0-data0b
+          - group0-ext0
+        port:
+          name: eth1000
+      - name: data1
+        class: data
+        dataNetworks:
+          - group0-data1
+        port:
+          name: eth1001
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0
+  namespace: deployment
+spec:
+  profile: controller-profile
+  match:
+    bootMAC: CONTROLLER0MAC
+  overrides:
+    location: "vbox"
+    interfaces:
+      ethernet:
+        - name: lo
+          class: none
+          platformNetworks: []
+          port:
+            name: lo
+    provisioningMode: dynamic
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-1
+  namespace: deployment
+spec:
+  profile: controller-profile
+  overrides:
+    bootMAC: CONTROLLER1MAC
+    location: "vbox"

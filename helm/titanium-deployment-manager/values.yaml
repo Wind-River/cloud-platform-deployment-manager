@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2019 Wind River Systems, Inc.
+
+# Default values for Deployment Manager instances
+
+replicaCount: 1
+
+namespace: titanium-deployment-manager
+
+nameOverride: ""
+
+rbacProxy:
+  enabled: true
+  port: 8443
+  image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.0
+  logLevel: 10
+
+manager:
+  debugger:
+    enabled: false
+    wait: false
+    port: 30000
+  logLevel: 0
+  image:
+    # NOTE(alegacy): The repository is still TBD so this is just an example
+    #  placeholder value.  It will need to be overridden locally.
+    repository: docker.windriver.com/titanium/deployment-manager
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  configmap:
+    reconcilers:
+      system:
+        certificate:
+          httpsRequired: false
+      host:
+        bmc:
+          httpsRequired: false
+        memory:
+          enabled: false
+
+tolerations:
+  - effect: NoSchedule
+    key: services
+    operator: Equal
+    value: disabled
+  - effect: NoExecute
+    key: services
+    operator: Equal
+    value: disabled
+
+resources: {}
+# NOTE(alegacy): disabled until required.
+#  limits:
+#    cpu: 100m
+#    memory: 30Mi
+#  requests:
+#    cpu: 100m
+#    memory: 20Mi

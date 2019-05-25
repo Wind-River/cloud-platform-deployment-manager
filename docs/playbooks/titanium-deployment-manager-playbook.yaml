@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2019 Wind River Systems, Inc.
+- name: Deployment Manager Playbook
+  hosts: bootstrap
+  gather_facts: false
+  become: false
+  tasks:
+    - set_fact:
+        manager_chart: "{{ deployment_manager_chart | default('titanium-deployment-manager.tgz') }}"
+
+    - block:
+      # Copy required files up to the target host if this playbook is being
+      # executed remotely.
+
+      - block:
+        # Download a copy of the deployment manager helm chart if the location
+        # supplied by the end user references a git repo.
+
+        - name: Create A Temporary Download Directory
+          tempfile:
+            state: directory
+          register: temp
+          delegate_to: localhost
+
+        - name: Download Deployment Manager Helm Chart From Repo
+          shell: "git archive --remote={{ manager_chart }} | tar -x -C {{ temp.path }}"
+          delegate_to: localhost
+
+        - name: Reference Downloaded Helm Chart
+          set_fact:
+            manager_chart: "{{ lookup('fileglob', '{{ temp.path }}/docs/charts/titanium-deployment-manager-*.tgz', wantlist=true) | first }}"
+
+        when: manager_chart | regex_search("^https|^git")
+
+      - name: Upload Deployment Manager Helm Chart
+        copy:
+          src: "{{ manager_chart }}"
+          dest: /home/{{ ansible_ssh_user }}/
+          owner: "{{ ansible_ssh_user }}"
+          group: root
+          mode: 0644
+
+      - name: Upload Deployment Manager Helm Chart Overrides
+        copy:
+          src: "{{ deployment_manager_overrides }}"
+          dest: /home/{{ ansible_ssh_user }}/
+          group: root
+          mode: 0644
+        when: deployment_manager_overrides is defined
+
+      - name: Clean download directory
+        file:
+          path: "{{ temp.path }}"
+          state: absent
+        delegate_to: localhost
+        when: temp.path is defined
+
+      when: inventory_hostname != 'localhost'
+
+    - name: Install Deployment Manager
+      shell: KUBECONFIG=/etc/kubernetes/admin.conf helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
+
+    - name: Wait for Deployment Manager to be ready
+      shell: KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --namespace=titanium-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
+      register: wait_for_deployment_manager
+
+    - block:
+        - name: Upload Deployment Configuration File
+          copy:
+            src: "{{ deployment_config }}"
+            dest: /home/{{ ansible_ssh_user }}/deployment-config.yaml
+            owner: "{{ ansible_ssh_user }}"
+            group: root
+            mode: 0755
+
+        - wait_for:
+            # Pause for an arbitrary amount of time to allow the deployment
+            # manager to come up and download its certificates.  It needs to
+            # restart during this process so the webhooks may not be ready when
+            # we apply the config in the next steps.
+            timeout: 10
+            msg: Waiting for the Deployment Manager validation webhooks to start
+
+        - name: Apply Deployment Configuration File
+          shell: KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f deployment-config.yaml
+
+      when: deployment_config is defined

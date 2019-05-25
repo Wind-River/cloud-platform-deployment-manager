@@ -1,0 +1,75 @@
+apiVersion: starlingx.windriver.com/v1beta1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0v4
+  namespace: deployment
+spec:
+  type: other
+  subnet: 192.168.57.0
+  prefix: 24
+  gateway: 192.168.57.1
+  allocation:
+    type: dynamic
+    order: random
+    ranges:
+      - start: 192.168.57.2
+        end: 192.168.57.10
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data1v4
+  namespace: deployment
+spec:
+  type: other
+  subnet: 192.168.58.0
+  prefix: 24
+  gateway: 192.168.58.1
+  allocation:
+    type: dynamic
+    order: sequential
+    ranges:
+      - start: 192.168.58.2
+        end: 192.168.58.10
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0v6
+  namespace: deployment
+spec:
+  type: other
+  subnet: "fd00:0:0:1::"
+  prefix: 64
+  gateway: fd00:0:0:1::1
+  allocation:
+    type: dynamic
+    order: sequential
+    ranges:
+      - start: fd00:0:0:1::2
+        end: fd00:0:0:1::a
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data1v6
+  namespace: deployment
+spec:
+  type: other
+  subnet: "fd00:0:0:2::"
+  prefix: 64
+  gateway: fd00:0:0:2::1
+  allocation:
+    type: dynamic
+    order: sequential
+    ranges:
+      - start: fd00:0:0:2::2
+        end: fd00:0:0:2::a
