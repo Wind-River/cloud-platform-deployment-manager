@@ -1,0 +1,67 @@
+apiVersion: starlingx.windriver.com/v1beta1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  routes:
+    - interface: data0
+      subnet: 0.0.0.0
+      prefix: 0
+      gateway: 192.168.57.1
+    - interface: data1
+      subnet: 0.0.0.0
+      prefix: 0
+      gateway: 192.168.58.1
+    - interface: vlan11
+      subnet: 0.0.0.0
+      prefix: 0
+      gateway: 192.168.59.1
+    - interface: data0
+      subnet: "::"
+      prefix: 0
+      gateway: fd00:0:0:1::1
+    - interface: data1
+      subnet: "::"
+      prefix: 0
+      gateway: fd00:0:0:2::1
+    - interface: vlan11
+      subnet: "::"
+      prefix: 0
+      gateway: fd00:0:0:b::1
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-0
+  namespace: deployment
+spec:
+  overrides:
+    addresses:
+      - interface: vlan11
+        address: 192.168.59.2
+        prefix: 24
+      - interface: vlan11
+        address: fd00:0:0:b::2
+        prefix: 64
+---
+apiVersion: starlingx.windriver.com/v1beta1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-1
+  namespace: deployment
+spec:
+  overrides:
+    addresses:
+      - interface: vlan11
+        address: 192.168.59.3
+        prefix: 24
+      - interface: vlan11
+        address: fd00:0:0:b::3
+        prefix: 64

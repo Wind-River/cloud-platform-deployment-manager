@@ -1,0 +1,48 @@
+apiVersion: starlingx.windriver.com/v1beta1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  interfaces:
+    ethernet:
+      - name: mgmt0
+        class: platform
+        platformNetworks:
+          - mgmt
+          - cluster-host
+        port:
+          name: enp0s8
+    bond:
+      - name: data0
+        class: data
+        platformNetworks:
+          - group0-data0v4
+          - group0-data0v6
+        dataNetworks:
+          - group0-vxlan0
+          - group0-vxlan0b
+        mode: balanced
+        transmitHashPolicy: layer2
+        members:
+           - eth1000
+      - name: data1
+        class: data
+        platformNetworks:
+          - group0-data1v4
+          - group0-data1v6
+        dataNetworks:
+          - group0-vxlan1
+        mode: 802.3ad
+        transmitHashPolicy: layer2
+        members:
+           - eth1001
+    vlan:
+      - name: vlan11
+        class: data
+        dataNetworks:
+          - group0-vxlan-ext0
+        lower: data0
+        vid: 11

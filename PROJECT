@@ -1,0 +1,3 @@
+version: "1"
+domain: windriver.com
+repo: github.com/wind-river/titanium-deployment-manager

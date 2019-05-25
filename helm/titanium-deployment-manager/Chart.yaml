@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2019 Wind River Systems, Inc.
+apiVersion: v1
+appVersion: "1.0"
+description: A Helm chart for the Deployment Manager
+name: titanium-deployment-manager
+version: 0.1.0
+icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png
