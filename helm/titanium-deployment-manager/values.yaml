@@ -25,7 +25,7 @@ manager:
     # NOTE(alegacy): The repository is still TBD so this is just an example
     #  placeholder value.  It will need to be overridden locally.
     repository: docker.windriver.com/titanium/deployment-manager
-    tag: v0.1.0
+    tag: latest
     pullPolicy: IfNotPresent
   configmap:
     reconcilers:

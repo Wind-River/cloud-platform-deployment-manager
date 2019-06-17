@@ -376,12 +376,12 @@ directory and all overridable configuration are defined in the
 The final packaged helm chart can be downloaded from the following repo 
 location.
 
-[[https://github.com/wind-river/titanium-deployment-manager/docs/charts/titanium-deployment-manager-0.1.0.tgz]]
+[[https://github.com/wind-river/titanium-deployment-manager/docs/charts/titanium-deployment-manager-0.2.0.tgz]]
 
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install stx-deployment-manager titanium-deployment-manager-0.1.0.tgz
+helm upgrade --install stx-deployment-manager titanium-deployment-manager-0.2.0.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -390,7 +390,7 @@ further details on managing and deploying Helm Charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install stx-deployment-manager --values overrides.yaml titanium-deployment-manager-0.1.0.tgz
+helm upgrade --install stx-deployment-manager --values overrides.yaml titanium-deployment-manager-0.2.0.tgz
 ```
 
 ## Loading A Deployment Configuration Model
@@ -466,7 +466,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation. 
 
 ```bash
-$ ansible-playbook some-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.1.0.tgz"
+$ ansible-playbook some-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.2.0.tgz"
 ```
 
 The system deployment configuration file must be specified using the 
