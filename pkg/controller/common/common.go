@@ -257,7 +257,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 // ReconcilerEventLogger is an interface that is intended to allow specialized
 // behavior when generating an event.
 type ReconcilerEventLogger interface {
-	Event(object runtime.Object, eventtype string, reason string, messageFmt string, args ...interface{})
+	event(object runtime.Object, eventtype string, logLevel int, reason string, messageFmt string, args ...interface{})
 	NormalEvent(object runtime.Object, reason string, messageFmt string, args ...interface{})
 	WarningEvent(object runtime.Object, reason string, messageFmt string, args ...interface{})
 }
@@ -270,27 +270,33 @@ type EventLogger struct {
 	logr.Logger
 }
 
-// Event is a method used to generate a log and an event for a given set of
+// event is a method used to generate a log and an event for a given set of
 // message, event type, and reason.
-func (in *EventLogger) Event(object runtime.Object, eventtype string, reason string, messageFmt string, args ...interface{}) {
+func (in *EventLogger) event(object runtime.Object, eventtype string, logLevel int, reason string, messageFmt string, args ...interface{}) {
 	accessor := meta.NewAccessor()
 	name, err := accessor.Name(object)
 	if err != nil {
 		name = "unknown"
 	}
 	msg := fmt.Sprintf("%s: %s", name, fmt.Sprintf(messageFmt, args...))
-	in.Logger.Info(msg)
+	in.Logger.V(logLevel).Info(msg)
 	in.EventRecorder.Eventf(object, eventtype, reason, msg)
 }
 
 // NormalEvent generates a log and event for a "normal" event.
 func (in *EventLogger) NormalEvent(object runtime.Object, reason string, messageFmt string, args ...interface{}) {
-	in.Event(object, v1.EventTypeNormal, reason, messageFmt, args...)
+	// logLevel is set to the normal level (0) so that we can see these
+	// in the log stream rather than having to look at the events.
+	in.event(object, v1.EventTypeNormal, 0, reason, messageFmt, args...)
 }
 
-// WarningEvent generates a log and event for a "warning" event.
+// WarningEvent generates a log and event for a "warning" event.  The intent is
+// that this should only be used when declaring a reconciler error... all other
+// events should use "NormalEvent".
 func (in *EventLogger) WarningEvent(object runtime.Object, reason string, messageFmt string, args ...interface{}) {
-	in.Event(object, v1.EventTypeWarning, reason, messageFmt, args...)
+	// logLevel is set to the debug level (1) because WarningEvent should be
+	// accompanied by a reconciler error which has its own log generated.
+	in.event(object, v1.EventTypeWarning, 1, reason, messageFmt, args...)
 }
 
 func ContainsString(slice []string, s string) bool {

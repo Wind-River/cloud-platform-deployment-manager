@@ -877,7 +877,7 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 			return err
 		}
 
-		r.WarningEvent(instance, common.ResourceCreated,
+		r.NormalEvent(instance, common.ResourceCreated,
 			"system defaults collected and stored")
 	}
 

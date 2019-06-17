@@ -581,7 +581,7 @@ func (r *ReconcileHost) ReconcileInitialState(client *gophercloud.ServiceClient,
 
 			host.Host = *result
 
-			r.WarningEvent(instance, common.ResourceUpdated,
+			r.NormalEvent(instance, common.ResourceUpdated,
 				"host has been locked")
 
 			// Return a retry result here because we know that it won't be possible to
@@ -641,7 +641,7 @@ func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, i
 
 	host.Host = *result
 
-	r.WarningEvent(instance, common.ResourceUpdated,
+	r.NormalEvent(instance, common.ResourceUpdated,
 		"host has been unlocked")
 
 	// Return a retry result here because we know that it won't be possible to
@@ -1134,7 +1134,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 			return err
 		}
 
-		r.WarningEvent(instance, common.ResourceCreated,
+		r.NormalEvent(instance, common.ResourceCreated,
 			"defaults collected and stored")
 
 		current = defaults.DeepCopy()
@@ -1181,7 +1181,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		// synchronized state unless there is an annotation on the host.
 		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
 			msg := "configuration changes ignored after initial synchronization has completed"
-			r.WarningEvent(instance, common.ResourceUpdated, msg)
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return nil
 		} else {
 			log.Info("Manual override; allowing configuration changes after initial synchronization.")
@@ -1222,7 +1222,7 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 		}
 		*host = *result
 
-		r.WarningEvent(instance, common.ResourceUpdated, "host has been locked")
+		r.NormalEvent(instance, common.ResourceUpdated, "host has been locked")
 	}
 
 	if host.IsLockedDisabled() == false {
@@ -1240,7 +1240,7 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 		return err
 	}
 
-	r.WarningEvent(instance, common.ResourceDeleted, "host has been deleted")
+	r.NormalEvent(instance, common.ResourceDeleted, "host has been deleted")
 
 	return nil
 }
