@@ -900,6 +900,12 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 			r.NormalEvent(instance, common.ResourceUpdated, "system is now ready for other reconcilers")
 
 			err = r.NotifySystemDependencies(instance.Namespace)
+			if err != nil {
+				// Revert to not-ready so that when we reconcile the system
+				// resource again we will push the change out to all other
+				// reconcilers again.
+				r.SetSystemReady(instance.Namespace, false)
+			}
 		}
 	}
 
