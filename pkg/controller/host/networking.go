@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresses"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
@@ -403,41 +404,6 @@ func interfaceUpdateRequired(info starlingxv1beta1.CommonInterfaceInfo, iface *i
 		result = true
 	}
 
-	if info.DataNetworks != nil {
-		if listChanged(*info.DataNetworks, iface.DataNetworks) {
-			nets := info.DataNetworks.ToStringList()
-			opts.DataNetworks = &nets
-			result = true
-		}
-	}
-
-	if info.PlatformNetworks != nil {
-		// There seems to be a problem with modifying network list thru the system
-		// API.  If the existing list is empty then setting the "networks" field
-		// to the full list works as expected, but if there are existing entries
-		// then passing in the full list again causes exceptions when interacting
-		// with the DB.  It seems to work better if the "ToAdd" and "ToDelete"
-		// delete fields are used for these scenarios instead.
-		nets := host.BuildNetworkIDList(*info.PlatformNetworks)
-		added, removed, _ := listDelta(iface.Networks, nets)
-		if len(added) > 0 {
-			if len(iface.Networks) == 0 {
-				opts.Networks = &added
-			} else {
-				opts.NetworksToAdd = &added
-			}
-			result = true
-		}
-
-		if len(removed) > 0 {
-			opts.NetworksToDelete = &removed
-			result = true
-		}
-	} else if len(iface.Networks) > 0 {
-		opts.NetworksToDelete = &iface.Networks
-		result = true
-	}
-
 	if info.Class == interfaces.IFClassData {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our
@@ -499,6 +465,126 @@ func ethernetUpdateRequired(ethInfo starlingxv1beta1.EthernetInfo, iface *interf
 	return result
 }
 
+// ReconcileInterfaceNetworks implements a method to reconcile the list of
+// networks on an interface against the configured set of networks.
+func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, info starlingxv1beta1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
+	if info.PlatformNetworks == nil {
+		return updated, err
+	}
+
+	// Get the lists of current and configured networks on this interface
+	current := host.BuildInterfaceNetworkList(iface)
+	configured := *info.PlatformNetworks
+
+	// Diff the lists to determine what changes need to be applied
+	added, removed, _ := listDelta(current, configured)
+
+	for _, name := range removed {
+		if id, ok := host.FindInterfaceNetworkID(iface, name); ok {
+			log.Info("deleting interface-network from interface", "ifname", iface.Name, "id", id)
+
+			err := interfaceNetworks.Delete(client, id).ExtractErr()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to delete interface-network %q from iface %q", id, iface.Name)
+				return updated, err
+			}
+
+			updated = true
+
+			r.NormalEvent(instance, common.ResourceDeleted,
+				"interface-network %q has been removed from %q", id, iface.Name)
+		} else {
+			msg := fmt.Sprintf("unable to find interface-network id for network %q on interface %q", name, iface.Name)
+			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
+		}
+	}
+
+	for _, name := range added {
+		if id, ok := host.FindNetworkID(name); ok {
+			opts := interfaceNetworks.InterfaceNetworkOpts{
+				InterfaceUUID: iface.ID,
+				NetworkUUID:   id,
+			}
+
+			log.Info("creating an interface-network association", "ifname", iface.Name, "network", name)
+
+			_, err := interfaceNetworks.Create(client, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to create interface-network association: %s",
+					common.FormatStruct(opts))
+				return updated, err
+			}
+
+			updated = true
+
+			r.NormalEvent(instance, common.ResourceCreated,
+				"interface-network %q has been create on %q", name, iface.Name)
+		}
+	}
+
+	return updated, err
+}
+
+// ReconcileInterfaceNetworks implements a method to reconcile the list of
+// networks on an interface against the configured set of networks.
+func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, info starlingxv1beta1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
+	if info.DataNetworks == nil {
+		return updated, err
+	}
+
+	// Get the lists of current and configured networks on this interface
+	current := host.BuildInterfaceDataNetworkList(iface)
+	configured := *info.DataNetworks
+
+	// Diff the lists to determine what changes need to be applied
+	added, removed, _ := listDelta(current, configured)
+
+	for _, name := range removed {
+		if id, ok := host.FindInterfaceDataNetworkID(iface, name); ok {
+			log.Info("deleting interface-datanetwork from interface", "ifname", iface.Name, "id", id)
+
+			err := interfaceDataNetworks.Delete(client, id).ExtractErr()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to delete interface-datanetwork %q from iface %q", id, iface.Name)
+				return updated, err
+			}
+
+			updated = true
+
+			r.NormalEvent(instance, common.ResourceDeleted,
+				"interface-datanetwork %q has been removed from %q", id, iface.Name)
+		} else {
+			msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q on interface %q", name, iface.Name)
+			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
+		}
+	}
+
+	for _, name := range added {
+		if id, ok := host.FindDataNetworkID(name); ok {
+			opts := interfaceDataNetworks.InterfaceDataNetworkOpts{
+				InterfaceUUID:   iface.ID,
+				DataNetworkUUID: id,
+			}
+
+			log.Info("creating an interface-datanetwork association", "ifname", iface.Name, "network", name)
+
+			_, err := interfaceDataNetworks.Create(client, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to create interface-datanetwork association: %s",
+					common.FormatStruct(opts))
+				return updated, err
+			}
+
+			updated = true
+
+			r.NormalEvent(instance, common.ResourceCreated,
+				"interface-datanetwork %q has been create on %q", name, iface.Name)
+		}
+	}
+
+	return updated, err
+}
+
 // ReconcileEthernetInterfaces will update system interfaces to align with the
 // desired configuration.  It is assumed that the configuration will apply;
 // meaning that prior to invoking this function stale interfaces and stale
@@ -536,49 +622,26 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 		} else {
 			iface, found = host.FindInterfaceByName(interfaces.LoopbackInterfaceName)
 			if !found {
-				if ethInfo.Class != interfaces.IFClassNone {
-					msg := fmt.Sprintf("unable to find loopback interface: %s",
-						interfaces.LoopbackInterfaceName)
-					return starlingxv1beta1.NewMissingSystemResource(msg)
-				} else {
-					// The "lo" interface doesn't exist on any nodes other than
-					// on controller-0 and the only reason it needs to be
-					// specified by the user is to move the existing networks
-					// off of it so if it is not present then that saves us a
-					// step.
-					continue
-				}
+				msg := fmt.Sprintf("unable to find loopback interface: %s",
+					interfaces.LoopbackInterfaceName)
+				return starlingxv1beta1.NewMissingSystemResource(msg)
 			}
 
 			ifuuid = iface.ID
 		}
 
+		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
 		opts, ok1 := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host)
 		if ok2 := ethernetUpdateRequired(ethInfo, iface, &opts); ok1 || ok2 {
-			if opts.NetworksToDelete != nil {
-				// Unfortunately, the API to delete networks as an update does
-				// not take network ID values but rather a list of
-				// interface-network association id values so we need to convert
-				// them first and deal with them one at a time.
-				associations := host.ConvertNetworkListToInterfaceNetworks(*opts.NetworksToDelete)
-				if len(associations) != len(*opts.NetworksToDelete) {
-					msg := "incomplete list of interface-network associations"
-					return common.NewSystemDependency(msg)
-				}
-
-				for _, assoc := range associations {
-					log.Info("removing interface-network from interface", "uuid", ifuuid, "association", assoc)
-
-					err := interfaceNetworks.Delete(client, assoc).ExtractErr()
-					if err != nil {
-						err = perrors.Wrapf(err, "failed to delete interface-network association %s", assoc)
-						return err
-					}
-				}
-
-				opts.NetworksToDelete = nil
-			}
-
 			log.Info("updating interface", "uuid", ifuuid, "opts", opts)
 
 			_, err := interfaces.Update(client, ifuuid, opts).Extract()
@@ -593,6 +656,8 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 
 			updated = true
 		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated
 	}
 
 	if updated {
@@ -606,6 +671,14 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 		}
 
 		host.Interfaces = objects
+
+		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = results
 	}
 
 	return nil
@@ -650,11 +723,6 @@ func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *
 		MTU:      info.MTU,
 	}
 
-	if info.DataNetworks != nil {
-		nets := info.DataNetworks.ToStringList()
-		opts.DataNetworks = &nets
-	}
-
 	if info.Class == interfaces.IFClassData {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our
@@ -669,15 +737,12 @@ func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *
 		opts.IPv6Pool = pool
 	}
 
-	if info.PlatformNetworks != nil {
-		nets := host.BuildNetworkIDList(*info.PlatformNetworks)
-		opts.Networks = &nets
-	}
-
 	return opts
 }
 
-func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
+	var iface *interfaces.Interface
+
 	if r.IsReconcilerEnabled(manager.Interface) == false {
 		return nil
 	}
@@ -705,7 +770,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 
 			log.Info("creating bond interface", "opts", opts)
 
-			_, err := interfaces.Create(client, opts).Extract()
+			iface, err = interfaces.Create(client, opts).Extract()
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to create bond interface: %s",
 					common.FormatStruct(opts))
@@ -718,7 +783,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 			updated = true
 		} else {
 			// Update the interface
-			iface, found := host.FindInterface(ifuuid)
+			iface, found = host.FindInterface(ifuuid)
 			if !found {
 				msg := fmt.Sprintf("failed to find interface: %s", ifuuid)
 				return starlingxv1beta1.NewMissingSystemResource(msg)
@@ -741,6 +806,18 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 				updated = true
 			}
 		}
+
+		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, bondInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, bondInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated
 	}
 
 	if updated {
@@ -754,12 +831,22 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 		}
 
 		host.Interfaces = objects
+
+		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = results
 	}
 
 	return nil
 }
 
-func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
+	var iface *interfaces.Interface
+
 	if r.IsReconcilerEnabled(manager.Interface) == false {
 		return nil
 	}
@@ -786,7 +873,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 
 			log.Info("creating vlan interface", "opts", opts)
 
-			_, err := interfaces.Create(client, opts).Extract()
+			iface, err = interfaces.Create(client, opts).Extract()
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to create vlan interface: %s",
 					common.FormatStruct(opts))
@@ -799,7 +886,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 			updated = true
 		} else {
 			// Update the interface
-			iface, found := host.FindInterface(ifuuid)
+			iface, found = host.FindInterface(ifuuid)
 			if !found {
 				msg := fmt.Sprintf("failed to find interface: %s", ifuuid)
 				return starlingxv1beta1.NewMissingSystemResource(msg)
@@ -821,6 +908,18 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 				updated = true
 			}
 		}
+
+		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, vlanInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, vlanInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated
 	}
 
 	if updated {
@@ -835,6 +934,14 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 		}
 
 		host.Interfaces = objects
+
+		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = results
 	}
 
 	return nil

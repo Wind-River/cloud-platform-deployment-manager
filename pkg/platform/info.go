@@ -4,6 +4,8 @@
 package platform
 
 import (
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/pkg/errors"
 	"regexp"
 	"strconv"
@@ -46,24 +48,26 @@ import (
 // minimizing the number of API calls required.
 type HostInfo struct {
 	hosts.Host
-	Labels            []labels.Label
-	CPU               []cpus.CPU
-	Memory            []memory.Memory
-	Monitors          []cephmonitors.CephMonitor
-	Networks          []networks.Network
-	InterfaceNetworks []interfaceNetworks.InterfaceNetwork
-	Pools             []addresspools.AddressPool
-	Ports             []ports.Port
-	Interfaces        []interfaces.Interface
-	Addresses         []addresses.Address
-	Routes            []routes.Route
-	Disks             []disks.Disk
-	Partitions        []partitions.DiskPartition
-	VolumeGroups      []volumegroups.VolumeGroup
-	PhysicalVolumes   []physicalvolumes.PhysicalVolume
-	OSDs              []osds.OSD
-	Clusters          []clusters.Cluster
-	StorageTiers      map[string]*storagetiers.StorageTier
+	Labels                []labels.Label
+	CPU                   []cpus.CPU
+	Memory                []memory.Memory
+	Monitors              []cephmonitors.CephMonitor
+	Networks              []networks.Network
+	DataNetworks          []datanetworks.DataNetwork
+	InterfaceNetworks     []interfaceNetworks.InterfaceNetwork
+	InterfaceDataNetworks []interfaceDataNetworks.InterfaceDataNetwork
+	Pools                 []addresspools.AddressPool
+	Ports                 []ports.Port
+	Interfaces            []interfaces.Interface
+	Addresses             []addresses.Address
+	Routes                []routes.Route
+	Disks                 []disks.Disk
+	Partitions            []partitions.DiskPartition
+	VolumeGroups          []volumegroups.VolumeGroup
+	PhysicalVolumes       []physicalvolumes.PhysicalVolume
+	OSDs                  []osds.OSD
+	Clusters              []clusters.Cluster
+	StorageTiers          map[string]*storagetiers.StorageTier
 }
 
 type SystemInfo struct {
@@ -237,9 +241,21 @@ func (in *HostInfo) PopulateHostInfo(client *gophercloud.ServiceClient, hostid s
 		return err
 	}
 
+	in.DataNetworks, err = datanetworks.ListDataNetworks(client)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list data networks for host %s", hostid)
+		return err
+	}
+
 	in.InterfaceNetworks, err = interfaceNetworks.ListInterfaceNetworks(client, hostid)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to list interface networks for host %s", hostid)
+		return err
+	}
+
+	in.InterfaceDataNetworks, err = interfaceDataNetworks.ListInterfaceDataNetworks(client, hostid)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list interface data networks for host %s", hostid)
 		return err
 	}
 
@@ -667,18 +683,81 @@ func (in *HostInfo) BuildNetworkIDList(nets []string) []string {
 	return result
 }
 
-// ConvertNetworkListToInterfaceNetworks is a utility function which takes a
-// set of network id values and converts them to interface-network association
-// UUID values.
-func (in *HostInfo) ConvertNetworkListToInterfaceNetworks(netids []string) []string {
-	result := make([]string, 0)
-	for _, id := range netids {
-		for _, assoc := range in.InterfaceNetworks {
-			if strconv.Itoa(assoc.NetworkID) == id {
-				result = append(result, assoc.UUID)
-			}
+// FindNetworkID is a utility method to find the network ID value for a given
+// network name.
+func (in *HostInfo) FindNetworkID(name string) (string, bool) {
+	for _, net := range in.Networks {
+		if net.Name == name {
+			return net.UUID, true
 		}
 	}
+
+	return "", false
+}
+
+// FindDataNetworkID is a utility method to find the data network ID value for
+// a given data network name.
+func (in *HostInfo) FindDataNetworkID(name string) (string, bool) {
+	for _, net := range in.DataNetworks {
+		if net.Name == name {
+			return net.ID, true
+		}
+	}
+
+	return "", false
+}
+
+// FindInterfaceNetworkID is a utility method to find the interface-network ID
+// value for a given interface and network name.
+func (in *HostInfo) FindInterfaceNetworkID(iface interfaces.Interface, network string) (string, bool) {
+	for _, association := range in.InterfaceNetworks {
+		if association.NetworkName == network {
+			return association.UUID, true
+		}
+	}
+
+	return "", false
+}
+
+// FindInterfaceDataNetworkID is a utility method to find the
+// interface-datanetwork ID value for a given interface and data network name.
+func (in *HostInfo) FindInterfaceDataNetworkID(iface interfaces.Interface, datanetwork string) (string, bool) {
+	for _, association := range in.InterfaceDataNetworks {
+		if association.DataNetworkName == datanetwork {
+			return association.UUID, true
+		}
+	}
+
+	return "", false
+}
+
+// BuildInterfaceNetworkList is a utility function that takes a builds a list
+// of network names based on the specific interface ID and the host's list of
+// interface-to-network associations.
+func (in *HostInfo) BuildInterfaceNetworkList(iface interfaces.Interface) []string {
+	result := make([]string, 0)
+
+	for _, association := range in.InterfaceNetworks {
+		if association.InterfaceUUID == iface.ID {
+			result = append(result, association.NetworkName)
+		}
+	}
+
+	return result
+}
+
+// BuildInterfaceDataNetworkList is a utility function takes a builds a list
+//// of network names based on the specific interface ID and the host's list of
+//// interface-to-datanetwork associations.
+func (in *HostInfo) BuildInterfaceDataNetworkList(iface interfaces.Interface) []string {
+	result := make([]string, 0)
+
+	for _, association := range in.InterfaceDataNetworks {
+		if association.InterfaceUUID == iface.ID {
+			result = append(result, association.DataNetworkName)
+		}
+	}
+
 	return result
 }
 

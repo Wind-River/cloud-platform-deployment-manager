@@ -23,7 +23,6 @@ import (
 	v1types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"regexp"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"strconv"
 	"strings"
 )
 
@@ -124,28 +123,6 @@ func NewMissingSystemResource(msg string) error {
 func stripPartitionNumber(path string) string {
 	re := regexp.MustCompile("-part[0-9]*")
 	return re.ReplaceAllString(path, "")
-}
-
-// buildNetworkNameList is a utility function which converts a list of network
-// id values to a list of network name values.
-func buildNetworkNameList(netids []string, host *v1info.HostInfo) (StringList, error) {
-	result := make([]string, len(netids))
-	for i, id := range netids {
-		found := false
-		for _, n := range host.Networks {
-			if strconv.Itoa(n.ID) == id {
-				result[i] = n.Name
-				found = true
-				break
-			}
-		}
-		if !found {
-			msg := fmt.Sprintf("unable to find network object for id %s", id)
-			return nil, NewMissingSystemResource(msg)
-		}
-	}
-
-	return result, nil
 }
 
 // parseLabelInfo is a utility which parses the label data as it is presented
@@ -313,10 +290,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 			data.Class = interfaces.IFClassNone
 		}
 
-		nets, err := buildNetworkNameList(iface.Networks, host)
-		if err != nil {
-			return err
-		}
+		nets := host.BuildInterfaceNetworkList(iface)
 
 		if iface.IPv4Pool != nil {
 			// TODO(alegacy): platform networks of type "other" exist to map
@@ -338,10 +312,13 @@ func parseInterfaceInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 			}
 		}
 
-		data.PlatformNetworks = &nets
+		netList := StringList(nets)
+		data.PlatformNetworks = &netList
 
-		list := StringList(iface.DataNetworks)
-		data.DataNetworks = &list
+		dataNets := host.BuildInterfaceDataNetworkList(iface)
+
+		dataNetList := StringList(dataNets)
+		data.DataNetworks = &dataNetList
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
