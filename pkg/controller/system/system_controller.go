@@ -919,7 +919,7 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 		}
 	}
 
-	log.Info("reconcile finished", "error", err)
+	log.V(1).Info("reconcile finished", "error", err)
 
 	return err
 }
@@ -934,7 +934,7 @@ func (r *ReconcileSystem) Reconcile(request reconcile.Request) (reconcile.Result
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
 
-	log.Info("reconcile called")
+	log.V(1).Info("reconcile called")
 
 	// Fetch the SystemNamespace instance
 	instance := &starlingxv1beta1.System{}

@@ -1360,7 +1360,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
 
-	log.Info("reconcile called")
+	log.V(1).Info("reconcile called")
 
 	// Fetch the Host instance
 	instance := &starlingxv1beta1.Host{}
