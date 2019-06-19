@@ -14,6 +14,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/certificates"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/drbd"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
@@ -108,6 +110,7 @@ type ReconcileSystem struct {
 	titaniumManager.TitaniumManager
 	common.ReconcilerErrorHandler
 	common.ReconcilerEventLogger
+	hosts []hosts.Host
 }
 
 const CertificateDirectory = "/etc/ssl/certs"
@@ -477,7 +480,7 @@ func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.Serv
 	return nil
 }
 
-// ReconcileDNS configures the system resources to align with the desired DNS
+// ReconcileSNMP configures the system resources to align with the desired SNMP
 // configuration.
 func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
 	if r.IsReconcilerEnabled(titaniumManager.SNMP) == false {
@@ -492,6 +495,118 @@ func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, insta
 	err = r.ReconcileSNMPTrapDestinations(client, instance, spec, info)
 	if err != nil {
 		return nil
+	}
+
+	return nil
+}
+
+// ControllerNodesAvailable counts the number of nodes that are unlocked,
+// enabled, and available.
+func (r *ReconcileSystem) ControllerNodesAvailable() int {
+	count := 0
+	for _, host := range r.hosts {
+		if host.Personality == hosts.PersonalityController {
+			if host.IsUnlockedEnabled() {
+				if host.AvailabilityStatus == hosts.AvailAvailable {
+					count += 1
+				}
+			}
+		}
+	}
+
+	return count
+}
+
+// FileSystemResizeAllowed defines whether a particular file system can be
+// resized.
+func (r *ReconcileSystem) FileSystemResizeAllowed(client *gophercloud.ServiceClient, info *v1info.SystemInfo, fsInfo starlingxv1beta1.FileSystemInfo, fs filesystems.FileSystem) (ready bool, err error) {
+	required := 2
+	if strings.EqualFold(info.SystemMode, string(titaniumManager.SystemModeSimplex)) {
+		required = 1
+	} else if fs.Replicated == false {
+		required = 1
+	}
+
+	if r.ControllerNodesAvailable() < required {
+		msg := fmt.Sprintf("waiting for %d controller(s) in available state before resizing filesystems", required)
+		return false, common.NewResourceStatusDependency(msg)
+	}
+
+	if fs.State == filesystems.ResizeInProgress {
+		msg := fmt.Sprintf("filesystem resize operation already in progress on %q", fs.Name)
+		return false, common.NewResourceStatusDependency(msg)
+	}
+
+	ready = true
+
+	return ready, err
+}
+
+// ReconcileFilesystems configures the system resources to align with the
+// desired controller filesystem configuration.
+func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error) {
+	if r.IsReconcilerEnabled(titaniumManager.FileSystems) == false {
+		return nil
+	}
+
+	if spec.Storage == nil || spec.Storage.FileSystems == nil {
+		return nil
+	}
+
+	// Get a fresh snapshot of the current hosts.  These are used to search for
+	// a matching host record if one is not already found as well as to
+	// determine when it is safe/allowed to configure new hosts or unlock
+	// existing hosts.
+	// TODO(alegacy): move this to earlier in the reconcile loop.  For now,
+	// since this is the only user then it can stay here.
+	r.hosts, err = hosts.ListHosts(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list hosts")
+		return err
+	}
+
+	updates := make([]filesystems.FileSystemOpts, 0)
+	for _, fsInfo := range *spec.Storage.FileSystems {
+		found := false
+		for _, fs := range info.FileSystems {
+			if fs.Name != fsInfo.Name {
+				continue
+			}
+
+			found = true
+			if fsInfo.Size > fs.Size {
+				found = true
+
+				if ready, err := r.FileSystemResizeAllowed(client, info, fsInfo, fs); !ready {
+					return err
+				}
+
+				// Update the system resource with the new size.
+				opts := filesystems.FileSystemOpts{
+					Name: fsInfo.Name,
+					Size: fsInfo.Size,
+				}
+
+				updates = append(updates, opts)
+			}
+		}
+
+		if found == false {
+			msg := fmt.Sprintf("unknown controller filesystem %q", fsInfo.Name)
+			return starlingxv1beta1.NewMissingSystemResource(msg)
+		}
+	}
+
+	if len(updates) > 0 {
+		log.Info("updating controller filesystem sizes", "opts", updates)
+
+		err := filesystems.Update(client, info.ID, updates).ExtractErr()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update filesystems sizes")
+			return err
+		}
+
+		r.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
 	}
 
 	return nil
@@ -761,7 +876,35 @@ func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, ins
 		return err
 	}
 
-	r.NormalEvent(instance, common.ResourceUpdated, "system has been provisioned")
+	// At this point the system is ready for other resource types to be
+	// reconciled (e.g., host, networks, etc).  We can set the ready flag and
+	// notify other reconcilers but we still need to continue with other
+	// attribute types that require hosts to be configured first.
+	if r.GetSystemReady(instance.Namespace) == false {
+		// Unblock all other controllers that are waiting to reconcile
+		// resources.
+		r.SetSystemReady(instance.Namespace, true)
+
+		r.NormalEvent(instance, common.ResourceUpdated,
+			"system is now ready for other reconcilers")
+
+		err = r.NotifySystemDependencies(instance.Namespace)
+		if err != nil {
+			// Revert to not-ready so that when we reconcile the system
+			// resource again we will push the change out to all other
+			// reconcilers again.
+			r.SetSystemReady(instance.Namespace, false)
+			return err
+		}
+	}
+
+	err = r.ReconcileFileSystems(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
+
+	r.NormalEvent(instance, common.ResourceUpdated,
+		"system has been provisioned")
 
 	return nil
 }
@@ -891,23 +1034,6 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 
 	err = r.ReconcileSystem(client, instance, spec, systemInfo)
 	inSync := err == nil
-
-	if inSync {
-		if r.GetSystemReady(instance.Namespace) == false {
-			// Unblock all other controllers that are waiting to reconcile resources.
-			r.SetSystemReady(instance.Namespace, true)
-
-			r.NormalEvent(instance, common.ResourceUpdated, "system is now ready for other reconcilers")
-
-			err = r.NotifySystemDependencies(instance.Namespace)
-			if err != nil {
-				// Revert to not-ready so that when we reconcile the system
-				// resource again we will push the change out to all other
-				// reconcilers again.
-				r.SetSystemReady(instance.Namespace, false)
-			}
-		}
-	}
 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {
 		log.Info("updating status for system", "status", instance.Status)

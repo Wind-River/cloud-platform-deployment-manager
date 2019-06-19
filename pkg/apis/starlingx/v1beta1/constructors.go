@@ -10,6 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/certificates"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
@@ -880,6 +881,28 @@ func parseSNMPTrapDestInfo(spec *SystemSpec, trapDestinations []snmpTrapDest.SNM
 	return nil
 }
 
+func parseFileSystemInfo(spec *SystemSpec, fileSystems []filesystems.FileSystem) error {
+	result := make([]FileSystemInfo, 0)
+
+	for _, fs := range fileSystems {
+		info := FileSystemInfo{
+			Name: fs.Name,
+			Size: fs.Size,
+		}
+
+		result = append(result, info)
+	}
+
+	if spec.Storage == nil {
+		spec.Storage = &SystemStorageInfo{}
+	}
+
+	list := FileSystemList(result)
+	spec.Storage.FileSystems = &list
+
+	return nil
+}
+
 func NewSystemStatus(systemInfo *v1info.SystemInfo) (*SystemStatus, error) {
 	status := SystemStatus{}
 
@@ -965,6 +988,13 @@ func NewSystemSpec(systemInfo *v1info.SystemInfo) (*SystemSpec, error) {
 
 	if len(systemInfo.SNMPTrapDestinations) > 0 {
 		err := parseSNMPTrapDestInfo(&spec, systemInfo.SNMPTrapDestinations)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(systemInfo.FileSystems) > 0 {
+		err := parseFileSystemInfo(&spec, systemInfo.FileSystems)
 		if err != nil {
 			return nil, err
 		}

@@ -39,9 +39,10 @@ const (
 
 // Availability States
 const (
-	AvailOnline   = "online"
-	AvailOffline  = "offline"
-	AvailPowerOff = "power-off"
+	AvailAvailable = "available"
+	AvailOnline    = "online"
+	AvailOffline   = "offline"
+	AvailPowerOff  = "power-off"
 )
 
 // Mtce task values

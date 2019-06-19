@@ -43,6 +43,7 @@ const (
 	Certificate     ReconcilerName = "system.certificate"
 	DNS             ReconcilerName = "system.dns"
 	DRBD            ReconcilerName = "system.drbd"
+	FileSystems     ReconcilerName = "system.filesystems"
 	NTP             ReconcilerName = "system.ntp"
 	PTP             ReconcilerName = "system.ptp"
 	SNMP            ReconcilerName = "system.snmp"
@@ -72,6 +73,7 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	Certificate:     true,
 	DNS:             true,
 	DRBD:            true,
+	FileSystems:     true,
 	NTP:             true,
 	PTP:             true,
 	SNMP:            true,

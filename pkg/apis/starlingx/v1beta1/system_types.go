@@ -112,6 +112,23 @@ type DRBDConfiguration struct {
 // +deepequal-gen:unordered-array=true
 type StorageBackendList []StorageBackend
 
+// FileSystemInfo defines the attributes of a single controller filesystem
+// resource.
+type FileSystemInfo struct {
+	// Name defines the system defined name of the filesystem resource.
+	// +kubebuilder:validation:Enum=backup,cgcs,glance,cinder,database,docker,docker-distribution,etcd,extension,scratch,patch-vault
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:ExclusiveMinimum=false
+	Size int `json:"size"`
+}
+
+// FileSystemList defines a type to represent a slice of controller filesystem
+// resources.
+// +deepequal-gen:unordered-array=true
+type FileSystemList []FileSystemInfo
+
 // SystemStorageInfo defines the system level storage attributes that are
 // configurable.
 // +deepequal-gen:ignore-nil-fields=true
@@ -121,6 +138,9 @@ type SystemStorageInfo struct {
 
 	// DRBD defines the set of DRBD configuration attributes for the system.
 	DRBD *DRBDConfiguration `json:"drbd,omitempty"`
+
+	// FileSystems defines the set of controller file system definitions.
+	FileSystems *FileSystemList `json:"filesystems,omitempty"`
 }
 
 // PTPInfo defines the system level precision time protocol attributes that are

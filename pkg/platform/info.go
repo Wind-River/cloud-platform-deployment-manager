@@ -5,6 +5,7 @@ package platform
 
 import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/pkg/errors"
 	"regexp"
@@ -79,6 +80,7 @@ type SystemInfo struct {
 	Certificates         []certificates.Certificate
 	SNMPCommunities      []snmpCommunity.SNMPCommunity
 	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
+	FileSystems          []filesystems.FileSystem
 }
 
 func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) error {
@@ -132,6 +134,12 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 	in.SNMPTrapDestinations, err = snmpTrapDest.ListSNMPTrapDests(client)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get SNMP trap destination list")
+		return err
+	}
+
+	in.FileSystems, err = filesystems.ListFileSystems(client)
+	if err != nil {
+		err = errors.Wrap(err, "failed to get filesystem list")
 		return err
 	}
 

@@ -240,6 +240,36 @@ spec:
                   required:
                   - linkUtilisation
                   type: object
+                filesystems:
+                  description: FileSystems defines the set of controller file system
+                    definitions.
+                  items:
+                    properties:
+                      name:
+                        description: Name defines the system defined name of the filesystem
+                          resource.
+                        enum:
+                        - backup
+                        - cgcs
+                        - glance
+                        - cinder
+                        - database
+                        - docker
+                        - docker-distribution
+                        - etcd
+                        - extension
+                        - scratch
+                        - patch-vault
+                        type: string
+                      size:
+                        format: int64
+                        minimum: 1
+                        type: integer
+                    required:
+                    - name
+                    - size
+                    type: object
+                  type: array
               type: object
             vswitchType:
               description: VSwitchType is the desired vswitch implementation to be
