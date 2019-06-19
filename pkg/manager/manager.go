@@ -276,11 +276,12 @@ func (m *PlatformManager) SetSystemType(namespace string, value SystemType) {
 
 	if obj, ok := m.systems[namespace]; !ok {
 		m.systems[namespace] = &SystemNamespace{systemType: value}
-	} else {
+		log.Info("system type has been set", "type", value)
+	} else if obj.systemType != value {
 		obj.systemType = value
+		log.Info("system type has been updated", "type", value)
 	}
 
-	log.Info("system type has been set", "type", value)
 }
 
 // GetSystemReady returns whether the system for the specified namespace
