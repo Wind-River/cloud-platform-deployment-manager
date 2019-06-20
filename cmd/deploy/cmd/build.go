@@ -262,7 +262,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(41)
 	}
 
-	_, err = fmt.Fprintf(outputFile, "%s\n", yamlBuf)
+	_, err = fmt.Fprintf(outputFile, "%s", yamlBuf)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to write to output file: %s\n", err.Error())
 		os.Exit(42)
