@@ -99,13 +99,13 @@ type StorageBackend struct {
 
 // DRBDConfiguration defines the DRBD file system settings for the system.
 type DRBDConfiguration struct {
-	// LinkUtilisation defines the maximum link utilisation percentage during
+	// LinkUtilization defines the maximum link utilisation percentage during
 	// sync activities.
 	// +kubebuilder:validation:Minimum=20
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	LinkUtilization int `json:"linkUtilisation"`
+	LinkUtilization int `json:"linkUtilization"`
 }
 
 // StorageBackendList defines a type to represent a slice of storage backends.

@@ -230,15 +230,15 @@ spec:
                   description: DRBD defines the set of DRBD configuration attributes
                     for the system.
                   properties:
-                    linkUtilisation:
-                      description: LinkUtilisation defines the maximum link utilisation
+                    linkUtilization:
+                      description: LinkUtilization defines the maximum link utilisation
                         percentage during sync activities.
                       format: int64
                       maximum: 100
                       minimum: 20
                       type: integer
                   required:
-                  - linkUtilisation
+                  - linkUtilization
                   type: object
                 filesystems:
                   description: FileSystems defines the set of controller file system
