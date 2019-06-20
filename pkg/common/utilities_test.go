@@ -197,3 +197,88 @@ func Test_ListChanged(t *testing.T) {
 		})
 	}
 }
+
+func TestListIntersect(t *testing.T) {
+	type args struct {
+		a []string
+		b []string
+	}
+	tests := []struct {
+		name  string
+		args  args
+		want  []string
+		want1 bool
+	}{
+		{name: "same",
+			args: args{a: []string{"a", "b"},
+				b: []string{"b", "a"}},
+			want:  []string{"a", "b"},
+			want1: true},
+		{name: "empty",
+			args: args{a: []string{},
+				b: []string{}},
+			want:  []string{},
+			want1: false},
+		{name: "intersect",
+			args: args{a: []string{"a", "b"},
+				b: []string{"b", "c"}},
+			want:  []string{"b"},
+			want1: true},
+		{name: "no-intersect",
+			args: args{a: []string{"a", "b"},
+				b: []string{"c", "d"}},
+			want:  []string{},
+			want1: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := ListIntersect(tt.args.a, tt.args.b)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ListIntersect() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("ListIntersect() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestComparePartitionPaths(t *testing.T) {
+	type args struct {
+		a string
+		b string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{name: "same-disks",
+			args: args{a: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0",
+				b: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0"},
+			want: true},
+		{name: "different-disks",
+			args: args{a: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0",
+				b: "/dev/disk/by-path/pci-0000:00:1f.3-ata-6.0"},
+			want: false},
+		{name: "same-disk-partitions",
+			args: args{a: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0-part1",
+				b: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0-part1"},
+			want: true},
+		{name: "different-disks-partitions",
+			args: args{a: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0-part1",
+				b: "/dev/disk/by-path/pci-0000:00:1f.3-ata-6.0-part1"},
+			want: false},
+		{name: "different-partitions",
+			args: args{a: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0-part1",
+				b: "/dev/disk/by-path/pci-0000:00:1f.2-ata-5.0-part2"},
+			want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ComparePartitionPaths(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("ComparePartitionPaths() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

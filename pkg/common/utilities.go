@@ -3,7 +3,10 @@
 
 package common
 
-import "net"
+import (
+	"net"
+	"regexp"
+)
 
 // Determines if an address is an IPv4 address
 func IsIPv4(address string) bool {
@@ -80,4 +83,28 @@ func ListChanged(a, b []string) bool {
 	added, removed, _ := ListDelta(a, b)
 
 	return len(added) > 0 || len(removed) > 0
+}
+
+// ListIntersect is a utility function which determines if there is any
+// commonality between two lists of strings.
+func ListIntersect(a []string, b []string) ([]string, bool) {
+	result := make([]string, 0)
+
+	for _, x := range a {
+		for _, y := range b {
+			if x == y {
+				result = append(result, y)
+			}
+		}
+	}
+
+	return result, len(result) > 0
+}
+
+// ComparePartitionPaths is a utility function that compares the disk portion
+// of two partition paths.  It returns true if the disk portion of a and b
+// match.
+func ComparePartitionPaths(a, b string) bool {
+	re := regexp.MustCompile("-part[0-9]*")
+	return re.ReplaceAllString(a, "") == re.ReplaceAllString(b, "")
 }

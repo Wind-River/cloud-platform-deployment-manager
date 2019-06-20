@@ -8,7 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/pkg/errors"
-	"regexp"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"strconv"
 	"strings"
 
@@ -401,26 +401,6 @@ func (in *HostInfo) FindVLANInterfaceUUID(vid int) (string, bool) {
 	return "", false
 }
 
-// membersIntersect is a utility function which determines if there is any
-// commonality between the list of members provided in the spec vs the
-// interface uses list coming from the system API.
-func membersIntersect(members []string, uses []string) ([]string, bool) {
-	result := make([]string, 0)
-
-	for _, m := range members {
-		for _, u := range uses {
-			if m == u {
-				// TODO(alegacy): this assumes that the ethernet interface used
-				//  as a member has not been renamed from the default port name.
-				//  This is generally true but this may need to be made more
-				//  robust.
-				result = append(result, u)
-			}
-		}
-	}
-	return result, len(result) > 0
-}
-
 // findBondInterfaceUUID is a utility function to find a bond interface in the
 // list of interfaces returned by the systemAPI. Because a user may rename a
 // bond we try to identify it by its members rather than its name.  This may not
@@ -431,7 +411,7 @@ func (in *HostInfo) FindBondInterfaceUUID(members []string) (string, bool) {
 			continue
 		}
 
-		if _, ok := membersIntersect(members, i.Uses); ok {
+		if _, ok := utils.ListIntersect(members, i.Uses); ok {
 			return i.ID, true
 		}
 	}
@@ -504,14 +484,6 @@ func (in *HostInfo) FindPartition(uuid string) (*partitions.DiskPartition, bool)
 	return nil, false
 }
 
-// comparePartitionPaths is a utility function that compares the disk portion
-// of two partition paths.  It returns true if the disk portion of a and b
-// match.
-func comparePartitionPaths(a, b string) bool {
-	re := regexp.MustCompile("-part[0-9]*")
-	return re.ReplaceAllString(a, "") == re.ReplaceAllString(b, "")
-}
-
 // FindOSDByPath is a utility function that attempts to find an OSD by
 // its absolute path.
 func (in *HostInfo) FindOSDByPath(path string) (*osds.OSD, bool) {
@@ -562,7 +534,7 @@ func (in *HostInfo) FindDisk(id string) (*disks.Disk, bool) {
 // its absolute device path.
 func (in *HostInfo) FindDiskByPath(path string) (*disks.Disk, bool) {
 	for _, d := range in.Disks {
-		if comparePartitionPaths(d.DevicePath, path) {
+		if utils.ComparePartitionPaths(d.DevicePath, path) {
 			// Allow the match to succeed even if a partition path was used
 			// rather than a disk path.
 			return &d, true
@@ -596,7 +568,7 @@ func (in *HostInfo) FindPartitionByPath(path string, size int, physicalVolumeNam
 		// when searching.
 		for _, p := range in.Partitions {
 			if p.PhysicalVolumeID != nil && *p.PhysicalVolumeID == volume.ID {
-				if comparePartitionPaths(path, p.DevicePath) {
+				if utils.ComparePartitionPaths(path, p.DevicePath) {
 					if size == p.Gibibytes() {
 						return &p, true
 					}
@@ -611,7 +583,7 @@ func (in *HostInfo) FindPartitionByPath(path string, size int, physicalVolumeNam
 		if p.PhysicalVolumeID != nil {
 			continue
 		}
-		if comparePartitionPaths(path, p.DevicePath) {
+		if utils.ComparePartitionPaths(path, p.DevicePath) {
 			if size == p.Gibibytes() {
 				return &p, true
 			}
@@ -638,7 +610,7 @@ func (in *HostInfo) FindPhysicalVolume(groupName string, typ string, path string
 				return &v, true
 			}
 
-		} else if comparePartitionPaths(v.DevicePath, path) {
+		} else if utils.ComparePartitionPaths(v.DevicePath, path) {
 			// Because the user cannot guess as to what the partition number
 			// will be ahead of time the path may be specified as a disk path
 			// and so we use the disk path, rather than the full partition path,
