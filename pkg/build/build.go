@@ -197,6 +197,8 @@ func removeCreationTimestamp(a string) string {
 func (d *Deployment) ToYAML() (string, error) {
 	var b bytes.Buffer
 
+	b.Write([]byte(yamlSeparator))
+
 	buf, err := yaml.Marshal(d.Namespace)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to render namespace to YAML")
