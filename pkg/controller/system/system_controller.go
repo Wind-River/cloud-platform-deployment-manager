@@ -523,8 +523,6 @@ func (r *ReconcileSystem) FileSystemResizeAllowed(client *gophercloud.ServiceCli
 	required := 2
 	if strings.EqualFold(info.SystemMode, string(titaniumManager.SystemModeSimplex)) {
 		required = 1
-	} else if fs.Replicated == false {
-		required = 1
 	}
 
 	if r.ControllerNodesAvailable() < required {
