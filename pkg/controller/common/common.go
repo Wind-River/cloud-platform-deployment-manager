@@ -131,7 +131,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryUserError
 		err = nil
 
-		h.Error(in, "user error during reconciliation", "request", request)
+		h.Error(in, "user error", "request", request)
 
 	case gophercloud.ErrDefault500, gophercloud.ErrDefault503:
 		// These errors are server based errors.  This means we successfully
@@ -141,7 +141,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryServerError
 		err = nil
 
-		h.Error(in, "server error during reconciliation", "request", request)
+		h.Error(in, "server error", "request", request)
 
 	case *errors.StatusError:
 		// These errors are rest client errors from client-go.
@@ -151,10 +151,10 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		if strings.Contains(cause.Error(), "object has been modified") {
 			// This is likely a status update conflict so immediately retry.
 			result = RetryImmediate
-			h.Info("status update conflict during reconciliation", "request", request)
+			h.Info("status update conflict", "request", request)
 		} else {
 			result = RetryTransientError
-			h.Error(in, "status error during reconciliation", "request", request)
+			h.Error(in, "status error", "request", request)
 		}
 
 	case *url.Error:
@@ -171,7 +171,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 				// For this specific error we know that more time will be
 				// needed for the user to intervene so use a longer delay.
 				result = RetryResolutionError
-				h.Error(in, "resolution error during reconciliation", "request")
+				h.Error(in, "resolution error", "request")
 				break
 			}
 
@@ -182,7 +182,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 			// it attempts to rebuild the client.
 		}
 
-		h.Error(in, "URL error during reconciliation", "request", request)
+		h.Error(in, "URL error", "request", request)
 
 	case HTTPSClientRequired:
 		// These errors are generated when the system controllers discovers
@@ -201,7 +201,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryValidationError
 		err = nil
 
-		h.Error(in, "validation error during reconciliation", "request")
+		h.Error(in, "validation error", "request")
 
 	case ErrSystemDependency, ErrResourceStatusDependency:
 		// These errors are transient errors.  Resources must be in stable
@@ -211,7 +211,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryTransientError
 		err = nil
 
-		h.Error(in, "resource status error during reconciliation", "request", request)
+		h.Error(in, "resource status error", "request", request)
 
 	case manager.Error, ErrUserDataError,
 		v1beta1.ErrMissingSystemResource, ErrMissingKubernetesResource:
@@ -221,7 +221,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryUserError
 		err = nil
 
-		h.Error(in, "user data error during reconciliation", "request", request)
+		h.Error(in, "user data error", "request", request)
 
 	default:
 		resetClient = false
@@ -237,7 +237,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 			result = RetryUserError
 			err = nil
 
-			h.Error(in, "missing dependency during reconciliation", "request", request)
+			h.Error(in, "missing dependency", "request", request)
 		}
 	}
 
