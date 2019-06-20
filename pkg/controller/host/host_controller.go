@@ -11,6 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	common2 "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
@@ -283,7 +284,7 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 
 	if profile.SubFunctions != nil {
 		subfunctions := strings.Split(h.SubFunctions, ",")
-		if listChanged(profile.SubFunctions, subfunctions) {
+		if common2.ListChanged(profile.SubFunctions, subfunctions) {
 			result = true
 			subfunctions := strings.Join(profile.SubFunctions, ",")
 			opts.SubFunctions = &subfunctions

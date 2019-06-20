@@ -5,7 +5,7 @@ package validating
 
 import (
 	"context"
-	"net"
+	"github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"net/http"
 
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
@@ -43,45 +43,18 @@ type PlatformNetworkCreateUpdateHandler struct {
 	Decoder types.Decoder
 }
 
-// Determines if an address is an IPv4 address
-func IsIPv4(address string) bool {
-	x := net.ParseIP(address)
-	if x != nil {
-		if x.To4() != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// Determines if an address is an IPv6 address
-func IsIPv6(address string) bool {
-	x := net.ParseIP(address)
-	if x != nil {
-		// The net package does not have a good way to determine if an address
-		// is definitely an IPv6 address.  The best it can do at the moment is
-		// tell if it cleanly converts to an IPv4 value so we are going to
-		// assume that if it parsed as an address and wasn't an IPv4 address
-		// then it must be an IPv6 address.
-		if x.To4() == nil {
-			return true
-		}
-	}
-	return false
-}
-
 // Determines if a string is a valid IP address
 func IsIPAddress(value string) bool {
-	return IsIPv4(value) || IsIPv6(value)
+	return common.IsIPv4(value) || common.IsIPv6(value)
 }
 
 // Determines if the a prefix length agrees with the address family of the specified address
 func IsValidPrefix(address string, prefix int) bool {
-	if IsIPv4(address) {
+	if common.IsIPv4(address) {
 		if prefix <= MaxIPv4PrefixLength {
 			return true
 		}
-	} else if IsIPv6(address) {
+	} else if common.IsIPv6(address) {
 		if prefix <= MaxIPv6PrefixLength {
 			return true
 		}
@@ -104,11 +77,11 @@ func (h *PlatformNetworkCreateUpdateHandler) validateAddressFamilies(obj *starli
 			return false, "start and end addresses must be valid IP addresses", nil
 		}
 
-		if IsIPv4(r.Start) != IsIPv4(r.End) {
+		if common.IsIPv4(r.Start) != common.IsIPv4(r.End) {
 			return false, "start and end addresses must be of the same address family", nil
 		}
 
-		if IsIPv4(r.Start) != IsIPv4(obj.Spec.Subnet) {
+		if common.IsIPv4(r.Start) != common.IsIPv4(obj.Spec.Subnet) {
 			return false, "allocation range address must be of the same family as the network subnet.", nil
 		}
 	}

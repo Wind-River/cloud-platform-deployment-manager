@@ -13,10 +13,10 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
-	"github.com/wind-river/titanium-deployment-manager/pkg/webhook/default_server/platformnetwork/validating"
 	"strings"
 )
 
@@ -273,7 +273,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClie
 // has any configured static addresses.
 func hasIPv4StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec) bool {
 	for _, addrInfo := range profile.Addresses {
-		if validating.IsIPv4(addrInfo.Address) {
+		if utils.IsIPv4(addrInfo.Address) {
 			if addrInfo.Interface == info.Name {
 				return true
 			}
@@ -286,7 +286,7 @@ func hasIPv4StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *
 // has any configured static addresses.
 func hasIPv6StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec) bool {
 	for _, addrInfo := range profile.Addresses {
-		if validating.IsIPv4(addrInfo.Address) {
+		if utils.IsIPv4(addrInfo.Address) {
 			if addrInfo.Interface == info.Name {
 				return true
 			}
@@ -311,7 +311,7 @@ func hasIPv4DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1
 	for _, networkName := range *info.PlatformNetworks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
-			if validating.IsIPv4(pool.Network) {
+			if utils.IsIPv4(pool.Network) {
 				return &pool.ID, true
 			}
 		}
@@ -336,7 +336,7 @@ func hasIPv6DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1
 	for _, networkName := range *info.PlatformNetworks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
-			if validating.IsIPv6(pool.Network) {
+			if utils.IsIPv6(pool.Network) {
 				return &pool.ID, true
 			}
 		}
@@ -477,7 +477,7 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 	configured := *info.PlatformNetworks
 
 	// Diff the lists to determine what changes need to be applied
-	added, removed, _ := listDelta(current, configured)
+	added, removed, _ := utils.ListDelta(current, configured)
 
 	for _, name := range removed {
 		if id, ok := host.FindInterfaceNetworkID(iface, name); ok {
@@ -537,7 +537,7 @@ func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.Servi
 	configured := *info.DataNetworks
 
 	// Diff the lists to determine what changes need to be applied
-	added, removed, _ := listDelta(current, configured)
+	added, removed, _ := utils.ListDelta(current, configured)
 
 	for _, name := range removed {
 		if id, ok := host.FindInterfaceDataNetworkID(iface, name); ok {
@@ -700,7 +700,7 @@ func bondUpdateRequired(bond starlingxv1beta1.BondInfo, iface *interfaces.Interf
 		}
 	}
 
-	if listChanged(bond.Members, iface.Uses) {
+	if utils.ListChanged(bond.Members, iface.Uses) {
 		// The system API handles "uses" inconsistently between create and
 		// update.  It requires a different attribute name for both.  This
 		// looks like it is because the system API uses an old copy of ironic
