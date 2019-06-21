@@ -630,16 +630,6 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 			ifuuid = iface.ID
 		}
 
-		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
-		if err != nil {
-			return err
-		}
-
-		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
-		if err != nil {
-			return err
-		}
-
 		opts, ok1 := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host)
 		if ok2 := ethernetUpdateRequired(ethInfo, iface, &opts); ok1 || ok2 {
 			log.Info("updating interface", "uuid", ifuuid, "opts", opts)
@@ -655,6 +645,16 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 				"ethernet interface %q has been updated", ethInfo.Name)
 
 			updated = true
+		}
+
+		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
 		}
 
 		updated = updated || networksUpdated || dataNetworksUpdated
