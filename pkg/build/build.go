@@ -306,7 +306,7 @@ func (db *DeploymentBuilder) buildSystem(d *Deployment) error {
 	}
 
 	// Build a System object from the system snapshot
-	system, err := v1beta1.NewSystem(db.namespace, db.name, &systemInfo)
+	system, err := v1beta1.NewSystem(db.namespace, db.name, systemInfo)
 	if err != nil {
 		return err
 	}
@@ -390,7 +390,7 @@ func (db *DeploymentBuilder) buildDataNetworks(d *Deployment) error {
 
 	nets := make([]*v1beta1.DataNetwork, 0)
 	for _, dn := range results {
-		net, err := v1beta1.NewDataNetwork(dn.Name, db.namespace, &dn)
+		net, err := v1beta1.NewDataNetwork(dn.Name, db.namespace, dn)
 		if err != nil {
 			return err
 		}
@@ -430,7 +430,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		}
 
 		if skip == false {
-			net, err := v1beta1.NewPlatformNetwork(p.Name, db.namespace, &p)
+			net, err := v1beta1.NewPlatformNetwork(p.Name, db.namespace, p)
 			if err != nil {
 				return err
 			}
@@ -515,7 +515,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		}
 
 		// Create a host record for this entity.
-		host, err := v1beta1.NewHost(hostname, db.namespace, &hostInfo)
+		host, err := v1beta1.NewHost(hostname, db.namespace, hostInfo)
 		if err != nil {
 			return err
 		}
@@ -523,7 +523,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		db.progressUpdate("...Building host profile configuration for %q\n", hostname)
 
 		// Create a full profile for this one host.
-		profile, err := v1beta1.NewHostProfile(hostname, db.namespace, &hostInfo)
+		profile, err := v1beta1.NewHostProfile(hostname, db.namespace, hostInfo)
 		if err != nil {
 			return err
 		}

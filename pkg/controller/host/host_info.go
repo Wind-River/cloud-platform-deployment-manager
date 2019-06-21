@@ -14,7 +14,7 @@ import (
 // BuildHostDefaults takes the current set of host attributes and builds a
 // fake host profile that can be used as a reference for the current settings
 // applied to the host.  The default settings are saved on the host status.
-func (r *ReconcileHost) BuildHostDefaults(instance *starlingxv1beta1.Host, host *v1info.HostInfo) (*starlingxv1beta1.HostProfileSpec, error) {
+func (r *ReconcileHost) BuildHostDefaults(instance *starlingxv1beta1.Host, host v1info.HostInfo) (*starlingxv1beta1.HostProfileSpec, error) {
 	defaults, err := starlingxv1beta1.NewHostProfileSpec(host)
 	if defaults == nil || err != nil {
 		return nil, err

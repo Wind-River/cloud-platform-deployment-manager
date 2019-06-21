@@ -909,7 +909,7 @@ func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, ins
 
 // statusUpdateRequired determines whether the resource status attribute
 // needs to be updated to reflect the current system status.
-func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System, info *v1info.SystemInfo, inSync bool) (result bool) {
+func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System, info v1info.SystemInfo, inSync bool) (result bool) {
 	status := &instance.Status
 
 	if status.ID != info.ID {
@@ -943,7 +943,7 @@ func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System
 // BuildSystemDefaults takes the current set of system attributes and builds a
 // fake system object that can be used as a reference for the current settings
 // applied to the system.  The default settings are saved on the system status.
-func (r *ReconcileSystem) BuildSystemDefaults(instance *starlingxv1beta1.System, system *v1info.SystemInfo) (*starlingxv1beta1.SystemSpec, error) {
+func (r *ReconcileSystem) BuildSystemDefaults(instance *starlingxv1beta1.System, system v1info.SystemInfo) (*starlingxv1beta1.SystemSpec, error) {
 	defaults, err := starlingxv1beta1.NewSystemSpec(system)
 	if defaults == nil || err != nil {
 		return nil, err
@@ -1001,7 +1001,7 @@ func MergeSystemSpecs(a, b *starlingxv1beta1.SystemSpec) (*starlingxv1beta1.Syst
 // state of a data network with the state stored in the k8s database.
 func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System) (err error) {
 
-	systemInfo := &v1info.SystemInfo{}
+	systemInfo := v1info.SystemInfo{}
 	err = systemInfo.PopulateSystemInfo(client)
 	if err != nil {
 		return err
@@ -1030,7 +1030,7 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 		return err
 	}
 
-	err = r.ReconcileSystem(client, instance, spec, systemInfo)
+	err = r.ReconcileSystem(client, instance, spec, &systemInfo)
 	inSync := err == nil
 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {

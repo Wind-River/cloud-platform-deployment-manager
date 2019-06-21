@@ -1084,7 +1084,6 @@ func (r *ReconcileHost) StopAfterInSync() bool {
 func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) error {
 	var defaults *starlingxv1beta1.HostProfileSpec
 	var current *starlingxv1beta1.HostProfileSpec
-	var hostInfo *v1info.HostInfo
 
 	if !host.Idle() {
 		state := host.State()
@@ -1095,7 +1094,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 
 	// Gather all host attributes so that they can be reused by various
 	// functions without needing to be re-queried each time.
-	hostInfo = &v1info.HostInfo{}
+	hostInfo := v1info.HostInfo{}
 	err := hostInfo.PopulateHostInfo(client, host.ID)
 	if err != nil {
 		return err
@@ -1189,7 +1188,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		}
 	}
 
-	err = r.ReconcileHostByState(client, instance, current, profile, hostInfo)
+	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo)
 	if err != nil {
 		return err
 	}

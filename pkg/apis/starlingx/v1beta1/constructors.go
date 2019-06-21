@@ -128,7 +128,7 @@ func stripPartitionNumber(path string) string {
 
 // parseLabelInfo is a utility which parses the label data as it is presented
 // by the system API and stores the data in the form required by a profile spec.
-func parseLabelInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseLabelInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make(map[string]string)
 	for _, l := range host.Labels {
 		result[l.Key] = l.Value
@@ -143,7 +143,7 @@ func parseLabelInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 
 // parseProcessorInfo is a utility which parses the CPU data as it is presented
 // by the system API and stores the data in the form required by a profile spec.
-func parseProcessorInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseProcessorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	var result []ProcessorInfo
 
 	// First, organize the data by node and function.
@@ -199,7 +199,7 @@ func parseProcessorInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 
 // parseMemoryInfo is a utility which parses the memory data as it is presented
 // by the system API and stores the data in the form required by a profile spec.
-func parseMemoryInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseMemoryInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	var result []MemoryNodeInfo
 
 	for _, m := range host.Memory {
@@ -273,7 +273,7 @@ func parseMemoryInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 // parseInterfaceInfo is a utility which parses the interface data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseInterfaceInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := InterfaceInfo{}
 	ethernets := make([]EthernetInfo, 0)
 	bonds := make([]BondInfo, 0)
@@ -285,7 +285,8 @@ func parseInterfaceInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 			Class: iface.Class,
 		}
 
-		data.MTU = &iface.MTU
+		mtu := iface.MTU
+		data.MTU = &mtu
 
 		if iface.Class == "" {
 			data.Class = interfaces.IFClassNone
@@ -386,7 +387,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 // parseAddressInfo is a utility which parses the address data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseAddressInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseAddressInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]AddressInfo, 0)
 
 	for _, a := range host.Addresses {
@@ -415,16 +416,17 @@ func parseAddressInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 
 // parseRouteInfo is a utility which parses the route data as it is presented
 // by the system API and stores the data in the form required by a profile spec.
-func parseRouteInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseRouteInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]RouteInfo, len(host.Routes))
 
 	for i, r := range host.Routes {
+		metric := r.Metric
 		route := RouteInfo{
 			Interface: r.InterfaceName,
 			Network:   r.Network,
 			Prefix:    r.Prefix,
 			Gateway:   r.Gateway,
-			Metric:    &r.Metric,
+			Metric:    &metric,
 		}
 		result[i] = route
 	}
@@ -439,7 +441,7 @@ func parseRouteInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 // parsePhysicalVolumeInfo is a utility which parses the physical volume data as
 // it is presented by the system API and stores the data in the form required by
 // a profile spec.
-func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGroup, host *v1info.HostInfo) error {
+func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGroup, host v1info.HostInfo) error {
 	result := make([]PhysicalVolumeInfo, 0)
 
 	for _, pv := range host.PhysicalVolumes {
@@ -474,7 +476,7 @@ func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGrou
 // parsePartitionInfo is a utility which parses the partition data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseVolumeGroupInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]VolumeGroupInfo, len(host.VolumeGroups))
 
 	for i, vg := range host.VolumeGroups {
@@ -514,7 +516,7 @@ func parseVolumeGroupInfo(profile *HostProfileSpec, host *v1info.HostInfo) error
 
 // parseOSDInfo is a utility which parses the OSD data as it is presented by the
 // system API and stores the data in the form required by a profile spec.
-func parseOSDInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]OSDInfo, 0)
 
 	for _, o := range host.OSDs {
@@ -567,11 +569,12 @@ func parseOSDInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 // parseMonitorInfo is a utility which parses the Ceph Monitor data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseMonitorInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseMonitorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	for _, m := range host.Monitors {
 		if m.Hostname == host.Hostname {
+			size := m.Size
 			profile.Storage.Monitor = &MonitorInfo{
-				Size: &m.Size,
+				Size: &size,
 			}
 
 			return nil
@@ -584,7 +587,7 @@ func parseMonitorInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
 // parseStorageInfo is a utility which parses the storage data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseStorageInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseStorageInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	var err error
 
 	storage := ProfileStorageInfo{}
@@ -632,7 +635,7 @@ func autoGenerateBMSecretName() string {
 // as it is presented by the system API and stores the data in the form required
 // by a profile spec.  Since the credentials are only partially presented by
 // the API they are not stored in the profile.
-func parseBoardManagementInfo(profile *HostProfileSpec, host *v1info.HostInfo) error {
+func parseBoardManagementInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	if host.BMType != nil {
 		info := BMInfo{
 			Type: host.BMType,
@@ -669,7 +672,7 @@ func NewNamespace(name string) (*v1.Namespace, error) {
 	return &namespace, nil
 }
 
-func fixDevicePath(path *string, host *v1info.HostInfo) *string {
+func fixDevicePath(path *string, host v1info.HostInfo) *string {
 	shortFormNode := regexp.MustCompile("(?s)^\\w+$")
 	longFormNode := regexp.MustCompile("(?s)^/dev/\\w+$")
 
@@ -700,7 +703,7 @@ const zeroMAC = "00:00:00:00:00:00"
 // BuildHostProfile takes the current set of host attributes and builds a
 // fake host profile that can be used as a reference for the current settings
 // applied to the host.
-func NewHostProfileSpec(host *v1info.HostInfo) (*HostProfileSpec, error) {
+func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	var err error
 
 	spec := HostProfileSpec{}
@@ -792,7 +795,7 @@ func NewHostProfileSpec(host *v1info.HostInfo) (*HostProfileSpec, error) {
 	return &spec, nil
 }
 
-func NewHostProfile(name string, namespace string, hostInfo *v1info.HostInfo) (*HostProfile, error) {
+func NewHostProfile(name string, namespace string, hostInfo v1info.HostInfo) (*HostProfile, error) {
 	name = fmt.Sprintf("%s-profile", name)
 	profile := HostProfile{
 		TypeMeta: v1types.TypeMeta{
@@ -903,7 +906,7 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []filesystems.FileSystem)
 	return nil
 }
 
-func NewSystemStatus(systemInfo *v1info.SystemInfo) (*SystemStatus, error) {
+func NewSystemStatus(systemInfo v1info.SystemInfo) (*SystemStatus, error) {
 	status := SystemStatus{}
 
 	if systemInfo.SystemType != "" {
@@ -917,7 +920,7 @@ func NewSystemStatus(systemInfo *v1info.SystemInfo) (*SystemStatus, error) {
 	return &status, nil
 }
 
-func NewSystemSpec(systemInfo *v1info.SystemInfo) (*SystemSpec, error) {
+func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 	spec := SystemSpec{}
 
 	// Fill-in the basic attributes
@@ -1003,7 +1006,7 @@ func NewSystemSpec(systemInfo *v1info.SystemInfo) (*SystemSpec, error) {
 	return &spec, nil
 }
 
-func NewSystem(namespace string, name string, systemInfo *v1info.SystemInfo) (*System, error) {
+func NewSystem(namespace string, name string, systemInfo v1info.SystemInfo) (*System, error) {
 	system := System{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
@@ -1084,7 +1087,7 @@ func NewCertificateSecret(name string, namespace string) (*v1.Secret, error) {
 	return &secret, nil
 }
 
-func NewHostSpec(hostInfo *v1info.HostInfo) (*HostSpec, error) {
+func NewHostSpec(hostInfo v1info.HostInfo) (*HostSpec, error) {
 	spec := HostSpec{}
 
 	// Fill-in the basic attributes
@@ -1103,7 +1106,7 @@ func NewHostSpec(hostInfo *v1info.HostInfo) (*HostSpec, error) {
 	return &spec, nil
 }
 
-func NewHost(name string, namespace string, hostInfo *v1info.HostInfo) (*Host, error) {
+func NewHost(name string, namespace string, hostInfo v1info.HostInfo) (*Host, error) {
 	host := Host{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
@@ -1128,7 +1131,7 @@ func NewHost(name string, namespace string, hostInfo *v1info.HostInfo) (*Host, e
 	return &host, nil
 }
 
-func NewDataNetworkSpec(net *datanetworks.DataNetwork) (*DataNetworkSpec, error) {
+func NewDataNetworkSpec(net datanetworks.DataNetwork) (*DataNetworkSpec, error) {
 	spec := DataNetworkSpec{
 		Type: net.Type,
 	}
@@ -1156,7 +1159,7 @@ func NewDataNetworkSpec(net *datanetworks.DataNetwork) (*DataNetworkSpec, error)
 	return &spec, nil
 }
 
-func NewDataNetwork(name string, namespace string, net *datanetworks.DataNetwork) (*DataNetwork, error) {
+func NewDataNetwork(name string, namespace string, net datanetworks.DataNetwork) (*DataNetwork, error) {
 	dataNetwork := DataNetwork{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
@@ -1181,7 +1184,7 @@ func NewDataNetwork(name string, namespace string, net *datanetworks.DataNetwork
 	return &dataNetwork, nil
 }
 
-func NewPlatformNetworkSpec(pool *addresspools.AddressPool) (*PlatformNetworkSpec, error) {
+func NewPlatformNetworkSpec(pool addresspools.AddressPool) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
 		Type:    networks.NetworkTypeOther,
 		Subnet:  pool.Network,
@@ -1206,7 +1209,7 @@ func NewPlatformNetworkSpec(pool *addresspools.AddressPool) (*PlatformNetworkSpe
 	return &spec, nil
 }
 
-func NewPlatformNetwork(name string, namespace string, pool *addresspools.AddressPool) (*PlatformNetwork, error) {
+func NewPlatformNetwork(name string, namespace string, pool addresspools.AddressPool) (*PlatformNetwork, error) {
 	platformNetwork := PlatformNetwork{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
