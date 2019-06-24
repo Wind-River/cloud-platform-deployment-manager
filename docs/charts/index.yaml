@@ -3,12 +3,12 @@ entries:
   titanium-deployment-manager:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2019-06-24T08:48:27.695979849-05:00"
+    created: "2019-06-24T09:11:28.609534246-05:00"
     description: A Helm chart for the Deployment Manager
-    digest: 7e6b951a01033653cb1ab73110534e2608a7e64759c9821f97da46eef090cf99
+    digest: 6e250efb416a0bc69cda616ccab30b9ec52abce2045941d5f19ebab9c29c5a29
     icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png
     name: titanium-deployment-manager
     urls:
     - titanium-deployment-manager-0.2.0.tgz
     version: 0.2.0
-generated: "2019-06-24T08:48:27.6939494-05:00"
+generated: "2019-06-24T09:11:28.604768986-05:00"

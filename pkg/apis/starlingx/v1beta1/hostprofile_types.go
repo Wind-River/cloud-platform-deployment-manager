@@ -631,7 +631,7 @@ type ProfileBaseAttributes struct {
 
 	// SubFunctionList defines the set of subfunctions to be provisioned on the
 	// node at time of initial provisioning.
-	// +kubebuilder:validation:Enum=controller,worker,storage
+	// +kubebuilder:validation:Enum=controller,worker,storage,lowlatency
 	// +optional
 	SubFunctions StringList `json:"subfunctions,omitempty"`
 
