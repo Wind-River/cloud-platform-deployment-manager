@@ -35,8 +35,7 @@ type BMPasswordInfo struct {
 // credential information built from the running configuration never includes
 // the password so when the profile is created dynamically it can only point
 // to a Secret named by the system (i.e., we may not yet know what the user
-// intends to name the Secret).  Therefore, there is no way to compare them so
-// redacted.
+// intends to name the Secret).
 func (in *BMPasswordInfo) DeepEqual(other *BMPasswordInfo) bool {
 	// TODO(alegacy): need to find a way to determine if the username has
 	//  changed otherwise we will never resolve it unless some other attribute

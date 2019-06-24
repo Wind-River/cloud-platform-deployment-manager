@@ -49,17 +49,6 @@ var log = logf.Log.WithName("controller").WithName("system")
 
 const ControllerName = "system-controller"
 
-// Defines the conversions between the schema certificate types and the
-// expected API modes.
-var CertificateTypeModes = map[string]string{
-	starlingxv1beta1.PlatformCertificate:    "ssl",
-	starlingxv1beta1.PlatformCACertificate:  "ssl_ca",
-	starlingxv1beta1.OpenstackCertificate:   "openstack",
-	starlingxv1beta1.OpenstackCACertificate: "openstack_ca",
-	starlingxv1beta1.TPMCertificate:         "tpm_mode",
-	starlingxv1beta1.DockerCertificate:      "docker_registry",
-}
-
 // Add creates a new SystemNamespace Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -795,13 +784,8 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 		}
 
 		if found == false {
-			mode, ok := CertificateTypeModes[c.Type]
-			if !ok {
-				return perrors.Errorf("no conversion from certificate %q to mode", c.Type)
-			}
-
 			opts := certificates.CertificateOpts{
-				Mode: mode,
+				Type: c.Type,
 				File: pemBlock,
 			}
 
@@ -1021,6 +1005,14 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 		r.NormalEvent(instance, common.ResourceCreated,
 			"system defaults collected and stored")
 	}
+
+	// NOTE(alegacy): The defaults collected may include certificate info
+	// and since the API does not return the private key we are unable to
+	// build a true representation of what the system looks like and that
+	// means we cannot reconcile it back to the original state.  Remove the
+	// certificate info so that we do not fail when trying to find the
+	// matching Secret.
+	defaults.Certificates = nil
 
 	// Merge the system defaults with the desired attributes so that any
 	// optional attributes not filled in by the user default to how the system

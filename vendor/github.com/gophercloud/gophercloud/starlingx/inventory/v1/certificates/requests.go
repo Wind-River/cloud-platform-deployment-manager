@@ -11,7 +11,7 @@ import (
 )
 
 type CertificateOpts struct {
-	Mode       string  `json:"mode,omitempty" mapstructure:"mode"`
+	Type       string  `json:"mode,omitempty" mapstructure:"mode"`
 	Passphrase *string `json:"-" mapstructure:"passphrase"`
 	File       []byte  `json:"-" mapstructure:"file"`
 }
@@ -76,7 +76,7 @@ func Create(c *gophercloud.ServiceClient, opts CertificateOpts) (r CreateResult)
 	// parts are created they are written to the byte buffer.
 	w := multipart.NewWriter(&b)
 
-	err := w.WriteField("mode", opts.Mode)
+	err := w.WriteField("mode", opts.Type)
 	if err != nil {
 		r.Err = err
 		return r

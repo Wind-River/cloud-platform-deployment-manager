@@ -787,6 +787,7 @@ spec:
                     - controller
                     - worker
                     - storage
+                    - lowlatency
                     type: string
                   type: array
               type: object

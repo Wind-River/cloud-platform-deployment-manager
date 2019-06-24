@@ -1151,6 +1151,13 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		}
 	}
 
+	// NOTE(alegacy): The defaults collected may include BMC information and
+	// since the API does not return any password info it is not possible to
+	// build a true representation of the system state.  Trying to reconcile
+	// the system generated BMC info will always result in an error because
+	// it does not contain password info.
+	defaults.BoardManagement = nil
+
 	// Create a new composite profile that is backed by the host's default
 	// configuration.  This will ensure that if a user deletes an optional
 	// attribute that we will know how to restore the original value.

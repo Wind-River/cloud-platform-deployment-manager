@@ -70,8 +70,8 @@ spec:
                   type:
                     description: Type represents the intended usage of the certificate
                     enum:
-                    - platform
-                    - platform_ca
+                    - ssl
+                    - ssl_ca
                     - openstack
                     - openstack_ca
                     - docker

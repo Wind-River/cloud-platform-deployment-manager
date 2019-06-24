@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// List of validate certificate types
+	// List of validat certificate types
 	PlatformCertificate    = "platform"
 	PlatformCACertificate  = "platform_ca"
 	OpenstackCertificate   = "openstack"
@@ -30,7 +30,7 @@ const (
 // is required when defining these resources.
 type CertificateInfo struct {
 	// Type represents the intended usage of the certificate
-	// +kubebuilder:validation:Enum=platform,platform_ca,openstack,openstack_ca,docker,tpm
+	// +kubebuilder:validation:Enum=ssl,ssl_ca,openstack,openstack_ca,docker,tpm
 	Type string `json:"type"`
 
 	// Secret is the name of a TLS secret containing the public certificate and
@@ -46,6 +46,19 @@ type CertificateInfo struct {
 	// "tpm" certificate types, and only if the supplied public certificate is
 	// signed by a non-standard root CA.
 	Secret string `json:"secret"`
+}
+
+// DeepEqual overrides the code generated DeepEqual method because the
+// credential information built from the running configuration never includes
+// enough information to rebuild the certificate (i.e., the private key is not
+// returned at the API) so when the profile is created dynamically it can only
+// point to a Secret named by the system.
+func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
+	if other != nil {
+		return in.Type == other.Type
+	}
+
+	return false
 }
 
 // PrivateKeyExpected determines whether a certificate requires a private key
