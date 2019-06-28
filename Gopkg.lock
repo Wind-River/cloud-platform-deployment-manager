@@ -560,14 +560,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:054a704df2d8968770747ad7f199aceb06fb71d9915eb575d104512396b44775"
+  digest = "1:4c34a18acb1de24b4690f5637df62f2859b678153ddab7dc48aaf2ea713cb09b"
   name = "github.com/wind-river/deepequal-gen"
   packages = [
     ".",
     "generators",
   ]
   pruneopts = "T"
-  revision = "ca848555d9462465623938bf11f94aeef7c38eb0"
+  revision = "58485d1c8b8267243d6cbdbb66c2e65c6b5b5c28"
 
 [[projects]]
   digest = "1:365b8ecb35a5faf5aa0ee8d798548fc9cd4200cb95d77a5b0b285ac881bae499"
