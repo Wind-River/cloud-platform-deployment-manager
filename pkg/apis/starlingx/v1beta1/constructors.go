@@ -822,6 +822,8 @@ func NewHostProfile(name string, namespace string, hostInfo v1info.HostInfo) (*H
 }
 
 func autoGenerateCertName(certType string, certIndex int) string {
+	// Kubernetes does not accept underscores in resource names.
+	certType = strings.Replace(certType, "_", "-", -1)
 	return fmt.Sprintf("%s-cert-secret-%d", certType, certIndex)
 }
 
