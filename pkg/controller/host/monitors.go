@@ -512,51 +512,6 @@ func (m *enabledControllerNodeMonitor) Run(client *gophercloud.ServiceClient) (s
 	return false, nil
 }
 
-// DefaultEnabledStorageNodeMonitorInterval represents the default interval
-// between polling attempts to check whether a required number of storage nodes
-// have reached the unlocked/enabled state.
-const DefaultEnabledStorageNodeMonitorInterval = 30 * time.Second
-
-// enabledStorageNodeMonitor waits for a required number of storage nodes to
-// reach the unlocked/enabled state.  Once the required number of nodes have
-// reached the desired state a reconcilable event is generated to kick the
-// reconciler.
-type enabledStorageNodeMonitor struct {
-	manager.CommonMonitorBody
-}
-
-// NewMonitorCountMonitor defines a convenience function to
-// instantiate a new storage node enabled monitor with all required attributes.
-func NewEnabledStorageNodeMonitor(instance *v1beta1.Host) *manager.Monitor {
-	logger := log.WithName("storage-node-monitor")
-	return &manager.Monitor{
-		MonitorBody: &enabledStorageNodeMonitor{},
-		Logger:      logger,
-		Object:      instance,
-		Interval:    DefaultEnabledStorageNodeMonitorInterval,
-	}
-}
-
-// Run implements the MonitorBody interface Run method which is responsible
-// for monitor one or more resources and returning true when all conditions
-// are satisfied.
-func (m *enabledStorageNodeMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
-	objects, err := hosts.ListHosts(client)
-	if err != nil {
-		m.SetState("failed to query host list: %s", err.Error())
-		return false, err
-	}
-
-	if anyStorageNodesEnabled(objects) {
-		m.SetState("minimum number of storage nodes are enabled")
-		return true, nil
-	}
-
-	m.SetState("waiting for storage nodes to be enabled")
-
-	return false, nil
-}
-
 // DefaultProvisioningAllowedMonitorInterval represents the default interval
 // between polling attempts to check whether host provisioning is allowed based
 // on the state of the primary controller.

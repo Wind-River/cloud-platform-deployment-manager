@@ -260,37 +260,6 @@ func (r *ReconcileHost) AllControllerNodesEnabled(required int) bool {
 	return allControllerNodesEnabled(r.hosts, required)
 }
 
-// MinimumEnabledStorageNodesForWorker defines the minimum acceptable number
-// of storage nodes that must be enabled prior to unlocking a worker node
-// in a storage deployment system.
-const MinimumEnabledStorageNodesForWorker = 1
-
-func anyStorageNodesEnabled(objects []hosts.Host) bool {
-	present := 0
-	enabled := 0
-	for _, host := range objects {
-		if host.Personality == hosts.PersonalityStorage {
-			present += 1
-			if host.IsUnlockedEnabled() {
-				enabled += 1
-			}
-		}
-	}
-
-	// This "present == 0" is a bit kludgy but is here to allow this function
-	// to succeed even in non-storage scenarios.  In a storage scenario the
-	// caller shouldn't get this far because it should be waiting for the
-	// deployment model to be set which it won't until a storage node appears.
-	return present == 0 || enabled >= MinimumEnabledStorageNodesForWorker
-}
-
-// AnyStorageNodesEnabled determines whether the system is ready for additional
-// worker nodes to be unlocked.  To satisfy storage dependencies we need to
-// wait for storage nodes to be enabled if they are present.
-func (r *ReconcileHost) AnyStorageNodesEnabled() bool {
-	return anyStorageNodesEnabled(r.hosts)
-}
-
 // UpdateRequired determines if any of the configured attributes mismatch with
 // those in the running system.  If there are mismatches then true is returned
 // in the result and opts is configured with only those values that
@@ -645,14 +614,6 @@ func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, i
 		if !r.AllControllerNodesEnabled(2) {
 			msg := "waiting for all controller nodes to be ready"
 			m := NewEnabledControllerNodeMonitor(instance, MinimumEnabledControllerNodesForNonController)
-			return r.StartMonitor(m, msg)
-		}
-	}
-
-	if *personality == hosts.PersonalityWorker {
-		if host.IsStorageDeploymentModel() && !r.AnyStorageNodesEnabled() {
-			msg := "waiting for at least one storage node to be ready"
-			m := NewEnabledStorageNodeMonitor(instance)
 			return r.StartMonitor(m, msg)
 		}
 	}
