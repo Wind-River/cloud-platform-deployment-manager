@@ -282,3 +282,67 @@ func TestComparePartitionPaths(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsString(t *testing.T) {
+	type args struct {
+		slice []string
+		s     string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{name: "included",
+			args: args{slice: []string{"abc", "def"},
+				s: "abc"},
+			want: true},
+		{name: "not-included",
+			args: args{slice: []string{"abc", "def"},
+				s: "xyz"},
+			want: false},
+		{name: "substring-not-included",
+			args: args{slice: []string{"abc", "def"},
+				s: "a"},
+			want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ContainsString(tt.args.slice, tt.args.s); got != tt.want {
+				t.Errorf("ContainsString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemoveString(t *testing.T) {
+	type args struct {
+		slice []string
+		s     string
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantResult []string
+	}{
+		{name: "included",
+			args: args{slice: []string{"abc", "def"},
+				s: "abc"},
+			wantResult: []string{"def"}},
+		{name: "not-included",
+			args: args{slice: []string{"abc", "def"},
+				s: "xyz"},
+			wantResult: []string{"abc", "def"}},
+		{name: "substring-not-included",
+			args: args{slice: []string{"abc", "def"},
+				s: "a"},
+			wantResult: []string{"abc", "def"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := RemoveString(tt.args.slice, tt.args.s); !reflect.DeepEqual(gotResult, tt.wantResult) {
+				t.Errorf("RemoveString() = %v, want %v", gotResult, tt.wantResult)
+			}
+		})
+	}
+}

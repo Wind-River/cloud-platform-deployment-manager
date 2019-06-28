@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	"io"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -451,7 +451,7 @@ func isInterfaceInUse(ifname string, info *v1beta1.InterfaceInfo) bool {
 	}
 
 	for _, b := range info.Bond {
-		if common.ContainsString(b.Members, ifname) {
+		if utils.ContainsString(b.Members, ifname) {
 			return true
 		}
 	}

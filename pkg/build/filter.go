@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"regexp"
 	"strings"
 )
@@ -393,7 +393,7 @@ func (in *VolumeGroupFilter) Filter(profile *v1beta1.HostProfile, deployment *De
 	storage := profile.Spec.Storage
 	groups := v1beta1.VolumeGroupList{}
 	for _, vg := range storage.VolumeGroups {
-		if common.ContainsString(in.Blacklist, vg.Name) {
+		if utils.ContainsString(in.Blacklist, vg.Name) {
 			// This group is blacklisted so skip it.
 			continue
 		}
@@ -438,22 +438,22 @@ func (in *InterfaceNamingFilter) CheckInterface(info *v1beta1.CommonInterfaceInf
 		return
 	} else if info.PlatformNetworks == nil {
 		return
-	} else if common.ContainsString(*info.PlatformNetworks, pxebootNetwork) {
+	} else if utils.ContainsString(*info.PlatformNetworks, pxebootNetwork) {
 		if info.Name != pxebootIface {
 			in.updates[info.Name] = pxebootIface
 			info.Name = pxebootIface
 		}
-	} else if common.ContainsString(*info.PlatformNetworks, mgmtNetwork) {
+	} else if utils.ContainsString(*info.PlatformNetworks, mgmtNetwork) {
 		if info.Name != mgmtIface {
 			in.updates[info.Name] = mgmtIface
 			info.Name = mgmtIface
 		}
-	} else if common.ContainsString(*info.PlatformNetworks, clusterNetwork) {
+	} else if utils.ContainsString(*info.PlatformNetworks, clusterNetwork) {
 		if info.Name != clusterNetwork {
 			in.updates[info.Name] = clusterIface
 			info.Name = clusterIface
 		}
-	} else if common.ContainsString(*info.PlatformNetworks, oamNetwork) {
+	} else if utils.ContainsString(*info.PlatformNetworks, oamNetwork) {
 		if info.Name != oamNetwork {
 			in.updates[info.Name] = oamIface
 			info.Name = oamIface
@@ -548,7 +548,7 @@ func (in *InterfaceMTUFilter) CheckMTU(info *v1beta1.CommonInterfaceInfo) {
 
 func (in *InterfaceMTUFilter) CheckMemberMTU(info *v1beta1.BondInfo, ethernet v1beta1.EthernetList) {
 	for idx := range ethernet {
-		if common.ContainsString(info.Members, ethernet[idx].Name) {
+		if utils.ContainsString(info.Members, ethernet[idx].Name) {
 			ethernet[idx].MTU = info.MTU
 		}
 	}

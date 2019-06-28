@@ -10,6 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -307,7 +308,7 @@ func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.Serv
 	}
 
 	if instance.DeletionTimestamp.IsZero() == false {
-		if common.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
+		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			return r.ReconciledDeletedAddressPool(client, instance, pool)
 		}
 
@@ -491,7 +492,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceC
 	}
 
 	if instance.DeletionTimestamp.IsZero() == false {
-		if common.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
+		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			return r.ReconciledDeletedNetwork(client, instance, network)
 		}
 
@@ -564,7 +565,7 @@ func (r *ReconcilePlatformNetwork) ReconcileResource(client *gophercloud.Service
 		if err == nil {
 			// Remove the finalizer so the kubernetes delete operation can
 			// continue.
-			instance.ObjectMeta.Finalizers = common.RemoveString(instance.ObjectMeta.Finalizers, FinalizerName)
+			instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, FinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
 				return err
 			}
@@ -607,7 +608,7 @@ func (r *ReconcilePlatformNetwork) Reconcile(request reconcile.Request) (reconci
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.
-		if !common.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
+		if !utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, FinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err

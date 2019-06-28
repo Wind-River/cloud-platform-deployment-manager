@@ -108,3 +108,26 @@ func ComparePartitionPaths(a, b string) bool {
 	re := regexp.MustCompile("-part[0-9]*")
 	return re.ReplaceAllString(a, "") == re.ReplaceAllString(b, "")
 }
+
+// ContainsString is a utility function that determines whether a string is
+// included in the list of elements of a slice.
+func ContainsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveString is a utility function that removes a string from the list of
+// elements of a slice.
+func RemoveString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
+}

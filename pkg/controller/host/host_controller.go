@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	common2 "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
@@ -284,7 +284,7 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 
 	if profile.SubFunctions != nil {
 		subfunctions := strings.Split(h.SubFunctions, ",")
-		if common2.ListChanged(profile.SubFunctions, subfunctions) {
+		if utils.ListChanged(profile.SubFunctions, subfunctions) {
 			result = true
 			subfunctions := strings.Join(profile.SubFunctions, ",")
 			opts.SubFunctions = &subfunctions
@@ -1277,7 +1277,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 	}
 
 	if instance.DeletionTimestamp.IsZero() == false {
-		if common.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
+		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			// A finalizer is still present so we need to try to delete the
 			// host from the system.
 			if host != nil {
@@ -1291,7 +1291,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 			}
 
 			// Remove the finalizer so we don't try to do this delete action again.
-			instance.ObjectMeta.Finalizers = common.RemoveString(instance.ObjectMeta.Finalizers, FinalizerName)
+			instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, FinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
 				return err
 			}
@@ -1386,7 +1386,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any hosts that we have previously added.
-		if !common.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
+		if !utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, FinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err
