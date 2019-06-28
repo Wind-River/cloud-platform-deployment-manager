@@ -193,7 +193,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Error(in, "HTTPS client required", "request", request)
 
-	case ValidationError, ChangeAfterInSync:
+	case ValidationError:
 		// These errors are data validation errors.  There is likely a problem
 		// with the data provided by the user so wait for the user to correct
 		// the data.  Retrying is pointless.
@@ -213,7 +213,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Error(in, "resource status error", "request", request)
 
-	case manager.Error, ErrUserDataError,
+	case manager.ClientError, ErrUserDataError,
 		v1beta1.ErrMissingSystemResource, ErrMissingKubernetesResource:
 		// These errors are user data errors.  Usually a reference to a
 		// non-existent resource.

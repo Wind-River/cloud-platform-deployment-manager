@@ -72,18 +72,18 @@ func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) (gophercloud.AuthOption
 	}
 
 	if authURL == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_AUTH_URL must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_AUTH_URL must be provided")
 	}
 	if userID == "" && username == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_USERID or OS_USERNAME must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_USERID or OS_USERNAME must be provided")
 	}
 
 	if password == "" && applicationCredentialID == "" && applicationCredentialName == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_PASSWORD must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_PASSWORD must be provided")
 	}
 
 	if (applicationCredentialID != "" || applicationCredentialName != "") && applicationCredentialSecret == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
 	}
 
 	ao := gophercloud.AuthOptions{
@@ -129,19 +129,19 @@ func GetAuthOptionsFromEnv() (gophercloud.AuthOptions, error) {
 	}
 
 	if authURL == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_AUTH_URL must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_AUTH_URL must be provided")
 	}
 
 	if userID == "" && username == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_USERID or OS_USERNAME must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_USERID or OS_USERNAME must be provided")
 	}
 
 	if password == "" && applicationCredentialID == "" && applicationCredentialName == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_PASSWORD must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_PASSWORD must be provided")
 	}
 
 	if (applicationCredentialID != "" || applicationCredentialName != "") && applicationCredentialSecret == "" {
-		return gophercloud.AuthOptions{}, NewManagerError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
+		return gophercloud.AuthOptions{}, NewClientError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
 	}
 
 	ao := gophercloud.AuthOptions{

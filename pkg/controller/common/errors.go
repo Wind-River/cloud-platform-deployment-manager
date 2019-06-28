@@ -9,16 +9,17 @@ type BaseError struct {
 	message string
 }
 
+// Error implements the Error interface for all structures that are derived
+// from this one.
+func (in BaseError) Error() string {
+	return in.message
+}
+
 // ErrSystemDependency defines an error to be used when reporting that the
 // system itself or a set of multiple resources are not in the correct state to
 // proceed with an operation.
 type ErrSystemDependency struct {
 	BaseError
-}
-
-// Error returns the message associated with an error of this type.
-func (in ErrSystemDependency) Error() string {
-	return in.message
 }
 
 // ErrMissingKubernetesResource defines an error to be used when reporting that
@@ -29,21 +30,11 @@ type ErrMissingKubernetesResource struct {
 	BaseError
 }
 
-// Error returns the message associated with an error of this type.
-func (in ErrMissingKubernetesResource) Error() string {
-	return in.message
-}
-
 // ErrResourceStatusDependency defines an error to be used when reporting that
 // an operation is unable to continue because a resource is not in the correct
 // state.
 type ErrResourceStatusDependency struct {
 	BaseError
-}
-
-// Error returns the message associated with an error of this type.
-func (in ErrResourceStatusDependency) Error() string {
-	return in.message
 }
 
 // ErrUserDataError defines an error to be used when reporting that an operation
@@ -53,46 +44,16 @@ type ErrUserDataError struct {
 	BaseError
 }
 
-// Error returns the message associated with an error of this type.
-func (in ErrUserDataError) Error() string {
-	return in.message
-}
-
 // ValidationError defines a new error type used to differentiate data
 // validation errors from other types of errors.
 type ValidationError struct {
 	BaseError
 }
 
-// Error defines the struct to string conversion function specific to the
-// controller error struct.
-func (in ValidationError) Error() string {
-	return in.message
-}
-
 // HTTPSClientRequired defines a new error type used to signal that a
 // a configuration changes requires an HTTPS URL before continuing.
 type HTTPSClientRequired struct {
 	BaseError
-}
-
-// Error defines the struct to string conversion function specific to the
-// controller error struct.
-func (in HTTPSClientRequired) Error() string {
-	return in.message
-}
-
-// ChangeAfterInSync defines a new error type used to signal that a
-// a configuration changes was received after the resource has already been
-// synchronized with the system state.
-type ChangeAfterInSync struct {
-	BaseError
-}
-
-// Error defines the struct to string conversion function specific to the
-// controller error struct.
-func (in ChangeAfterInSync) Error() string {
-	return in.message
 }
 
 // NewSystemDependency defines a constructor for the ErrSystemDependency error
@@ -133,10 +94,4 @@ func NewValidationError(msg string) error {
 // type.
 func NewHTTPSClientRequired(msg string) error {
 	return HTTPSClientRequired{BaseError{msg}}
-}
-
-// NewChangeAfterInSync defines a constructor for the ChangeAfterInSync error
-// type.
-func NewChangeAfterInSync(msg string) error {
-	return ChangeAfterInSync{BaseError{msg}}
 }

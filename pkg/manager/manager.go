@@ -86,16 +86,30 @@ func NewPlatformManager(manager manager.Manager) *PlatformManager {
 	}
 }
 
-type Error struct {
+// BaseError defines a common Error implementation for all manager errors
+// that derive from this structure.
+type BaseError struct {
 	message string
 }
 
-func (in Error) Error() string {
+// Error implements the Error interface for all structures that derive from
+// BaseError.
+func (in BaseError) Error() string {
 	return in.message
 }
 
-func NewManagerError(msg string) error {
-	return perrors.WithStack(Error{msg})
+// ClientError defines an error to be used on an semantic error encountered
+// while attempting to build a platform client object.
+type ClientError struct {
+	BaseError
+}
+
+// NewClientError defines a wrapper to correctly instantiate a manager client
+// error.
+func NewClientError(msg string) error {
+	return perrors.WithStack(ClientError{BaseError{msg}})
+}
+
 }
 
 // getNextCount takes a number in string form and returns the next sequential
