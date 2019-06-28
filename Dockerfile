@@ -10,10 +10,10 @@ ARG GOBUILD_GCFLAGS=""
 
 # Copy in the go src
 WORKDIR /go/src/github.com/wind-river/titanium-deployment-manager
-COPY scripts/ scripts/
-COPY pkg/     pkg/
-COPY cmd/     cmd/
 COPY vendor/  vendor/
+COPY scripts/ scripts/
+COPY cmd/     cmd/
+COPY pkg/     pkg/
 
 # Build manager
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags "${GOBUILD_GCFLAGS}" -a -o manager github.com/wind-river/titanium-deployment-manager/cmd/manager
