@@ -200,11 +200,8 @@ func (r *ReconcileHost) buildInitialHostOpts(instance *starlingxv1beta1.Host, pr
 	return result, err
 }
 
-// ProvisioningAllowed determines whether the system will allow creating or
-// configuring new hosts.  The primary controller must be enabled for these
-// actions to be allowed.
-func (r *ReconcileHost) ProvisioningAllowed() bool {
-	for _, host := range r.hosts {
+func provisioningAllowed(objects []hosts.Host) bool {
+	for _, host := range objects {
 		if host.Hostname == hosts.Controller0 {
 			if host.IsUnlockedEnabled() {
 				return true
@@ -215,14 +212,38 @@ func (r *ReconcileHost) ProvisioningAllowed() bool {
 	return false
 }
 
+// ProvisioningAllowed determines whether the system will allow creating or
+// configuring new hosts.  The primary controller must be enabled for these
+// actions to be allowed.
+func (r *ReconcileHost) ProvisioningAllowed() bool {
+	return provisioningAllowed(r.hosts)
+}
+
+func monitorsEnabled(objects []hosts.Host, required int) bool {
+	count := 0
+	for _, host := range objects {
+		function := host.Capabilities.StorFunction
+		if function != nil && strings.EqualFold(*function, hosts.StorFunctionMonitor) {
+			if host.IsUnlockedEnabled() {
+				count += 1
+			}
+		}
+	}
+	return count >= required
+}
+
 // MonitorsEnabled determines whether the required number of monitors are
 // enabled or not. Provisioning certain storage resources requires that a
 // certain number of monitors be enabled.
 func (r *ReconcileHost) MonitorsEnabled(required int) bool {
+	return monitorsEnabled(r.hosts, required)
+}
+
+func allControllerNodesEnabled(objects []hosts.Host, required int) bool {
 	count := 0
-	for _, host := range r.hosts {
-		function := host.Capabilities.StorFunction
-		if function != nil && strings.EqualFold(*function, hosts.StorFunctionMonitor) {
+
+	for _, host := range objects {
+		if host.Personality == hosts.PersonalityController {
 			if host.IsUnlockedEnabled() {
 				count += 1
 			}
@@ -235,26 +256,19 @@ func (r *ReconcileHost) MonitorsEnabled(required int) bool {
 // AllControllerNodesEnabled determines whether the system is ready for additional
 // nodes to be unlocked.  To avoid issues with provisioning storage resources
 // we need to wait for both controllers to be unlocked/enabled.
-func (r *ReconcileHost) AllControllerNodesEnabled() bool {
-	count := 0
-	for _, host := range r.hosts {
-		if host.Personality == hosts.PersonalityController {
-			if host.IsUnlockedEnabled() {
-				count += 1
-			}
-		}
-	}
-
-	return count == 2
+func (r *ReconcileHost) AllControllerNodesEnabled(required int) bool {
+	return allControllerNodesEnabled(r.hosts, required)
 }
 
-// AnyStorageNodesEnabled determines whether the system is ready for additional
-// worker nodes to be unlocked.  To satisfy storage dependencies we need to
-// wait for storage nodes to be enabled if they are present.
-func (r *ReconcileHost) AnyStorageNodesEnabled() bool {
+// MinimumEnabledStorageNodesForWorker defines the minimum acceptable number
+// of storage nodes that must be enabled prior to unlocking a worker node
+// in a storage deployment system.
+const MinimumEnabledStorageNodesForWorker = 1
+
+func anyStorageNodesEnabled(objects []hosts.Host) bool {
 	present := 0
 	enabled := 0
-	for _, host := range r.hosts {
+	for _, host := range objects {
 		if host.Personality == hosts.PersonalityStorage {
 			present += 1
 			if host.IsUnlockedEnabled() {
@@ -263,7 +277,18 @@ func (r *ReconcileHost) AnyStorageNodesEnabled() bool {
 		}
 	}
 
-	return present == 0 || enabled > 0
+	// This "present == 0" is a bit kludgy but is here to allow this function
+	// to succeed even in non-storage scenarios.  In a storage scenario the
+	// caller shouldn't get this far because it should be waiting for the
+	// deployment model to be set which it won't until a storage node appears.
+	return present == 0 || enabled >= MinimumEnabledStorageNodesForWorker
+}
+
+// AnyStorageNodesEnabled determines whether the system is ready for additional
+// worker nodes to be unlocked.  To satisfy storage dependencies we need to
+// wait for storage nodes to be enabled if they are present.
+func (r *ReconcileHost) AnyStorageNodesEnabled() bool {
+	return anyStorageNodesEnabled(r.hosts)
 }
 
 // UpdateRequired determines if any of the configured attributes mismatch with
@@ -345,8 +370,9 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 			if err != nil {
 				if errors.IsNotFound(err) == true {
 					msg := fmt.Sprintf("waiting for BM credentials secret: %q", info.Secret)
-					r.WarningEvent(instance, common.ResourceDependency, msg)
-					return hosts.HostOpts{}, result, common.NewMissingKubernetesResource(msg)
+					name := types.NamespacedName{Namespace: instance.Namespace, Name: info.Secret}
+					m := NewKubernetesSecretMonitor(instance, name)
+					return hosts.HostOpts{}, result, r.StartMonitor(m, msg)
 				}
 
 				return hosts.HostOpts{}, result, err
@@ -594,6 +620,11 @@ func (r *ReconcileHost) ReconcileInitialState(client *gophercloud.ServiceClient,
 	return nil
 }
 
+// MinimumEnabledControllerNodesForNonController defines the minimum acceptable
+// number of controller nodes that must be enable prior to unlocking a non-
+// controller node.
+const MinimumEnabledControllerNodesForNonController = 2
+
 // ReconcileFinalState is intended to be run as the last step.  Once all
 // configuration changes have been applied it is safe to change the state of the
 // host if the desired state is different than the current state.
@@ -611,18 +642,18 @@ func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, i
 
 	personality := profile.Personality
 	if *personality == hosts.PersonalityWorker || *personality == hosts.PersonalityStorage {
-		if !r.AllControllerNodesEnabled() {
+		if !r.AllControllerNodesEnabled(2) {
 			msg := "waiting for all controller nodes to be ready"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewSystemDependency(msg)
+			m := NewEnabledControllerNodeMonitor(instance, MinimumEnabledControllerNodesForNonController)
+			return r.StartMonitor(m, msg)
 		}
 	}
 
 	if *personality == hosts.PersonalityWorker {
 		if host.IsStorageDeploymentModel() && !r.AnyStorageNodesEnabled() {
 			msg := "waiting for at least one storage node to be ready"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewSystemDependency(msg)
+			m := NewEnabledStorageNodeMonitor(instance)
+			return r.StartMonitor(m, msg)
 		}
 	}
 
@@ -660,8 +691,8 @@ func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, 
 	// necessary.
 	if host.IsUnlockedEnabled() == false {
 		msg := "enabled host changed state during reconciliation"
-		r.WarningEvent(instance, common.ResourceWait, msg)
-		return common.NewResourceStatusDependency(msg)
+		m := NewIdleHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
 	}
 
 	switch r.OSDProvisioningState(instance.Namespace, host.Personality) {
@@ -888,8 +919,8 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 
 		if r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
 			msg := "waiting for locked state before applying out-of-service attributes"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewResourceStatusDependency(msg)
+			m := NewLockedDisabledHostMonitor(instance, host.ID)
+			return r.StartMonitor(m, msg)
 		}
 
 	} else if host.IsLockedDisabled() {
@@ -903,16 +934,15 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 		}
 
 		if r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
-			msg := "waiting for the unlocked state before applying  in-service attributes"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewResourceStatusDependency(msg)
+			msg := "waiting for the unlocked state before applying in-service attributes"
+			m := NewUnlockedEnabledHostMonitor(instance, host.ID)
+			return r.StartMonitor(m, msg)
 		}
 
 	} else {
-		state := host.State()
-		msg := fmt.Sprintf("waiting for a stable state: %q", state)
-		r.WarningEvent(instance, common.ResourceWait, msg)
-		return common.NewResourceStatusDependency(msg)
+		msg := fmt.Sprintf("waiting for a stable state")
+		m := NewIdleHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
 	}
 
 	return nil
@@ -953,30 +983,30 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 
 // findExistingHost searches the current list of hosts and attempts to find one
 // that fits the provided match criteria.
-func (r *ReconcileHost) findExistingHost(instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) *hosts.Host {
-	for _, host := range r.hosts {
-		if host.Hostname != "" && host.Hostname == instance.Name {
+func findExistingHost(objects []hosts.Host, hostname string, match *starlingxv1beta1.MatchInfo, bootMAC *string) *hosts.Host {
+	for _, host := range objects {
+		if host.Hostname != "" && host.Hostname == hostname {
 			// Forgo the match criteria if the hostname is a match.
 			return &host
 		}
 
-		if hostMatchesCriteria(host, instance.Spec.Match) {
+		if hostMatchesCriteria(host, match) {
 			// The host satisfies the match criteria, but as an additional
 			// sanity check of the data we need to make sure that the
 			// hostname matches as well.  This is to help avoid typos that
 			// cause the system to be misconfigured which might be difficult
 			// to recover from.
-			if host.Hostname == "" || host.Hostname == instance.Name {
+			if host.Hostname == "" || host.Hostname == hostname {
 				return &host
 			}
 		}
 
-		if profile.ProvisioningMode != nil && *profile.ProvisioningMode == starlingxv1beta1.ProvioningModeStatic {
-			// For static provisioning, assume that it may be possible that the
-			// host is already powered on to avoid issues while testing in labs.
-			if profile.BootMAC != nil && host.BootMAC == *profile.BootMAC {
-				return &host
-			}
+		if bootMAC != nil && host.BootMAC == *bootMAC {
+			// For static provisioning, the boot MAC is specified rather than a
+			// match criteria therefore check to see if it is already present
+			// which may be possible if the end user proactively powered on the
+			// host.
+			return &host
 		}
 	}
 
@@ -988,7 +1018,7 @@ func (r *ReconcileHost) findExistingHost(instance *starlingxv1beta1.Host, profil
 // new host is created then the 'host' return parameter will be updated with a
 // pointer to the new host object.
 func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) (*hosts.Host, error) {
-	host = r.findExistingHost(instance, profile)
+	host = findExistingHost(r.hosts, instance.Name, instance.Spec.Match, profile.BootMAC)
 	if host != nil {
 		log.Info("found matching host", "id", host.ID)
 	}
@@ -999,9 +1029,9 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 		if *profile.ProvisioningMode != starlingxv1beta1.ProvioningModeStatic {
 			// We only create missing hosts for statically provisioned hosts.
 			// For dynamic, hosts we wait for them to appear in the system
-			msg := "waiting for dynamic host to appear"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return nil, starlingxv1beta1.NewMissingSystemResource(msg)
+			msg := "waiting for dynamic host to appear in inventory"
+			m := NewDynamicHostMonitor(instance, instance.Name, instance.Spec.Match, profile.BootMAC)
+			return nil, r.StartMonitor(m, msg)
 
 		} else if r.ProvisioningAllowed() {
 			// Populate a new host into system inventory.
@@ -1036,8 +1066,8 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 
 		} else {
 			msg := "waiting for system to allow creating static hosts"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return nil, common.NewSystemDependency(msg)
+			m := NewProvisioningAllowedMonitor(instance)
+			return nil, r.StartMonitor(m, msg)
 		}
 
 	} else if host.Hostname == "" {
@@ -1052,8 +1082,8 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 
 		} else {
 			msg := "waiting for system to allow host provisioning"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return host, common.NewSystemDependency(msg)
+			m := NewProvisioningAllowedMonitor(instance)
+			return host, r.StartMonitor(m, msg)
 		}
 	}
 
@@ -1086,10 +1116,9 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	var current *starlingxv1beta1.HostProfileSpec
 
 	if !host.Idle() {
-		state := host.State()
-		msg := fmt.Sprintf("waiting for a stable state: %q", state)
-		r.WarningEvent(instance, common.ResourceWait, msg)
-		return common.NewResourceStatusDependency(msg)
+		msg := fmt.Sprintf("waiting for a stable state")
+		m := NewIdleHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
 	}
 
 	// Gather all host attributes so that they can be reused by various
@@ -1113,8 +1142,8 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 			// an operator may want to start with a partially configured system
 			// then using any stable state is sufficient.
 			msg := "waiting for a stable state before collecting defaults"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewResourceStatusDependency(msg)
+			m := NewInventoryCollectedMonitor(instance, host.ID)
+			return r.StartMonitor(m, msg)
 		}
 
 		if len(hostInfo.Disks) == 0 {
@@ -1123,8 +1152,8 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 			// last things to be collected.  If that list is 0 then we need to
 			// wait some more.
 			msg := "waiting for inventory collection to complete before collecting defaults"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewResourceStatusDependency(msg)
+			m := NewInventoryCollectedMonitor(instance, host.ID)
+			return r.StartMonitor(m, msg)
 		}
 
 		log.Info("collecting default values")
@@ -1143,7 +1172,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		// Otherwise, the defaults already existed so build a new profile with
 		// the current host configuration so that we can compare it to the
 		// desired state.
-		log.V(1).Info("building current profile from current config")
+        log.V(2).Info("building current profile from current config")
 
 		current, err = starlingxv1beta1.NewHostProfileSpec(hostInfo)
 		if err != nil {
@@ -1173,15 +1202,15 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 
 	inSync := r.CompareAttributes(profile, current, instance.Namespace, host.Personality)
 	if inSync {
-		log.V(1).Info("no changes between composite profile and current configuration")
+        log.V(2).Info("no changes between composite profile and current configuration")
 		return nil
 	}
 
-	log.V(1).Info("defaults are:", "values", defaults)
+    log.V(2).Info("defaults are:", "values", defaults)
 
-	log.V(1).Info("final profile is:", "values", profile)
+    log.V(2).Info("final profile is:", "values", profile)
 
-	log.V(1).Info("current config is:", "values", current)
+    log.V(2).Info("current config is:", "values", current)
 
 	if instance.Status.InSync && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
@@ -1200,7 +1229,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		return err
 	}
 
-	log.V(1).Info("final configuration is:", "profile", current)
+    log.V(2).Info("final configuration is:", "profile", current)
 
 	return nil
 }
@@ -1235,8 +1264,8 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 	if host.IsLockedDisabled() == false {
 		// Host is still not locked so wait for the action to complete.
 		msg := "waiting for host to lock before deleting it"
-		r.WarningEvent(instance, common.ResourceWait, msg)
-		return common.NewResourceStatusDependency(msg)
+		m := NewLockedDisabledHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
 	}
 
 	log.Info("deleting host")
@@ -1316,7 +1345,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 		return err
 	}
 
-	log.V(1).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
+    log.V(2).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
 
 	err = r.ValidateProfile(instance, profile)
 	if err != nil {
@@ -1340,7 +1369,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 	oldInSync := instance.Status.InSync
 
 	if r.statusUpdateRequired(instance, host, inSync) {
-		log.V(1).Info("updating host status", "status", instance.Status)
+        log.V(2).Info("updating host status", "status", instance.Status)
 
 		err2 := r.Status().Update(context.TODO(), instance)
 		if err2 != nil {
@@ -1367,7 +1396,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
 
-	log.V(1).Info("reconcile called")
+    log.V(2).Info("reconcile called")
 
 	// Fetch the Host instance
 	instance := &starlingxv1beta1.Host{}
@@ -1382,6 +1411,9 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Cancel any existing monitors
+	r.CancelMonitor(instance)
 
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so

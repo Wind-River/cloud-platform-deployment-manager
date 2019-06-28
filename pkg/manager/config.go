@@ -28,7 +28,7 @@ const (
 	Memory          ReconcilerName = "host.memory"
 	Processor       ReconcilerName = "host.processor"
 	Storage         ReconcilerName = "host.storage"
-	Monitor         ReconcilerName = "host.storage.monitor"
+	StorageMonitor  ReconcilerName = "host.storage.monitor"
 	OSD             ReconcilerName = "host.storage.osd"
 	Partition       ReconcilerName = "host.storage.partition"
 	PhysicalVolume  ReconcilerName = "host.storage.physicalVolume"
@@ -58,7 +58,7 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	Memory:          true,
 	Processor:       true,
 	Storage:         true,
-	Monitor:         true,
+	StorageMonitor:  true,
 	OSD:             true,
 	Partition:       true,
 	PhysicalVolume:  true,

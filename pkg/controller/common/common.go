@@ -80,6 +80,10 @@ var (
 	// frequently because it will come back relatively quickly.
 	// TODO(alegacy): consider backing off using a rate limiter queue.
 	RetryNetworkError = reconcile.Result{Requeue: true, RequeueAfter: 15 * time.Second}
+
+	// RetryNever is used when the reconciler will be triggered by a separate
+	// mechanism and no retry is necessary.
+	RetryNever = reconcile.Result{Requeue: false}
 )
 
 // Common event record reasons
@@ -222,6 +226,16 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		err = nil
 
 		h.Error(in, "user data error", "request", request)
+
+	case manager.WaitForMonitor:
+		// These errors are explicit wait states within a reconciler.  If such
+		// an error is used then the reconciler wants to stop and wait for its
+		// monitor to force a new reconcilable event.
+		resetClient = false
+		result = RetryNever
+		err = nil
+
+		h.Error(in, "waiting for host monitor", "request", request)
 
 	default:
 		resetClient = false

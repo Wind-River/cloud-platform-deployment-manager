@@ -489,11 +489,9 @@ func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, insta
 	return nil
 }
 
-// ControllerNodesAvailable counts the number of nodes that are unlocked,
-// enabled, and available.
-func (r *ReconcileSystem) ControllerNodesAvailable() int {
+func controllerNodesAvailable(objects []hosts.Host, required int) bool {
 	count := 0
-	for _, host := range r.hosts {
+	for _, host := range objects {
 		if host.Personality == hosts.PersonalityController {
 			if host.IsUnlockedEnabled() {
 				if host.AvailabilityStatus == hosts.AvailAvailable {
@@ -503,25 +501,33 @@ func (r *ReconcileSystem) ControllerNodesAvailable() int {
 		}
 	}
 
-	return count
+	return count >= required
+}
+
+// ControllerNodesAvailable counts the number of nodes that are unlocked,
+// enabled, and available.
+func (r *ReconcileSystem) ControllerNodesAvailable(required int) bool {
+	return controllerNodesAvailable(r.hosts, required)
 }
 
 // FileSystemResizeAllowed defines whether a particular file system can be
 // resized.
-func (r *ReconcileSystem) FileSystemResizeAllowed(client *gophercloud.ServiceClient, info *v1info.SystemInfo, fsInfo starlingxv1beta1.FileSystemInfo, fs filesystems.FileSystem) (ready bool, err error) {
+func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.System, info *v1info.SystemInfo, fs filesystems.FileSystem) (ready bool, err error) {
 	required := 2
 	if strings.EqualFold(info.SystemMode, string(titaniumManager.SystemModeSimplex)) {
 		required = 1
 	}
 
-	if r.ControllerNodesAvailable() < required {
+	if r.ControllerNodesAvailable(required) == false {
 		msg := fmt.Sprintf("waiting for %d controller(s) in available state before resizing filesystems", required)
-		return false, common.NewResourceStatusDependency(msg)
+		m := NewAvailableControllerNodeMonitor(instance, required)
+		return false, r.StartMonitor(m, msg)
 	}
 
 	if fs.State == filesystems.ResizeInProgress {
 		msg := fmt.Sprintf("filesystem resize operation already in progress on %q", fs.Name)
-		return false, common.NewResourceStatusDependency(msg)
+		m := NewFileSystemResizeMonitor(instance)
+		return false, r.StartMonitor(m, msg)
 	}
 
 	ready = true
@@ -564,7 +570,7 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 			if fsInfo.Size > fs.Size {
 				found = true
 
-				if ready, err := r.FileSystemResizeAllowed(client, info, fsInfo, fs); !ready {
+				if ready, err := r.FileSystemResizeAllowed(instance, info, fs); !ready {
 					return err
 				}
 
@@ -1065,6 +1071,9 @@ func (r *ReconcileSystem) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Cancel any existing monitors
+	r.CancelMonitor(instance)
 
 	err = r.installRootCertificates(instance)
 	if err != nil {

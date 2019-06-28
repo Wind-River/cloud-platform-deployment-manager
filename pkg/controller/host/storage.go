@@ -26,7 +26,7 @@ import (
 // configuration of a compute host resource.
 func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if r.IsReconcilerEnabled(titaniumManager.Monitor) == false {
+	if r.IsReconcilerEnabled(titaniumManager.StorageMonitor) == false {
 		return nil
 	}
 
@@ -184,9 +184,9 @@ func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, i
 	for _, p := range host.Partitions {
 		switch p.Status {
 		case partitions.StatusDeleting, partitions.StatusModifying, partitions.StatusCreating:
+			m := NewPartitionStateMonitor(instance, host.ID)
 			msg := "waiting for partitions to transition to ready state"
-			r.WarningEvent(instance, common.ResourceWait, msg)
-			return common.NewResourceStatusDependency(msg)
+			return r.StartMonitor(m, msg)
 		}
 	}
 
@@ -459,36 +459,31 @@ func (r *ReconcileHost) OSDProvisioningState(namespace string, personality strin
 // provisioning is allowed based on the node type, the current cluster
 // deployment model, and the current state of the controllers.
 func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, osdInfo starlingxv1beta1.OSDInfo, tierUUID *string, host *v1info.HostInfo) error {
-	cluster := host.FindClusterByName(osdInfo.GetClusterName())
+	clusterName := osdInfo.GetClusterName()
+
+	cluster := host.FindClusterByName(clusterName)
 	if cluster == nil {
 		// The cluster has not yet been created so wait and retry
 		msg := fmt.Sprintf("waiting for the %q cluster to be created before allowing OSDs",
-			osdInfo.GetClusterName())
-		r.WarningEvent(instance, common.ResourceDependency, msg)
-		return common.NewSystemDependency(msg)
+			clusterName)
+		m := NewClusterPresenceMonitor(instance, clusterName)
+		return r.StartMonitor(m, msg)
 	}
 
 	if cluster.DeploymentModel == clusters.DeploymentModelUndefined {
 		// The cluster does not yet support OSD provisioning
 		msg := "waiting for storage deployment model to be defined before allowing OSDs"
-		r.WarningEvent(instance, common.ResourceDependency, msg)
-		return common.NewSystemDependency(msg)
+		m := NewClusterDeploymentModelMonitor(instance, cluster.ID)
+		return r.StartMonitor(m, msg)
 
-	} else if cluster.DeploymentModel == clusters.DeploymentModelStorage {
-		if r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) == false {
-			msg := fmt.Sprintf("waiting for %d monitor(s) to be enabled before allowing OSDs",
-				hosts.OSDMinimumMonitorCount)
-			r.WarningEvent(instance, common.ResourceDependency, msg)
-			return common.NewSystemDependency(msg)
-		}
-
-	} else if cluster.DeploymentModel == clusters.DeploymentModelController {
+	} else if cluster.DeploymentModel == clusters.DeploymentModelStorage ||
+		cluster.DeploymentModel == clusters.DeploymentModelController {
 		if r.GetSystemType(instance.Namespace) == titaniumManager.SystemTypeStandard {
 			if r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) == false {
 				msg := fmt.Sprintf("waiting for %d monitor(s) to be enabled before allowing OSDs",
 					hosts.OSDMinimumMonitorCount)
-				r.WarningEvent(instance, common.ResourceDependency, msg)
-				return common.NewSystemDependency(msg)
+				m := NewStorageMonitorCountMonitor(instance, hosts.OSDMinimumMonitorCount)
+				return r.StartMonitor(m, msg)
 			}
 		}
 	}
@@ -496,9 +491,9 @@ func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, 
 	if tierUUID == nil {
 		// The storage tier has not yet been allocated so wait and retry.
 		msg := fmt.Sprintf("waiting for the %q %s tier to be created",
-			osdInfo.GetClusterName(), storagetiers.StorageTierName)
-		r.WarningEvent(instance, common.ResourceDependency, msg)
-		return common.NewSystemDependency(msg)
+			clusterName, storagetiers.StorageTierName)
+		m := NewStorageTierMonitor(instance, cluster.ID, storagetiers.StorageTierName)
+		return r.StartMonitor(m, msg)
 	}
 
 	return nil

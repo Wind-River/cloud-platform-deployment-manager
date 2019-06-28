@@ -8,7 +8,9 @@ import (
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
 	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -41,14 +43,18 @@ const (
 type TitaniumManager interface {
 	ResetPlatformClient(namespace string) error
 	GetPlatformClient(namespace string) *gophercloud.ServiceClient
+	GetKubernetesClient() client.Client
 	BuildPlatformClient(namespace string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
+	NotifyResource(object runtime.Object) error
 	SetSystemReady(namespace string, value bool)
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
 	GetSystemType(namespace string) SystemType
 	IsReconcilerEnabled(name ReconcilerName) bool
 	GetReconcilerOption(name ReconcilerName, option OptionName) interface{}
+	StartMonitor(monitor *Monitor, message string) error
+	CancelMonitor(object runtime.Object)
 }
 
 type SystemType string
@@ -75,14 +81,16 @@ type SystemNamespace struct {
 
 type PlatformManager struct {
 	manager.Manager
-	lock    sync.Mutex
-	systems map[string]*SystemNamespace
+	lock     sync.Mutex
+	systems  map[string]*SystemNamespace
+	monitors map[string]*Monitor
 }
 
-func NewPlatformManager(manager manager.Manager) *PlatformManager {
+func NewPlatformManager(manager manager.Manager) TitaniumManager {
 	return &PlatformManager{
-		Manager: manager,
-		systems: make(map[string]*SystemNamespace),
+		Manager:  manager,
+		systems:  make(map[string]*SystemNamespace),
+		monitors: make(map[string]*Monitor),
 	}
 }
 
@@ -110,6 +118,16 @@ func NewClientError(msg string) error {
 	return perrors.WithStack(ClientError{BaseError{msg}})
 }
 
+// WaitForMonitor defines a special error object that signals to the
+// common error handler that a monitor has been launched to trigger another
+// reconciliation attempt only when certain criteria have been met.
+type WaitForMonitor struct {
+	BaseError
+}
+
+// NewWaitForMonitor defines a constructor for the WaitForMonitor error type.
+func NewWaitForMonitor(msg string) error {
+	return WaitForMonitor{BaseError{msg}}
 }
 
 // getNextCount takes a number in string form and returns the next sequential
@@ -216,8 +234,64 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 	return nil
 }
 
+// notifyController updates an annotation on a single controller to force it
+// to re-run its reconcile loop.
+func (m *PlatformManager) notifyController(object runtime.Object) error {
+	key, err := client.ObjectKeyFromObject(object)
+	if err != nil {
+		return err
+	}
+
+	result := object.DeepCopyObject()
+	err = m.GetClient().Get(context.Background(), key, result)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to query resource %+v", key)
+		return err
+	}
+
+	accessor := meta.NewAccessor()
+
+	annotations, err := accessor.Annotations(result)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to get annotations via accessor")
+		return err
+	}
+
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	count := getNextCount(annotations[NotificationCountKey])
+	annotations[NotificationCountKey] = count
+
+	err = accessor.SetAnnotations(result, annotations)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to set annotations via accessor")
+		return err
+	}
+
+	err = m.GetClient().Update(context.TODO(), result)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to notify host controller")
+		return err
+	}
+
+	log.V(1).Info("controller has been notified", "key", key)
+
+	return nil
+}
+
 func (m *PlatformManager) NotifySystemDependencies(namespace string) error {
 	return m.notifyControllers(namespace, systemDependencies)
+}
+
+func (m *PlatformManager) NotifyResource(object runtime.Object) error {
+	return m.notifyController(object)
+}
+
+// GetKubernetesClient returns a reference to the Kubernetes client
+func (m *PlatformManager) GetKubernetesClient() client.Client {
+	return m.GetClient()
 }
 
 // GetPlatformClient returns the instance of the platform manager for a given
@@ -328,11 +402,45 @@ func (m *PlatformManager) GetReconcilerOption(name ReconcilerName, option Option
 	return config.Get(ReconcilerOptionPath(name, option))
 }
 
-var instance *PlatformManager
+// StartMonitor starts the specified monitor, generates an event, and then
+// return an error suitable to stop the reconciler from running until the
+// monitor has explicitly triggered a new reconcilable event.
+func (m *PlatformManager) StartMonitor(monitor *Monitor, message string) error {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	key := monitor.GetKey()
+	m.monitors[key] = monitor
+
+	log.V(2).Info("starting monitor", "key", key)
+
+	// Run the monitor.
+	monitor.Start(m)
+
+	// Return an error which has specific handling to stop and wait for the
+	// monitor
+	return NewWaitForMonitor(message)
+}
+
+// CancelMonitor stops any monitor currently running against the resource
+// being reconciled.
+func (m *PlatformManager) CancelMonitor(object runtime.Object) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	key := BuildMonitorKey(object)
+	if monitor, ok := m.monitors[key]; ok {
+		log.V(2).Info("stopping monitor", "key", key)
+		monitor.Stop()
+		delete(m.monitors, key)
+	}
+}
+
+var instance TitaniumManager
 var once sync.Once
 
 // GetInstance returns a singleton instance of the platform manager
-func GetInstance(mgr manager.Manager) *PlatformManager {
+func GetInstance(mgr manager.Manager) TitaniumManager {
 	once.Do(func() {
 		instance = NewPlatformManager(mgr)
 	})
