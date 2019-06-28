@@ -164,7 +164,7 @@ func (r *ReconcileHostProfile) Reconcile(request reconcile.Request) (reconcile.R
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
 
-    log.V(2).Info("reconcile called")
+	log.V(2).Info("reconcile called")
 
 	// Fetch the HostProfile instance
 	instance := &starlingxv1beta1.HostProfile{}

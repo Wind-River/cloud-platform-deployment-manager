@@ -276,7 +276,7 @@ func (m *PlatformManager) notifyController(object runtime.Object) error {
 		return err
 	}
 
-	log.V(1).Info("controller has been notified", "key", key)
+	log.V(2).Info("controller has been notified", "key", key)
 
 	return nil
 }

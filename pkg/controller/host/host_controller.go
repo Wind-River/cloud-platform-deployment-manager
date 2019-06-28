@@ -1133,7 +1133,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		// Otherwise, the defaults already existed so build a new profile with
 		// the current host configuration so that we can compare it to the
 		// desired state.
-        log.V(2).Info("building current profile from current config")
+		log.V(2).Info("building current profile from current config")
 
 		current, err = starlingxv1beta1.NewHostProfileSpec(hostInfo)
 		if err != nil {
@@ -1163,15 +1163,15 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 
 	inSync := r.CompareAttributes(profile, current, instance.Namespace, host.Personality)
 	if inSync {
-        log.V(2).Info("no changes between composite profile and current configuration")
+		log.V(2).Info("no changes between composite profile and current configuration")
 		return nil
 	}
 
-    log.V(2).Info("defaults are:", "values", defaults)
+	log.V(2).Info("defaults are:", "values", defaults)
 
-    log.V(2).Info("final profile is:", "values", profile)
+	log.V(2).Info("final profile is:", "values", profile)
 
-    log.V(2).Info("current config is:", "values", current)
+	log.V(2).Info("current config is:", "values", current)
 
 	if instance.Status.InSync && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
@@ -1190,7 +1190,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		return err
 	}
 
-    log.V(2).Info("final configuration is:", "profile", current)
+	log.V(2).Info("final configuration is:", "profile", current)
 
 	return nil
 }
@@ -1306,7 +1306,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 		return err
 	}
 
-    log.V(2).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
+	log.V(2).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
 
 	err = r.ValidateProfile(instance, profile)
 	if err != nil {
@@ -1330,7 +1330,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 	oldInSync := instance.Status.InSync
 
 	if r.statusUpdateRequired(instance, host, inSync) {
-        log.V(2).Info("updating host status", "status", instance.Status)
+		log.V(2).Info("updating host status", "status", instance.Status)
 
 		err2 := r.Status().Update(context.TODO(), instance)
 		if err2 != nil {
@@ -1357,7 +1357,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
 
-    log.V(2).Info("reconcile called")
+	log.V(2).Info("reconcile called")
 
 	// Fetch the Host instance
 	instance := &starlingxv1beta1.Host{}
