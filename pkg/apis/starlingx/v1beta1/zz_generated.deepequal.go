@@ -1975,16 +1975,6 @@ func (in *VolumeGroupInfo) DeepEqual(other *VolumeGroupInfo) bool {
 	if in.Name != other.Name {
 		return false
 	}
-	if in.InstanceBacking != nil {
-		if (in.InstanceBacking == nil) != (other.InstanceBacking == nil) {
-			return false
-		} else if in.InstanceBacking != nil {
-			if *in.InstanceBacking != *other.InstanceBacking {
-				return false
-			}
-		}
-	}
-
 	if in.ConcurrentDiskOperations != nil {
 		if (in.ConcurrentDiskOperations == nil) != (other.ConcurrentDiskOperations == nil) {
 			return false

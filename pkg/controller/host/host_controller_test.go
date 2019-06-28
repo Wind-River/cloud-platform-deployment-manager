@@ -104,10 +104,8 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 	aClusterName2 := "other_cluster"
 	aConcurrentOperations1 := 2
 	aLVMType1 := "thin"
-	aInstanceBacking1 := "image"
 	aConcurrentOperations2 := 3
 	aLVMType2 := "thick"
-	aInstanceBacking2 := "other"
 	aVolumeSize1 := 100
 	aVolumeSize2 := 10
 	a := starlingxv1beta1.HostProfileSpec{
@@ -313,7 +311,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &aLVMType1,
 					ConcurrentDiskOperations: &aConcurrentOperations1,
-					InstanceBacking:          &aInstanceBacking1,
 					PhysicalVolumes: starlingxv1beta1.PhysicalVolumeList{
 						starlingxv1beta1.PhysicalVolumeInfo{
 							Size: &aVolumeSize2,
@@ -326,7 +323,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &aLVMType2,
 					ConcurrentDiskOperations: &aConcurrentOperations2,
-					InstanceBacking:          &aInstanceBacking2,
 				},
 			},
 		},
@@ -336,10 +332,8 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 	bAddress := "1.2.3.4"
 	bConcurrentOperations1 := 2
 	bLVMType1 := "thin"
-	bInstanceBacking1 := "image"
 	bConcurrentOperations2 := 3
 	bLVMType2 := "thick"
-	bInstanceBacking2 := "other"
 	bMonitorSize := 20
 	bMTU := 1500
 	bMetric := 1
@@ -403,7 +397,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType1,
 					ConcurrentDiskOperations: &bConcurrentOperations1,
-					InstanceBacking:          &bInstanceBacking1,
 					PhysicalVolumes: starlingxv1beta1.PhysicalVolumeList{
 						starlingxv1beta1.PhysicalVolumeInfo{
 							Size: &bVolumeSize1,
@@ -616,7 +609,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType1,
 					ConcurrentDiskOperations: &bConcurrentOperations1,
-					InstanceBacking:          &bInstanceBacking1,
 					PhysicalVolumes: starlingxv1beta1.PhysicalVolumeList{
 						starlingxv1beta1.PhysicalVolumeInfo{
 							Size: &bVolumeSize1,
@@ -629,7 +621,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType2,
 					ConcurrentDiskOperations: &bConcurrentOperations2,
-					InstanceBacking:          &bInstanceBacking2,
 				},
 			},
 		},

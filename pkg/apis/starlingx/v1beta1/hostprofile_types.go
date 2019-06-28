@@ -238,12 +238,6 @@ type VolumeGroupInfo struct {
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	Name string `json:"name"`
 
-	// InstanceBacking defines the storage method used to implement the volume
-	// group.
-	// +kubebuilder:validation:Enum=lvm,image,remote
-	// +optional
-	InstanceBacking *string `json:"instanceBacking,omitempty"`
-
 	// ConcurrentDiskOperations defines the number of concurrent disk operations
 	// permitted.
 	// +kubebuilder:validation:Minimum=1

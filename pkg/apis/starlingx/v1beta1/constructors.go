@@ -489,11 +489,6 @@ func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error 
 			group.LVMType = &lvmType
 		}
 
-		if value := vg.Capabilities.InstanceBacking; value != nil {
-			instanceBacking := *value
-			group.InstanceBacking = &instanceBacking
-		}
-
 		if value := vg.Capabilities.ConcurrentDiskOperations; value != nil {
 			concurrentDiskOperations := *value
 			group.ConcurrentDiskOperations = &concurrentDiskOperations

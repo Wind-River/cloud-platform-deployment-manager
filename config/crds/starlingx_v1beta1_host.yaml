@@ -720,14 +720,6 @@ spec:
                             format: int64
                             minimum: 1
                             type: integer
-                          instanceBacking:
-                            description: InstanceBacking defines the storage method
-                              used to implement the volume group.
-                            enum:
-                            - lvm
-                            - image
-                            - remote
-                            type: string
                           lvmType:
                             description: LVMType defines the provisioning type for
                               volumes defines with 'Type' set to 'lvm'.

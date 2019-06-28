@@ -301,10 +301,6 @@ func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient,
 			}
 
 			capabilities := volumegroups.CapabilitiesOpts{}
-			if vgInfo.InstanceBacking != nil {
-				capabilities.InstanceBacking = vgInfo.InstanceBacking
-				capabilitiesPtr = &capabilities
-			}
 
 			if vgInfo.ConcurrentDiskOperations != nil {
 				capabilities.ConcurrentDiskOperations = vgInfo.ConcurrentDiskOperations
