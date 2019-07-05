@@ -8,8 +8,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
 	"strconv"
 )
@@ -19,7 +19,7 @@ import (
 func (r *ReconcileHost) ReconcileProcessors(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if len(profile.Processors) == 0 || r.IsReconcilerEnabled(manager.Processor) == false {
+	if len(profile.Processors) == 0 || config.IsReconcilerEnabled(config.Processor) == false {
 		return nil
 	}
 

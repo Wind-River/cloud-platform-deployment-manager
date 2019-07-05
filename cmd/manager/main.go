@@ -7,8 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/wind-river/titanium-deployment-manager/pkg/apis"
+	config2 "github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller"
-	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	"github.com/wind-river/titanium-deployment-manager/pkg/webhook"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// Load the manager config
-	err = titaniumManager.ReadConfig()
+	err = config2.ReadConfig()
 	if err != nil {
 		log.Error(err, "unable to read manager configuration")
 		os.Exit(1)

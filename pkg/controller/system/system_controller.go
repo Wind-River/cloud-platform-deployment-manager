@@ -24,6 +24,7 @@ import (
 	"github.com/imdario/mergo"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
@@ -213,7 +214,7 @@ func ntpUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *ntp.NTP) (ntpOpt
 
 // ReconcileNTP configures the system resources to align with the desired NTP state.
 func (r *ReconcileSystem) ReconcileNTP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.NTP) == false {
+	if config.IsReconcilerEnabled(config.NTP) == false {
 		return nil
 	}
 
@@ -258,7 +259,7 @@ func dnsUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *dns.DNS) (dnsOpt
 // ReconcileDNS configures the system resources to align with the desired DNS
 // configuration.
 func (r *ReconcileSystem) ReconcileDNS(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.DNS) == false {
+	if config.IsReconcilerEnabled(config.DNS) == false {
 		return nil
 	}
 
@@ -295,7 +296,7 @@ func drbdUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *drbd.DRBD) (drb
 // ReconcileDRBD configures the system resources to align with the desired DRBD
 // configuration.
 func (r *ReconcileSystem) ReconcileDRBD(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.DRBD) == false {
+	if config.IsReconcilerEnabled(config.DRBD) == false {
 		return nil
 	}
 
@@ -346,7 +347,7 @@ func ptpUpdateRequired(spec *starlingxv1beta1.PTPInfo, p *ptp.PTP) (ptpOpts ptp.
 
 // ReconcilePTP configures the system resources to align with the desired PTP state.
 func (r *ReconcileSystem) ReconcilePTP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.PTP) == false {
+	if config.IsReconcilerEnabled(config.PTP) == false {
 		return nil
 	}
 
@@ -472,7 +473,7 @@ func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.Serv
 // ReconcileSNMP configures the system resources to align with the desired SNMP
 // configuration.
 func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.SNMP) == false {
+	if config.IsReconcilerEnabled(config.SNMP) == false {
 		return nil
 	}
 
@@ -538,7 +539,7 @@ func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.Sys
 // ReconcileFilesystems configures the system resources to align with the
 // desired controller filesystem configuration.
 func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error) {
-	if r.IsReconcilerEnabled(titaniumManager.FileSystems) == false {
+	if config.IsReconcilerEnabled(config.FileSystems) == false {
 		return nil
 	}
 
@@ -642,7 +643,7 @@ func systemUpdateRequired(instance *starlingxv1beta1.System, spec *starlingxv1be
 
 // ReconcileSystemAttributes configures the system resources to align with the desired state.
 func (r *ReconcileSystem) ReconcileSystemAttributes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.System) == true {
+	if config.IsReconcilerEnabled(config.System) == true {
 		if opts, ok := systemUpdateRequired(instance, spec, &info.System); ok {
 			log.Info("updating system config", "opts", opts)
 
@@ -668,13 +669,13 @@ func (r *ReconcileSystem) ReconcileSystemAttributes(client *gophercloud.ServiceC
 // HTTPSRequired determines whether an HTTPS connection is required for the
 // purpose of installing system certificates.
 func (r *ReconcileSystem) HTTPSRequiredForCertificates() bool {
-	value := r.GetReconcilerOption(titaniumManager.Certificate, titaniumManager.HTTPSRequired)
+	value := config.GetReconcilerOption(config.Certificate, config.HTTPSRequired)
 	if value != nil {
 		if required, ok := value.(bool); ok {
 			return required
 		} else {
 			log.Info("unexpected option type",
-				"option", titaniumManager.HTTPSRequired, "type", reflect.TypeOf(value))
+				"option", config.HTTPSRequired, "type", reflect.TypeOf(value))
 		}
 	}
 
@@ -712,7 +713,7 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 	var cert *x509.Certificate
 	var result *certificates.Certificate
 
-	if r.IsReconcilerEnabled(titaniumManager.Certificate) == false {
+	if config.IsReconcilerEnabled(config.Certificate) == false {
 		return nil
 	}
 

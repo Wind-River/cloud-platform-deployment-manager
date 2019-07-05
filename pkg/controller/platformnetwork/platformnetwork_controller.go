@@ -11,6 +11,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -621,7 +622,7 @@ func (r *ReconcilePlatformNetwork) Reconcile(request reconcile.Request) (reconci
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.PlatformNetwork) == false {
+	if config.IsReconcilerEnabled(config.PlatformNetwork) == false {
 		return reconcile.Result{}, nil
 	}
 

@@ -14,8 +14,8 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
 	"strings"
 )
@@ -115,7 +115,7 @@ func interfaceIsStaleOrChanged(oldName string, newName *string, profile *starlin
 func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(manager.Route) == false {
+	if config.IsReconcilerEnabled(config.Route) == false {
 		return nil
 	}
 
@@ -167,7 +167,7 @@ func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, 
 func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(manager.Address) == false {
+	if config.IsReconcilerEnabled(config.Address) == false {
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(manager.Interface) == false {
+	if config.IsReconcilerEnabled(config.Interface) == false {
 		return nil
 	}
 
@@ -595,7 +595,7 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	var ifuuid string
 	var found bool
 
-	if r.IsReconcilerEnabled(manager.Interface) == false {
+	if config.IsReconcilerEnabled(config.Interface) == false {
 		return nil
 	}
 
@@ -743,7 +743,7 @@ func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *
 func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
-	if r.IsReconcilerEnabled(manager.Interface) == false {
+	if config.IsReconcilerEnabled(config.Interface) == false {
 		return nil
 	}
 
@@ -847,7 +847,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
-	if r.IsReconcilerEnabled(manager.Interface) == false {
+	if config.IsReconcilerEnabled(config.Interface) == false {
 		return nil
 	}
 
@@ -950,7 +950,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(manager.Address) == false {
+	if config.IsReconcilerEnabled(config.Address) == false {
 		return nil
 	}
 
@@ -1004,7 +1004,7 @@ func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, in
 func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(manager.Route) == false {
+	if config.IsReconcilerEnabled(config.Route) == false {
 		return nil
 	}
 
@@ -1069,7 +1069,7 @@ func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, insta
 func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	var err error
 
-	if r.IsReconcilerEnabled(manager.Networking) == false {
+	if config.IsReconcilerEnabled(config.Networking) == false {
 		return nil
 	}
 

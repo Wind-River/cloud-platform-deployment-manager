@@ -12,6 +12,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
@@ -370,13 +371,13 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 // HTTPSRequired determines whether an HTTPS connection is required for the
 // purpose of configuring host BMC attributes.
 func (r *ReconcileHost) HTTPSRequired() bool {
-	value := r.GetReconcilerOption(titaniumManager.BMC, titaniumManager.HTTPSRequired)
+	value := config.GetReconcilerOption(config.BMC, config.HTTPSRequired)
 	if value != nil {
 		if required, ok := value.(bool); ok {
 			return required
 		} else {
 			log.Info("unexpected option type",
-				"option", titaniumManager.HTTPSRequired, "type", reflect.TypeOf(value))
+				"option", config.HTTPSRequired, "type", reflect.TypeOf(value))
 		}
 	}
 
@@ -781,7 +782,7 @@ func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfil
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.OSD) {
+	if config.IsReconcilerEnabled(config.OSD) {
 		switch r.OSDProvisioningState(namespace, personality) {
 		case RequiredStateEnabled, RequiredStateAny:
 			if r.CompareOSDs(in, other) == false {
@@ -813,20 +814,20 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.Memory) {
+	if config.IsReconcilerEnabled(config.Memory) {
 		if in.Memory.DeepEqual(&other.Memory) == false {
 			return false
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.Processor) {
+	if config.IsReconcilerEnabled(config.Processor) {
 		if in.Processors.DeepEqual(&other.Processors) == false {
 			return false
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.Networking) {
-		if r.IsReconcilerEnabled(titaniumManager.Interface) {
+	if config.IsReconcilerEnabled(config.Networking) {
+		if config.IsReconcilerEnabled(config.Interface) {
 			if (in.Interfaces == nil) != (other.Interfaces == nil) {
 				return false
 			} else if in.Interfaces != nil {
@@ -838,20 +839,20 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 			}
 		}
 
-		if r.IsReconcilerEnabled(titaniumManager.Address) {
+		if config.IsReconcilerEnabled(config.Address) {
 			if in.Addresses.DeepEqual(&other.Addresses) == false {
 				return false
 			}
 		}
 
-		if r.IsReconcilerEnabled(titaniumManager.Route) {
+		if config.IsReconcilerEnabled(config.Route) {
 			if in.Routes.DeepEqual(&other.Routes) == false {
 				return false
 			}
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.OSD) {
+	if config.IsReconcilerEnabled(config.OSD) {
 		switch r.OSDProvisioningState(namespace, personality) {
 		case RequiredStateDisabled, RequiredStateAny:
 			if r.CompareOSDs(in, other) == false {
@@ -1055,13 +1056,13 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 // change requests after the
 // purpose of configuring host BMC attributes.
 func (r *ReconcileHost) StopAfterInSync() bool {
-	value := r.GetReconcilerOption(titaniumManager.Host, titaniumManager.StopAfterInSync)
+	value := config.GetReconcilerOption(config.Host, config.StopAfterInSync)
 	if value != nil {
 		if required, ok := value.(bool); ok {
 			return required
 		} else {
 			log.Info("unexpected option type",
-				"option", titaniumManager.StopAfterInSync, "type", reflect.TypeOf(value))
+				"option", config.StopAfterInSync, "type", reflect.TypeOf(value))
 		}
 	}
 
@@ -1392,7 +1393,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.Host) == false {
+	if config.IsReconcilerEnabled(config.Host) == false {
 		return reconcile.Result{}, nil
 	}
 

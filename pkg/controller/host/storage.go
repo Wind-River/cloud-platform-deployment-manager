@@ -16,6 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
@@ -26,7 +27,7 @@ import (
 // configuration of a compute host resource.
 func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if r.IsReconcilerEnabled(titaniumManager.StorageMonitor) == false {
+	if config.IsReconcilerEnabled(config.StorageMonitor) == false {
 		return nil
 	}
 
@@ -106,7 +107,7 @@ func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, inst
 func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(titaniumManager.Partition) == false {
+	if config.IsReconcilerEnabled(config.Partition) == false {
 		return nil
 	}
 
@@ -196,7 +197,7 @@ func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, i
 // ReconcilePhysicalVolumes is responsible for reconciling the physical volume
 // configuration on a host.
 func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.PhysicalVolume) == false {
+	if config.IsReconcilerEnabled(config.PhysicalVolume) == false {
 		return nil
 	}
 
@@ -285,7 +286,7 @@ func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClie
 func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if r.IsReconcilerEnabled(titaniumManager.VolumeGroup) == false {
+	if config.IsReconcilerEnabled(config.VolumeGroup) == false {
 		return nil
 	}
 
@@ -378,7 +379,7 @@ func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, in
 	present := make(map[string]bool)
 	updated := make(map[string]bool)
 
-	if r.IsReconcilerEnabled(titaniumManager.OSD) == false {
+	if config.IsReconcilerEnabled(config.OSD) == false {
 		return nil
 	}
 
@@ -606,7 +607,7 @@ func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, i
 // of a host resource.
 func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if r.IsReconcilerEnabled(titaniumManager.OSD) == false {
+	if config.IsReconcilerEnabled(config.OSD) == false {
 		return nil
 	}
 
@@ -629,7 +630,7 @@ func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instanc
 // ReconcileStorage is responsible for reconciling the Storage configuration of
 // a host resource.
 func (r *ReconcileHost) ReconcileStorage(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
-	if r.IsReconcilerEnabled(titaniumManager.Storage) == false {
+	if config.IsReconcilerEnabled(config.Storage) == false {
 		return nil
 	}
 

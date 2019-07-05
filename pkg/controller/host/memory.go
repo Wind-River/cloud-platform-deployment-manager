@@ -10,8 +10,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
 )
 
@@ -153,7 +153,7 @@ func memoryUpdateRequired(f starlingxv1beta1.MemoryFunctionInfo, count int) (opt
 func (r *ReconcileHost) ReconcileMemory(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if len(profile.Memory) == 0 || r.IsReconcilerEnabled(manager.Memory) == false {
+	if len(profile.Memory) == 0 || config.IsReconcilerEnabled(config.Memory) == false {
 		return nil
 	}
 

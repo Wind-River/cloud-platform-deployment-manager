@@ -10,6 +10,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/titanium-deployment-manager/pkg/config"
 	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
 	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -378,7 +379,7 @@ func (r *ReconcileDataNetwork) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
-	if r.IsReconcilerEnabled(titaniumManager.DataNetwork) == false {
+	if config.IsReconcilerEnabled(config.DataNetwork) == false {
 		return reconcile.Result{}, nil
 	}
 

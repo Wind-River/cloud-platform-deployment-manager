@@ -1,16 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package manager
+package config
 
 import (
 	"fmt"
 	perrors "github.com/pkg/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"os"
 )
+
+var log = logf.Log.WithName("controller").WithName("host")
 
 // ReconcilerPrefix defines the viper configuration prefix for all reconcilers
 // and sub-reconcilers.
@@ -106,7 +109,7 @@ var reconcilerOptionDefaults = map[ReconcilerName]map[OptionName]interface{}{
 // configFilepath is the absolute path of the manager config file.
 const configFilepath = "/etc/manager/config.yaml"
 
-var config *viper.Viper
+var cfg *viper.Viper
 
 // ReconcilerConfigPath returns the config attribute path which represents the
 // top-level path for the specified reconciler.
@@ -135,11 +138,11 @@ func ReadConfig() (err error) {
 		return nil
 	}
 
-	err = config.ReadInConfig()
+	err = cfg.ReadInConfig()
 	if err == nil {
-		config.WatchConfig()
-		config.OnConfigChange(func(e fsnotify.Event) {
-			log.Info("config file changed", "path", config.ConfigFileUsed())
+		cfg.WatchConfig()
+		cfg.OnConfigChange(func(e fsnotify.Event) {
+			log.Info("config file changed", "path", cfg.ConfigFileUsed())
 		})
 
 		log.Info("manager config has been loaded from file.")
@@ -150,24 +153,40 @@ func ReadConfig() (err error) {
 	return err
 }
 
+// IsReconcilerEnabled returns whether a specific reconciler is enabled or
+// not.
+func IsReconcilerEnabled(name ReconcilerName) bool {
+	value := cfg.GetBool(ReconcilerStatePath(name))
+	if value == false {
+		log.Info("reconciler is disabled", "name", string(name))
+	}
+
+	return value
+}
+
+// IsReconcilerEnabled returns whether a specific reconciler is enabled or
+// not.
+func GetReconcilerOption(name ReconcilerName, option OptionName) interface{} {
+	return cfg.Get(ReconcilerOptionPath(name, option))
+}
+
 func init() {
-	config = viper.New()
+	cfg = viper.New()
 
 	// Setup default values for all reconciler states
 	for key, value := range reconcilerDefaultStates {
 		path := ReconcilerStatePath(key)
-		config.SetDefault(path, value)
+		cfg.SetDefault(path, value)
 	}
 
 	// Setup default values for all reconciler options.
 	for key, options := range reconcilerOptionDefaults {
 		for option, value := range options {
 			path := ReconcilerOptionPath(key, option)
-			config.SetDefault(path, value)
+			cfg.SetDefault(path, value)
 		}
 	}
 
-	config.SetConfigFile(configFilepath)
-	//v.SetConfigFile(path)
-	config.AutomaticEnv()
+	cfg.SetConfigFile(configFilepath)
+	cfg.AutomaticEnv()
 }

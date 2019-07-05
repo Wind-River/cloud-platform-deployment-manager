@@ -51,8 +51,6 @@ type TitaniumManager interface {
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
 	GetSystemType(namespace string) SystemType
-	IsReconcilerEnabled(name ReconcilerName) bool
-	GetReconcilerOption(name ReconcilerName, option OptionName) interface{}
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object runtime.Object)
 }
@@ -383,23 +381,6 @@ func (m *PlatformManager) GetSystemType(namespace string) SystemType {
 	} else {
 		return obj.systemType
 	}
-}
-
-// IsReconcilerEnabled returns whether a specific reconciler is enabled or
-// not.
-func (m *PlatformManager) IsReconcilerEnabled(name ReconcilerName) bool {
-	value := config.GetBool(ReconcilerStatePath(name))
-	if value == false {
-		log.Info("reconciler is disabled", "name", string(name))
-	}
-
-	return value
-}
-
-// IsReconcilerEnabled returns whether a specific reconciler is enabled or
-// not.
-func (m *PlatformManager) GetReconcilerOption(name ReconcilerName, option OptionName) interface{} {
-	return config.Get(ReconcilerOptionPath(name, option))
 }
 
 // StartMonitor starts the specified monitor, generates an event, and then
