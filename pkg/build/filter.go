@@ -651,3 +651,11 @@ func (in *InterfaceDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployme
 
 	return nil
 }
+
+// SystemFilter defines an interface from which concrete system filters can
+// be defined.  The purpose of a system filter is to remove attributes that
+// may not be needed for a runtime configuration or to align values to
+// end user requirements.
+type SystemFilter interface {
+	Filter(system *v1beta1.System, deployment *Deployment) error
+}

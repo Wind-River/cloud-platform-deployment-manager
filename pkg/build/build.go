@@ -31,6 +31,7 @@ const yamlSeparator = "---\n"
 // mocking for unit test development.
 type Builder interface {
 	Build() (*Deployment, error)
+	AddSystemFilters(filters []SystemFilter)
 	AddProfileFilters(filters []ProfileFilter)
 	AddHostFilters(filters []HostFilter)
 }
@@ -43,6 +44,7 @@ type DeploymentBuilder struct {
 	namespace      string
 	name           string
 	progressWriter io.Writer
+	systemFilters  []SystemFilter
 	profileFilters []ProfileFilter
 	hostFilters    []HostFilter
 }
@@ -85,6 +87,12 @@ type Deployment struct {
 func (db *DeploymentBuilder) progressUpdate(messagefmt string, args ...interface{}) {
 	_, _ = fmt.Fprintf(db.progressWriter, messagefmt, args...)
 	// Suppress errors
+}
+
+// AddSystemFilters adds a list of system filters to the set already present
+// on the deployment builder (if any).
+func (db *DeploymentBuilder) AddSystemFilters(filters []SystemFilter) {
+	db.systemFilters = append(db.systemFilters, filters...)
 }
 
 // AddProfileFilters adds a list of profile filters to the set already present
@@ -297,6 +305,17 @@ func (db *DeploymentBuilder) buildNamespace(d *Deployment) error {
 	return nil
 }
 
+func (db *DeploymentBuilder) filterSystem(system *v1beta1.System, deployment *Deployment) error {
+	for _, f := range db.systemFilters {
+		err := f.Filter(system, deployment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (db *DeploymentBuilder) buildSystem(d *Deployment) error {
 	// Collect a snapshot of the system info.
 	systemInfo := v1info.SystemInfo{}
@@ -307,6 +326,13 @@ func (db *DeploymentBuilder) buildSystem(d *Deployment) error {
 
 	// Build a System object from the system snapshot
 	system, err := v1beta1.NewSystem(db.namespace, db.name, systemInfo)
+	if err != nil {
+		return err
+	}
+
+	db.progressUpdate("...filtering system attributes\n")
+
+	err = db.filterSystem(system, d)
 	if err != nil {
 		return err
 	}
