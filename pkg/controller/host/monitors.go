@@ -673,3 +673,57 @@ func (m *kubernetesResourceMonitor) Run(client *gophercloud.ServiceClient) (stop
 
 	return false, nil
 }
+
+// DefaultStateChangeMonitorInterval represents the default interval between
+// polling attempts to check whether a host has change state.
+const DefaultStateChangeMonitorInterval = 2 * time.Minute
+
+// stateChangeMonitor waits for a host to reach a desired state.  Once the host has
+// reached the desired state a reconcilable event is generated to kick the
+// reconciler.
+type stateChangeMonitor struct {
+	manager.CommonMonitorBody
+	lastLoggedState string
+	hostID          string
+}
+
+// NewMonitorCountMonitor defines a convenience function to instantiate
+// a new host state monitor with all required attributes.
+func NewStateChangeMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+	logger := log.WithName("state-change-monitor")
+	return &manager.Monitor{
+		MonitorBody: &stateChangeMonitor{
+			hostID: id,
+		},
+		Logger:   logger,
+		Object:   instance,
+		Interval: DefaultStateChangeMonitorInterval,
+	}
+}
+
+// Run implements the MonitorBody interface Run method which is responsible
+// for monitor one or more resources and returning true when all conditions
+// are satisfied.
+func (m *stateChangeMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
+	host, err := hosts.Get(client, m.hostID).Extract()
+	if err != nil {
+		m.SetState("failed to get host %q: %s", m.hostID, err.Error())
+		return false, err
+	}
+
+	state := fmt.Sprintf("%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus)
+
+	if m.lastLoggedState == "" || state == m.lastLoggedState {
+		m.SetState("monitoring for state changes")
+		m.lastLoggedState = state
+		return false, nil
+
+	} else {
+		m.SetState("state changed from %s to %s", m.lastLoggedState, state)
+		m.lastLoggedState = state
+
+		// Force the reconciler to run to pick up this change and reflect it
+		// in the database.
+		return true, nil
+	}
+}

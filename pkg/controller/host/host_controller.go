@@ -1345,6 +1345,17 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 		}
 	}
 
+	if err == nil {
+		// We are done reconciling and will not be invoked again and so will
+		// not be able to track the host state if it changes administrative,
+		// operational or available states for the purpose of recording the
+		// change in our database.  Therefore we are going to start a periodic
+		// monitor to track the state of the host.
+		msg := "monitoring host for state changes"
+		m := NewStateChangeMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
+	}
+
 	return err
 }
 
