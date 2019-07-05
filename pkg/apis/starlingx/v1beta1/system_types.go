@@ -8,13 +8,14 @@ import (
 )
 
 const (
-	// List of validat certificate types
-	PlatformCertificate    = "platform"
-	PlatformCACertificate  = "platform_ca"
+	// List of valide certificate types.  These must align with the system
+	// API expected values.
+	PlatformCertificate    = "ssl"
+	PlatformCACertificate  = "ssl_ca"
 	OpenstackCertificate   = "openstack"
 	OpenstackCACertificate = "openstack_ca"
-	DockerCertificate      = "docker"
-	TPMCertificate         = "tpm"
+	DockerCertificate      = "docker_registry"
+	TPMCertificate         = "tpm_mode"
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 // is required when defining these resources.
 type CertificateInfo struct {
 	// Type represents the intended usage of the certificate
-	// +kubebuilder:validation:Enum=ssl,ssl_ca,openstack,openstack_ca,docker,tpm
+	// +kubebuilder:validation:Enum=ssl,ssl_ca,openstack,openstack_ca,docker_registry,tpm_mode
 	Type string `json:"type"`
 
 	// Secret is the name of a TLS secret containing the public certificate and

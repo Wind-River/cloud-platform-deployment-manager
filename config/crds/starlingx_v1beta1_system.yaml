@@ -74,8 +74,8 @@ spec:
                     - ssl_ca
                     - openstack
                     - openstack_ca
-                    - docker
-                    - tpm
+                    - docker_registry
+                    - tpm_mode
                     type: string
                 required:
                 - type
