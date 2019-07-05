@@ -659,3 +659,43 @@ func (in *InterfaceDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployme
 type SystemFilter interface {
 	Filter(system *v1beta1.System, deployment *Deployment) error
 }
+
+// CACertificateFilter defines a system filter that removes trusted CA
+// certificates from the configuration under the assumption that they were added
+// at bootstrap time rather than as a post install step.  This is being done
+// to remove the trusted ssl_ca certificates that get installed at boostrap
+// time to allow images from custom docker registries to be loaded.  Since
+// those certificates are added at bootstrap time there is no need to also
+// add them to the deployment config since it only adds an extra step for
+// end users.  Since we do not delete certificates at reconcile time (for now)
+// there is no need to have these included.
+type CACertificateFilter struct {
+}
+
+func NewCACertificateFilter() *CACertificateFilter {
+	return &CACertificateFilter{}
+}
+
+func (in *CACertificateFilter) Filter(system *v1beta1.System, deployment *Deployment) error {
+	if system.Spec.Certificates == nil {
+		return nil
+	}
+
+	result := make([]v1beta1.CertificateInfo, 0)
+	for _, c := range *system.Spec.Certificates {
+		if c.Type == v1beta1.PlatformCACertificate || c.Type == v1beta1.OpenstackCACertificate {
+			continue
+		}
+
+		result = append(result, c)
+	}
+
+	if len(result) > 0 {
+		list := v1beta1.CertificateList(result)
+		system.Spec.Certificates = &list
+	} else {
+		system.Spec.Certificates = nil
+	}
+
+	return nil
+}

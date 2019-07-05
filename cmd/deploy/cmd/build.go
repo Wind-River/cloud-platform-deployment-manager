@@ -19,6 +19,7 @@ const (
 	OutputFileNameArg                = "output-file"
 	SystemNameArg                    = "system-name"
 	NamespaceNameArg                 = "namespace-name"
+	NoCACertificatesFilterArg        = "no-ca-certificates"
 	NoDefaultsFilterArg              = "no-defaults"
 	NoMemoryFilterArg                = "no-memory"
 	NoProcessorFilterArg             = "no-processors"
@@ -33,6 +34,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var normalizeInterfaces bool
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
+	var noCACertificates bool
 	var outputFile *os.File
 	var minimalConfig bool
 	var noProcessors bool
@@ -140,7 +142,14 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(13)
 	}
 
+	if noCACertificates, err = cmd.Flags().GetBool(NoCACertificatesFilterArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+			NoCACertificatesFilterArg)
+		os.Exit(14)
+	}
+
 	if minimalConfig {
+		noCACertificates = true
 		noDefaults = true
 		noMemory = true
 		noInterfaceDefaults = true
@@ -250,6 +259,16 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		builder.AddProfileFilters(profileFilters)
 	}
 
+	systemFilters := make([]build.SystemFilter, 0)
+
+	if noCACertificates {
+		systemFilters = append(systemFilters, build.NewCACertificateFilter())
+	}
+
+	if len(systemFilters) > 0 {
+		builder.AddSystemFilters(systemFilters)
+	}
+
 	deployment, err := builder.Build()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to build deployment details: %s\n", err.Error())
@@ -307,6 +326,7 @@ func init() {
 	collectCmd.Flags().StringP(SystemNameArg, "s", "", "The name of the system to be created")
 	collectCmd.Flags().StringP(NamespaceNameArg, "n", "deployment", "The name of the namespace used to contain the system")
 	collectCmd.Flags().BoolP(NoDefaultsFilterArg, "f", false, "Enable/disable use of filters to remove unwanted fields")
+	collectCmd.Flags().Bool(NoCACertificatesFilterArg, false, "Exclude all trusted CA certificates from system instances")
 	collectCmd.Flags().Bool(NoMemoryFilterArg, false, "Exclude all memory configurations from profiles")
 	collectCmd.Flags().Bool(NoProcessorFilterArg, false, "Exclude all processor configurations from profiles")
 	collectCmd.Flags().Bool(NoInterfaceDefaultsFilterArg, false, "Exclude all interface default values from profiles")
