@@ -363,7 +363,7 @@ func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err er
 	}
 
 	task := "-"
-	if host.Task != nil {
+	if host.Task != nil && *host.Task != "" {
 		task = *host.Task
 	}
 
