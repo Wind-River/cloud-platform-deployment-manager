@@ -711,6 +711,9 @@ func (in *HostStatus) DeepEqual(other *HostStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
+	if in.Reconciled != other.Reconciled {
+		return false
+	}
 	if (in.Defaults == nil) != (other.Defaults == nil) {
 		return false
 	} else if in.Defaults != nil {

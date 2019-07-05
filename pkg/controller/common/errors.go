@@ -56,6 +56,13 @@ type HTTPSClientRequired struct {
 	BaseError
 }
 
+// ChangeAfterReconciled defines a new error type used to signal that a
+// a configuration changes was received after the resource has already been
+// synchronized with the system state.
+type ChangeAfterReconciled struct {
+	BaseError
+}
+
 // NewSystemDependency defines a constructor for the ErrSystemDependency error
 // type.
 func NewSystemDependency(msg string) error {
@@ -94,4 +101,10 @@ func NewValidationError(msg string) error {
 // type.
 func NewHTTPSClientRequired(msg string) error {
 	return HTTPSClientRequired{BaseError{msg}}
+}
+
+// NewChangeAfterInSync defines a constructor for the ChangeAfterReconciled error
+// type.
+func NewChangeAfterInSync(msg string) error {
+	return ChangeAfterReconciled{BaseError{msg}}
 }

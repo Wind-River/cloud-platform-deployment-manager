@@ -197,7 +197,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Error(in, "HTTPS client required", "request", request)
 
-	case ValidationError:
+	case ValidationError, ChangeAfterReconciled:
 		// These errors are data validation errors.  There is likely a problem
 		// with the data provided by the user so wait for the user to correct
 		// the data.  Retrying is pointless.

@@ -940,6 +940,13 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 		status.InSync = inSync
 		result = true
 	}
+
+	if status.InSync == true && status.Reconciled == false {
+		// Record the fact that we have reached inSync at least once.
+		status.Reconciled = true
+		result = true
+	}
+
 	return result
 }
 
@@ -1174,13 +1181,13 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 
 	log.V(2).Info("current config is:", "values", current)
 
-	if instance.Status.InSync && r.StopAfterInSync() {
+	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the host.
 		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
 			msg := "configuration changes ignored after initial synchronization has completed"
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
-			return nil
+			return common.NewChangeAfterInSync(msg)
 		} else {
 			log.Info("Manual override; allowing configuration changes after initial synchronization.")
 		}

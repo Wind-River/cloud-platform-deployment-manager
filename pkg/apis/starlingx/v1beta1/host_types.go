@@ -100,8 +100,13 @@ type HostStatus struct {
 	// AvailabilityStatus is the last known availability status of the host.
 	AvailabilityStatus *string `json:"availabilityStatus,omitempty"`
 
-	// Defines whether the desired state matches the operational state.
+	// InSync defines whether the desired state matches the operational state.
 	InSync bool `json:"inSync"`
+
+	// Reconciled defines whether the host has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	Reconciled bool `json:"reconciled"`
 
 	// Defaults defines the configuration attributed collected before applying
 	// any user configuration values.
