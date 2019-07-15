@@ -3,7 +3,7 @@ A tool for auto-generating DeepEqual functions
 
 ## Overview
 
-This tool is based on the Kubernetes deepcopy-gen tool found here:
+This tool is based on the Kubernetes® deepcopy-gen tool found here:
   https://github.com/kubernetes/gengo/tree/master/examples/deepcopy-gen
 
 Given a list of input directories, it will generate DeepEqual methods that 
@@ -91,7 +91,7 @@ that designates the licensing terms for the respective file.
 All product names, logos, and brands are property of their respective owners.
 All company, product and service names used in this software are for
 identification purposes only. Wind River is a registered trademark of Wind River
-Systems, Inc.
+Systems, Inc.  Kubernetes is a registered trademark of Google Inc.
 
 Disclaimer of Warranty / No Support: Wind River does not provide support and
 maintenance services for this software, under Wind River’s standard Software

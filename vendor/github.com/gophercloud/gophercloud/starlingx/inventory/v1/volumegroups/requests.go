@@ -12,7 +12,6 @@ import (
 var SystemDefinedVolumeGroups = []string{"cgts-vg"}
 
 type CapabilitiesOpts struct {
-	InstanceBacking          *string `json:"instance_backing,omitempty" mapstructure:"instance_backing"`
 	ConcurrentDiskOperations *int    `json:"concurrent_disk_operations,omitempty" mapstructure:"concurrent_disk_operations"`
 	LVMType                  *string `json:"lvm_type,omitempty" mapstructure:"lvm_type"`
 }

@@ -163,7 +163,7 @@
 
 [[projects]]
   branch = "starlingx"
-  digest = "1:5f828b27c2e6c945dc64c8cf2e4b48cf8f3acb59155046c158daf7641be98f8a"
+  digest = "1:c5631cb5c9180586ccf811e30f83e1d53c126064bf89b60f0e949d5563df2dd1"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -206,7 +206,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "7d764420da035038f0ba705c02904ee46772a609"
+  revision = "5314fa96a0cefdaf43cc42e5095cbd74dc771986"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]
@@ -560,14 +560,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c34a18acb1de24b4690f5637df62f2859b678153ddab7dc48aaf2ea713cb09b"
+  digest = "1:0e054111f9fb0afe46306460ea17348894d90e98632b503ebac8c770a0bc1a12"
   name = "github.com/wind-river/deepequal-gen"
   packages = [
     ".",
     "generators",
   ]
   pruneopts = "T"
-  revision = "58485d1c8b8267243d6cbdbb66c2e65c6b5b5c28"
+  revision = "0e5b0c972d0619a32325736e1dbd68fc61c13d95"
 
 [[projects]]
   digest = "1:365b8ecb35a5faf5aa0ee8d798548fc9cd4200cb95d77a5b0b285ac881bae499"
