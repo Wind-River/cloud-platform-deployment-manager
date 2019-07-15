@@ -1,7 +1,7 @@
 # titanium-deployment-manager
 
 The Titanium Deployment Manager provides a data driven method for configuring
-the platform components of a StarlingX installation.  The intent of this
+the platform components of a StarlingX® installation.  The intent of this
 implementation is to ease adoption of StarlingX systems by automated deployment
 systems (e.g., CI/CD pipelines). By providing a data driven method of defining
 each system installation, the end user is no longer required to manually
@@ -44,9 +44,9 @@ fail or not complete.
 ### Software Requirements
 The Deployment Manager depends on the System API to execute configuration
 changes on the target system.  Following the initial software installation the
-System API is not functional until the system has been bootstrapped.  To 
-bootstrap the first controller the Ansible deployment method must be used.  
-This method is described at the following wiki.  
+System API is not functional until the system has been bootstrapped.  The first
+controller can be bootstrapped using Ansible®. This method is described at the 
+following wiki.  
  
 https://wiki.openstack.org/wiki/StarlingX/Containers/Installation#Bootstrap_the_controller
 
@@ -91,7 +91,7 @@ the host and to force it to netboot.
  
 The end user must supply a deployment configuration model which conforms to the
 supported system definition schema.  The schema is defined as a set of
-Kubernetes Custom Resource Definitions (CRD) instances and provides
+Kubernetes® Custom Resource Definitions (CRD) instances and provides
 documentation on each attribute along with validation rules that conform to the
 OpenAPI v3 schema validation specification.  The full schema definition is
 stored in this repo and can be found in the ```config/crds``` directory.  The
@@ -368,7 +368,7 @@ information is always sent over an HTTPS protected connection.
  
 ## Installing The Deployment Manager
 
-The Deployment Manager is intended to be deployed as a Helm Chart.  The chart
+The Deployment Manager is intended to be deployed as a Helm™ chart.  The chart
 source definition can be found under the ```helm/titanium-deployment-manager```
 directory and all overridable configuration are defined in the 
 ```helm/titanium-deployment-manager/values.yaml``` file.   
@@ -386,7 +386,7 @@ helm upgrade --install stx-deployment-manager titanium-deployment-manager-0.2.0.
 
 If any configuration values need to be overridden at installation time then a
 file containing those overrides can be supplied using the following syntax.  For
-further details on managing and deploying Helm Charts please refer to Helm
+further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
@@ -439,11 +439,11 @@ is currently viewed as a best effort functionality.
 
 ## Using Ansible To Install The Deployment Manager
 
-To provide better integration into existing CI/CD pipelines an Ansible Playbook
+To provide better integration into existing CI/CD pipelines an Ansible playbook
 has been provided.  The playbook is stored in this repo as the ```docs/playbooks/titanium-deployment-manager-playbook.yaml``` 
 file.
 
-The playbook will download the latest Helm Chart to the local Ansible host,
+The playbook will download the latest Helm chart to the local Ansible host,
 upload a copy to the target system, install the chart on the target system,
 upload a copy of the desired deployment configuration, and apply the desired
 deployment configuration.  Once the playbook has completed the deployment
@@ -455,8 +455,8 @@ this means that all hosts will be ```unlocked/enabled``` and the system will be
 ready to take on additional workloads.
 
 The playbook is designed to download a copy of the latest Deployment Manager
-Helm Chart from this repo.  If a specific version needs to be used or if the
-Helm Chart has simply already been stored locally, then a playbook variable can
+Helm chart from this repo.  If a specific version needs to be used or if the
+Helm chart has simply already been stored locally, then a playbook variable can
 be overridden to provide an alternative source for the chart.  
 
 To override the location of the chart to a local file simply set the ```manager_chart_source``` 
@@ -476,7 +476,7 @@ step.  If this is the case then, at a later time, the end user can manually
 apply a deployment configuration file.
 
 
-### Integrating The Playbook Into A Master Playbook. 
+### Integrating The playbook Into A Master playbook. 
 
 Since StarlingX supports bootstrapping the system using an Ansible playbook it
 is possible to combine both the bootstrap playbook and the Deployment Manager
@@ -516,7 +516,7 @@ $ export IMG=${DOCKER_REGISTRY}:9001/${USER}/titanium-deployment-manager:${TAG}
 $ make docker-push
 ```
 
-To use this image with the provided Helm Chart and Playbook the image name must
+To use this image with the provided Helm chart and playbook the image name must
 be overridden using a mechanism appropriate for the deployment model chosen 
 (i.e., The 'manager_chart_source' variable can be overridden in Ansible, or the
 'manager.image.repository' and 'manager.image.tag' variables can be overridden
@@ -536,7 +536,10 @@ that designates the licensing terms for the respective file.
 All product names, logos, and brands are property of their respective owners. 
 All company, product and service names used in this software are for 
 identification purposes only. Wind River is a registered trademark of Wind River 
-Systems, Inc.
+Systems, Inc.  StarlingX is a registered trademark of the OpenStack.
+Kubernetes is a registered trademark of Google Inc.  Helm is a trademark of The
+Linux Foundation®. Ansible  is a registered trademark of Red Hat, Inc. in the 
+United States and other countries.
 
 Disclaimer of Warranty / No Support: Wind River does not provide support and 
 maintenance services for this software, under Wind River’s standard Software 
