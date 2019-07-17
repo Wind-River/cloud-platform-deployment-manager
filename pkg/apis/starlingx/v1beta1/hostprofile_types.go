@@ -355,6 +355,7 @@ type CommonInterfaceInfo struct {
 
 // EthernetInfo defines the attributes specific to a single
 // Ethernet interface.
+// +deepequal-gen:ignore-nil-fields=true
 type EthernetInfo struct {
 	// CommonInterfaceInfo defines attributes common to all interface
 	// types.
