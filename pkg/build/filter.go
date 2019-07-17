@@ -120,7 +120,7 @@ func (in *StorageMonitorFilter) Filter(profile *v1beta1.HostProfile, host *v1bet
 			Monitor: storage.Monitor,
 		}
 		profile.Spec.Storage.Monitor = nil
-		if len(storage.VolumeGroups)+len(storage.OSDs) == 0 {
+		if storage.VolumeGroups == nil && storage.OSDs == nil && storage.FileSystems == nil {
 			profile.Spec.Storage = nil
 		}
 	}
@@ -386,13 +386,13 @@ func (in *VolumeGroupFilter) Reset() {
 }
 
 func (in *VolumeGroupFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
-	if profile.Spec.Storage == nil {
+	if profile.Spec.Storage == nil || profile.Spec.Storage.VolumeGroups == nil {
 		return nil
 	}
 
 	storage := profile.Spec.Storage
 	groups := v1beta1.VolumeGroupList{}
-	for _, vg := range storage.VolumeGroups {
+	for _, vg := range *storage.VolumeGroups {
 		if utils.ContainsString(in.Blacklist, vg.Name) {
 			// This group is blacklisted so skip it.
 			continue
@@ -402,7 +402,8 @@ func (in *VolumeGroupFilter) Filter(profile *v1beta1.HostProfile, deployment *De
 	}
 
 	if len(groups) != 0 {
-		storage.VolumeGroups = groups
+		list := v1beta1.VolumeGroupList(groups)
+		storage.VolumeGroups = &list
 	} else {
 		storage.VolumeGroups = nil
 	}

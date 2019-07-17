@@ -88,16 +88,6 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 		},
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
 			Monitor: &starlingxv1beta1.MonitorInfo{},
-			OSDs: starlingxv1beta1.OSDList{
-				starlingxv1beta1.OSDInfo{},
-			},
-			VolumeGroups: starlingxv1beta1.VolumeGroupList{
-				starlingxv1beta1.VolumeGroupInfo{
-					PhysicalVolumes: starlingxv1beta1.PhysicalVolumeList{
-						starlingxv1beta1.PhysicalVolumeInfo{},
-					},
-				},
-			},
 		},
 	}
 	aClusterName1 := "ceph_cluster"
@@ -299,7 +289,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 			},
 		},
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
-			OSDs: starlingxv1beta1.OSDList{
+			OSDs: &starlingxv1beta1.OSDList{
 				starlingxv1beta1.OSDInfo{
 					ClusterName: &aClusterName2,
 				},
@@ -307,7 +297,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 					ClusterName: &aClusterName1,
 				},
 			},
-			VolumeGroups: starlingxv1beta1.VolumeGroupList{
+			VolumeGroups: &starlingxv1beta1.VolumeGroupList{
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &aLVMType1,
 					ConcurrentDiskOperations: &aConcurrentOperations1,
@@ -323,6 +313,16 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &aLVMType2,
 					ConcurrentDiskOperations: &aConcurrentOperations2,
+				},
+			},
+			FileSystems: &starlingxv1beta1.FileSystemList{
+				starlingxv1beta1.FileSystemInfo{
+					Name: "docker",
+					Size: 20,
+				},
+				starlingxv1beta1.FileSystemInfo{
+					Name: "backup",
+					Size: 10,
 				},
 			},
 		},
@@ -388,12 +388,12 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 			Monitor: &starlingxv1beta1.MonitorInfo{
 				Size: &bMonitorSize,
 			},
-			OSDs: starlingxv1beta1.OSDList{
+			OSDs: &starlingxv1beta1.OSDList{
 				starlingxv1beta1.OSDInfo{
 					ClusterName: &bClusterName1,
 				},
 			},
-			VolumeGroups: starlingxv1beta1.VolumeGroupList{
+			VolumeGroups: &starlingxv1beta1.VolumeGroupList{
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType1,
 					ConcurrentDiskOperations: &bConcurrentOperations1,
@@ -402,6 +402,12 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 							Size: &bVolumeSize1,
 						},
 					},
+				},
+			},
+			FileSystems: &starlingxv1beta1.FileSystemList{
+				starlingxv1beta1.FileSystemInfo{
+					Name: "backup",
+					Size: 10,
 				},
 			},
 		},
@@ -597,7 +603,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 			},
 		},
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
-			OSDs: starlingxv1beta1.OSDList{
+			OSDs: &starlingxv1beta1.OSDList{
 				starlingxv1beta1.OSDInfo{
 					ClusterName: &bClusterName1,
 				},
@@ -605,7 +611,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 					ClusterName: &bClusterName2,
 				},
 			},
-			VolumeGroups: starlingxv1beta1.VolumeGroupList{
+			VolumeGroups: &starlingxv1beta1.VolumeGroupList{
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType1,
 					ConcurrentDiskOperations: &bConcurrentOperations1,
@@ -621,6 +627,16 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 				starlingxv1beta1.VolumeGroupInfo{
 					LVMType:                  &bLVMType2,
 					ConcurrentDiskOperations: &bConcurrentOperations2,
+				},
+			},
+			FileSystems: &starlingxv1beta1.FileSystemList{
+				starlingxv1beta1.FileSystemInfo{
+					Name: "backup",
+					Size: 10,
+				},
+				starlingxv1beta1.FileSystemInfo{
+					Name: "docker",
+					Size: 20,
 				},
 			},
 		},
@@ -685,7 +701,7 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 	mgr.SetSystemReady(namespace, true)
 	mgr.SetSystemType(namespace, titaniumManager.SystemTypeAllInOne)
 	aStorage := starlingxv1beta1.ProfileStorageInfo{
-		OSDs: starlingxv1beta1.OSDList{
+		OSDs: &starlingxv1beta1.OSDList{
 			starlingxv1beta1.OSDInfo{
 				Path: "/dev/path/to/some/device",
 			},
@@ -695,7 +711,7 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 		Storage: &aStorage,
 	}
 	bStorage := starlingxv1beta1.ProfileStorageInfo{
-		OSDs: starlingxv1beta1.OSDList{
+		OSDs: &starlingxv1beta1.OSDList{
 			starlingxv1beta1.OSDInfo{
 				Path: "/dev/path/to/some/other/device",
 			},
@@ -703,6 +719,28 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 	}
 	b := starlingxv1beta1.HostProfileSpec{
 		Storage: &bStorage,
+	}
+	cStorage := starlingxv1beta1.ProfileStorageInfo{
+		FileSystems: &starlingxv1beta1.FileSystemList{
+			starlingxv1beta1.FileSystemInfo{
+				Name: "backup",
+				Size: 10,
+			},
+		},
+	}
+	c := starlingxv1beta1.HostProfileSpec{
+		Storage: &cStorage,
+	}
+	dStorage := starlingxv1beta1.ProfileStorageInfo{
+		FileSystems: &starlingxv1beta1.FileSystemList{
+			starlingxv1beta1.FileSystemInfo{
+				Name: "backup",
+				Size: 20,
+			},
+		},
+	}
+	d := starlingxv1beta1.HostProfileSpec{
+		Storage: &dStorage,
 	}
 	type args struct {
 		in          *starlingxv1beta1.HostProfileSpec
@@ -716,9 +754,13 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 		args   args
 		want   bool
 	}{
-		{name: "simple",
+		{name: "osds",
 			fields: fields{TitaniumManager: mgr},
 			args:   args{&a, &b, namespace, "worker"},
+			want:   false},
+		{name: "filesystems",
+			fields: fields{TitaniumManager: mgr},
+			args:   args{&c, &d, namespace, "worker"},
 			want:   false},
 	}
 	for _, tt := range tests {

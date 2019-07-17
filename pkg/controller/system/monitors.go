@@ -5,7 +5,7 @@ package system
 
 import (
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
@@ -88,14 +88,14 @@ func NewFileSystemResizeMonitor(instance *v1beta1.System) *manager.Monitor {
 // for monitor one or more resources and returning true when all conditions
 // are satisfied.
 func (m *fileSystemResizeMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
-	objects, err := filesystems.ListFileSystems(client)
+	objects, err := controllerFilesystems.ListFileSystems(client)
 	if err != nil {
 		m.SetState("failed to get disk partitions: %s", err.Error())
 		return false, err
 	}
 
 	for _, fs := range objects {
-		if fs.State == filesystems.ResizeInProgress {
+		if fs.State == controllerFilesystems.ResizeInProgress {
 			m.SetState("waiting for filesystem %q to finish resizing", fs.Name)
 			return false, nil
 		}

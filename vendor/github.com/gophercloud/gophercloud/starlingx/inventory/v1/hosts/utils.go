@@ -30,6 +30,12 @@ func (in *Host) IsLockedDisabled() bool {
 		in.Idle()
 }
 
+// IsUnlockedAvailable is a convenience utility to determine whether a host is
+// unlocked, enabled, and available.
+func (in *Host) IsUnlockedAvailable() bool {
+	return in.IsUnlockedEnabled() && in.AvailabilityStatus == AvailAvailable
+}
+
 // State returns a string representation of the host's administrative,
 // operational and availability state/status.
 func (in *Host) State() string {

@@ -269,7 +269,26 @@ type MonitorInfo struct {
 	Size *int `json:"size,omitempty"`
 }
 
+// FileSystemInfo defines the attributes of a single host filesystem resource.
+type FileSystemInfo struct {
+	// Name defines the system defined name of the filesystem resource.  Each
+	// filesystem name may only be applicable to a subset of host personalities.
+	// Refer to StarlingX documentation for more information.
+	// +kubebuilder:validation:Enum=backup,docker,scratch
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:ExclusiveMinimum=false
+	Size int `json:"size"`
+}
+
+// FileSystemList defines a type to represent a slice of host filesystem
+// resources.
+// +deepequal-gen:unordered-array=true
+type FileSystemList []FileSystemInfo
+
 // ProfileStorageInfo defines the storage specific attributes for the host.
+// +deepequal-gen:ignore-nil-fields=true
 type ProfileStorageInfo struct {
 	// Monitor defines whether a Ceph storage monitor should be enabled on a
 	// node.
@@ -278,10 +297,16 @@ type ProfileStorageInfo struct {
 
 	// OSDs defines the list of OSD devices to be created on the host.  This is
 	// only applicable to storage related nodes.
-	OSDs OSDList `json:"osds,omitempty"`
+	// +optional
+	OSDs *OSDList `json:"osds,omitempty"`
 
 	// VolumeGroups defines the list of volume groups to be created on the host.
-	VolumeGroups VolumeGroupList `json:"volumeGroups,omitempty"`
+	// +optional
+	VolumeGroups *VolumeGroupList `json:"volumeGroups,omitempty"`
+
+	// FileSystems defines the list of file systems to be defined on the host.
+	// +optional
+	FileSystems *FileSystemList `json:"filesystems,omitempty"`
 }
 
 // EthernetPortInfo defines the attributes specific to a single

@@ -665,6 +665,11 @@ func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, 
 		}
 	}
 
+	err = r.ReconcileFileSystems(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -733,16 +738,20 @@ func (r *ReconcileHost) CompareOSDs(in *starlingxv1beta1.HostProfileSpec, other 
 
 	} else if in.Storage != nil {
 		if in.Storage.DeepEqual(other.Storage) {
-			// The full storage profile matches there the OSDs match.
+			// The full storage profile matches therefore the OSDs match.
 			return true
 		}
 
-		// Other just check the OSD list and ignore the other attributes.
-		if in.Storage.OSDs.DeepEqual(&other.Storage.OSDs) == false {
+		if in.Storage.OSDs != nil {
+			// Otherwise just check the OSD list and ignore the other attributes.
+			if in.Storage.OSDs.DeepEqual(other.Storage.OSDs) == false {
+				return false
+			}
+		} else if other.Storage.OSDs != nil && len(*other.Storage.OSDs) > 0 {
 			return false
 		}
 
-	} else if len(other.Storage.OSDs) > 0 {
+	} else if other.Storage.OSDs != nil && len(*other.Storage.OSDs) > 0 {
 		return false
 	}
 
@@ -786,6 +795,18 @@ func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfil
 		switch r.OSDProvisioningState(namespace, personality) {
 		case RequiredStateEnabled, RequiredStateAny:
 			if r.CompareOSDs(in, other) == false {
+				return false
+			}
+		}
+	}
+
+	if config.IsReconcilerEnabled(config.FileSystems) {
+		if in.Storage != nil && in.Storage.FileSystems != nil {
+			if other.Storage == nil {
+				return false
+			}
+
+			if in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) == false {
 				return false
 			}
 		}

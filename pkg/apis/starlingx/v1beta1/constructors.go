@@ -8,9 +8,10 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/certificates"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
@@ -503,7 +504,8 @@ func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error 
 	}
 
 	if len(result) > 0 {
-		profile.Storage.VolumeGroups = result
+		list := VolumeGroupList(result)
+		profile.Storage.VolumeGroups = &list
 	}
 
 	return nil
@@ -555,7 +557,8 @@ func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	}
 
 	if len(result) > 0 {
-		profile.Storage.OSDs = result
+		list := OSDList(result)
+		profile.Storage.OSDs = &list
 	}
 
 	return nil
@@ -575,6 +578,24 @@ func parseMonitorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			return nil
 		}
 	}
+
+	return nil
+}
+
+func parseHostFileSystemInfo(spec *HostProfileSpec, fileSystems []hostFilesystems.FileSystem) error {
+	result := make([]FileSystemInfo, 0)
+
+	for _, fs := range fileSystems {
+		info := FileSystemInfo{
+			Name: fs.Name,
+			Size: fs.Size,
+		}
+
+		result = append(result, info)
+	}
+
+	list := FileSystemList(result)
+	spec.Storage.FileSystems = &list
 
 	return nil
 }
@@ -611,7 +632,13 @@ func parseStorageInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		return err
 	}
 
-	if len(storage.OSDs) == 0 && len(storage.VolumeGroups) == 0 {
+	// Fill-in filesystem attributes
+	err = parseHostFileSystemInfo(profile, host.FileSystems)
+	if err != nil {
+		return err
+	}
+
+	if storage.OSDs == nil && storage.VolumeGroups == nil && storage.FileSystems == nil {
 		profile.Storage = nil
 	}
 
@@ -881,11 +908,11 @@ func parseSNMPTrapDestInfo(spec *SystemSpec, trapDestinations []snmpTrapDest.SNM
 	return nil
 }
 
-func parseFileSystemInfo(spec *SystemSpec, fileSystems []filesystems.FileSystem) error {
-	result := make([]FileSystemInfo, 0)
+func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.FileSystem) error {
+	result := make([]ControllerFileSystemInfo, 0)
 
 	for _, fs := range fileSystems {
-		info := FileSystemInfo{
+		info := ControllerFileSystemInfo{
 			Name: fs.Name,
 			Size: fs.Size,
 		}
@@ -897,7 +924,7 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []filesystems.FileSystem)
 		spec.Storage = &SystemStorageInfo{}
 	}
 
-	list := FileSystemList(result)
+	list := ControllerFileSystemList(result)
 	spec.Storage.FileSystems = &list
 
 	return nil

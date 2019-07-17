@@ -4,9 +4,7 @@
 package platform
 
 import (
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/pkg/errors"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"strconv"
@@ -18,11 +16,14 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cephmonitors"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/certificates"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/disks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/drbd"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
@@ -69,6 +70,7 @@ type HostInfo struct {
 	OSDs                  []osds.OSD
 	Clusters              []clusters.Cluster
 	StorageTiers          map[string]*storagetiers.StorageTier
+	FileSystems           []hostFilesystems.FileSystem
 }
 
 type SystemInfo struct {
@@ -80,7 +82,7 @@ type SystemInfo struct {
 	Certificates         []certificates.Certificate
 	SNMPCommunities      []snmpCommunity.SNMPCommunity
 	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
-	FileSystems          []filesystems.FileSystem
+	FileSystems          []controllerFilesystems.FileSystem
 }
 
 func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) error {
@@ -137,7 +139,7 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 		return err
 	}
 
-	in.FileSystems, err = filesystems.ListFileSystems(client)
+	in.FileSystems, err = controllerFilesystems.ListFileSystems(client)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get filesystem list")
 		return err
@@ -344,6 +346,12 @@ func (in *HostInfo) PopulateHostInfo(client *gophercloud.ServiceClient, hostid s
 	// the OSDs.
 	err = in.PopulateStorageTiers(client)
 	if err != nil {
+		return err
+	}
+
+	in.FileSystems, err = hostFilesystems.ListFileSystems(client, hostid)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list filesystems for host %s", hostid)
 		return err
 	}
 

@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/certificates"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/drbd"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/filesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
@@ -513,7 +513,7 @@ func (r *ReconcileSystem) ControllerNodesAvailable(required int) bool {
 
 // FileSystemResizeAllowed defines whether a particular file system can be
 // resized.
-func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.System, info *v1info.SystemInfo, fs filesystems.FileSystem) (ready bool, err error) {
+func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.System, info *v1info.SystemInfo, fs controllerFilesystems.FileSystem) (ready bool, err error) {
 	required := 2
 	if strings.EqualFold(info.SystemMode, string(titaniumManager.SystemModeSimplex)) {
 		required = 1
@@ -525,7 +525,7 @@ func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.Sys
 		return false, r.StartMonitor(m, msg)
 	}
 
-	if fs.State == filesystems.ResizeInProgress {
+	if fs.State == controllerFilesystems.ResizeInProgress {
 		msg := fmt.Sprintf("filesystem resize operation already in progress on %q", fs.Name)
 		m := NewFileSystemResizeMonitor(instance)
 		return false, r.StartMonitor(m, msg)
@@ -539,7 +539,7 @@ func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.Sys
 // ReconcileFilesystems configures the system resources to align with the
 // desired controller filesystem configuration.
 func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error) {
-	if config.IsReconcilerEnabled(config.FileSystems) == false {
+	if config.IsReconcilerEnabled(config.SystemFileSystems) == false {
 		return nil
 	}
 
@@ -559,7 +559,7 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 		return err
 	}
 
-	updates := make([]filesystems.FileSystemOpts, 0)
+	updates := make([]controllerFilesystems.FileSystemOpts, 0)
 	for _, fsInfo := range *spec.Storage.FileSystems {
 		found := false
 		for _, fs := range info.FileSystems {
@@ -569,14 +569,12 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 
 			found = true
 			if fsInfo.Size > fs.Size {
-				found = true
-
 				if ready, err := r.FileSystemResizeAllowed(instance, info, fs); !ready {
 					return err
 				}
 
 				// Update the system resource with the new size.
-				opts := filesystems.FileSystemOpts{
+				opts := controllerFilesystems.FileSystemOpts{
 					Name: fsInfo.Name,
 					Size: fsInfo.Size,
 				}
@@ -594,7 +592,7 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 	if len(updates) > 0 {
 		log.Info("updating controller filesystem sizes", "opts", updates)
 
-		err := filesystems.Update(client, info.ID, updates).ExtractErr()
+		err := controllerFilesystems.Update(client, info.ID, updates).ExtractErr()
 		if err != nil {
 			err = perrors.Wrapf(err, "failed to update filesystems sizes")
 			return err

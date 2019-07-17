@@ -164,10 +164,12 @@ func (h *HostProfileCreateUpdateHandler) validateVolumeGroupInfo(ctx context.Con
 }
 
 func (h *HostProfileCreateUpdateHandler) validateStorageInfo(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
-	for _, vg := range obj.Spec.Storage.VolumeGroups {
-		allowed, reason, err := h.validateVolumeGroupInfo(ctx, &vg)
-		if !allowed || err != nil {
-			return allowed, reason, err
+	if obj.Spec.Storage.VolumeGroups != nil {
+		for _, vg := range *obj.Spec.Storage.VolumeGroups {
+			allowed, reason, err := h.validateVolumeGroupInfo(ctx, &vg)
+			if !allowed || err != nil {
+				return allowed, reason, err
+			}
 		}
 	}
 

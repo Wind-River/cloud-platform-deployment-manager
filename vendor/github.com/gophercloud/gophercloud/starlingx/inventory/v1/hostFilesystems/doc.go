@@ -3,4 +3,4 @@
 
 // Package filesystems contains functionality for working with System Inventory
 // controller file system resources.
-package filesystems
+package hostFilesystems

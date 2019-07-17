@@ -337,6 +337,16 @@ func NewUnlockedEnabledHostMonitor(instance *v1beta1.Host, id string) *manager.M
 	return NewStateMonitor(instance, id, &admin, &oper, nil)
 }
 
+// NewUnlockedAvailableHostMonitor is a convenience wrapper around
+// NewStateMonitor to wait for a host to reach the unlocked/enabled/available
+// state.
+func NewUnlockedAvailableHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+	admin := hosts.AdminUnlocked
+	oper := hosts.OperEnabled
+	avail := hosts.AvailAvailable
+	return NewStateMonitor(instance, id, &admin, &oper, &avail)
+}
+
 // NewLockedDisabledHostMonitor is a convenience wrapper around
 // NewStateMonitor to wait for a host to reach the locked/disabled state.
 func NewLockedDisabledHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {

@@ -8,6 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cephmonitors"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/osds"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/partitions"
@@ -286,11 +287,15 @@ func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClie
 func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
+	if profile.Storage.VolumeGroups == nil {
+		return nil
+	}
+
 	if config.IsReconcilerEnabled(config.VolumeGroup) == false {
 		return nil
 	}
 
-	for _, vgInfo := range profile.Storage.VolumeGroups {
+	for _, vgInfo := range *profile.Storage.VolumeGroups {
 		var ok bool
 
 		if _, ok = host.FindVolumeGroup(vgInfo.Name); !ok {
@@ -341,7 +346,7 @@ func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient,
 		host.VolumeGroups = result
 	}
 
-	for _, vgInfo := range profile.Storage.VolumeGroups {
+	for _, vgInfo := range *profile.Storage.VolumeGroups {
 		// Reconcile the state of each physical volume on this group.
 		err := r.ReconcilePhysicalVolumes(client, instance, profile, host, vgInfo)
 		if err != nil {
@@ -379,11 +384,15 @@ func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, in
 	present := make(map[string]bool)
 	updated := make(map[string]bool)
 
+	if profile.Storage.OSDs == nil {
+		return nil
+	}
+
 	if config.IsReconcilerEnabled(config.OSD) == false {
 		return nil
 	}
 
-	for _, osdInfo := range profile.Storage.OSDs {
+	for _, osdInfo := range *profile.Storage.OSDs {
 		if osd, ok := host.FindOSDByPath(osdInfo.Path); ok {
 			present[osd.ID] = true
 
@@ -541,7 +550,7 @@ func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1beta1.OSDInfo) (osds
 func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, function string) error {
 	updated := false
 
-	for _, osdInfo := range profile.Storage.OSDs {
+	for _, osdInfo := range *profile.Storage.OSDs {
 		if osdInfo.Function != function {
 			continue
 		}
@@ -607,11 +616,15 @@ func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, i
 // of a host resource.
 func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 
+	if profile.Storage.OSDs == nil {
+		return nil
+	}
+
 	if config.IsReconcilerEnabled(config.OSD) == false {
 		return nil
 	}
 
-	if len(profile.Storage.OSDs) == 0 {
+	if len(*profile.Storage.OSDs) == 0 {
 		return nil
 	}
 
@@ -622,6 +635,69 @@ func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instanc
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// ReconcileFileSystems is responsible for reconciling the storage file system
+// configuration of a host resource.
+func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+
+	if profile.Storage.FileSystems == nil {
+		return nil
+	}
+
+	if config.IsReconcilerEnabled(config.FileSystems) == false {
+		return nil
+	}
+
+	if len(*profile.Storage.FileSystems) == 0 {
+		return nil
+	}
+
+	if host.IsUnlockedAvailable() == false {
+		msg := "waiting for host to reach available state"
+		m := NewUnlockedAvailableHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
+	}
+
+	updates := make([]hostFilesystems.FileSystemOpts, 0)
+	for _, fsInfo := range *profile.Storage.FileSystems {
+		found := false
+		for _, fs := range host.FileSystems {
+			if fs.Name != fsInfo.Name {
+				continue
+			}
+
+			found = true
+			if fsInfo.Size > fs.Size {
+				// Update the system resource with the new size.
+				opts := hostFilesystems.FileSystemOpts{
+					Name: fsInfo.Name,
+					Size: fsInfo.Size,
+				}
+
+				updates = append(updates, opts)
+			}
+		}
+
+		if found == false {
+			msg := fmt.Sprintf("unknown host filesystem %q", fsInfo.Name)
+			return starlingxv1beta1.NewMissingSystemResource(msg)
+		}
+	}
+
+	if len(updates) > 0 {
+		log.Info("updating host filesystem sizes", "opts", updates)
+
+		err := hostFilesystems.Update(client, host.ID, updates).ExtractErr()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update filesystems sizes")
+			return err
+		}
+
+		r.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
 	}
 
 	return nil

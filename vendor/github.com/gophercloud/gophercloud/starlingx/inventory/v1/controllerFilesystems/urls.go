@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package filesystems
+package controllerFilesystems
 
 import "github.com/gophercloud/gophercloud"
 
