@@ -1136,11 +1136,11 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 			return r.StartMonitor(m, msg)
 		}
 
-		if len(hostInfo.Disks) == 0 {
+		if len(hostInfo.FileSystems) == 0 {
 			// There is no way to tell if the inventory process has finished so
-			// we rely on checking the number of disks since that's one of the
-			// last things to be collected.  If that list is 0 then we need to
-			// wait some more.
+			// we rely on checking the number of host filesystems since that's
+			// one of the last things to be collected.  If that list is 0 then
+			// we need to wait some more.
 			msg := "waiting for inventory collection to complete before collecting defaults"
 			m := NewInventoryCollectedMonitor(instance, host.ID)
 			return r.StartMonitor(m, msg)
