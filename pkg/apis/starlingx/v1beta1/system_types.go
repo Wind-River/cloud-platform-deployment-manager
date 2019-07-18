@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// List of valide certificate types.  These must align with the system
+	// List of valid certificate types.  These must align with the system
 	// API expected values.
 	PlatformCertificate    = "ssl"
 	PlatformCACertificate  = "ssl_ca"
@@ -269,6 +269,13 @@ type SystemSpec struct {
 // during profile merging.
 func (in ControllerFileSystemInfo) IsKeyEqual(x ControllerFileSystemInfo) bool {
 	return in.Name == x.Name
+}
+
+// IsKeyEqual compares two SNMP trap destination array elements and determines
+// if they refer to the same instance.  All other attributes will be merged
+// during profile merging.
+func (in TrapDestInfo) IsKeyEqual(x TrapDestInfo) bool {
+	return in.Community == x.Community
 }
 
 // SystemStatus defines the observed state of System
