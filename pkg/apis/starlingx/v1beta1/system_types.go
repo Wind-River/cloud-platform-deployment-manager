@@ -264,6 +264,13 @@ type SystemSpec struct {
 	VSwitchType *string `json:"vswitchType,omitempty"`
 }
 
+// IsKeyEqual compares two controller file system array elements and determines
+// if they refer to the same instance.  All other attributes will be merged
+// during profile merging.
+func (in ControllerFileSystemInfo) IsKeyEqual(x ControllerFileSystemInfo) bool {
+	return in.Name == x.Name
+}
+
 // SystemStatus defines the observed state of System
 type SystemStatus struct {
 	// ID defines the unique identifier assigned by the system.

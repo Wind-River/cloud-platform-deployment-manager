@@ -587,6 +587,13 @@ func (in VolumeGroupInfo) IsKeyEqual(x VolumeGroupInfo) bool {
 	return in.Name == x.Name
 }
 
+// IsKeyEqual compares two storage file system array elements and determines if
+// they refer to the same instance.  All other attributes will be merged during
+// profile merging.
+func (in FileSystemInfo) IsKeyEqual(x FileSystemInfo) bool {
+	return in.Name == x.Name
+}
+
 // IsKeyEqual compares two ethernet interface array elements and determines if
 // they refer to the same instance.  All other attributes will be merged during
 // profile merging.
