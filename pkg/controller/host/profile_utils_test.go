@@ -16,17 +16,36 @@ func TestMergeProfiles(t *testing.T) {
 	interfaces1 := starlingxv1beta1.InterfaceInfo{
 		Ethernet: []starlingxv1beta1.EthernetInfo{{CommonInterfaceInfo: starlingxv1beta1.CommonInterfaceInfo{Name: "eth0"}, Port: starlingxv1beta1.EthernetPortInfo{Name: "eth0"}}},
 	}
+	filesystems1 := starlingxv1beta1.FileSystemList{
+		starlingxv1beta1.FileSystemInfo{
+			Name: "backup",
+			Size: 10,
+		},
+		starlingxv1beta1.FileSystemInfo{
+			Name: "docker",
+			Size: 10,
+		},
+	}
 	profile1 := starlingxv1beta1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
 			AdministrativeState: &admin1,
 			Location:            &location1,
 		},
 		Interfaces: &interfaces1,
+		Storage: &starlingxv1beta1.ProfileStorageInfo{
+			FileSystems: &filesystems1,
+		},
 	}
 	personality2 := "controller"
 	admin2 := "unlocked"
 	interfaces2 := starlingxv1beta1.InterfaceInfo{
 		Ethernet: []starlingxv1beta1.EthernetInfo{{CommonInterfaceInfo: starlingxv1beta1.CommonInterfaceInfo{Name: "mgmt0"}, Port: starlingxv1beta1.EthernetPortInfo{Name: "eth0"}}},
+	}
+	filesystems2 := starlingxv1beta1.FileSystemList{
+		starlingxv1beta1.FileSystemInfo{
+			Name: "backup",
+			Size: 20,
+		},
 	}
 	profile2 := starlingxv1beta1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
@@ -34,6 +53,19 @@ func TestMergeProfiles(t *testing.T) {
 			Personality:         &personality2,
 		},
 		Interfaces: &interfaces2,
+		Storage: &starlingxv1beta1.ProfileStorageInfo{
+			FileSystems: &filesystems2,
+		},
+	}
+	filesystems3 := starlingxv1beta1.FileSystemList{
+		starlingxv1beta1.FileSystemInfo{
+			Name: "backup",
+			Size: 20,
+		},
+		starlingxv1beta1.FileSystemInfo{
+			Name: "docker",
+			Size: 10,
+		},
 	}
 	result := starlingxv1beta1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
@@ -42,6 +74,9 @@ func TestMergeProfiles(t *testing.T) {
 			Location:            &location1,
 		},
 		Interfaces: &interfaces2,
+		Storage: &starlingxv1beta1.ProfileStorageInfo{
+			FileSystems: &filesystems3,
+		},
 	}
 	type args struct {
 		a *starlingxv1beta1.HostProfileSpec

@@ -77,7 +77,7 @@ func (t MergeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Va
 			}
 			return nil
 		}
-	} else if typ.Kind() == reflect.Slice {
+	} else if typ.Kind() == reflect.Slice || (typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Slice) {
 		// mergo doesn't handle slices how we need them to be handled.  Rather
 		// than simply overwrite the slice or append to the slice we need each
 		// element of the slice to
@@ -89,6 +89,11 @@ func (t MergeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Va
 		// setting is asserted.
 		return func(dst, src reflect.Value) error {
 			var isKeyEqual = reflect.Value{}
+
+			if dst.Kind() == reflect.Ptr {
+				src = src.Elem()
+				dst = dst.Elem()
+			}
 
 			if src.IsNil() == true {
 				// Assume that the user wants to keep the contents of dst.
