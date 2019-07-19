@@ -26,6 +26,12 @@ func TestMergeProfiles(t *testing.T) {
 			Size: 10,
 		},
 	}
+	osd1 := starlingxv1beta1.OSDList{
+		starlingxv1beta1.OSDInfo{
+			Function: "osd",
+			Path:     "/dev/sda",
+		},
+	}
 	profile1 := starlingxv1beta1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
 			AdministrativeState: &admin1,
@@ -33,6 +39,7 @@ func TestMergeProfiles(t *testing.T) {
 		},
 		Interfaces: &interfaces1,
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
+			OSDs:        &osd1,
 			FileSystems: &filesystems1,
 		},
 	}
@@ -47,6 +54,17 @@ func TestMergeProfiles(t *testing.T) {
 			Size: 20,
 		},
 	}
+	vg2 := starlingxv1beta1.VolumeGroupList{
+		starlingxv1beta1.VolumeGroupInfo{
+			Name: "nova-local",
+			PhysicalVolumes: starlingxv1beta1.PhysicalVolumeList{
+				starlingxv1beta1.PhysicalVolumeInfo{
+					Path: "/dev/sda",
+					Type: "disk",
+				},
+			},
+		},
+	}
 	profile2 := starlingxv1beta1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
 			AdministrativeState: &admin2,
@@ -54,7 +72,8 @@ func TestMergeProfiles(t *testing.T) {
 		},
 		Interfaces: &interfaces2,
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
-			FileSystems: &filesystems2,
+			VolumeGroups: &vg2,
+			FileSystems:  &filesystems2,
 		},
 	}
 	filesystems3 := starlingxv1beta1.FileSystemList{
@@ -75,7 +94,9 @@ func TestMergeProfiles(t *testing.T) {
 		},
 		Interfaces: &interfaces2,
 		Storage: &starlingxv1beta1.ProfileStorageInfo{
-			FileSystems: &filesystems3,
+			OSDs:         &osd1,
+			VolumeGroups: &vg2,
+			FileSystems:  &filesystems3,
 		},
 	}
 	type args struct {

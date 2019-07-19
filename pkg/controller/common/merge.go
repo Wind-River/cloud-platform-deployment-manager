@@ -91,6 +91,14 @@ func (t MergeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Va
 			var isKeyEqual = reflect.Value{}
 
 			if dst.Kind() == reflect.Ptr {
+				if dst.IsNil() {
+					dst.Set(src)
+					return nil
+				} else if src.IsNil() {
+					// Do nothing
+					return nil
+				}
+
 				src = src.Elem()
 				dst = dst.Elem()
 			}
