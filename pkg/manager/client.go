@@ -5,7 +5,6 @@ package manager
 
 import (
 	"context"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
@@ -46,7 +45,7 @@ const (
 // Builds the client authentication options from a given secret which should
 // contain environment variable like values.  For example, OS_AUTH_URL,
 // OS_USERNAME, etc...
-func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) (gophercloud.AuthOptions, error) {
+func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) ([]gophercloud.AuthOptions, error) {
 	username := string(endpointSecret.Data[UsernameKey])
 	password := string(endpointSecret.Data[PasswordKey])
 	authURL := string(endpointSecret.Data[AuthUrlKey])
@@ -72,35 +71,42 @@ func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) (gophercloud.AuthOption
 	}
 
 	if authURL == "" {
-		return gophercloud.AuthOptions{}, NewClientError("OS_AUTH_URL must be provided")
+		return nil, NewClientError("OS_AUTH_URL must be provided")
 	}
 	if userID == "" && username == "" {
-		return gophercloud.AuthOptions{}, NewClientError("OS_USERID or OS_USERNAME must be provided")
+		return nil, NewClientError("OS_USERID or OS_USERNAME must be provided")
 	}
 
 	if password == "" && applicationCredentialID == "" && applicationCredentialName == "" {
-		return gophercloud.AuthOptions{}, NewClientError("OS_PASSWORD must be provided")
+		return nil, NewClientError("OS_PASSWORD must be provided")
 	}
 
 	if (applicationCredentialID != "" || applicationCredentialName != "") && applicationCredentialSecret == "" {
-		return gophercloud.AuthOptions{}, NewClientError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
+		return nil, NewClientError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
 	}
 
-	ao := gophercloud.AuthOptions{
-		IdentityEndpoint:            authURL,
-		UserID:                      userID,
-		Username:                    username,
-		Password:                    password,
-		TenantID:                    tenantID,
-		TenantName:                  tenantName,
-		DomainID:                    domainID,
-		DomainName:                  domainName,
-		ApplicationCredentialID:     applicationCredentialID,
-		ApplicationCredentialName:   applicationCredentialName,
-		ApplicationCredentialSecret: applicationCredentialSecret,
+	result := make([]gophercloud.AuthOptions, 0)
+	for _, entry := range strings.Split(authURL, ",") {
+		// The authURL may be specified as a comma separated list of URL therefore
+		// return a list of auth options to the caller.
+		ao := gophercloud.AuthOptions{
+			IdentityEndpoint:            entry,
+			UserID:                      userID,
+			Username:                    username,
+			Password:                    password,
+			TenantID:                    tenantID,
+			TenantName:                  tenantName,
+			DomainID:                    domainID,
+			DomainName:                  domainName,
+			ApplicationCredentialID:     applicationCredentialID,
+			ApplicationCredentialName:   applicationCredentialName,
+			ApplicationCredentialSecret: applicationCredentialSecret,
+		}
+
+		result = append(result, ao)
 	}
 
-	return ao, nil
+	return result, nil
 }
 
 func GetAuthOptionsFromEnv() (gophercloud.AuthOptions, error) {
@@ -170,6 +176,8 @@ func GetAuthOptionsFromEnv() (gophercloud.AuthOptions, error) {
 }
 
 func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.ServiceClient, error) {
+	var provider *gophercloud.ProviderClient
+
 	secret := &v1.Secret{}
 	secretName := types.NamespacedName{Namespace: namespace, Name: SystemEndpointSecretName}
 
@@ -180,38 +188,47 @@ func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.Se
 		return nil, err
 	}
 
-	authOptions, err := GetAuthOptionsFromSecret(secret)
+	options, err := GetAuthOptionsFromSecret(secret)
 	if err != nil {
 		return nil, err
 	}
 
-	// Force re-authentication on failures.
-	authOptions.AllowReauth = true
+	for _, authOptions := range options {
+		// Force re-authentication on failures.
+		authOptions.AllowReauth = true
 
-retry:
-	// Authenticate against the openstack API
-	provider, err := openstack.AuthenticatedClient(authOptions)
-	if err != nil {
-		if urlError, ok := err.(*url.Error); ok {
-			if urlError.Err.Error() == "EOF" && strings.Contains(authOptions.IdentityEndpoint, HTTPPrefix) {
-				// The endpoint has been switched to HTTPS mode so automatically
-				// update our endpoint to HTTPS so that we can continue.
-				authOptions.IdentityEndpoint = strings.Replace(authOptions.IdentityEndpoint, HTTPPrefix, HTTPSPrefix, 1)
-				log.Info("retrying authentication request with HTTPS enabled")
-				goto retry
+	retry:
+		// Authenticate against the openstack API
+		provider, err = openstack.AuthenticatedClient(authOptions)
+		if err != nil {
+			if urlError, ok := err.(*url.Error); ok {
+				if urlError.Err.Error() == "EOF" && strings.Contains(authOptions.IdentityEndpoint, HTTPPrefix) {
+					// The endpoint has been switched to HTTPS mode so automatically
+					// update our endpoint to HTTPS so that we can continue.
+					authOptions.IdentityEndpoint = strings.Replace(authOptions.IdentityEndpoint, HTTPPrefix, HTTPSPrefix, 1)
+					log.Info("retrying authentication request with HTTPS enabled")
+					goto retry
 
-			} else if strings.Contains(err.Error(), HTTPSNotEnabled) && strings.Contains(authOptions.IdentityEndpoint, HTTPSPrefix) {
-				// The endpoint has been switched to HTTP mode so automatically
-				// update our endpoint to HTTP so that we can continue.
-				authOptions.IdentityEndpoint = strings.Replace(authOptions.IdentityEndpoint, HTTPSPrefix, HTTPPrefix, 1)
-				log.Info("retrying authentication request with HTTPS disabled")
-				goto retry
+				} else if strings.Contains(err.Error(), HTTPSNotEnabled) && strings.Contains(authOptions.IdentityEndpoint, HTTPSPrefix) {
+					// The endpoint has been switched to HTTP mode so automatically
+					// update our endpoint to HTTP so that we can continue.
+					authOptions.IdentityEndpoint = strings.Replace(authOptions.IdentityEndpoint, HTTPSPrefix, HTTPPrefix, 1)
+					log.Info("retrying authentication request with HTTPS disabled")
+					goto retry
+				}
 			}
-		}
 
-		authOptions.Password = "" // redact for logging
-		err := perrors.Wrapf(err, "failed to authenticate client, options: %+v", authOptions)
-		return nil, err
+			authOptions.Password = "***REDACTED***" // redact for logging
+			log.Error(err, "failed to authenticate client", "url", authOptions.IdentityEndpoint, "options", authOptions)
+
+		} else {
+			// Use the first successful client
+			break
+		}
+	}
+
+	if provider == nil {
+		return nil, perrors.Wrap(err, "failed to authenticate against all available auth URL options")
 	}
 
 	availability := gophercloud.Availability(secret.Data[InterfaceKey])

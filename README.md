@@ -354,17 +354,74 @@ can be run on the system it is configuring), or it can be a standalone
 Kubernetes cluster provided by the end user (i.e., the Deployment Manager can
 configure StarlingX systems remotely).
  
-Depending on which operational model is chosen the system URL
-and endpoint type (e.g., public, internal) must reflect the correct access
-method to reach the target system.  See the schema definitions for more
-information.  Normally, running the Deployment Manager locally requires that
-the system URL point to the local management floating IP address and the
-endpoint type be set to ```internal``` while running it remotely requires that
-the system URL point to the OAM floating IP address and the endpoint type be
-set to ```public```, but there is an exception to this rule.  That is, if the
-system is to be configured for HTTPS then the public endpoint must be used with
-the OAM floating IP address in the URL - this ensures that private key
-information is always sent over an HTTPS protected connection.
+Depending on which operational model is chosen, the system URL
+and endpoint type (e.g., public, internal) must specify the correct access
+method to reach the target system.  For example, the ```system-endpoint```
+Secret defined within the system's deployment configuration file will contain a
+URL similar to this example:
+
+```yaml
+apiVersion: v1
+data:
+  OS_PASSWORD: U3Q4cmxpbmdYKg==
+  OS_USERNAME: YWRtaW4=
+kind: Secret
+metadata:
+  name: system-endpoint
+  namespace: deployment
+stringData:
+  OS_AUTH_TYPE: password
+  OS_AUTH_URL: http://192.168.204.2:5000/v3
+  OS_ENDPOINT_TYPE: internalURL
+  OS_IDENTITY_API_VERSION: "3"
+  OS_INTERFACE: internal
+  OS_KEYSTONE_REGION_NAME: RegionOne
+  OS_PROJECT_DOMAIN_NAME: Default
+  OS_PROJECT_NAME: admin
+  OS_REGION_NAME: RegionOne
+type: Opaque
+```
+  
+Running the Deployment Manager locally, on the target system, requires that the
+system URL specify the local management floating IP address and the endpoint
+type be set to ```internal```.
+
+***Note:*** If the target system is to be configured with HTTPS or BMC is to be
+enabled on hosts then the URL provided must point to the OAM floating IP 
+address. This is to ensure that BMC credentials and HTTPS private key 
+information is always transmitted over an encrypted HTTPS session.  
+ 
+Running the Deployment Manager remotely, on a system other than the target
+system, requires that the system URL specify the OAM floating IP address and 
+the endpoint type be set to ```public```.  For example, these attribute values
+would need to be modified to configure a remote system.
+
+```yaml
+  OS_AUTH_URL: http://10.10.10.3:5000/v3
+  OS_ENDPOINT_TYPE: publicURL
+  OS_INTERFACE: public
+```
+
+If the system being configured remotely was installed using a temporary IP
+address (i.e., an address different than the one to be configured as the OAM
+floating IP address during bootstrapping) then the Deployment Manager needs to
+be configured with both the temporary IP address and the eventual OAM Floating
+IP address.  In this case, the OS_AUTH_URL attribute can be specified as a comma
+separated list of URL values and may look similar to the following example where
+10.10.10.3 is the OAM floating IP address, and 172.16.3.17 is the temporary IP
+address used to install the node.
+
+```yaml
+  OS_AUTH_URL: http://10.10.10.3:5000/v3,http://172.16.3.17:5000/v3
+```
+
+When specifying two different URL values as a comma separated list it is
+important to list the OAM floating IP address value first, and the temporary
+installation IP address second.  This ensures that, subsequent to the initial
+configuration, the Deployment Manager will succeed immediately when connecting
+to the first IP and will not be subject to a connection timeout delay incurred
+when accessing the temporary installation IP address when it is no longer valid.
+
  
 ## Installing The Deployment Manager
 
