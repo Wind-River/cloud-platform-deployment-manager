@@ -126,21 +126,25 @@ HostProfile schema documentation for more information regarding individual
 attributes and how they are handled during the resolution of the HostProfile
 hierarchy.
 
+***Warning***: The Schema definition is currently at a Beta release status.
+Non-backward compatible changes may be required prior to the first official GA 
+release.
+
 
 ### Example Deployment Configurations
 
-Example configurations are included here to help end users understand the 
-scope and context of the Deployment Manager functionality.  To generate the 
-deployment configuration YAML for each of the supplied examples run the 
+Example configurations are included here to help end users understand the
+scope and context of the Deployment Manager functionality.  To generate the
+deployment configuration YAML for each of the supplied examples run the
 following command from a cloned copy of this repo.
- 
+
  ```bash
  $ make examples
  ```
- 
+
 The above command will produce this output and the generated examples can be
 found within the listed files.
- 
+
  ```bash
  mkdir -p /tmp/titanium-deployment-manager/system
  kustomize build examples/standard/default  > /tmp/titanium-deployment-manager/system/standard.yaml
@@ -155,9 +159,9 @@ found within the listed files.
  kustomize build examples/aio-dx/vxlan > /tmp/titanium-deployment-manager/system/aio-dx-vxlan.yaml
  kustomize build examples/aio-dx/https > /tmp/titanium-deployment-manager/system/aio-dx-https.yaml
  ```
- 
-***Note***: the output directory can be overridden by setting the ```EXAMPLES``` 
-environment variable to a suitable destination directory.  For example, running 
+
+***Note***: the output directory can be overridden by setting the ```EXAMPLES```
+environment variable to a suitable destination directory.  For example, running
 the following command generates the examples within a different output
 directory.
 
@@ -194,7 +198,7 @@ file that conforms to the Kubernetes CRD instances defined by the Deployment
 Manager and can be consumed by the Deployment Manager to configure the same
 system.
 
-  
+
 ### Building The ```deploy``` Tool
 
 The deploy tool can be built using the following command.  These instructions
@@ -214,19 +218,19 @@ go build -gcflags """" -o bin/deploy github.com/wind-river/titanium-deployment-m
 
 To access the System API the system endpoint credentials must be sourced
 into the shell environment variables.  The following command example assumes that
-the ```deploy``` tool has already been copied up to the target system.  
+the ```deploy``` tool has already been copied up to the target system.
 Alternatively, the tool can be run remotely, but the "openrc" credentials file
 must be downloaded to the local system beforehand and the endpoint URL contained
 within it must be updated to point to the system's public Keystone endpoint.
 
 ```bash
 $ source /etc/platform/openrc
-$ ./deploy build -n deployment -s vbox --minimal-config 
+$ ./deploy build -n deployment -s vbox --minimal-config
 ```
 
 The above command will produce output similar to the following example.  By
 default, the generated deployment configuration file is stored in ```deployment-config.yaml```
-unless the output path is customized with the ```-o``` option. 
+unless the output path is customized with the ```-o``` option.
 
 ```bash
 $ ../deploy build -n deployment -s vbox --minimal-config
@@ -290,12 +294,12 @@ the password to a Base64 encoded version of the password.
 $ VALUE=$(echo  "mysecret" | base64 -w0)
 $ echo ${VALUE}
 bXlzZWNyZXQKa
-$ 
+$
 ```
 
 In the above command example the string "bXlzZWNyZXQKa" is the Base64 encoded
 version of the "mysecret".  The generated deployment configuration must be
-manually edited to insert this value into the BMC secret password attribute. 
+manually edited to insert this value into the BMC secret password attribute.
 Look for the following section within the file and replace the empty password
 string with the value from the above commands.
 
@@ -345,7 +349,7 @@ type: kubernetes.io/tls
 
 
 ## Operational Models
- 
+
 The Deployment Manager is implemented independent of the existing StarlingX
 system architecture.   It is intended to be deployed and run as a container
 within a Kubernetes cluster.  That cluster could be the Kubernetes cluster
@@ -353,7 +357,7 @@ hosted by the StarlingX system being configured (i.e., the Deployment Manager
 can be run on the system it is configuring), or it can be a standalone
 Kubernetes cluster provided by the end user (i.e., the Deployment Manager can
 configure StarlingX systems remotely).
- 
+
 Depending on which operational model is chosen, the system URL
 and endpoint type (e.g., public, internal) must specify the correct access
 method to reach the target system.  For example, the ```system-endpoint```
@@ -381,18 +385,18 @@ stringData:
   OS_REGION_NAME: RegionOne
 type: Opaque
 ```
-  
+
 Running the Deployment Manager locally, on the target system, requires that the
 system URL specify the local management floating IP address and the endpoint
 type be set to ```internal```.
 
 ***Note:*** If the target system is to be configured with HTTPS or BMC is to be
-enabled on hosts then the URL provided must point to the OAM floating IP 
-address. This is to ensure that BMC credentials and HTTPS private key 
-information is always transmitted over an encrypted HTTPS session.  
- 
+enabled on hosts then the URL provided must point to the OAM floating IP
+address. This is to ensure that BMC credentials and HTTPS private key
+information is always transmitted over an encrypted HTTPS session.
+
 Running the Deployment Manager remotely, on a system other than the target
-system, requires that the system URL specify the OAM floating IP address and 
+system, requires that the system URL specify the OAM floating IP address and
 the endpoint type be set to ```public```.  For example, these attribute values
 would need to be modified to configure a remote system.
 
@@ -422,15 +426,15 @@ configuration, the Deployment Manager will succeed immediately when connecting
 to the first IP and will not be subject to a connection timeout delay incurred
 when accessing the temporary installation IP address when it is no longer valid.
 
- 
+
 ## Installing The Deployment Manager
 
 The Deployment Manager is intended to be deployed as a Helm™ chart.  The chart
 source definition can be found under the ```helm/titanium-deployment-manager```
-directory and all overridable configuration are defined in the 
-```helm/titanium-deployment-manager/values.yaml``` file.   
+directory and all overridable configuration are defined in the
+```helm/titanium-deployment-manager/values.yaml``` file.
 
-The final packaged helm chart can be downloaded from the following repo 
+The final packaged helm chart can be downloaded from the following repo
 location.
 
 [[https://github.com/wind-river/titanium-deployment-manager/docs/charts/titanium-deployment-manager-0.2.0.tgz]]
@@ -452,42 +456,42 @@ helm upgrade --install stx-deployment-manager --values overrides.yaml titanium-d
 
 ## Loading A Deployment Configuration Model
 
-Since deployment configurations are defined using standard Kubernetes CRD 
+Since deployment configurations are defined using standard Kubernetes CRD
 instances they can be applied using standard Kubernetes tools and APIs.  Once
-the Deployment Manager has been installed and is running, a deployment 
-configuration can be loaded using the ```kubectl``` command with the following 
+the Deployment Manager has been installed and is running, a deployment
+configuration can be loaded using the ```kubectl``` command with the following
 syntax.
 
 ```bash
 $ kubectl apply -f my-deployment.yaml
 ```
 
-***Note:*** The Deployment Manager must be operational before applying a 
+***Note:*** The Deployment Manager must be operational before applying a
 deployment configuration; otherwise the apply will timeout while waiting
 for a response to validation callbacks which are serviced by the Deployment
-Manager. 
+Manager.
 
 ### Working With Multiple Configurations.
 
 The Deployment Manager is capable of installing multiple systems, but it expects
-that resources for a single system are all contained within a single Kubernetes 
+that resources for a single system are all contained within a single Kubernetes
 Namespace.  This can be most useful when the Deployment Manager is run remotely
 and each system deployment configuration points to a different public endpoint
-URL with a unique set of authentication credentials. 
+URL with a unique set of authentication credentials.
 
-***Note:*** There is currently no support for sharing resources across multiple 
-namespaces.  
+***Note:*** There is currently no support for sharing resources across multiple
+namespaces.
 
 
 ### Deleting A Deployment Configuration
 
-A deployment configuration can be deleted using the ```kubectl``` command or 
+A deployment configuration can be deleted using the ```kubectl``` command or
 other Kubernetes APIs.  The Deployment Manager will make a best effort attempt
-at deleting resources that were added by the deployment configuration.  It may 
-not be possible to delete certain resources (e.g., the last active controller, 
-the last remaining storage node, etc) and therefore it may not be possible to 
-delete some dependent resources (i.e., networks still in use by resources that 
-could not be deleted). 
+at deleting resources that were added by the deployment configuration.  It may
+not be possible to delete certain resources (e.g., the last active controller,
+the last remaining storage node, etc) and therefore it may not be possible to
+delete some dependent resources (i.e., networks still in use by resources that
+could not be deleted).
 
 Since the intended purpose of the Deployment Manager is to install a system
 rather than to manage a system thru its full life cycle the delete functionality
@@ -497,7 +501,7 @@ is currently viewed as a best effort functionality.
 ## Using Ansible To Install The Deployment Manager
 
 To provide better integration into existing CI/CD pipelines an Ansible playbook
-has been provided.  The playbook is stored in this repo as the ```docs/playbooks/titanium-deployment-manager-playbook.yaml``` 
+has been provided.  The playbook is stored in this repo as the ```docs/playbooks/titanium-deployment-manager-playbook.yaml```
 file.
 
 The playbook will download the latest Helm chart to the local Ansible host,
@@ -514,26 +518,26 @@ ready to take on additional workloads.
 The playbook is designed to download a copy of the latest Deployment Manager
 Helm chart from this repo.  If a specific version needs to be used or if the
 Helm chart has simply already been stored locally, then a playbook variable can
-be overridden to provide an alternative source for the chart.  
+be overridden to provide an alternative source for the chart.
 
-To override the location of the chart to a local file simply set the ```manager_chart_source``` 
+To override the location of the chart to a local file simply set the ```manager_chart_source```
 variable to the absolute or relative path to the chart.  This can be accomplished
-at the command line using a ```-e``` override using the following syntax. For 
-more detailed information on how to set playbook variables and how to run 
-playbooks please refer to the Ansible documentation. 
+at the command line using a ```-e``` override using the following syntax. For
+more detailed information on how to set playbook variables and how to run
+playbooks please refer to the Ansible documentation.
 
 ```bash
 $ ansible-playbook some-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.2.0.tgz"
 ```
 
-The system deployment configuration file must be specified using the 
+The system deployment configuration file must be specified using the
 ```deployment_config``` variable.  If this variable is not set the playbook will
-simply install the Deployment Manager and skip the deployment configuration 
-step.  If this is the case then, at a later time, the end user can manually 
+simply install the Deployment Manager and skip the deployment configuration
+step.  If this is the case then, at a later time, the end user can manually
 apply a deployment configuration file.
 
 
-### Integrating The playbook Into A Master playbook. 
+### Integrating The playbook Into A Master playbook.
 
 Since StarlingX supports bootstrapping the system using an Ansible playbook it
 is possible to combine both the bootstrap playbook and the Deployment Manager
@@ -541,7 +545,7 @@ playbook into a single master playbook.  This simplifies the number of steps req
 to install the system and further helps enable CI/CD pipeline integration.  For
 example, a sample master playbook could resemble the following.  This assumes
 that the StarlingX bootstrap playbook directory has already been downloaded and
-stored on a filesystem accessible by the Ansible controller host. 
+stored on a filesystem accessible by the Ansible controller host.
 
 ```yaml
 - import_playbook: /some/path/to/bootstrap.yaml
@@ -550,8 +554,8 @@ stored on a filesystem accessible by the Ansible controller host.
 
 An end user can further expand this master playbook by adding additional
 playbooks to deploy their custom applications, but subsequent steps must be
-written to wait for the Deployment Manager to complete the 
-system installation before continuing.  This is required because the 
+written to wait for the Deployment Manager to complete the
+system installation before continuing.  This is required because the
 Deployment Manager playbook will complete as soon as the deployment configuration
 file has been applied and does not wait for that deployment configuration to be
 consumed.
@@ -561,20 +565,20 @@ consumed.
 
 The Deployment Manager Docker image is available for download at the following
 public repo.
- 
+
  **TBD**
- 
+
 End users can build a custom image to satisfy local requirements using a command
 similar to the following example.  The server name, username, and custom tag
 should be substituted with values suitable for local requirements.
 
 ```bash
-$ export IMG=${DOCKER_REGISTRY}:9001/${USER}/titanium-deployment-manager:${TAG} 
+$ export IMG=${DOCKER_REGISTRY}:9001/${USER}/titanium-deployment-manager:${TAG}
 $ make docker-push
 ```
 
 To use this image with the provided Helm chart and playbook the image name must
-be overridden using a mechanism appropriate for the deployment model chosen 
+be overridden using a mechanism appropriate for the deployment model chosen
 (i.e., The 'manager_chart_source' variable can be overridden in Ansible, or the
 'manager.image.repository' and 'manager.image.tag' variables can be overridden
 in Helm).
@@ -582,29 +586,29 @@ in Helm).
 
 ## Project License
 
-The license for this project is the Apache 2.0 license. Text of the Apache 2.0 
-license and other applicable license notices can be found in the LICENSE file 
-in the top level directory. Each source file should include a license notice 
+The license for this project is the Apache 2.0 license. Text of the Apache 2.0
+license and other applicable license notices can be found in the LICENSE file
+in the top level directory. Each source file should include a license notice
 that designates the licensing terms for the respective file.
 
 
 ## Legal Notices
 
-All product names, logos, and brands are property of their respective owners. 
-All company, product and service names used in this software are for 
-identification purposes only. Wind River is a registered trademark of Wind River 
+All product names, logos, and brands are property of their respective owners.
+All company, product and service names used in this software are for
+identification purposes only. Wind River is a registered trademark of Wind River
 Systems, Inc.  StarlingX is a registered trademark of the OpenStack.
 Kubernetes is a registered trademark of Google Inc.  Helm is a trademark of The
-Linux Foundation®. Ansible  is a registered trademark of Red Hat, Inc. in the 
+Linux Foundation®. Ansible  is a registered trademark of Red Hat, Inc. in the
 United States and other countries.
 
-Disclaimer of Warranty / No Support: Wind River does not provide support and 
-maintenance services for this software, under Wind River’s standard Software 
-Support and Maintenance Agreement or otherwise. Unless required by applicable 
-law, Wind River provides the software (and each contributor provides its 
-contribution) on an “AS IS” BASIS, WITHOUT WARRANTIES OF ANY KIND, either 
-express or implied, including, without limitation, any warranties of TITLE, 
-NONINFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. You are 
-solely responsible for determining the appropriateness of using or 
-redistributing the software and assume any risks associated with your exercise 
+Disclaimer of Warranty / No Support: Wind River does not provide support and
+maintenance services for this software, under Wind River’s standard Software
+Support and Maintenance Agreement or otherwise. Unless required by applicable
+law, Wind River provides the software (and each contributor provides its
+contribution) on an “AS IS” BASIS, WITHOUT WARRANTIES OF ANY KIND, either
+express or implied, including, without limitation, any warranties of TITLE,
+NONINFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. You are
+solely responsible for determining the appropriateness of using or
+redistributing the software and assume any risks associated with your exercise
 of permissions under the license.
