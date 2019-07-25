@@ -426,12 +426,37 @@ configuration, the Deployment Manager will succeed immediately when connecting
 to the first IP and will not be subject to a connection timeout delay incurred
 when accessing the temporary installation IP address when it is no longer valid.
 
+## Building The Deployment Manager Image
+
+The Deployment Manager Docker Image is not currently posted on any public Docker
+Registry.  To install and use the Deployment Manager a image must be built.  To
+build an image the following command can be used.
+
+```bash
+make docker-build
+```
+
+This will build the image using the default name "titanium/deployment-manager".
+To change the default image name the DEFAULT_IMG variable can be overridden
+using the following command syntax.
+
+```bash
+DEFAULT_IMG=${USER}/titanium-deployment-manager  make docker-build
+```
+
+To use the built image to install the Deployment Manager onto a StarlingX system
+it must either be tagged and pushed to a private Docker Registry (i.e., using
+docker tag + docker push) or exported to an archive that can be used to load the
+image directly into the StarlingX local private Docker Registry (i.e., using
+docker save + docker load).  For more information on how to manipulate Docker 
+Images please refer to Docker documentation.
+
 
 ## Installing The Deployment Manager
 
 The Deployment Manager is intended to be deployed as a Helm™ chart.  The chart
 source definition can be found under the ```helm/titanium-deployment-manager```
-directory and all overridable configuration are defined in the
+directory and all overridable configuration values are defined in the
 ```helm/titanium-deployment-manager/values.yaml``` file.
 
 The final packaged helm chart can be downloaded from the following repo
@@ -442,7 +467,7 @@ location.
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install stx-deployment-manager titanium-deployment-manager-0.2.0.tgz
+helm upgrade --install deployment-manager titanium-deployment-manager-0.2.0.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -451,8 +476,25 @@ further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install stx-deployment-manager --values overrides.yaml titanium-deployment-manager-0.2.0.tgz
+helm upgrade --install deployment-manager --values overrides.yaml titanium-deployment-manager-0.2.0.tgz
 ```
+
+The default Helm chart assumes that the Deployment Manager image is present in
+the StarlingX local Docker Registry.  That is, its image name is not prefixed
+with the path to a public Docker Registry.  The image must be loaded into the
+StarlingX local Docker Registry prior to installing the Helm chart; otherwise
+the system will fail to instantiate the Deployment Manager due to the
+unavailability of the image.
+
+If the image has already been uploaded to a private Docker Registry then the
+Helm chart must be overridden to supply the path to the image.  For example, the
+image location can be overridden to specify a private URL using the following
+syntax assuming that the private registry is hosted at "your.registry.org".
+
+```bash
+helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/titanium/deployment-manager" titanium-deployment-manager-0.2.0.tgz
+```
+
 
 ## Loading A Deployment Configuration Model
 
@@ -517,7 +559,7 @@ ready to take on additional workloads.
 
 The playbook is designed to download a copy of the latest Deployment Manager
 Helm chart from this repo.  If a specific version needs to be used or if the
-Helm chart has simply already been stored locally, then a playbook variable can
+Helm chart has simply already been stored locally, then a playbook variable must
 be overridden to provide an alternative source for the chart.
 
 To override the location of the chart to a local file simply set the ```manager_chart_source```
@@ -527,7 +569,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook some-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.2.0.tgz"
+$ ansible-playbook docs/playbooks/titanium-deployment-manager-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.2.0.tgz"
 ```
 
 The system deployment configuration file must be specified using the
@@ -548,8 +590,8 @@ that the StarlingX bootstrap playbook directory has already been downloaded and
 stored on a filesystem accessible by the Ansible controller host.
 
 ```yaml
-- import_playbook: /some/path/to/bootstrap.yaml
-- import_playbook: /some/other/path/to/titanium-deployment-manager-playbook.yaml
+- import_playbook: /some/path/to/playbookconfig/playbooks/playbooks/bootstrap/bootstrap.yml
+- import_playbook: /some/other/path/to/docs/charts/titanium-deployment-manager-playbook.yaml
 ```
 
 An end user can further expand this master playbook by adding additional
@@ -559,29 +601,6 @@ system installation before continuing.  This is required because the
 Deployment Manager playbook will complete as soon as the deployment configuration
 file has been applied and does not wait for that deployment configuration to be
 consumed.
-
-
-## Building A Custom Deployment Manager Image
-
-The Deployment Manager Docker image is available for download at the following
-public repo.
-
- **TBD**
-
-End users can build a custom image to satisfy local requirements using a command
-similar to the following example.  The server name, username, and custom tag
-should be substituted with values suitable for local requirements.
-
-```bash
-$ export IMG=${DOCKER_REGISTRY}:9001/${USER}/titanium-deployment-manager:${TAG}
-$ make docker-push
-```
-
-To use this image with the provided Helm chart and playbook the image name must
-be overridden using a mechanism appropriate for the deployment model chosen
-(i.e., The 'manager_chart_source' variable can be overridden in Ansible, or the
-'manager.image.repository' and 'manager.image.tag' variables can be overridden
-in Helm).
 
 
 ## Project License
