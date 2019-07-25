@@ -22,9 +22,7 @@ manager:
     port: 30000
   logLevel: 0
   image:
-    # NOTE(alegacy): The repository is still TBD so this is just an example
-    #  placeholder value.  It will need to be overridden locally.
-    repository: docker.windriver.com/titanium/deployment-manager
+    repository: titanium/deployment-manager
     tag: latest
     pullPolicy: IfNotPresent
   configmap:
