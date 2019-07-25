@@ -604,6 +604,9 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	}
 
 	updated := false
+	networksUpdated := false
+	dataNetworksUpdated := false
+
 	for _, ethInfo := range profile.Interfaces.Ethernet.SortByNetworkCount() {
 		// For each configured ethernet interface update the associated system
 		// resource.
@@ -647,15 +650,19 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 			updated = true
 		}
 
-		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		result, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
 		if err != nil {
 			return err
 		}
 
-		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		networksUpdated = networksUpdated || result
+
+		result, err = r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
 		if err != nil {
 			return err
 		}
+
+		dataNetworksUpdated = dataNetworksUpdated || result
 
 		updated = updated || networksUpdated || dataNetworksUpdated
 	}
@@ -671,14 +678,30 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 		}
 
 		host.Interfaces = objects
+	}
 
-		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+	if networksUpdated {
+		// Interface network associations have been updated so we need to
+		// refresh the list of interface-network associations.
+		objects, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
 		if err != nil {
 			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
 			return err
 		}
 
-		host.InterfaceNetworks = results
+		host.InterfaceNetworks = objects
+	}
+
+	if dataNetworksUpdated {
+		// Interface data network associations have been updated so we need to
+		// refresh the list of interface-datanetwork associations.
+		objects, err := interfaceDataNetworks.ListInterfaceDataNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-datanetworks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceDataNetworks = objects
 	}
 
 	return nil
