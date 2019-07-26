@@ -53,6 +53,27 @@ func (in *Controller0Filter) Filter(profile *v1beta1.HostProfile, host *v1beta1.
 	return nil
 }
 
+// LocationFilter defines a host filter which is responsible for moving
+// the location attribute (if set) from a host profile to the host overrides
+// attributes.  Since locations are usually specified to identify specific
+// hosts rather than the larger data center then it usually belongs at the
+// host level.
+type LocationFilter struct {
+}
+
+func NewLocationFilter() *LocationFilter {
+	return &LocationFilter{}
+}
+
+func (in *LocationFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+	if profile.Spec.Location != nil {
+		host.Spec.Overrides.Location = profile.Spec.Location
+		profile.Spec.Location = nil
+	}
+
+	return nil
+}
+
 // AddressFilter defines a host filter which is responsible for moving
 // IP addresses from a host profile to the host overrides attributes.  Since IP
 // addresses are always host specific there is no need to create a unique

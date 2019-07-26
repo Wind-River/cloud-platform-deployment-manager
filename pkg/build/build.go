@@ -52,6 +52,7 @@ type DeploymentBuilder struct {
 var defaultHostFilters = []HostFilter{
 	NewController0Filter(),
 	NewLoopbackInterfaceFilter(),
+	NewLocationFilter(),
 	NewAddressFilter(),
 	NewBMAddressFilter(),
 	NewStorageMonitorFilter(),
