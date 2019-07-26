@@ -600,7 +600,8 @@ func (in *InterfaceMTUFilter) Filter(profile *v1beta1.HostProfile, deployment *D
 // console attributes on hosts.  Console specifications seem to be consistently
 // setting the parity and stop bits so if they are missing we attempt to apply
 // the Linux default values.  The flow control value is left off since it does
-// not appear to be used much.
+// not appear to be used much.  Empty values are omitted since the API does
+// not accept them.
 type ConsoleNameFilter struct {
 	regex *regexp.Regexp
 }
@@ -618,6 +619,8 @@ func (in *ConsoleNameFilter) Filter(profile *v1beta1.HostProfile, deployment *De
 		if in.regex.MatchString(*profile.Spec.Console) {
 			console := fmt.Sprintf("%sn8", *profile.Spec.Console)
 			profile.Spec.Console = &console
+		} else if *profile.Spec.Console == "" {
+			profile.Spec.Console = nil
 		}
 	}
 
