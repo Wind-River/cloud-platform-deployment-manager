@@ -518,7 +518,14 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 			updated = true
 
 			r.NormalEvent(instance, common.ResourceCreated,
-				"interface-network %q has been create on %q", name, iface.Name)
+				"interface-network %q has been created on %q", name, iface.Name)
+		} else {
+			// This is ignored because at the moment not all networks are
+			// created equally.  Some networks are of type "other" and these
+			// are address pools only so they do not show up in the list of
+			// networks and are handled elsewhere.  Because of this we cannot
+			// tell (easily) whether this condition is normal or an error.
+			continue
 		}
 	}
 
@@ -578,7 +585,10 @@ func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.Servi
 			updated = true
 
 			r.NormalEvent(instance, common.ResourceCreated,
-				"interface-datanetwork %q has been create on %q", name, iface.Name)
+				"interface-datanetwork %q has been created on %q", name, iface.Name)
+		} else {
+			msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q", name)
+			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
 		}
 	}
 
