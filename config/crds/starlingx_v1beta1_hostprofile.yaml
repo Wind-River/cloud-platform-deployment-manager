@@ -592,6 +592,7 @@ spec:
                         - backup
                         - docker
                         - scratch
+                        - kubelet
                         type: string
                       size:
                         format: int64
