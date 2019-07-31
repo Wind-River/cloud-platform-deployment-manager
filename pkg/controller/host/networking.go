@@ -20,98 +20,166 @@ import (
 	"strings"
 )
 
-// interfaceIsStaleOrChanged is a utility function which determines whether
-// a system interface name and a profile interface name refer to the same
-// interface.  The purpose of this is to determine whether resources configured
-// to use the old interface need to be removed and then re-added once the new
-// interface has been setup.  If the interface will not be deleted and then
-// later re-added during reconciliation then there is no need to delete the
-// higher level resource.  For example, if a specific address is first
-// configured on an vlan named "foo" with vid 11, but then later is to be moved
-// to a vlan named "foo" with vid 12 we need to delete the address, delete the
-// vlan, re-add the vlan with the right vid and then re-add the address.
-func interfaceIsStaleOrChanged(oldName string, newName *string, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) bool {
-	iface, found := host.FindInterfaceByName(oldName)
-	if !found {
-		// This is really an error, but for all practical purposes, returning
-		// true here will force the resource to be deleted and re-added which
-		// will hopefully resolve any data conflicts.
-		return true
-	}
-
-	data := profile.Interfaces
-
-	switch iface.Type {
-	case interfaces.IFTypeEthernet:
-		if portname, found := host.FindInterfacePortName(iface.ID); found {
-			for _, e := range data.Ethernet {
-				if newName != nil && e.Name != *newName {
-					continue
-				}
-
-				if e.Port.Name == portname {
-					// There is a matching ethernet in the pending configuration
-					// that is based on the same ethernet interface therefore
-					// this interface will still exist after the configuration
-					// is applied.
-					return false
-				}
-			}
-		}
-
-		// No equivalent interface was found.  It may now be of a different type
-		return true
-
-	case interfaces.IFTypeVLAN:
-		for _, v := range data.VLAN {
-			if newName != nil && v.Name != *newName {
-				continue
-			}
-			if iface.VID != nil && v.VID == *iface.VID {
-				// Repeat the same process on the lower interface to
-				// determine if the vlan is going to move in which case
-				// the resources over it must be deleted and re-added.
-				return interfaceIsStaleOrChanged(iface.Uses[0], &v.Lower, profile, host)
-			}
-		}
-
-		// No equivalent interface was found.  It may now be of a different type
-		return true
-
-	case interfaces.IFTypeAE:
-		// Bond interfaces technically do not need to be deleted and re-added
-		// since all of their attributes can be changed on the fly, but since
-		// their name can change it makes it tricky to determine if resources
-		// added over them need to be moved.  So, the best we can do here is to
-		// look at the member interfaces and if there are any members in common
-		// then we assume that the interface is the same otherwise a new one
-		// will created.
-		for _, b := range data.Bond {
-			if newName != nil && b.Name != *newName {
-				continue
-			}
-			for _, u := range iface.Uses {
-				for _, m := range b.Members {
-					if !interfaceIsStaleOrChanged(u, &m, profile, host) {
-						return false
+// findConfiguredBondInterface is a utility function that searches the current
+// set of configured interfaces to determine whether current system interface
+// still exists in the current configured interface list.  Determine whether
+// a system bond interface is the same as a configured bond interface is a bit
+// tricky because just about all of its attributes (including its members) can
+// be modified without deleting and re-adding.  The best we can do here is to
+// look at the member interfaces and if there are any members in common then we
+// treat them as the same interface.
+func findConfiguredBondInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+	for _, u := range iface.Uses {
+		// Examine each member interface and attempt to find a configured
+		// bond interface that has it in its list of members.
+		if oldLower, ok := host.FindInterfaceByName(u); ok {
+			// We found the interface object for the lower interface so
+			// check to see if it is still configured.
+			if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
+				// The interface is still configured so check to see
+				// if its new name happens to be one of the members in one of
+				// the configured bond interfaces.
+				for _, b := range profile.Interfaces.Bond {
+					if utils.ContainsString(b.Members, newLower.Name) {
+						// The system and configured interface have at least 1
+						// member in common so assume they refer to the same
+						// interface.
+						return &b.CommonInterfaceInfo, true
 					}
 				}
 			}
 		}
+	}
 
-		// No equivalent interface was found.  It may now be of a different type
-		return true
+	// No equivalent interface was found.  It may now be of a different type
+	return nil, false
+}
+
+// findConfiguredVLANInterface is a utility function that searches the current
+// set of configured interfaces to determine whether current system interface
+// still exists in the current configured interface list.  To determine if the
+// VLAN interface is still configured we need to match the VID as well as to
+// determine if the lower interface is still the same.  Technically, we could
+// return true if the VID matches a configured VLAN without considering the
+// lower interface but to guarantee consistent processing of the interface,
+// address, and route list the code in this module assumes that this function
+// ensures that the lower interface is also the same.
+func findConfiguredVLANInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+	// VLAN interfaces are more complicated since the name and vid can
+	// remain the same but the interface can be moved over a different
+	// lower interface.
+	for _, v := range profile.Interfaces.VLAN {
+		if iface.VID == nil || v.VID != *iface.VID {
+			continue
+		}
+
+		// We found a matching VID so repeat the same process on the lower
+		// interface to determine if the lower interface is still configured
+		// as the same type of interface.  Only
+		// return true if that search also succeeds.
+		if oldLower, ok := host.FindInterfaceByName(iface.Uses[0]); ok {
+			// We found the interface object for the lower interface so
+			// check to see if it is still configured.
+			if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
+				// The interface is still in the configured list so
+				// return true as long as the name still matches; otherwise
+				// that means that it is now pointing elsewhere.
+				if v.Lower == newLower.Name {
+					return &v.CommonInterfaceInfo, true
+				}
+			}
+		}
+	}
+
+	// No equivalent interface was found.
+	return nil, false
+}
+
+// findConfiguredEthernetInterface is a utility function that searches the current
+// set of configured interfaces to determine whether current system interface
+// still exists in the current configured interface list.  Determining whether
+// an Ethernet interface is configured is simple since the port names are fixed.
+// We only need to ensure that system interface port name and the configured
+// interface port names match.
+func findConfiguredEthernetInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+	if portname, found := host.FindInterfacePortName(iface.ID); found {
+		for _, e := range profile.Interfaces.Ethernet {
+			if e.Port.Name == portname {
+				return &e.CommonInterfaceInfo, true
+			}
+		}
+	}
+
+	// No equivalent interface was found.
+	return nil, false
+}
+
+// findConfiguredVirtualInterface is a utility function that searches the current
+// set of configured interfaces to determine whether current system interface
+// still exists in the current configured interface list.  Determining whether
+// an Virtual interface is configured is simple since the interface names are
+// not allowed to change.
+func findConfiguredVirtualInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+	for _, e := range profile.Interfaces.Ethernet {
+		if e.Name == iface.Name {
+			return &e.CommonInterfaceInfo, true
+		}
+	}
+
+	// No equivalent interface was found.
+	return nil, false
+}
+
+// findConfiguredInterface is a utility function that searches the current set
+// of configured interfaces to determine whether current system interface still
+// exists in the current configured interface list.
+func findConfiguredInterface(iface *interfaces.Interface, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+	switch iface.Type {
+	case interfaces.IFTypeEthernet:
+		return findConfiguredEthernetInterface(profile, iface, host)
+
+	case interfaces.IFTypeVLAN:
+		return findConfiguredVLANInterface(profile, iface, host)
+
+	case interfaces.IFTypeAE:
+		return findConfiguredBondInterface(profile, iface, host)
 
 	case interfaces.IFTypeVirtual:
 		// These are never deleted or renamed.
-		return false
+		return findConfiguredVirtualInterface(profile, iface)
 
 	default:
 		log.Info(fmt.Sprintf("unexpected interface type: %s", iface.Type))
-		return true
+		return nil, false
 	}
+
 }
 
+// findConfiguredRoute is a utility function that searches the current set of
+// configured routes to determine whether current system route still exists in
+// the current configured route list.
+func findConfiguredRoute(route routes.Route, profile *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.RouteInfo, bool) {
+	for _, x := range profile.Routes {
+		if x.Interface == route.InterfaceName &&
+			strings.EqualFold(x.Network, route.Network) &&
+			x.Prefix == route.Prefix &&
+			strings.EqualFold(x.Gateway, route.Gateway) &&
+			(x.Metric == nil || *x.Metric == route.Metric) {
+			// Routes cannot be updated so all fields must match
+			// otherwise re-provisioning is required.
+			return &x, true
+		}
+	}
+
+	return nil, false
+}
+
+// ReconcileStaleRoutes examines the current set of routes and deletes any
+// routes that are stale or need to be re-provisioned.  A route needs to be
+// deleted if:
+//   A) The system route does not have an equivalent configured entry
+//   B) The configured route has moved to a different underlying interface
+//   C) The underlying interface needs to be deleted and re-added.
 func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -120,22 +188,35 @@ func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, 
 	}
 
 	for _, route := range host.Routes {
-		var newName *string = nil
+		remove := false
 
-		for _, x := range profile.Routes {
-			if x.Interface == route.InterfaceName &&
-				strings.EqualFold(x.Network, route.Network) &&
-				x.Prefix == route.Prefix &&
-				x.Gateway == route.Gateway &&
-				(x.Metric == nil || *x.Metric == route.Metric) {
-				// Routes cannot be updated so all fields must match
-				// otherwise re-provisioning is required.
-				newName = &x.Interface
-				break
+		if oldLower, found := host.FindInterfaceByName(route.InterfaceName); !found {
+			// We could not identify the interface for this route.  This is
+			// unexpected so force the deletion of the route so that we can
+			// correct any latent issues.
+			remove = true
+		} else if newAddress, found := findConfiguredRoute(route, profile); !found {
+			// We could not find an equivalent route in the current configured
+			// list so remove this entry.
+			remove = true
+		} else {
+			// We found an equivalent route but we need to make sure that it
+			// is still configured over the same interface.  To do this we look
+			// for a matching interface in the configured list for the route's
+			// current lower interface.
+			if newLower, found := findConfiguredInterface(oldLower, profile, host); !found {
+				// The old lower is no longer configured so this route
+				// definitely needs to be deleted.
+				remove = true
+			} else if newLower.Name != newAddress.Interface {
+				// The old lower is still configured, but the new route is
+				// configured over a completely different interface so it will
+				// need to be moved.
+				remove = true
 			}
 		}
 
-		if newName == nil || interfaceIsStaleOrChanged(route.InterfaceName, newName, profile, host) {
+		if remove == true {
 			log.Info("deleting route", "uuid", route.ID)
 
 			err := routes.Delete(client, route.ID).ExtractErr()
@@ -164,6 +245,28 @@ func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, 
 	return nil
 }
 
+// findConfiguredAddress is a utility function that searches the current set of
+// configured addresses to determine whether current system address still exists
+// in the current configured address list.
+func findConfiguredAddress(addr addresses.Address, profile *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.AddressInfo, bool) {
+	for _, x := range profile.Addresses {
+		if strings.EqualFold(x.Address, addr.Address) && x.Prefix == addr.Prefix {
+			// Addresses cannot be updated so unless both the address
+			// and prefix match we consider it to require
+			// re-provisioning.
+			return &x, true
+		}
+	}
+
+	return nil, false
+}
+
+// ReconcileStaleAddresses examines the current set of addresses and deletes
+// any addresses that are stale or need to be re-provisioned.  An address needs
+// to be deleted if:
+//   A) The system address does not have an equivalent configured entry
+//   B) The configured address has moved to a different underlying interface
+//   C) The underlying interface needs to be deleted and re-added.
 func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -172,25 +275,41 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 	}
 
 	for _, addr := range host.Addresses {
-		var newName *string = nil
-
 		if addr.PoolUUID != nil {
 			// Automatically assigned addresses should be ignored.  The system
 			// will remove them when the pool is removed from the interface.
 			continue
 		}
 
-		for _, x := range profile.Addresses {
-			if strings.EqualFold(x.Address, addr.Address) && x.Prefix == addr.Prefix {
-				// Addresses cannot be updated so unless both the address
-				// and prefix match we consider it to require
-				// re-provisioning.
-				newName = &x.Interface
-				break
+		remove := false
+
+		if oldLower, found := host.FindInterfaceByName(addr.InterfaceName); !found {
+			// We could not identify the interface for this address.  This is
+			// unexpected so force the deletion of the address so that we can
+			// correct any latent issues.
+			remove = true
+		} else if newAddress, found := findConfiguredAddress(addr, profile); !found {
+			// We could not find an equivalent address in the current configured
+			// list so remove this entry.
+			remove = true
+		} else {
+			// We found an equivalent address but we need to make sure that it
+			// is still configured over the same interface.  To do this we look
+			// for a matching interface in the configured list for the address's
+			// current lower interface.
+			if newLower, found := findConfiguredInterface(oldLower, profile, host); !found {
+				// The old lower is no longer configured so this address
+				// definitely needs to be deleted.
+				remove = true
+			} else if newLower.Name != newAddress.Interface {
+				// The old lower is still configured, but the new address is
+				// configured over a completely different interface so it will
+				// need to be moved.
+				remove = true
 			}
 		}
 
-		if newName == nil || interfaceIsStaleOrChanged(addr.InterfaceName, newName, profile, host) {
+		if remove == true {
 			log.Info("deleting address", "uuid", addr.ID)
 
 			err := addresses.Delete(client, addr.ID).ExtractErr()
@@ -223,7 +342,8 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 // and determine if any of them need to be deleted.  An interface needs to be
 // deleted if:
 //   A) it no longer exists in the list of interfaces to be configured
-//   B) it still exists as a VLAN, but has a different vlan-id value
+//   B) it still exists as a VLAN, but has a different vlan-id value or lower
+//      interface
 //   C) it still exists as a Bond, but has no members in common with the system
 //      interface.
 func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
@@ -233,24 +353,25 @@ func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClie
 		return nil
 	}
 
-	for _, ifInfo := range host.Interfaces {
-		if ifInfo.Type == interfaces.IFTypeEthernet || ifInfo.Type == interfaces.IFTypeVirtual {
+	for _, iface := range host.Interfaces {
+		if iface.Type == interfaces.IFTypeEthernet || iface.Type == interfaces.IFTypeVirtual {
 			continue
 		}
 
-		if interfaceIsStaleOrChanged(ifInfo.Name, nil, profile, host) {
-			// This interface either no longer exists or needs to be
-			// re-provisioned.
-			log.Info("deleting interface", "uuid", ifInfo.ID)
+		if _, found := findConfiguredInterface(&iface, profile, host); !found {
+			// This interface either no longer exists or has changed in a way
+			// that required re-provisioning.
 
-			err := interfaces.Delete(client, ifInfo.ID).ExtractErr()
+			log.Info("deleting interface", "uuid", iface.ID)
+
+			err := interfaces.Delete(client, iface.ID).ExtractErr()
 			if err != nil {
-				err = perrors.Wrapf(err, "failed to delete interface %s", ifInfo.ID)
+				err = perrors.Wrapf(err, "failed to delete interface %s", iface.ID)
 				return err
 			}
 
 			r.NormalEvent(instance, common.ResourceDeleted,
-				"stale interface %q has been deleted", ifInfo.Name)
+				"stale interface %q has been deleted", iface.Name)
 
 			updated = true
 		}
