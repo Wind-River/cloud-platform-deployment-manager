@@ -7,7 +7,6 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
 )
 
 // +deepequal-gen:unordered-array=true
@@ -376,25 +375,6 @@ type EthernetInfo struct {
 // EthernetList defines a type to represent a slice of ethernet interfaces.
 // +deepequal-gen:unordered-array=true
 type EthernetList []EthernetInfo
-
-// SortByNetworkCount is a utility method to sort the list of interfaces
-// by their respective platform network count.
-func (in EthernetList) SortByNetworkCount() EthernetList {
-	sort.SliceStable(in, func(i, j int) bool {
-		if in[i].PlatformNetworks == in[j].PlatformNetworks {
-			// both nil, or both are the same slice
-			return true
-		} else if in[i].PlatformNetworks == nil && in[j].PlatformNetworks != nil {
-			// i is definitely less than j since i was not specified.
-			return true
-		} else if in[i].PlatformNetworks != nil && in[j].PlatformNetworks == nil {
-			// i is definitely greater than j since j was not specified.
-			return false
-		}
-		return len(*in[i].PlatformNetworks) < len(*in[j].PlatformNetworks)
-	})
-	return in
-}
 
 // VLANInfo defines the attributes specific to a single VLAN
 // interface.

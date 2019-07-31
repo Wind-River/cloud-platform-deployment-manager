@@ -390,6 +390,158 @@ func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClie
 	return nil
 }
 
+// ReconcileStaleInterfaceNetworks will examine the current set of system
+// interfaces and determine if any interface-network associations need to be
+// removed from any interface.  This step is critical to proper reconciliation
+// of interfaces because when moving a network from one interface to another
+// it cannot be added to the new interface until it has been removed from the
+// old network.  The only way to accomplish that is to execute this in two
+// phases.  The first phase is handled by this method and deletes old
+// associations.  The second phase is handled by Reconcile*Interfaces and adds
+// missing associations.
+func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+	updated := false
+
+	if config.IsReconcilerEnabled(config.Interface) == false {
+		return nil
+	}
+
+	for _, iface := range host.Interfaces {
+		// ReconcileStaleInterfaces is assumed to have been invoked before this
+		// method therefore ignore any failures to find a configured interface
+		// since they would have been already deleted in a previous step.
+
+		if info, found := findConfiguredInterface(&iface, profile, host); found {
+			if info.PlatformNetworks == nil {
+				// The user did not specify any networks (an empty list or
+				// otherwise) so accept whatever is currently provisioned as
+				// the desired list.
+				continue
+			}
+
+			// Get the lists of current and configured networks on this interface
+			current := host.BuildInterfaceNetworkList(iface)
+			configured := *info.PlatformNetworks
+
+			// Diff the lists to determine what changes need to be applied
+			_, removed, _ := utils.ListDelta(current, configured)
+
+			for _, name := range removed {
+				if id, ok := host.FindInterfaceNetworkID(iface, name); ok {
+					log.Info("deleting stale interface-network from interface", "ifname",
+						iface.Name, "id", id)
+
+					err := interfaceNetworks.Delete(client, id).ExtractErr()
+					if err != nil {
+						err = perrors.Wrapf(err, "failed to delete stale interface-network %q from iface %q",
+							id, iface.Name)
+						return err
+					}
+
+					updated = true
+
+					r.NormalEvent(instance, common.ResourceDeleted,
+						"stale interface-network %q has been removed from %q",
+						id, iface.Name)
+				} else {
+					msg := fmt.Sprintf("unable to find interface-network id for network %q on interface %q",
+						name, iface.Name)
+					return starlingxv1beta1.NewMissingSystemResource(msg)
+				}
+			}
+		}
+	}
+
+	if updated {
+		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks on hostid %s",
+				host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = results
+	}
+
+	return nil
+}
+
+// ReconcileStaleInterfaceDataNetworks will examine the current set of system
+// interfaces and determine if any interface-network associations need to be
+// removed from any interface.  This step is critical to proper reconciliation
+// of interfaces because when moving a network from one interface to another
+// it cannot be added to the new interface until it has been removed from the
+// old network.  The only way to accomplish that is to execute this in two
+// phases.  The first phase is handled by this method and deletes old
+// associations.  The second phase is handled by Reconcile*Interfaces and adds
+// missing associations.
+func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+	updated := false
+
+	if config.IsReconcilerEnabled(config.Interface) == false {
+		return nil
+	}
+
+	for _, iface := range host.Interfaces {
+		// ReconcileStaleInterfaces is assumed to have been invoked before this
+		// method therefore ignore any failures to find a configured interface
+		// since they would have been already deleted in a previous step.
+
+		if info, found := findConfiguredInterface(&iface, profile, host); found {
+			if info.DataNetworks == nil {
+				// The user did not specify any networks (an empty list or
+				// otherwise) so accept whatever is currently provisioned as
+				// the desired list.
+				continue
+			}
+
+			// Get the lists of current and configured networks on this interface
+			current := host.BuildInterfaceDataNetworkList(iface)
+			configured := *info.DataNetworks
+
+			// Diff the lists to determine what changes need to be applied
+			_, removed, _ := utils.ListDelta(current, configured)
+
+			for _, name := range removed {
+				if id, ok := host.FindInterfaceDataNetworkID(iface, name); ok {
+					log.Info("deleting stale interface-network from interface",
+						"ifname", iface.Name, "id", id)
+
+					err := interfaceDataNetworks.Delete(client, id).ExtractErr()
+					if err != nil {
+						err = perrors.Wrapf(err, "failed to delete stale interface-datanetwork %q from iface %q",
+							id, iface.Name)
+						return err
+					}
+
+					updated = true
+
+					r.NormalEvent(instance, common.ResourceDeleted,
+						"stale interface-datanetwork %q has been removed from %q",
+						id, iface.Name)
+				} else {
+					msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q on interface %q",
+						name, iface.Name)
+					return starlingxv1beta1.NewMissingSystemResource(msg)
+				}
+			}
+		}
+	}
+
+	if updated {
+		results, err := interfaceDataNetworks.ListInterfaceDataNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-datanetworks on hostid %s",
+				host.ID)
+			return err
+		}
+
+		host.InterfaceDataNetworks = results
+	}
+
+	return nil
+}
+
 // hasIPv4StaticAddresses is a utility function which determines if an interface
 // has any configured static addresses.
 func hasIPv4StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec) bool {
@@ -738,7 +890,7 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	networksUpdated := false
 	dataNetworksUpdated := false
 
-	for _, ethInfo := range profile.Interfaces.Ethernet.SortByNetworkCount() {
+	for _, ethInfo := range profile.Interfaces.Ethernet {
 		// For each configured ethernet interface update the associated system
 		// resource.
 		if ethInfo.Name != interfaces.LoopbackInterfaceName {
@@ -1247,6 +1399,18 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 
 	// Remove stale vlans or bond interfaces that will be deleted
 	err = r.ReconcileStaleInterfaces(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Remove stale interface-network associations
+	err = r.ReconcileStaleInterfaceNetworks(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Remove stale interface-network associations
+	err = r.ReconcileStaleInterfaceDataNetworks(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@
 package v1beta1
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/onsi/gomega"
@@ -43,61 +42,4 @@ func TestStorageHostProfile(t *testing.T) {
 	// Test Delete
 	g.Expect(c.Delete(context.TODO(), fetched)).NotTo(gomega.HaveOccurred())
 	g.Expect(c.Get(context.TODO(), key, fetched)).To(gomega.HaveOccurred())
-}
-
-func TestEthernetList_SortByNetworkCount(t *testing.T) {
-	before := EthernetList{
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name:             "mgmt0",
-				PlatformNetworks: &StringList{"a", "b", "c"},
-			},
-		},
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name: "lo",
-			},
-		},
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name:             "enp0s3",
-				PlatformNetworks: &StringList{"d", "e"},
-			},
-		},
-	}
-	after := EthernetList{
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name: "lo",
-			},
-		},
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name:             "enp0s3",
-				PlatformNetworks: &StringList{"d", "e"},
-			},
-		},
-		EthernetInfo{
-			CommonInterfaceInfo: CommonInterfaceInfo{
-				Name:             "mgmt0",
-				PlatformNetworks: &StringList{"a", "b", "c"},
-			},
-		},
-	}
-	tests := []struct {
-		name string
-		in   EthernetList
-		want EthernetList
-	}{
-		{name: "simple",
-			in:   before,
-			want: after},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.in.SortByNetworkCount(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("EthernetList.SortByNetworkCount() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
