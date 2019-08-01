@@ -1379,22 +1379,17 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 		return nil
 	}
 
-	if profile.HasWorkerSubFunction() {
-		// The system API only supports setting these attributes on nodes
-		// that support the compute subfunction.
+	// Remove stale routes or routes on addresses that will be updated.
+	err = r.ReconcileStaleRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
 
-		// Remove stale routes or routes on addresses that will be updated.
-		err := r.ReconcileStaleRoutes(client, instance, profile, host)
-		if err != nil {
-			return err
-		}
-
-		// Remove stale addresses or addresses on interfaces that will be
-		// deleted and re-added.
-		err = r.ReconcileStaleAddresses(client, instance, profile, host)
-		if err != nil {
-			return err
-		}
+	// Remove stale addresses or addresses on interfaces that will be
+	// deleted and re-added.
+	err = r.ReconcileStaleAddresses(client, instance, profile, host)
+	if err != nil {
+		return err
 	}
 
 	// Remove stale vlans or bond interfaces that will be deleted
@@ -1433,21 +1428,16 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 		return err
 	}
 
-	if profile.HasWorkerSubFunction() {
-		// The system API only supports setting these attributes on nodes
-		// that support the compute subfunction.
+	// Update/Add addresses
+	err = r.ReconcileAddresses(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
 
-		// Update/Add addresses
-		err = r.ReconcileAddresses(client, instance, profile, host)
-		if err != nil {
-			return err
-		}
-
-		// Update/Add routes
-		err = r.ReconcileRoutes(client, instance, profile, host)
-		if err != nil {
-			return err
-		}
+	// Update/Add routes
+	err = r.ReconcileRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
 	}
 
 	return nil

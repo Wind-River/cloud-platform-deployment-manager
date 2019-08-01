@@ -794,18 +794,16 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		return nil, err
 	}
 
-	if spec.HasWorkerSubFunction() {
-		// Fill-in Address attributes
-		err = parseAddressInfo(&spec, host)
-		if err != nil {
-			return nil, err
-		}
+	// Fill-in Address attributes
+	err = parseAddressInfo(&spec, host)
+	if err != nil {
+		return nil, err
+	}
 
-		// Fill-in Route attributes
-		err = parseRouteInfo(&spec, host)
-		if err != nil {
-			return nil, err
-		}
+	// Fill-in Route attributes
+	err = parseRouteInfo(&spec, host)
+	if err != nil {
+		return nil, err
 	}
 
 	// Fill-in Route attributes
