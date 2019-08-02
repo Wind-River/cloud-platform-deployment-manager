@@ -449,8 +449,44 @@ it must either be tagged and pushed to a private Docker Registry (i.e., using
 docker tag + docker push) or exported to an archive that can be used to load the
 image directly into the StarlingX local private Docker Registry (i.e., using
 docker save + docker load).  For more information on how to manipulate Docker 
-Images please refer to Docker documentation.
+images please refer to Docker documentation.  The following subsections provide
+example commands to publish and use a custom Deployment Manager image.  Actual
+commands may vary based on your local environment.
 
+### Pushing The Image To A Private Registry
+
+The following commands tag a custom image and pushes it to a private Docker 
+registry.  This private image can later be accessed from the StarlingX system
+if the Deployment Manager is configured to pull its image from this private
+Docker registry rather than the default local Docker registry.
+
+```bash
+export PRIVATE_REGISTRY="your.registry.com"
+docker tag titanium/deployment-manager:latest ${PRIVATE_REGISTRY}/titanium/deployment-manager:latest
+docker push ${PRIVATE_REGISTRY}/titanium/deployment-manager:latest
+```
+
+### Exporting The Image For Offline Use
+
+The following commands tag a custom image and exports it to an compressed
+archive.  This archive can later be uploaded to a StarlingX system and imported
+directly into the StarlingX local Docker registry.
+
+```bash
+export OFFLINE_IMAGE_PATH="/some/path/to/images"
+docker tag titanium/deployment-manager:latest titanium/deployment-manager:v0.2.0
+docker save titanium/deployment-manager | gzip >  ${OFFLINE_IMAGE_PATH}/titanium-deployment-manager-images.tgz
+```
+
+### Importing The Image From Offline Storage
+
+The following command imports a custom image into the StarlingX local Docker
+registry.  This command assumes that the compressed image archive has already
+been copied onto the local file system.
+
+```bash
+sudo docker load -i /home/wrsroot/titanium-deployment-manager-images.tgz
+```
 
 ## Installing The Deployment Manager
 
@@ -459,8 +495,9 @@ source definition can be found under the ```helm/titanium-deployment-manager```
 directory and all overridable configuration values are defined in the
 ```helm/titanium-deployment-manager/values.yaml``` file.
 
-The final packaged helm chart can be downloaded from the following repo
-location.
+A pre-built copy of the Deployment Manager Helm chart can be downloaded from
+this repo at the following location.  Alternatively, it can be accessed
+directly from the cloned repo in the ```docs/charts``` directory.
 
 [[https://github.com/wind-river/titanium-deployment-manager/docs/charts/titanium-deployment-manager-0.2.0.tgz]]
 
