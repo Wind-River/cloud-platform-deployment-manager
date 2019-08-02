@@ -135,11 +135,11 @@ func NewStorageMonitorFilter() *StorageMonitorFilter {
 func (in *StorageMonitorFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
 	storage := profile.Spec.Storage
 	if storage != nil && storage.Monitor != nil {
-		// TODO(alegacy): this assumes that there were no previous accesses
-		//  to the overrides storage structure.
-		host.Spec.Overrides.Storage = &v1beta1.ProfileStorageInfo{
-			Monitor: storage.Monitor,
+		if host.Spec.Overrides.Storage == nil {
+			host.Spec.Overrides.Storage = &v1beta1.ProfileStorageInfo{}
 		}
+		host.Spec.Overrides.Storage.Monitor = storage.Monitor
+
 		profile.Spec.Storage.Monitor = nil
 		if storage.VolumeGroups == nil && storage.OSDs == nil && storage.FileSystems == nil {
 			profile.Spec.Storage = nil
