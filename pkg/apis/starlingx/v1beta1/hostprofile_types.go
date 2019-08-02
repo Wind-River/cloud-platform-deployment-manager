@@ -492,39 +492,6 @@ type RouteInfo struct {
 // +deepequal-gen:unordered-array=true
 type RouteList []RouteInfo
 
-// FindEthernet searches the list of ethernet interfaces to find a resource
-// with a matching name attribute.
-func (in InterfaceInfo) FindEthernet(name string) *EthernetInfo {
-	for _, e := range in.Ethernet {
-		if e.Name == name {
-			return &e
-		}
-	}
-	return nil
-}
-
-// FindVLAN searches the list of VLAN interfaces to find a resource with a
-// matching name attribute.
-func (in InterfaceInfo) FindVLAN(name string) *VLANInfo {
-	for _, v := range in.VLAN {
-		if v.Name == name {
-			return &v
-		}
-	}
-	return nil
-}
-
-// FindBond searches the list of Bond interfaces to find a resource with a
-// matching name attribute.
-func (in InterfaceInfo) FindBond(name string) *BondInfo {
-	for _, b := range in.Bond {
-		if b.Name == name {
-			return &b
-		}
-	}
-	return nil
-}
-
 // IsKeyEqual compares two processor info array elements and determines if they
 // refer to the same instance.  All other attributes will be merged during
 // profile merging.

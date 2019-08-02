@@ -976,7 +976,7 @@ func (r *ReconcileSystem) GetSystemDefaults(instance *starlingxv1beta1.System) (
 
 // MergeSystemSpecs invokes the mergo.Merge API with our desired modifiers.
 func MergeSystemSpecs(a, b *starlingxv1beta1.SystemSpec) (*starlingxv1beta1.SystemSpec, error) {
-	t := common.MergeTransformer{OverwriteSlices: true}
+	t := common.DefaultMergeTransformer
 	err := mergo.Merge(a, b, mergo.WithOverride, mergo.WithTransformers(t))
 	if err != nil {
 		err = perrors.Wrap(err, "mergo.Merge failed to merge profiles")
