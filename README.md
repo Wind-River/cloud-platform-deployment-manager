@@ -358,6 +358,13 @@ can be run on the system it is configuring), or it can be a standalone
 Kubernetes cluster provided by the end user (i.e., the Deployment Manager can
 configure StarlingX systems remotely).
 
+***Warning***:  Remote deployment is currently not supported due to technical
+issues with how the OpenStack endpoint list is configured on the StarlingX 
+system.  Currently, this functionality only works if the IP address of the
+first controller is configured (e.g., DHCP) to be the eventual OAM floating
+IP address.  For all other address configurations a implementation change is
+required to the StarlingX software.
+ 
 Depending on which operational model is chosen, the system URL
 and endpoint type (e.g., public, internal) must specify the correct access
 method to reach the target system.  For example, the ```system-endpoint```
@@ -386,6 +393,8 @@ stringData:
 type: Opaque
 ```
 
+### Local Deployment
+
 Running the Deployment Manager locally, on the target system, requires that the
 system URL specify the local management floating IP address and the endpoint
 type be set to ```internal```.
@@ -394,6 +403,8 @@ type be set to ```internal```.
 enabled on hosts then the URL provided must point to the OAM floating IP
 address. This is to ensure that BMC credentials and HTTPS private key
 information is always transmitted over an encrypted HTTPS session.
+
+### Remote Deployment
 
 Running the Deployment Manager remotely, on a system other than the target
 system, requires that the system URL specify the OAM floating IP address and
