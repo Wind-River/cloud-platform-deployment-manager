@@ -437,6 +437,18 @@ configuration, the Deployment Manager will succeed immediately when connecting
 to the first IP and will not be subject to a connection timeout delay incurred
 when accessing the temporary installation IP address when it is no longer valid.
 
+### Debugging API requests
+
+For debug purposes, it is possible to log all API requests between the
+Deployment Manager and the StarlinX system API.  To enable this functionality
+the OS_DEBUG attribute must be a string representation of a boolean value.  At
+the time of writing this document those values are "1", "t", "T", "true", 
+"TRUE", and "True".
+
+```yaml
+  OS_DEBUG: true
+```
+
 ## Building The Deployment Manager Image
 
 The Deployment Manager Docker Image is not currently posted on any public Docker

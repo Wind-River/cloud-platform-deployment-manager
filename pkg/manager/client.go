@@ -6,13 +6,16 @@ package manager
 import (
 	"context"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/acceptance/clients"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	perrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -34,6 +37,7 @@ const (
 	ProjectIDKey                   = "OS_PROJECT_ID"
 	ProjectNameKey                 = "OS_PROJECT_NAME"
 	InterfaceKey                   = "OS_INTERFACE"
+	DebugKey                       = "OS_DEBUG"
 )
 
 const (
@@ -255,6 +259,16 @@ func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.Se
 		ProviderClient: provider,
 		Endpoint:       urlEndpoint,
 		ResourceBase:   urlEndpoint}
+
+	debug, err := strconv.ParseBool(string(secret.Data[DebugKey]))
+	if err == nil && debug {
+		// Debug is enabled so log all API requests/responses
+		t := c.HTTPClient.Transport
+		if t == nil {
+			t = http.DefaultTransport
+		}
+		c.HTTPClient.Transport = &clients.LogRoundTripper{Rt: t}
+	}
 
 	// Test the client because the authentication endpoint is different from
 	// the resource endpoint therefore there is no guarantee that it works.
