@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/partitions"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
@@ -459,13 +458,7 @@ func (m *inventoryCollectedMonitor) Run(client *gophercloud.ServiceClient) (stop
 		return false, nil
 	}
 
-	objects, err := hostFilesystems.ListFileSystems(client, m.id)
-	if err != nil {
-		m.SetState("failed to query filesystem list for host %q: %s", m.id, err.Error())
-		return false, err
-	}
-
-	if len(objects) > 0 {
+	if host.IsInventoryCollected() {
 		m.SetState("inventory has completed host %q", m.id)
 		return true, nil
 	}
