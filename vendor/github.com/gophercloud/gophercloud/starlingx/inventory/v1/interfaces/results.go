@@ -53,6 +53,9 @@ type Interface struct {
 	// Class is the assigned interface class (e.g., platform, data, sriov)
 	Class string `json:"ifclass"`
 
+	// NetworkType is the type assigned to the interface. (e.g. mgmt, oam)
+	NetworkType string `json:"network_type"`
+
 	// MTU is the maximum transmit unit of the interface.
 	MTU int `json:"imtu"`
 
@@ -75,6 +78,12 @@ type Interface struct {
 	// IPv6Pool is the UUID value of the address pool to be associated with
 	// the interface if the mode is set to "pool".
 	IPv6Pool *string `json:"ipv6_pool,omitempty"`
+
+	// Networks is the list of networks assigned to this interface.
+	Networks []string `json:"networks"`
+
+	// DataNetwork is the list of data networks assigned to this interface.
+	DataNetworks []string `json:"datanetworks"`
 
 	// AEMode is the link protection mode assigned to the interface if the
 	// interface is a Bond interface.

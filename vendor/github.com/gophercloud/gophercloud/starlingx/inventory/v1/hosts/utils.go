@@ -36,6 +36,13 @@ func (in *Host) IsUnlockedAvailable() bool {
 	return in.IsUnlockedEnabled() && in.AvailabilityStatus == AvailAvailable
 }
 
+// IsInventoryCollected is a convenience utility to determine whether initial
+// inventory collection has completed on a host.  It is not safe to configure
+// or unlock a host until inventory collection has completed.
+func (in *Host) IsInventoryCollected() bool {
+	return in.InventoryState != nil && *in.InventoryState == InventoryCollected
+}
+
 // State returns a string representation of the host's administrative,
 // operational and availability state/status.
 func (in *Host) State() string {

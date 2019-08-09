@@ -163,11 +163,14 @@
 
 [[projects]]
   branch = "starlingx"
-  digest = "1:9ff996b67b1fb3a540eeb090f1a761824a8e48a9a384eac12dd1f24a0cf155a1"
+  digest = "1:d3b90b58b45d27536ccc50ff503ef078faef61ff85a714d72287a1c6f74e4375"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
+    "acceptance/clients",
     "openstack",
+    "openstack/baremetal/noauth",
+    "openstack/blockstorage/noauth",
     "openstack/identity/v2/tenants",
     "openstack/identity/v2/tokens",
     "openstack/identity/v3/tokens",
@@ -207,7 +210,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "88febaf089bd54fbf8e5fa0b463f2604ac770ea2"
+  revision = "5543ce6643d18c286486f056ed85c0108084a94b"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]
@@ -1093,6 +1096,7 @@
     "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
     "github.com/gophercloud/gophercloud",
+    "github.com/gophercloud/gophercloud/acceptance/clients",
     "github.com/gophercloud/gophercloud/openstack",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresses",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools",

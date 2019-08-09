@@ -44,21 +44,25 @@ const (
 )
 
 type InterfaceOpts struct {
-	HostUUID       *string   `json:"ihost_uuid,omitempty" mapstructure:"ihost_uuid"`
-	Type           *string   `json:"iftype,omitempty" mapstructure:"iftype"`
-	Name           *string   `json:"ifname,omitempty" mapstructure:"ifname"`
-	Class          *string   `json:"ifclass,omitempty" mapstructure:"ifclass"`
-	MTU            *int      `json:"imtu,omitempty" mapstructure:"imtu"`
-	VID            *int      `json:"vlan_id,omitempty" mapstructure:"vlan_id"`
-	IPv4Mode       *string   `json:"ipv4_mode,omitempty" mapstructure:"ipv4_mode"`
-	IPv4Pool       *string   `json:"ipv4_pool,omitempty" mapstructure:"ipv4_pool"`
-	IPv6Mode       *string   `json:"ipv6_mode,omitempty" mapstructure:"ipv6_mode"`
-	IPv6Pool       *string   `json:"ipv6_pool,omitempty" mapstructure:"ipv6_pool"`
-	AEMode         *string   `json:"aemode,omitempty" mapstructure:"aemode"`
-	AETransmitHash *string   `json:"txhashpolicy,omitempty" mapstructure:"txhashpolicy"`
-	VFCount        *int      `json:"sriov_numvfs,omitempty" mapstructure:"sriov_numvfs"`
-	Uses           *[]string `json:"uses,omitempty" mapstructure:"uses"`
-	UsesModify     *[]string `json:"usesmodify,omitempty" mapstructure:"usesmodify"`
+	HostUUID         *string   `json:"ihost_uuid,omitempty" mapstructure:"ihost_uuid"`
+	Type             *string   `json:"iftype,omitempty" mapstructure:"iftype"`
+	Name             *string   `json:"ifname,omitempty" mapstructure:"ifname"`
+	Class            *string   `json:"ifclass,omitempty" mapstructure:"ifclass"`
+	MTU              *int      `json:"imtu,omitempty" mapstructure:"imtu"`
+	VID              *int      `json:"vlan_id,omitempty" mapstructure:"vlan_id"`
+	IPv4Mode         *string   `json:"ipv4_mode,omitempty" mapstructure:"ipv4_mode"`
+	IPv4Pool         *string   `json:"ipv4_pool,omitempty" mapstructure:"ipv4_pool"`
+	IPv6Mode         *string   `json:"ipv6_mode,omitempty" mapstructure:"ipv6_mode"`
+	IPv6Pool         *string   `json:"ipv6_pool,omitempty" mapstructure:"ipv6_pool"`
+	Networks         *[]string `json:"networks,omitempty" mapstructure:"networks"`
+	NetworksToAdd    *[]string `json:"networks_to_add,omitempty" mapstructure:"networks_to_add"`
+	NetworksToDelete *[]string `json:"interface_networks_to_remove,omitempty" mapstructure:"interface_networks_to_remove"`
+	DataNetworks     *[]string `json:"datanetworks,omitempty" mapstructure:"datanetworks"`
+	AEMode           *string   `json:"aemode,omitempty" mapstructure:"aemode"`
+	AETransmitHash   *string   `json:"txhashpolicy,omitempty" mapstructure:"txhashpolicy"`
+	VFCount          *int      `json:"sriov_numvfs,omitempty" mapstructure:"sriov_numvfs"`
+	Uses             *[]string `json:"uses,omitempty" mapstructure:"uses"`
+	UsesModify       *[]string `json:"usesmodify,omitempty" mapstructure:"usesmodify"`
 }
 
 // ListOptsBuilder allows extensions to add additional parameters to the

@@ -52,6 +52,11 @@ const (
 	TaskPoweringOff = "Powering-off"
 )
 
+// Inventory collection state
+const (
+	InventoryCollected = "inventoried"
+)
+
 const (
 	PersonalityController = "controller"
 	PersonalityWorker     = "worker"
@@ -186,6 +191,10 @@ type Host struct {
 
 	// AvailabilityStatus is the current availability state of the host.
 	AvailabilityStatus string `json:"availability"`
+
+	// InventoryState is the current state of the inventory collection process
+	// of the host.
+	InventoryState *string `json:"inv_state,omitempty"`
 }
 
 // HostPage is the page returned by a pager when traversing over a
