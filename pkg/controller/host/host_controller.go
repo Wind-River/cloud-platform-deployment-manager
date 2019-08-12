@@ -939,6 +939,10 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 
 	if status.ID == nil || *status.ID != host.ID {
 		status.ID = &host.ID
+		// If the ID is being set or changed then make sure the defaults are
+		// reset back to nil so that the host is re-inventoried before being
+		// configured.
+		status.Defaults = nil
 		result = true
 	}
 
