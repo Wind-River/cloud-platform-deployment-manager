@@ -130,7 +130,7 @@ type StorageBackendList []StorageBackend
 // filesystem resource.
 type ControllerFileSystemInfo struct {
 	// Name defines the system defined name of the filesystem resource.
-	// +kubebuilder:validation:Enum=cgcs,glance,cinder,database,docker-distribution,etcd,extension,patch-vault
+	// +kubebuilder:validation:Enum=cgcs,platform,cinder,database,docker-distribution,etcd,extension,patch-vault
 	Name string `json:"name"`
 
 	// +kubebuilder:validation:Minimum=1

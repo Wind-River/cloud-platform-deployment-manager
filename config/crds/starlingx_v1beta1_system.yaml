@@ -250,7 +250,7 @@ spec:
                           resource.
                         enum:
                         - cgcs
-                        - glance
+                        - platform
                         - cinder
                         - database
                         - docker-distribution
