@@ -965,7 +965,6 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 		status.InSync = inSync
 		result = true
 	}
-
 	if status.InSync == true && status.Reconciled == false {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
@@ -1011,7 +1010,7 @@ func findExistingHost(objects []hosts.Host, hostname string, match *starlingxv1b
 // a host. This handles both static and dynamic provisioning of hosts.  If a
 // new host is created then the 'host' return parameter will be updated with a
 // pointer to the new host object.
-func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) (*hosts.Host, error) {
+func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) (host *hosts.Host, err error) {
 	host = findExistingHost(r.hosts, instance.Name, instance.Spec.Match, profile.BootMAC)
 	if host != nil {
 		log.Info("found matching host", "id", host.ID)
@@ -1358,7 +1357,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 		// This host either needs to be provisioned for the first time or we
 		// need to audit the list of hosts so that we can find one that already
 		// exists.
-		host, err = r.ReconcileNewHost(client, instance, profile, host)
+		host, err = r.ReconcileNewHost(client, instance, profile)
 		if err != nil {
 			return err
 		}

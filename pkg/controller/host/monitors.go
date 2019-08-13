@@ -606,7 +606,7 @@ func (m *dynamicHostMonitor) Run(client *gophercloud.ServiceClient) (stop bool, 
 		return true, nil
 	}
 
-	m.SetState("waiting for %q to appear in system inventory")
+	m.SetState("waiting for %q to appear in system inventory", m.hostname)
 
 	return false, nil
 }
@@ -667,7 +667,7 @@ func (m *kubernetesResourceMonitor) Run(client *gophercloud.ServiceClient) (stop
 	} else if errors.IsNotFound(err) {
 		m.SetState("waiting for kubernetes %q resource %q", m.object.GetObjectKind(), m.name)
 	} else {
-		m.SetState("failed to query kubernetes %q resources: %s", m.object.GetObjectKind())
+		m.SetState("failed to query kubernetes %q resources", m.object.GetObjectKind())
 	}
 
 	// The error is intentionally not returned because we do not attempt
