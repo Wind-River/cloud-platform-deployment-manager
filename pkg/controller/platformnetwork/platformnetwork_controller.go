@@ -118,11 +118,7 @@ func compareRangeArrays(x, y [][]string) bool {
 		}
 	}
 
-	if len(x) != count {
-		return false
-	}
-
-	return true
+	return len(x) == count
 }
 
 // poolUpdateRequired determines whether a system address pool resource must

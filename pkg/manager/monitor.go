@@ -214,12 +214,9 @@ func (m *Monitor) handleClientError(err error) (stop bool) {
 	// to transfer control back to the reconciler so that it can decide the best
 	// next step.  The best way to do that is to send a notification to the
 	// object being monitored.
-	if m.notify() == nil {
-		// If we successfully notified the reconciler then we can stop
-		// monitoring; otherwise we should keep going since there is no
-		// other way to ensure that the reconciler will continue.
-		return true
-	}
 
-	return false
+	// If we successfully notified the reconciler then we can stop monitoring;
+	// otherwise we should keep going since there is no other way to ensure that
+	// the reconciler will continue.
+	return m.notify() == nil
 }
