@@ -269,7 +269,6 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 // ReconcilerEventLogger is an interface that is intended to allow specialized
 // behavior when generating an event.
 type ReconcilerEventLogger interface {
-	event(object runtime.Object, eventtype string, logLevel int, reason string, messageFmt string, args ...interface{})
 	NormalEvent(object runtime.Object, reason string, messageFmt string, args ...interface{})
 	WarningEvent(object runtime.Object, reason string, messageFmt string, args ...interface{})
 }
