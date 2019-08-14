@@ -157,7 +157,10 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1beta1.Sys
 
 		caBytes := make([]byte, base64.StdEncoding.DecodedLen(len(caEncodedBytes)))
 		_, err = base64.StdEncoding.Decode(caBytes, caEncodedBytes)
-
+		if err != nil {
+			log.Error(err, "failed to decode ")
+			return err
+		}
 		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, c.Secret)
 		err = InstallCertificate(filename, caEncodedBytes)
 		if err != nil {
@@ -395,7 +398,7 @@ func (r *ReconcileSystem) ReconcileSNMPCommunities(client *gophercloud.ServiceCl
 
 			_, err := snmpCommunity.Create(client, opts).Extract()
 			if err != nil {
-
+				return err
 			}
 
 			r.NormalEvent(instance, common.ResourceUpdated, "SNMP community %q has been created", name)
@@ -447,7 +450,7 @@ func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.Serv
 
 			_, err := snmpTrapDest.Create(client, opts).Extract()
 			if err != nil {
-
+				return err
 			}
 
 			r.NormalEvent(instance, common.ResourceUpdated, "SNMP Trap Destination %q has been created", destInfo.IPAddress)
