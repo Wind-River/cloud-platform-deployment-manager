@@ -53,10 +53,6 @@ func (h *HostCreateUpdateHandler) validateMatchDMIInfo(ctx context.Context, obj 
 }
 
 func (h *HostCreateUpdateHandler) validateMatchInfo(ctx context.Context, obj *starlingxv1beta1.Host) (bool, string, error) {
-	var allowed = true
-	var reason = AllowedReason
-	var err error
-
 	match := obj.Spec.Match
 
 	if match.BootMAC == nil && match.BoardManagement == nil && match.DMI == nil {
@@ -64,14 +60,14 @@ func (h *HostCreateUpdateHandler) validateMatchInfo(ctx context.Context, obj *st
 	}
 
 	if match.BoardManagement != nil {
-		allowed, reason, err = h.validateMatchBMInfo(ctx, obj)
+		allowed, reason, err := h.validateMatchBMInfo(ctx, obj)
 		if !allowed || err != nil {
 			return allowed, reason, err
 		}
 	}
 
 	if match.DMI != nil {
-		allowed, reason, err = h.validateMatchDMIInfo(ctx, obj)
+		allowed, reason, err := h.validateMatchDMIInfo(ctx, obj)
 		if !allowed || err != nil {
 			return allowed, reason, err
 		}

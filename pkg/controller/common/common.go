@@ -166,7 +166,6 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		// connect to the server.  Reset the client in all cases
 		urlError := cause.(*url.Error)
 
-		resetClient = true
 		result = RetryNetworkError
 		err = nil
 
@@ -191,7 +190,6 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	case HTTPSClientRequired:
 		// These errors are generated when the system controllers discovers
 		// that a requires that HTTPS be enabled first.
-		resetClient = true
 		result = RetryTransientError
 		err = nil
 
