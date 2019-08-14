@@ -694,26 +694,26 @@ func NewNamespace(name string) (*v1.Namespace, error) {
 	return &namespace, nil
 }
 
-func fixDevicePath(path *string, host v1info.HostInfo) *string {
-	shortFormNode := regexp.MustCompile("(?s)^\\w+$")
-	longFormNode := regexp.MustCompile("(?s)^/dev/\\w+$")
-
-	if path == nil {
-		return path
-	}
+// fixDevicePath is a utility function that take a legacy formatted device
+// path (e.g., sda or /dev/sda) and convert it to the newer format which is
+// more explicit
+// (e.g., /dev/disk/by-path/pci-0000:00:14.0-usb-0:1:1.0-scsi-0:0:0:0).
+func fixDevicePath(path string, host v1info.HostInfo) string {
+	shortFormNode := regexp.MustCompile(`(?s)^\w+$`)
+	longFormNode := regexp.MustCompile(`(?s)^/dev/\w+$`)
 
 	var searchPath string
-	if shortFormNode.MatchString(*path) {
-		searchPath = fmt.Sprintf("/dev/%s", *path)
-	} else if longFormNode.MatchString(*path) {
-		searchPath = *path
+	if shortFormNode.MatchString(path) {
+		searchPath = fmt.Sprintf("/dev/%s", path)
+	} else if longFormNode.MatchString(path) {
+		searchPath = path
 	} else {
 		// Likely already in the devicePath format
 		return path
 	}
 
 	if disk, ok := host.FindDiskByNode(searchPath); ok {
-		return &disk.DevicePath
+		return disk.DevicePath
 	}
 
 	// No alternative found
@@ -749,8 +749,10 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		spec.Location = host.Location.Name
 	}
 
-	spec.BootDevice = fixDevicePath(&host.BootDevice, host)
-	spec.RootDevice = fixDevicePath(&host.RootDevice, host)
+	bootDevice := fixDevicePath(host.BootDevice, host)
+	spec.BootDevice = &bootDevice
+	rootDevice := fixDevicePath(host.RootDevice, host)
+	spec.RootDevice = &rootDevice
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
