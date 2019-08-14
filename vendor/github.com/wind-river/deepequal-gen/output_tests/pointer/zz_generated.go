@@ -25,7 +25,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 	if (in.Struct == nil) != (other.Struct == nil) {
 		return false
 	} else if in.Struct != nil {
-		if in.Struct.DeepEqual(other.Struct) == false {
+		if !in.Struct.DeepEqual(other.Struct) {
 			return false
 		}
 	}

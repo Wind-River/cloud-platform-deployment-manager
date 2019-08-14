@@ -568,7 +568,7 @@ func (g *genDeepEqual) doMap(t *types.Type, sw *generator.SnippetWriter) {
 	uet := underlyingType(ut.Elem)
 
 	if deepEqualMethodOrDie(t) != nil {
-		sw.Do("if other == nil || in.DeepEqual(other) == false {\n", nil)
+		sw.Do("if other == nil || !in.DeepEqual(other) {\n", nil)
 		sw.Do("return false\n", nil)
 		sw.Do("}\n", nil)
 		return
@@ -592,7 +592,7 @@ func (g *genDeepEqual) doMap(t *types.Type, sw *generator.SnippetWriter) {
 		if uet.Elem.IsPrimitive() {
 			sw.Do("if ((inValue == nil) != (otherValue == nil) || ((inValue != nil) && (otherValue != nil) && (*inValue != *otherValue))) {\n", nil)
 		} else {
-			sw.Do("if inValue.DeepEqual(otherValue) == false {\n", nil)
+			sw.Do("if !inValue.DeepEqual(otherValue) {\n", nil)
 		}
 	} else if ut.Elem.Kind != types.Alias && uet.Kind != types.Struct {
 		// TODO(alegacy): for now we do not support generating an inline
@@ -601,7 +601,7 @@ func (g *genDeepEqual) doMap(t *types.Type, sw *generator.SnippetWriter) {
 		//  method for it or to have one code generated.
 		klog.Fatalf("Hit an unsupported type %v for %v, from %v", uet, ut, t)
 	} else {
-		sw.Do("if inValue.DeepEqual(&otherValue) == false {\n", nil)
+		sw.Do("if !inValue.DeepEqual(&otherValue) {\n", nil)
 	}
 	sw.Do("return false\n", nil)
 	sw.Do("}\n", nil)
@@ -617,7 +617,7 @@ func (g *genDeepEqual) doSlice(t *types.Type, sw *generator.SnippetWriter) {
 	uet := underlyingType(ut.Elem)
 
 	if deepEqualMethodOrDie(t) != nil {
-		sw.Do("if other == nil || in.DeepEqual(other) == false {\n", nil)
+		sw.Do("if other == nil || !in.DeepEqual(other) {\n", nil)
 		sw.Do("return false\n", nil)
 		sw.Do("}\n", nil)
 		return
@@ -669,7 +669,7 @@ func (g *genDeepEqual) doSlice(t *types.Type, sw *generator.SnippetWriter) {
 			if uet.Elem.IsPrimitive() {
 				sw.Do("if ((inElement == nil) && ((*other)[i] == nil) || ((inElement != nil) && ((*other)[i] != nil) && (*inElement != *(*other)[i]))) {\n", nil)
 			} else {
-				sw.Do("if inElement.DeepEqual((*other)[i]) == false {\n", nil)
+				sw.Do("if !inElement.DeepEqual((*other)[i]) {\n", nil)
 			}
 		} else if ut.Elem.Kind != types.Alias && uet.Kind != types.Struct {
 			// TODO(alegacy): for now we do not support generating an inline
@@ -678,7 +678,7 @@ func (g *genDeepEqual) doSlice(t *types.Type, sw *generator.SnippetWriter) {
 			//  method for it or to have one code generated.
 			klog.Fatalf("Hit an unsupported type %v for %v, from %v", uet, ut, t)
 		} else {
-			sw.Do("if inElement.DeepEqual(&(*other)[i]) == false {\n", nil)
+			sw.Do("if !inElement.DeepEqual(&(*other)[i]) {\n", nil)
 		}
 		sw.Do("return false\n", nil)
 		sw.Do("}\n", nil)
@@ -711,7 +711,7 @@ func (g *genDeepEqual) doStruct(t *types.Type, sw *generator.SnippetWriter) {
 	ut := underlyingType(t)
 
 	if deepEqualMethodOrDie(t) != nil {
-		sw.Do("if other == nil || in.DeepEqual(other) == false {\n", t)
+		sw.Do("if other == nil || !in.DeepEqual(other) {\n", t)
 		sw.Do("return false\n", nil)
 		sw.Do("}\n", nil)
 		return
@@ -752,7 +752,7 @@ func (g *genDeepEqual) doStruct(t *types.Type, sw *generator.SnippetWriter) {
 			if ufet.IsPrimitive() {
 				sw.Do("if *in.$.name$ != *other.$.name$ {\n", typeArgs)
 			} else {
-				sw.Do("if in.$.name$.DeepEqual(other.$.name$) == false {\n", typeArgs)
+				sw.Do("if !in.$.name$.DeepEqual(other.$.name$) {\n", typeArgs)
 			}
 			sw.Do("return false\n", nil)
 			sw.Do("}\n", nil)
@@ -773,7 +773,7 @@ func (g *genDeepEqual) doStruct(t *types.Type, sw *generator.SnippetWriter) {
 			if IsComparable(uft) {
 				sw.Do("if in.$.name$ != other.$.name$ {\n", typeArgs)
 			} else {
-				sw.Do("if in.$.name$.DeepEqual(&other.$.name$) == false {\n", typeArgs)
+				sw.Do("if !in.$.name$.DeepEqual(&other.$.name$) {\n", typeArgs)
 			}
 			sw.Do("return false\n", nil)
 			sw.Do("}\n\n", nil)

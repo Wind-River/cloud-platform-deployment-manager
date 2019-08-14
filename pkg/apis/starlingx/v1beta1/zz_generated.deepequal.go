@@ -70,7 +70,7 @@ func (in *AllocationInfo) DeepEqual(other *AllocationInfo) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -119,7 +119,7 @@ func (in *BMCredentials) DeepEqual(other *BMCredentials) bool {
 		if (in.Password == nil) != (other.Password == nil) {
 			return false
 		} else if in.Password != nil {
-			if in.Password.DeepEqual(other.Password) == false {
+			if !in.Password.DeepEqual(other.Password) {
 				return false
 			}
 		}
@@ -159,7 +159,7 @@ func (in *BMInfo) DeepEqual(other *BMInfo) bool {
 		if (in.Credentials == nil) != (other.Credentials == nil) {
 			return false
 		} else if in.Credentials != nil {
-			if in.Credentials.DeepEqual(other.Credentials) == false {
+			if !in.Credentials.DeepEqual(other.Credentials) {
 				return false
 			}
 		}
@@ -175,7 +175,7 @@ func (in *BondInfo) DeepEqual(other *BondInfo) bool {
 		return false
 	}
 
-	if in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) == false {
+	if !in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) {
 		return false
 	}
 
@@ -298,7 +298,7 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		if (in.PlatformNetworks == nil) != (other.PlatformNetworks == nil) {
 			return false
 		} else if in.PlatformNetworks != nil {
-			if in.PlatformNetworks.DeepEqual(other.PlatformNetworks) == false {
+			if !in.PlatformNetworks.DeepEqual(other.PlatformNetworks) {
 				return false
 			}
 		}
@@ -308,7 +308,7 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		if (in.DataNetworks == nil) != (other.DataNetworks == nil) {
 			return false
 		} else if in.DataNetworks != nil {
-			if in.DataNetworks.DeepEqual(other.DataNetworks) == false {
+			if !in.DataNetworks.DeepEqual(other.DataNetworks) {
 				return false
 			}
 		}
@@ -404,7 +404,7 @@ func (in *DataNetworkSpec) DeepEqual(other *DataNetworkSpec) bool {
 	if (in.VxLAN == nil) != (other.VxLAN == nil) {
 		return false
 	} else if in.VxLAN != nil {
-		if in.VxLAN.DeepEqual(other.VxLAN) == false {
+		if !in.VxLAN.DeepEqual(other.VxLAN) {
 			return false
 		}
 	}
@@ -455,7 +455,7 @@ func (in *EthernetInfo) DeepEqual(other *EthernetInfo) bool {
 		return false
 	}
 
-	if in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) == false {
+	if !in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) {
 		return false
 	}
 
@@ -576,14 +576,14 @@ func (in *HostProfileSpec) DeepEqual(other *HostProfileSpec) bool {
 		}
 	}
 
-	if in.ProfileBaseAttributes.DeepEqual(&other.ProfileBaseAttributes) == false {
+	if !in.ProfileBaseAttributes.DeepEqual(&other.ProfileBaseAttributes) {
 		return false
 	}
 
 	if (in.BoardManagement == nil) != (other.BoardManagement == nil) {
 		return false
 	} else if in.BoardManagement != nil {
-		if in.BoardManagement.DeepEqual(other.BoardManagement) == false {
+		if !in.BoardManagement.DeepEqual(other.BoardManagement) {
 			return false
 		}
 	}
@@ -639,7 +639,7 @@ func (in *HostProfileSpec) DeepEqual(other *HostProfileSpec) bool {
 	if (in.Storage == nil) != (other.Storage == nil) {
 		return false
 	} else if in.Storage != nil {
-		if in.Storage.DeepEqual(other.Storage) == false {
+		if !in.Storage.DeepEqual(other.Storage) {
 			return false
 		}
 	}
@@ -647,14 +647,14 @@ func (in *HostProfileSpec) DeepEqual(other *HostProfileSpec) bool {
 	if (in.Interfaces == nil) != (other.Interfaces == nil) {
 		return false
 	} else if in.Interfaces != nil {
-		if in.Interfaces.DeepEqual(other.Interfaces) == false {
+		if !in.Interfaces.DeepEqual(other.Interfaces) {
 			return false
 		}
 	}
 
 	if ((in.Addresses != nil) && (other.Addresses != nil)) || ((in.Addresses == nil) != (other.Addresses == nil)) {
 		in, other := &in.Addresses, &other.Addresses
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -699,7 +699,7 @@ func (in *HostSpec) DeepEqual(other *HostSpec) bool {
 	if (in.Match == nil) != (other.Match == nil) {
 		return false
 	} else if in.Match != nil {
-		if in.Match.DeepEqual(other.Match) == false {
+		if !in.Match.DeepEqual(other.Match) {
 			return false
 		}
 	}
@@ -707,7 +707,7 @@ func (in *HostSpec) DeepEqual(other *HostSpec) bool {
 	if (in.Overrides == nil) != (other.Overrides == nil) {
 		return false
 	} else if in.Overrides != nil {
-		if in.Overrides.DeepEqual(other.Overrides) == false {
+		if !in.Overrides.DeepEqual(other.Overrides) {
 			return false
 		}
 	}
@@ -780,7 +780,7 @@ func (in *InterfaceInfo) DeepEqual(other *InterfaceInfo) bool {
 
 	if ((in.Ethernet != nil) && (other.Ethernet != nil)) || ((in.Ethernet == nil) != (other.Ethernet == nil)) {
 		in, other := &in.Ethernet, &other.Ethernet
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -811,7 +811,7 @@ func (in *InterfaceInfo) DeepEqual(other *InterfaceInfo) bool {
 
 	if ((in.Bond != nil) && (other.Bond != nil)) || ((in.Bond == nil) != (other.Bond == nil)) {
 		in, other := &in.Bond, &other.Bond
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -898,7 +898,7 @@ func (in *MatchInfo) DeepEqual(other *MatchInfo) bool {
 	if (in.BoardManagement == nil) != (other.BoardManagement == nil) {
 		return false
 	} else if in.BoardManagement != nil {
-		if in.BoardManagement.DeepEqual(other.BoardManagement) == false {
+		if !in.BoardManagement.DeepEqual(other.BoardManagement) {
 			return false
 		}
 	}
@@ -906,7 +906,7 @@ func (in *MatchInfo) DeepEqual(other *MatchInfo) bool {
 	if (in.DMI == nil) != (other.DMI == nil) {
 		return false
 	} else if in.DMI != nil {
-		if in.DMI.DeepEqual(other.DMI) == false {
+		if !in.DMI.DeepEqual(other.DMI) {
 			return false
 		}
 	}
@@ -973,7 +973,7 @@ func (in *MemoryNodeInfo) DeepEqual(other *MemoryNodeInfo) bool {
 	}
 	if ((in.Functions != nil) && (other.Functions != nil)) || ((in.Functions == nil) != (other.Functions == nil)) {
 		in, other := &in.Functions, &other.Functions
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -1055,7 +1055,7 @@ func (in *OSDInfo) DeepEqual(other *OSDInfo) bool {
 		if (in.Journal == nil) != (other.Journal == nil) {
 			return false
 		} else if in.Journal != nil {
-			if in.Journal.DeepEqual(other.Journal) == false {
+			if !in.Journal.DeepEqual(other.Journal) {
 				return false
 			}
 		}
@@ -1211,7 +1211,7 @@ func (in *PlatformNetworkSpec) DeepEqual(other *PlatformNetworkSpec) bool {
 		}
 	}
 
-	if in.Allocation.DeepEqual(&other.Allocation) == false {
+	if !in.Allocation.DeepEqual(&other.Allocation) {
 		return false
 	}
 
@@ -1304,7 +1304,7 @@ func (in *ProcessorInfo) DeepEqual(other *ProcessorInfo) bool {
 	}
 	if ((in.Functions != nil) && (other.Functions != nil)) || ((in.Functions == nil) != (other.Functions == nil)) {
 		in, other := &in.Functions, &other.Functions
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -1505,7 +1505,7 @@ func (in *ProfileStorageInfo) DeepEqual(other *ProfileStorageInfo) bool {
 		if (in.Monitor == nil) != (other.Monitor == nil) {
 			return false
 		} else if in.Monitor != nil {
-			if in.Monitor.DeepEqual(other.Monitor) == false {
+			if !in.Monitor.DeepEqual(other.Monitor) {
 				return false
 			}
 		}
@@ -1515,7 +1515,7 @@ func (in *ProfileStorageInfo) DeepEqual(other *ProfileStorageInfo) bool {
 		if (in.OSDs == nil) != (other.OSDs == nil) {
 			return false
 		} else if in.OSDs != nil {
-			if in.OSDs.DeepEqual(other.OSDs) == false {
+			if !in.OSDs.DeepEqual(other.OSDs) {
 				return false
 			}
 		}
@@ -1525,7 +1525,7 @@ func (in *ProfileStorageInfo) DeepEqual(other *ProfileStorageInfo) bool {
 		if (in.VolumeGroups == nil) != (other.VolumeGroups == nil) {
 			return false
 		} else if in.VolumeGroups != nil {
-			if in.VolumeGroups.DeepEqual(other.VolumeGroups) == false {
+			if !in.VolumeGroups.DeepEqual(other.VolumeGroups) {
 				return false
 			}
 		}
@@ -1535,7 +1535,7 @@ func (in *ProfileStorageInfo) DeepEqual(other *ProfileStorageInfo) bool {
 		if (in.FileSystems == nil) != (other.FileSystems == nil) {
 			return false
 		} else if in.FileSystems != nil {
-			if in.FileSystems.DeepEqual(other.FileSystems) == false {
+			if !in.FileSystems.DeepEqual(other.FileSystems) {
 				return false
 			}
 		}
@@ -1614,7 +1614,7 @@ func (in *SNMPInfo) DeepEqual(other *SNMPInfo) bool {
 		if (in.Communities == nil) != (other.Communities == nil) {
 			return false
 		} else if in.Communities != nil {
-			if in.Communities.DeepEqual(other.Communities) == false {
+			if !in.Communities.DeepEqual(other.Communities) {
 				return false
 			}
 		}
@@ -1624,7 +1624,7 @@ func (in *SNMPInfo) DeepEqual(other *SNMPInfo) bool {
 		if (in.TrapDestinations == nil) != (other.TrapDestinations == nil) {
 			return false
 		} else if in.TrapDestinations != nil {
-			if in.TrapDestinations.DeepEqual(other.TrapDestinations) == false {
+			if !in.TrapDestinations.DeepEqual(other.TrapDestinations) {
 				return false
 			}
 		}
@@ -1781,7 +1781,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.DNSServers == nil) != (other.DNSServers == nil) {
 			return false
 		} else if in.DNSServers != nil {
-			if in.DNSServers.DeepEqual(other.DNSServers) == false {
+			if !in.DNSServers.DeepEqual(other.DNSServers) {
 				return false
 			}
 		}
@@ -1791,7 +1791,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.NTPServers == nil) != (other.NTPServers == nil) {
 			return false
 		} else if in.NTPServers != nil {
-			if in.NTPServers.DeepEqual(other.NTPServers) == false {
+			if !in.NTPServers.DeepEqual(other.NTPServers) {
 				return false
 			}
 		}
@@ -1801,7 +1801,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.PTP == nil) != (other.PTP == nil) {
 			return false
 		} else if in.PTP != nil {
-			if in.PTP.DeepEqual(other.PTP) == false {
+			if !in.PTP.DeepEqual(other.PTP) {
 				return false
 			}
 		}
@@ -1811,7 +1811,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.Certificates == nil) != (other.Certificates == nil) {
 			return false
 		} else if in.Certificates != nil {
-			if in.Certificates.DeepEqual(other.Certificates) == false {
+			if !in.Certificates.DeepEqual(other.Certificates) {
 				return false
 			}
 		}
@@ -1821,7 +1821,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.Storage == nil) != (other.Storage == nil) {
 			return false
 		} else if in.Storage != nil {
-			if in.Storage.DeepEqual(other.Storage) == false {
+			if !in.Storage.DeepEqual(other.Storage) {
 				return false
 			}
 		}
@@ -1831,7 +1831,7 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		if (in.SNMP == nil) != (other.SNMP == nil) {
 			return false
 		} else if in.SNMP != nil {
-			if in.SNMP.DeepEqual(other.SNMP) == false {
+			if !in.SNMP.DeepEqual(other.SNMP) {
 				return false
 			}
 		}
@@ -1894,7 +1894,7 @@ func (in *SystemStorageInfo) DeepEqual(other *SystemStorageInfo) bool {
 		if (in.Backends == nil) != (other.Backends == nil) {
 			return false
 		} else if in.Backends != nil {
-			if in.Backends.DeepEqual(other.Backends) == false {
+			if !in.Backends.DeepEqual(other.Backends) {
 				return false
 			}
 		}
@@ -1904,7 +1904,7 @@ func (in *SystemStorageInfo) DeepEqual(other *SystemStorageInfo) bool {
 		if (in.DRBD == nil) != (other.DRBD == nil) {
 			return false
 		} else if in.DRBD != nil {
-			if in.DRBD.DeepEqual(other.DRBD) == false {
+			if !in.DRBD.DeepEqual(other.DRBD) {
 				return false
 			}
 		}
@@ -1914,7 +1914,7 @@ func (in *SystemStorageInfo) DeepEqual(other *SystemStorageInfo) bool {
 		if (in.FileSystems == nil) != (other.FileSystems == nil) {
 			return false
 		} else if in.FileSystems != nil {
-			if in.FileSystems.DeepEqual(other.FileSystems) == false {
+			if !in.FileSystems.DeepEqual(other.FileSystems) {
 				return false
 			}
 		}
@@ -1974,7 +1974,7 @@ func (in *VLANInfo) DeepEqual(other *VLANInfo) bool {
 		return false
 	}
 
-	if in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) == false {
+	if !in.CommonInterfaceInfo.DeepEqual(&other.CommonInterfaceInfo) {
 		return false
 	}
 
@@ -2047,7 +2047,7 @@ func (in *VolumeGroupInfo) DeepEqual(other *VolumeGroupInfo) bool {
 
 	if ((in.PhysicalVolumes != nil) && (other.PhysicalVolumes != nil)) || ((in.PhysicalVolumes == nil) != (other.PhysicalVolumes == nil)) {
 		in, other := &in.PhysicalVolumes, &other.PhysicalVolumes
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}

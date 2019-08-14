@@ -107,7 +107,7 @@ func (in *FooMap) DeepEqual(other *FooMap) bool {
 			if otherValue, present := (*other)[key]; !present {
 				return false
 			} else {
-				if inValue.DeepEqual(&otherValue) == false {
+				if !inValue.DeepEqual(&otherValue) {
 					return false
 				}
 			}
@@ -128,7 +128,7 @@ func (in *FooSlice) DeepEqual(other *FooSlice) bool {
 		return false
 	} else {
 		for i, inElement := range *in {
-			if inElement.DeepEqual(&(*other)[i]) == false {
+			if !inElement.DeepEqual(&(*other)[i]) {
 				return false
 			}
 		}
@@ -207,7 +207,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 	}
 	if ((in.Slice != nil) && (other.Slice != nil)) || ((in.Slice == nil) != (other.Slice == nil)) {
 		in, other := &in.Slice, &other.Slice
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -234,7 +234,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 
 	if ((in.Map != nil) && (other.Map != nil)) || ((in.Map == nil) != (other.Map == nil)) {
 		in, other := &in.Map, &other.Map
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -249,7 +249,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -269,7 +269,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 				if otherValue, present := (*other)[key]; !present {
 					return false
 				} else {
-					if inValue.DeepEqual(&otherValue) == false {
+					if !inValue.DeepEqual(&otherValue) {
 						return false
 					}
 				}
@@ -283,7 +283,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 
 	if ((in.FooSlice != nil) && (other.FooSlice != nil)) || ((in.FooSlice == nil) != (other.FooSlice == nil)) {
 		in, other := &in.FooSlice, &other.FooSlice
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -293,7 +293,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 	}
 	if ((in.AliasSlice != nil) && (other.AliasSlice != nil)) || ((in.AliasSlice == nil) != (other.AliasSlice == nil)) {
 		in, other := &in.AliasSlice, &other.AliasSlice
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -312,7 +312,7 @@ func (in *Ttest) DeepEqual(other *Ttest) bool {
 
 	if ((in.AliasMap != nil) && (other.AliasMap != nil)) || ((in.AliasMap == nil) != (other.AliasMap == nil)) {
 		in, other := &in.AliasMap, &other.AliasMap
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}

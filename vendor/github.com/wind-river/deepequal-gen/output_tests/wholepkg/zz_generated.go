@@ -84,7 +84,7 @@ func (in *StructEmbedStructPrimitivePointers) DeepEqual(other *StructEmbedStruct
 		return false
 	}
 
-	if in.StructPrimitivePointers.DeepEqual(&other.StructPrimitivePointers) == false {
+	if !in.StructPrimitivePointers.DeepEqual(&other.StructPrimitivePointers) {
 		return false
 	}
 
@@ -112,7 +112,7 @@ func (in *StructEmbedStructSlices) DeepEqual(other *StructEmbedStructSlices) boo
 		return false
 	}
 
-	if in.StructSlices.DeepEqual(&other.StructSlices) == false {
+	if !in.StructSlices.DeepEqual(&other.StructSlices) {
 		return false
 	}
 
@@ -196,14 +196,14 @@ func (in *StructEverything) DeepEqual(other *StructEverything) bool {
 		}
 	}
 
-	if in.PrimitivePointersField.DeepEqual(&other.PrimitivePointersField) == false {
+	if !in.PrimitivePointersField.DeepEqual(&other.PrimitivePointersField) {
 		return false
 	}
 
 	if (in.ManualStructPtrField == nil) != (other.ManualStructPtrField == nil) {
 		return false
 	} else if in.ManualStructPtrField != nil {
-		if in.ManualStructPtrField.DeepEqual(other.ManualStructPtrField) == false {
+		if !in.ManualStructPtrField.DeepEqual(other.ManualStructPtrField) {
 			return false
 		}
 	}
@@ -211,7 +211,7 @@ func (in *StructEverything) DeepEqual(other *StructEverything) bool {
 	if (in.ManualStructAliasPtrField == nil) != (other.ManualStructAliasPtrField == nil) {
 		return false
 	} else if in.ManualStructAliasPtrField != nil {
-		if in.ManualStructAliasPtrField.DeepEqual(other.ManualStructAliasPtrField) == false {
+		if !in.ManualStructAliasPtrField.DeepEqual(other.ManualStructAliasPtrField) {
 			return false
 		}
 	}
@@ -301,7 +301,7 @@ func (in *StructEverything) DeepEqual(other *StructEverything) bool {
 		}
 	}
 
-	if in.SlicesField.DeepEqual(&other.SlicesField) == false {
+	if !in.SlicesField.DeepEqual(&other.SlicesField) {
 		return false
 	}
 
@@ -315,7 +315,7 @@ func (in *StructEverything) DeepEqual(other *StructEverything) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -324,7 +324,7 @@ func (in *StructEverything) DeepEqual(other *StructEverything) bool {
 
 	if ((in.ManualSliceField != nil) && (other.ManualSliceField != nil)) || ((in.ManualSliceField == nil) != (other.ManualSliceField == nil)) {
 		in, other := &in.ManualSliceField, &other.ManualSliceField
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -626,7 +626,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -643,7 +643,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -660,7 +660,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -677,7 +677,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -694,7 +694,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -703,7 +703,7 @@ func (in *StructSlices) DeepEqual(other *StructSlices) bool {
 
 	if ((in.ManualSliceField != nil) && (other.ManualSliceField != nil)) || ((in.ManualSliceField == nil) != (other.ManualSliceField == nil)) {
 		in, other := &in.ManualSliceField, &other.ManualSliceField
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -813,7 +813,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -830,7 +830,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -847,7 +847,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -864,7 +864,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -881,7 +881,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if inElement.DeepEqual(&(*other)[i]) == false {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
@@ -890,7 +890,7 @@ func (in *StructSlicesAlias) DeepEqual(other *StructSlicesAlias) bool {
 
 	if ((in.ManualSliceField != nil) && (other.ManualSliceField != nil)) || ((in.ManualSliceField == nil) != (other.ManualSliceField == nil)) {
 		in, other := &in.ManualSliceField, &other.ManualSliceField
-		if other == nil || in.DeepEqual(other) == false {
+		if other == nil || !in.DeepEqual(other) {
 			return false
 		}
 	}
@@ -905,7 +905,7 @@ func (in *StructStructPrimitivePointers) DeepEqual(other *StructStructPrimitiveP
 		return false
 	}
 
-	if in.StructField.DeepEqual(&other.StructField) == false {
+	if !in.StructField.DeepEqual(&other.StructField) {
 		return false
 	}
 
@@ -933,7 +933,7 @@ func (in *StructStructSlices) DeepEqual(other *StructStructSlices) bool {
 		return false
 	}
 
-	if in.StructField.DeepEqual(&other.StructField) == false {
+	if !in.StructField.DeepEqual(&other.StructField) {
 		return false
 	}
 
