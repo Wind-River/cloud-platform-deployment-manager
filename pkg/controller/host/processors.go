@@ -19,7 +19,7 @@ import (
 func (r *ReconcileHost) ReconcileProcessors(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if len(profile.Processors) == 0 || config.IsReconcilerEnabled(config.Processor) == false {
+	if len(profile.Processors) == 0 || !config.IsReconcilerEnabled(config.Processor) {
 		return nil
 	}
 

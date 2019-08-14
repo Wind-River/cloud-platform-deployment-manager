@@ -155,7 +155,7 @@ func (m *Monitor) Start(manager TitaniumManager) {
 
 				m.V(1).Info(m.State())
 
-				if stop == true {
+				if stop {
 					m.V(2).Info("completed", "key", m.GetKey())
 					if m.notify() == nil {
 						m.V(2).Info("exiting", "key", m.GetKey())

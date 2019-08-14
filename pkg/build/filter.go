@@ -224,7 +224,7 @@ func (in *InterfaceUnusedFilter) Filter(profile *v1beta1.HostProfile, deployment
 
 	result := v1beta1.EthernetList{}
 	for _, e := range info.Ethernet {
-		if e.Class != interfaces.IFClassNone || isInterfaceInUse(e.Name, info) == true {
+		if e.Class != interfaces.IFClassNone || isInterfaceInUse(e.Name, info) {
 			result = append(result, e)
 		}
 	}

@@ -227,13 +227,13 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 			build.NewVolumeGroupSystemFilter())
 	}
 
-	if noDefaults && noMemory == false {
+	if noDefaults && !noMemory {
 		profileFilters = append(profileFilters, build.NewMemoryDefaultsFilter())
 	} else if noMemory {
 		profileFilters = append(profileFilters, build.NewMemoryClearAllFilter())
 	}
 
-	if noDefaults && noProcessors == false {
+	if noDefaults && !noProcessors {
 		profileFilters = append(profileFilters, build.NewProcessorDefaultsFilter())
 	} else if noProcessors {
 		profileFilters = append(profileFilters, build.NewProcessorClearAllFilter())

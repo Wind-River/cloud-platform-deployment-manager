@@ -308,7 +308,7 @@ func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.Serv
 		return err
 	}
 
-	if instance.DeletionTimestamp.IsZero() == false {
+	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			return r.ReconciledDeletedAddressPool(client, instance, pool)
 		}
@@ -492,7 +492,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceC
 		return err
 	}
 
-	if instance.DeletionTimestamp.IsZero() == false {
+	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			return r.ReconciledDeletedNetwork(client, instance, network)
 		}
@@ -518,7 +518,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceC
 // statusUpdateRequired is a utility method to determine if the status needs
 // to be updated at the API.
 func (r *ReconcilePlatformNetwork) statusUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, status *starlingxv1beta1.PlatformNetworkStatus) bool {
-	return instance.Status.DeepEqual(status) == false
+	return !instance.Status.DeepEqual(status)
 }
 
 // ReconcileResource interacts with the system API in order to reconcile the
@@ -622,7 +622,7 @@ func (r *ReconcilePlatformNetwork) Reconcile(request reconcile.Request) (reconci
 		}
 	}
 
-	if config.IsReconcilerEnabled(config.PlatformNetwork) == false {
+	if !config.IsReconcilerEnabled(config.PlatformNetwork) {
 		return reconcile.Result{}, nil
 	}
 
@@ -635,7 +635,7 @@ func (r *ReconcilePlatformNetwork) Reconcile(request reconcile.Request) (reconci
 		return common.RetryMissingClient, nil
 	}
 
-	if r.GetSystemReady(request.Namespace) == false {
+	if !r.GetSystemReady(request.Namespace) {
 		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil

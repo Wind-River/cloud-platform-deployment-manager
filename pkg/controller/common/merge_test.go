@@ -469,7 +469,7 @@ func Test_MergeTransformer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := mergo.Merge(tt.args.dst, tt.args.src, mergo.WithOverride, mergo.WithTransformers(DefaultMergeTransformer)); (err != nil) != tt.wantErr {
 				t.Errorf("mergo.Merge() error = %v, wantErr %v", err, tt.wantErr)
-			} else if reflect.DeepEqual(*tt.args.dst, tt.wantStruct) == false {
+			} else if !reflect.DeepEqual(*tt.args.dst, tt.wantStruct) {
 				dstBuf, err := json.Marshal(*tt.args.dst)
 				if err != nil {
 					t.Errorf("failed to encode dstBuf")

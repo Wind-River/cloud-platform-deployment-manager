@@ -378,7 +378,7 @@ func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err er
 
 	state := fmt.Sprintf("%s/%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus, task)
 
-	if host.Idle() == false {
+	if !host.Idle() {
 		m.SetState("waiting for host to reach stable state: %s", state)
 		goto done
 	}
@@ -453,7 +453,7 @@ func (m *inventoryCollectedMonitor) Run(client *gophercloud.ServiceClient) (stop
 		return false, err
 	}
 
-	if host.Idle() == false || host.AvailabilityStatus == hosts.AvailOffline {
+	if !host.Idle() || host.AvailabilityStatus == hosts.AvailOffline {
 		m.SetState("waiting for stable state before collecting defaults")
 		return false, nil
 	}
@@ -549,7 +549,7 @@ func (m *provisioningAllowedMonitor) Run(client *gophercloud.ServiceClient) (sto
 		return false, err
 	}
 
-	if provisioningAllowed(objects) == true {
+	if provisioningAllowed(objects) {
 		m.SetState("host provisioning is now allowed")
 		return true, nil
 	}

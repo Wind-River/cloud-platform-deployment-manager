@@ -238,7 +238,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	default:
 		resetClient = false
 
-		if errors.IsNotFound(cause) == false {
+		if !errors.IsNotFound(cause) {
 			h.Error(in, "an unhandled error occurred", "type", reflect.TypeOf(cause))
 			result = RetryTransientError
 			err = in

@@ -183,7 +183,7 @@ func findConfiguredRoute(route routes.Route, profile *starlingxv1beta1.HostProfi
 func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Route) == false {
+	if !config.IsReconcilerEnabled(config.Route) {
 		return nil
 	}
 
@@ -216,7 +216,7 @@ func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, 
 			}
 		}
 
-		if remove == true {
+		if remove {
 			log.Info("deleting route", "uuid", route.ID)
 
 			err := routes.Delete(client, route.ID).ExtractErr()
@@ -270,7 +270,7 @@ func findConfiguredAddress(addr addresses.Address, profile *starlingxv1beta1.Hos
 func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Address) == false {
+	if !config.IsReconcilerEnabled(config.Address) {
 		return nil
 	}
 
@@ -309,7 +309,7 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 			}
 		}
 
-		if remove == true {
+		if remove {
 			log.Info("deleting address", "uuid", addr.ID)
 
 			err := addresses.Delete(client, addr.ID).ExtractErr()
@@ -349,7 +349,7 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -402,7 +402,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClie
 func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -478,7 +478,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.Serv
 func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -663,7 +663,7 @@ func interfaceUpdateRequired(info starlingxv1beta1.CommonInterfaceInfo, iface *i
 		}
 	}
 
-	if strings.EqualFold(info.Class, iface.Class) == false {
+	if !strings.EqualFold(info.Class, iface.Class) {
 		if info.Class != interfaces.IFClassNone || iface.Class != "" {
 			// Class is returned from the systemAPI as "" if it is not set, but
 			// we need to set it to "none" in order to clear it.
@@ -878,7 +878,7 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	var ifuuid string
 	var found bool
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -994,13 +994,13 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 // bond specificc interface attributes have changed and if so fills in the opts
 // struct with the values that must be passed to the system API.
 func bondUpdateRequired(bond starlingxv1beta1.BondInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
-	if iface.AEMode != nil && strings.EqualFold(bond.Mode, *iface.AEMode) == false {
+	if iface.AEMode != nil && !strings.EqualFold(bond.Mode, *iface.AEMode) {
 		opts.AEMode = &bond.Mode
 		result = true
 	}
 
 	if bond.TransmitHashPolicy != nil {
-		if iface.AETransmitHash != nil && strings.EqualFold(*bond.TransmitHashPolicy, *iface.AETransmitHash) == false {
+		if iface.AETransmitHash != nil && !strings.EqualFold(*bond.TransmitHashPolicy, *iface.AETransmitHash) {
 			opts.AETransmitHash = bond.TransmitHashPolicy
 			result = true
 		}
@@ -1049,7 +1049,7 @@ func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *
 func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -1153,7 +1153,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
-	if config.IsReconcilerEnabled(config.Interface) == false {
+	if !config.IsReconcilerEnabled(config.Interface) {
 		return nil
 	}
 
@@ -1256,7 +1256,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Address) == false {
+	if !config.IsReconcilerEnabled(config.Address) {
 		return nil
 	}
 
@@ -1310,7 +1310,7 @@ func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, in
 func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Route) == false {
+	if !config.IsReconcilerEnabled(config.Route) {
 		return nil
 	}
 
@@ -1375,7 +1375,7 @@ func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, insta
 func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	var err error
 
-	if config.IsReconcilerEnabled(config.Networking) == false {
+	if !config.IsReconcilerEnabled(config.Networking) {
 		return nil
 	}
 

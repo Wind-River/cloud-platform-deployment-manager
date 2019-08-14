@@ -305,7 +305,7 @@ func (r *ReconcileDataNetwork) ReconcileResource(client *gophercloud.ServiceClie
 		return err
 	}
 
-	if instance.DeletionTimestamp.IsZero() == false {
+	if !instance.DeletionTimestamp.IsZero() {
 		err = r.ReconciledDeleted(client, instance, network)
 
 	} else {
@@ -379,7 +379,7 @@ func (r *ReconcileDataNetwork) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
-	if config.IsReconcilerEnabled(config.DataNetwork) == false {
+	if !config.IsReconcilerEnabled(config.DataNetwork) {
 		return reconcile.Result{}, nil
 	}
 
@@ -392,7 +392,7 @@ func (r *ReconcileDataNetwork) Reconcile(request reconcile.Request) (reconcile.R
 		return common.RetryMissingClient, nil
 	}
 
-	if r.GetSystemReady(request.Namespace) == false {
+	if !r.GetSystemReady(request.Namespace) {
 		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil

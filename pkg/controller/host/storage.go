@@ -28,7 +28,7 @@ import (
 // configuration of a compute host resource.
 func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if config.IsReconcilerEnabled(config.StorageMonitor) == false {
+	if !config.IsReconcilerEnabled(config.StorageMonitor) {
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, inst
 			}
 		}
 
-		if found == false {
+		if !found {
 			// Add a new monitor for this host.
 			opts := cephmonitors.CephMonitorOpts{
 				HostUUID: &host.ID,
@@ -108,7 +108,7 @@ func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, inst
 func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
 	updated := false
 
-	if config.IsReconcilerEnabled(config.Partition) == false {
+	if !config.IsReconcilerEnabled(config.Partition) {
 		return nil
 	}
 
@@ -198,7 +198,7 @@ func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, i
 // ReconcilePhysicalVolumes is responsible for reconciling the physical volume
 // configuration on a host.
 func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
-	if config.IsReconcilerEnabled(config.PhysicalVolume) == false {
+	if !config.IsReconcilerEnabled(config.PhysicalVolume) {
 		return nil
 	}
 
@@ -291,7 +291,7 @@ func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient,
 		return nil
 	}
 
-	if config.IsReconcilerEnabled(config.VolumeGroup) == false {
+	if !config.IsReconcilerEnabled(config.VolumeGroup) {
 		return nil
 	}
 
@@ -388,7 +388,7 @@ func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, in
 		return nil
 	}
 
-	if config.IsReconcilerEnabled(config.OSD) == false {
+	if !config.IsReconcilerEnabled(config.OSD) {
 		return nil
 	}
 
@@ -485,7 +485,7 @@ func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, 
 	} else if cluster.DeploymentModel == clusters.DeploymentModelStorage ||
 		cluster.DeploymentModel == clusters.DeploymentModelController {
 		if r.GetSystemType(instance.Namespace) == titaniumManager.SystemTypeStandard {
-			if r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) == false {
+			if !r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) {
 				msg := fmt.Sprintf("waiting for %d monitor(s) to be enabled before allowing OSDs",
 					hosts.OSDMinimumMonitorCount)
 				m := NewStorageMonitorCountMonitor(instance, hosts.OSDMinimumMonitorCount)
@@ -620,7 +620,7 @@ func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instanc
 		return nil
 	}
 
-	if config.IsReconcilerEnabled(config.OSD) == false {
+	if !config.IsReconcilerEnabled(config.OSD) {
 		return nil
 	}
 
@@ -648,7 +648,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 		return nil
 	}
 
-	if config.IsReconcilerEnabled(config.FileSystems) == false {
+	if !config.IsReconcilerEnabled(config.FileSystems) {
 		return nil
 	}
 
@@ -656,7 +656,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 		return nil
 	}
 
-	if host.IsUnlockedAvailable() == false {
+	if !host.IsUnlockedAvailable() {
 		msg := "waiting for host to reach available state"
 		m := NewUnlockedAvailableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
@@ -682,7 +682,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 			}
 		}
 
-		if found == false {
+		if !found {
 			msg := fmt.Sprintf("unknown host filesystem %q", fsInfo.Name)
 			return starlingxv1beta1.NewMissingSystemResource(msg)
 		}
@@ -706,7 +706,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 // ReconcileStorage is responsible for reconciling the Storage configuration of
 // a host resource.
 func (r *ReconcileHost) ReconcileStorage(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
-	if config.IsReconcilerEnabled(config.Storage) == false {
+	if !config.IsReconcilerEnabled(config.Storage) {
 		return nil
 	}
 

@@ -438,7 +438,7 @@ func TestMergeProfiles(t *testing.T) {
 				wantBuf, _ := json.Marshal(tt.want)
 				t.Errorf("MergeProfiles(), got = %s, want = %s", gotBuf, wantBuf)
 
-			} else if got != nil && got.DeepEqual(tt.want) == false {
+			} else if got != nil && !got.DeepEqual(tt.want) {
 				gotBuf, _ := json.Marshal(got)
 				wantBuf, _ := json.Marshal(tt.want)
 				t.Errorf("Profile.DeepEqual() disagrees with reflect.DeepEqual(), got = %s, want = %s", gotBuf, wantBuf)

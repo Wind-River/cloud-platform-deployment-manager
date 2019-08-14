@@ -64,16 +64,16 @@ func IsValidPrefix(address string, prefix int) bool {
 
 // Validates that all address specifications within the network are of the same address family.
 func (h *PlatformNetworkCreateUpdateHandler) validateAddressFamilies(obj *starlingxv1beta1.PlatformNetwork) (bool, string, error) {
-	if IsIPAddress(obj.Spec.Subnet) != true {
+	if !IsIPAddress(obj.Spec.Subnet) {
 		return false, "expecting a valid IPv4 or IPv6 address in subnet", nil
 	}
 
-	if IsValidPrefix(obj.Spec.Subnet, obj.Spec.Prefix) != true {
+	if !IsValidPrefix(obj.Spec.Subnet, obj.Spec.Prefix) {
 		return false, "prefix value must correspond to the subnet address family", nil
 	}
 
 	for _, r := range obj.Spec.Allocation.Ranges {
-		if IsIPAddress(r.Start) != true || IsIPAddress(r.End) != true {
+		if !IsIPAddress(r.Start) || !IsIPAddress(r.End) {
 			return false, "start and end addresses must be valid IP addresses", nil
 		}
 

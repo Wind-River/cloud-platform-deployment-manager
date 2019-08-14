@@ -121,7 +121,7 @@ func (r *ReconcileHostProfile) UpdateHosts(instance *starlingxv1beta1.HostProfil
 		// If this host uses this profile the assume an update is required.
 		updateRequired := h.Spec.Profile == instance.Name
 
-		if updateRequired == false {
+		if !updateRequired {
 			// Otherwise, look at the profile chain to figure out if its used
 			updateRequired, err = r.ProfileUses(instance.Namespace, h.Spec.Profile, instance.Name)
 			if err != nil {

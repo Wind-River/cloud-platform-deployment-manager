@@ -57,7 +57,7 @@ func mergeStructPointer(dst, src reflect.Value, transformer MergeTransformer) er
 		src,
 		reflect.ValueOf(mergo.WithOverride),
 		reflect.ValueOf(mergo.WithTransformers(transformer))})
-	if result[0].IsValid() && result[0].IsNil() == false {
+	if result[0].IsValid() && !result[0].IsNil() {
 		return result[0].Interface().(error)
 	}
 	return nil
@@ -82,7 +82,7 @@ func mergeSlice(dst, src reflect.Value, tranformer MergeTransformer) error {
 		dst = dst.Elem()
 	}
 
-	if src.IsNil() == true {
+	if src.IsNil() {
 		// Assume that the user wants to keep the contents of dst.
 		return nil
 	} else if src.Len() == 0 {
@@ -132,7 +132,7 @@ func mergeSlice(dst, src reflect.Value, tranformer MergeTransformer) error {
 					src.Index(i),
 					reflect.ValueOf(mergo.WithOverride),
 					reflect.ValueOf(mergo.WithTransformers(tranformer))})
-				if result[0].IsValid() && result[0].IsNil() == false {
+				if result[0].IsValid() && !result[0].IsNil() {
 					return result[0].Interface().(error)
 				}
 

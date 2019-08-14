@@ -175,7 +175,7 @@ func (r *ReconcileHost) getBMPasswordCredentials(namespace string, name string) 
 	// Lookup the secret via the system client.
 	err = r.Client.Get(context.TODO(), secretName, secret)
 	if err != nil {
-		if errors.IsNotFound(err) == false {
+		if !errors.IsNotFound(err) {
 			err = perrors.Wrap(err, "failed to get host BM secret")
 		}
 		return "", "", err
@@ -338,7 +338,7 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 			info := bm.Credentials.Password
 			username, password, err := r.getBMPasswordCredentials(instance.Namespace, info.Secret)
 			if err != nil {
-				if errors.IsNotFound(err) == true {
+				if errors.IsNotFound(err) {
 					msg := fmt.Sprintf("waiting for BM credentials secret: %q", info.Secret)
 					name := types.NamespacedName{Namespace: instance.Namespace, Name: info.Secret}
 					m := NewKubernetesSecretMonitor(instance, name)
@@ -508,7 +508,7 @@ func (r *ReconcileHost) ReconcilePowerState(client *gophercloud.ServiceClient, i
 	// NOTE: The "task" is not considered here because we only reconcile hosts
 	// that are not currently executing a task
 
-	if *profile.PowerOn == true {
+	if *profile.PowerOn {
 		if host.AvailabilityStatus == hosts.AvailPowerOff {
 			// Only send the power on action if the host is powered off
 			action = hosts.ActionPowerOn
@@ -651,7 +651,7 @@ func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, 
 
 	// The state may have changed in the last step so double check and wait if
 	// necessary.
-	if host.IsUnlockedEnabled() == false {
+	if !host.IsUnlockedEnabled() {
 		msg := "enabled host changed state during reconciliation"
 		m := NewIdleHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
@@ -744,7 +744,7 @@ func (r *ReconcileHost) CompareOSDs(in *starlingxv1beta1.HostProfileSpec, other 
 
 		if in.Storage.OSDs != nil {
 			// Otherwise just check the OSD list and ignore the other attributes.
-			if in.Storage.OSDs.DeepEqual(other.Storage.OSDs) == false {
+			if !in.Storage.OSDs.DeepEqual(other.Storage.OSDs) {
 				return false
 			}
 		} else if other.Storage.OSDs != nil && len(*other.Storage.OSDs) > 0 {
@@ -794,7 +794,7 @@ func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfil
 	if config.IsReconcilerEnabled(config.OSD) {
 		switch r.OSDProvisioningState(namespace, personality) {
 		case RequiredStateEnabled, RequiredStateAny:
-			if r.CompareOSDs(in, other) == false {
+			if !r.CompareOSDs(in, other) {
 				return false
 			}
 		}
@@ -806,7 +806,7 @@ func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfil
 				return false
 			}
 
-			if in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) == false {
+			if !in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) {
 				return false
 			}
 		}
@@ -823,26 +823,26 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 		return false
 	}
 
-	if in.ProfileBaseAttributes.DeepEqual(&other.ProfileBaseAttributes) == false {
+	if !in.ProfileBaseAttributes.DeepEqual(&other.ProfileBaseAttributes) {
 		return false
 	}
 
 	if (in.BoardManagement == nil) != (other.BoardManagement == nil) {
 		return false
 	} else if in.BoardManagement != nil {
-		if in.BoardManagement.DeepEqual(other.BoardManagement) == false {
+		if !in.BoardManagement.DeepEqual(other.BoardManagement) {
 			return false
 		}
 	}
 
 	if config.IsReconcilerEnabled(config.Memory) {
-		if in.Memory.DeepEqual(&other.Memory) == false {
+		if !in.Memory.DeepEqual(&other.Memory) {
 			return false
 		}
 	}
 
 	if config.IsReconcilerEnabled(config.Processor) {
-		if in.Processors.DeepEqual(&other.Processors) == false {
+		if !in.Processors.DeepEqual(&other.Processors) {
 			return false
 		}
 	}
@@ -852,7 +852,7 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 			if (in.Interfaces == nil) != (other.Interfaces == nil) {
 				return false
 			} else if in.Interfaces != nil {
-				if in.Interfaces.DeepEqual(other.Interfaces) == false {
+				if !in.Interfaces.DeepEqual(other.Interfaces) {
 					return false
 				}
 			} else {
@@ -861,13 +861,13 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 		}
 
 		if config.IsReconcilerEnabled(config.Address) {
-			if in.Addresses.DeepEqual(&other.Addresses) == false {
+			if !in.Addresses.DeepEqual(&other.Addresses) {
 				return false
 			}
 		}
 
 		if config.IsReconcilerEnabled(config.Route) {
-			if in.Routes.DeepEqual(&other.Routes) == false {
+			if !in.Routes.DeepEqual(&other.Routes) {
 				return false
 			}
 		}
@@ -876,7 +876,7 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 	if config.IsReconcilerEnabled(config.OSD) {
 		switch r.OSDProvisioningState(namespace, personality) {
 		case RequiredStateDisabled, RequiredStateAny:
-			if r.CompareOSDs(in, other) == false {
+			if !r.CompareOSDs(in, other) {
 				return false
 			}
 		}
@@ -891,7 +891,7 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 // here.
 func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, current *starlingxv1beta1.HostProfileSpec, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	if host.IsUnlockedEnabled() {
-		if r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
+		if !r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			err := r.ReconcileEnabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -900,14 +900,14 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 			log.Info("no enabled attribute changes required")
 		}
 
-		if r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
+		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.StartMonitor(m, msg)
 		}
 
 	} else if host.IsLockedDisabled() {
-		if r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
+		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			err := r.ReconcileDisabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -916,7 +916,7 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 			log.Info("no disabled attribute changes required")
 		}
 
-		if r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) == false {
+		if !r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			msg := "waiting for the unlocked state before applying in-service attributes"
 			m := NewUnlockedEnabledHostMonitor(instance, host.ID)
 			return r.StartMonitor(m, msg)
@@ -965,7 +965,7 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 		status.InSync = inSync
 		result = true
 	}
-	if status.InSync == true && status.Reconciled == false {
+	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
 		result = true
@@ -1140,7 +1140,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	if err != nil {
 		return err
 	} else if defaults == nil {
-		if host.Idle() == false || host.AvailabilityStatus == hosts.AvailOffline {
+		if !host.Idle() || host.AvailabilityStatus == hosts.AvailOffline {
 			// Ideally we would only ever collect the defaults when the host is
 			// in the locked/disabled/online state.  This is the best approach
 			// when provisioning a system from scratch, but for cases where
@@ -1151,7 +1151,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 			return r.StartMonitor(m, msg)
 		}
 
-		if hostInfo.IsInventoryCollected() == false {
+		if !hostInfo.IsInventoryCollected() {
 			msg := "waiting for inventory collection to complete before collecting defaults"
 			m := NewInventoryCollectedMonitor(instance, host.ID)
 			return r.StartMonitor(m, msg)
@@ -1246,7 +1246,7 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 		}
 	}
 
-	if host.Idle() && host.IsLockedDisabled() == false {
+	if host.Idle() && !host.IsLockedDisabled() {
 		action := hosts.ActionLock
 		opts := hosts.HostOpts{Action: &action}
 
@@ -1262,7 +1262,7 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 		r.NormalEvent(instance, common.ResourceUpdated, "host has been locked")
 	}
 
-	if host.IsLockedDisabled() == false {
+	if !host.IsLockedDisabled() {
 		// Host is still not locked so wait for the action to complete.
 		msg := "waiting for host to lock before deleting it"
 		m := NewLockedDisabledHostMonitor(instance, host.ID)
@@ -1306,7 +1306,7 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 		}
 	}
 
-	if instance.DeletionTimestamp.IsZero() == false {
+	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, FinalizerName) {
 			// A finalizer is still present so we need to try to delete the
 			// host from the system.
@@ -1443,7 +1443,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 		}
 	}
 
-	if config.IsReconcilerEnabled(config.Host) == false {
+	if !config.IsReconcilerEnabled(config.Host) {
 		return reconcile.Result{}, nil
 	}
 
@@ -1456,7 +1456,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 		return common.RetryMissingClient, nil
 	}
 
-	if r.GetSystemReady(request.Namespace) == false {
+	if !r.GetSystemReady(request.Namespace) {
 		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil

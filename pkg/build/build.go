@@ -456,7 +456,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 			}
 		}
 
-		if skip == false {
+		if !skip {
 			net, err := v1beta1.NewPlatformNetwork(p.Name, db.namespace, p)
 			if err != nil {
 				return err
@@ -571,7 +571,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		// If the host is configured with a board management controller then we
 		// need to generate a secret to be filled in at a later time with the
 		// BMC password (if applicable)
-		if profile.Spec.BoardManagement != nil && bmSecretGenerated == false {
+		if profile.Spec.BoardManagement != nil && !bmSecretGenerated {
 			bm := profile.Spec.BoardManagement
 			if bm.Credentials.Password != nil && h.BMUsername != nil {
 				secret, err := v1beta1.NewBMSecret(bm.Credentials.Password.Secret, db.namespace, *h.BMUsername)

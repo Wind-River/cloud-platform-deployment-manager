@@ -518,7 +518,7 @@ func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 	for _, o := range host.OSDs {
 		clusterName, found := host.FindClusterNameByTier(o.TierUUID)
-		if found == false {
+		if !found {
 			log.Info("unable to find cluster related to tier", "uuid", o.TierUUID)
 			continue // skip
 		}

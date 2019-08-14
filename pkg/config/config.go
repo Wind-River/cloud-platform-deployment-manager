@@ -159,7 +159,7 @@ func ReadConfig() (err error) {
 // not.
 func IsReconcilerEnabled(name ReconcilerName) bool {
 	value := cfg.GetBool(ReconcilerStatePath(name))
-	if value == false {
+	if !value {
 		log.Info("reconciler is disabled", "name", string(name))
 	}
 

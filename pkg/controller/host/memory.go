@@ -153,7 +153,7 @@ func memoryUpdateRequired(f starlingxv1beta1.MemoryFunctionInfo, count int) (opt
 func (r *ReconcileHost) ReconcileMemory(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if len(profile.Memory) == 0 || config.IsReconcilerEnabled(config.Memory) == false {
+	if len(profile.Memory) == 0 || !config.IsReconcilerEnabled(config.Memory) {
 		return nil
 	}
 
