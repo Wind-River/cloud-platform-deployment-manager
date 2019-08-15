@@ -151,7 +151,6 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	if minimalConfig {
 		noCACertificates = true
 		noDefaults = true
-		noMemory = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
 		normalizeMTU = true

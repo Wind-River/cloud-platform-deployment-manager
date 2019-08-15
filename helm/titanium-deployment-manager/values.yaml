@@ -33,8 +33,6 @@ manager:
       host:
         bmc:
           httpsRequired: false
-        memory:
-          enabled: false
 
 tolerations:
   - effect: NoSchedule
