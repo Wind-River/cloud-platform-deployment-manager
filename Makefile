@@ -57,8 +57,12 @@ manifests:
 fmt:
 	go fmt ./pkg/... ./cmd/...
 
+# Run the golangci-lint static analysis
+golangci:
+	golangci-lint run ./pkg/...
+
 # Run go vet against code
-vet:
+vet: golangci
 	go vet ./pkg/... ./cmd/...
 
 # Generate code
