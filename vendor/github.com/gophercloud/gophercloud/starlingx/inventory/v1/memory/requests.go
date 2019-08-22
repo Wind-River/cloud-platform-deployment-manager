@@ -19,10 +19,9 @@ const (
 type MemoryOpts struct {
 	Function            string `json:"function,omitempty" mapstructure:"-"`
 	Platform            *int   `json:"platform_reserved_mib,omitempty" mapstructure:"platform_reserved_mib"`
-	Hugepages2M         *int   `json:"hugepages_nr_2M_pending,omitempty" mapstructure:"hugepages_nr_2M_pending"`
-	Hugepages1G         *int   `json:"hugepages_nr_1G_pending,omitempty" mapstructure:"hugepages_nr_1G_pending"`
 	VMHugepages2M       *int   `json:"vm_hugepages_nr_2M_pending,omitempty" mapstructure:"vm_hugepages_nr_2M_pending"`
 	VMHugepages1G       *int   `json:"vm_hugepages_nr_1G_pending,omitempty" mapstructure:"vm_hugepages_nr_1G_pending"`
+	VSwitchHugepages    *int   `json:"vswitch_hugepages_reqd,omitempty" mapstructure:"vswitch_hugepages_reqd"`
 	VSwitchHugepageSize *int   `json:"vswitch_hugepages_size_mib,omitempty" mapstructure:"vswitch_hugepages_size_mib"`
 }
 

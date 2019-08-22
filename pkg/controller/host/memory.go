@@ -121,18 +121,13 @@ func memoryUpdateRequired(f starlingxv1beta1.MemoryFunctionInfo, count int) (opt
 			}
 
 		} else if f.Function == memory.MemoryFunctionVSwitch {
-			zero := 0
 			if f.PageSize == string(starlingxv1beta1.PageSize1G) {
-				opts.Hugepages1G = &f.PageCount
-				// VSwitch can only support a single page size at a time
-				opts.Hugepages2M = &zero
+				opts.VSwitchHugepages = &f.PageCount
 				hpSize := 1024
 				opts.VSwitchHugepageSize = &hpSize
 
 			} else if f.PageSize == string(starlingxv1beta1.PageSize2M) {
-				opts.Hugepages2M = &f.PageCount
-				// VSwitch can only support a single page size at a time
-				opts.Hugepages1G = &zero
+				opts.VSwitchHugepages = &f.PageCount
 				hpSize := 2
 				opts.VSwitchHugepageSize = &hpSize
 			}
