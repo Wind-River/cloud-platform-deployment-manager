@@ -626,7 +626,7 @@ type ProfileBaseAttributes struct {
 	InstallOutput *string `json:"installOutput,omitempty"`
 
 	// Console defines the installation output device.
-	// +kubebuilder:validation:Pattern=^(|tty[0-9]+|ttyS[0-9]+,\d+([a-zA-Z0-9]+)?|ttyUSB[0-9]+,\d+([a-zA-Z0-9]+)?|lp[0-9]+)$
+	// +kubebuilder:validation:Pattern=^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$
 	// +optional
 	Console *string `json:"console,omitempty"`
 
