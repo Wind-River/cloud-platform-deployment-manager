@@ -245,7 +245,7 @@ func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.Se
 		Name:         SystemEndpointName,
 		Type:         SystemEndpointType,
 		Availability: availability,
-		Region:       secret.StringData[RegionNameKey],
+		Region:       string(secret.Data[RegionNameKey]),
 	}
 
 	// Get the system API URL
