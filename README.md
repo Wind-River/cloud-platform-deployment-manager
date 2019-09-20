@@ -48,7 +48,7 @@ System API is not functional until the system has been bootstrapped.  The first
 controller can be bootstrapped using Ansible®. This method is described at the 
 following wiki.  
  
-https://wiki.openstack.org/wiki/StarlingX/Containers/Installation#Bootstrap_the_controller
+https://docs.starlingx.io/deploy_install_guides/index.html
 
 Following the bootstrapping of the system by the Ansible deployment method, the
 System API is enabled and the Deployment Manager can continue the system
@@ -522,7 +522,7 @@ A pre-built copy of the Deployment Manager Helm chart can be downloaded from
 this repo at the following location.  Alternatively, it can be accessed
 directly from the cloned repo in the ```docs/charts``` directory.
 
-[[https://github.com/wind-river/titanium-deployment-manager/docs/charts/titanium-deployment-manager-0.2.0.tgz]]
+https://github.com/Wind-River/titanium-deployment-manager/raw/master/docs/charts/titanium-deployment-manager-0.2.0.tgz
 
 It can be deployed using the following command.
 
