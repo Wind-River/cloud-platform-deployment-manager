@@ -739,7 +739,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		// During initial configuration the first controller has a zero MAC
 		// address set as its boot MAC address.  Storing that value in the
 		// defaults causes a conflict once the real MAC is setup in the system
-		// therefore we continously try to set it back to the zero MAC but
+		// therefore we continuously try to set it back to the zero MAC but
 		// the system rejects it.
 		spec.BootMAC = &host.BootMAC
 	}

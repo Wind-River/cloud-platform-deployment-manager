@@ -749,7 +749,7 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 			return common.NewUserDataError(msg)
 		}
 
-		block, _ := pem.Decode([]byte(pemBlock))
+		block, _ := pem.Decode(pemBlock)
 		if block == nil {
 			msg := fmt.Sprintf("unexpected certificate contents in secret %s", c.Secret)
 			return common.NewUserDataError(msg)
