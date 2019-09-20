@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -17,6 +19,8 @@ var (
 	// Server is an in-memory HTTP server for testing.
 	Server *httptest.Server
 )
+
+const genericMultipartBoundary = "--generic-multipart-boundary"
 
 // SetupHTTP prepares the Mux and Server.
 func SetupHTTP() {
@@ -88,4 +92,45 @@ func TestJSONRequest(t *testing.T, r *http.Request, expected string) {
 	}
 
 	CheckJSONEquals(t, expected, actualJSON)
+}
+
+func normalizeMultipartBoundary(body string) string {
+	re := regexp.MustCompile(`^--[a-z0-9]{60}`)
+	boundary := re.FindString(body)
+	if boundary == "" {
+		return ""
+	}
+
+	return strings.Replace(body, boundary, genericMultipartBoundary, -1)
+}
+
+// TestMultipartRequest verifies that the multipart payload of a request matches an expected structure, without asserting
+// errors relating to multipart section boundary markers.  These markers are inserted with random values therefore
+// it would not be possible to compare a request payload with an expected value unless there was a way to
+// use a hardcoded section boundary.
+func TestMultipartRequest(t *testing.T, r *http.Request, expected string) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		t.Errorf("Unable to read request body: %v", err)
+	}
+
+	request := normalizeMultipartBoundary(string(b))
+	if request == "" {
+		t.Errorf("Unable to normalize multipart separator in request body")
+	}
+
+	// Requests are formed with \r\n newline patterns therefore remove the
+	// carriage return (\r) since it is not possible to embed them within
+	// literal strings.
+	re := regexp.MustCompile(`\r`)
+	request = re.ReplaceAllString(request, "")
+
+	expected = normalizeMultipartBoundary(expected)
+	if expected == "" {
+		t.Errorf("Unable to normalize multipart separator in expected request")
+	}
+
+	if expected != request {
+		t.Errorf("Body = xxx%sxxx, expected xxx%sxxx", request, expected)
+	}
 }

@@ -13,7 +13,9 @@ import (
 
 type NTPOpts struct {
 	NTPServers *string `json:"ntpservers,omitempty" mapstructure:"ntpservers"`
-	Enabled    *string `json:"enabled,omitempty" mapstructure:"enabled"`
+	// Deprecated:  The host clock_synchronization attribute should be used
+	// instead when available.
+	Enabled *string `json:"enabled,omitempty" mapstructure:"enabled"`
 }
 
 // ListOptsBuilder allows extensions to add additional parameters to the

@@ -38,7 +38,9 @@ type NTP struct {
 	NTPServers string `json:"ntpservers"`
 
 	// Enables defines whether NTP is enabled on the system or not
-	Enabled bool `json:"enabled"`
+	// Deprecated:  The host clock_synchronization attribute should be used
+	// instead when available.
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// SystemID is the unique UUID value of the system to which this resource
 	// is associated.

@@ -12,6 +12,8 @@ import (
 )
 
 type PTPOpts struct {
+	// Deprecated:  The host clock_synchronization attribute should be used
+	// instead when available.
 	Enabled   *bool   `json:"enabled,omitempty" mapstructure:"enabled"`
 	Mode      *string `json:"mode,omitempty" mapstructure:"mode"`
 	Transport *string `json:"transport,omitempty" mapstructure:"transport"`

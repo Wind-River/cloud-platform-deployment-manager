@@ -45,7 +45,9 @@ type PTP struct {
 	ID string `json:"uuid"`
 
 	// Enables defines whether PTP is enabled on the system or not
-	Enabled bool `json:"enabled"`
+	// Deprecated:  The host clock_synchronization attribute should be used
+	// instead when available.
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// Mode defines the PTP operating mode.
 	Mode string `json:"mode"`

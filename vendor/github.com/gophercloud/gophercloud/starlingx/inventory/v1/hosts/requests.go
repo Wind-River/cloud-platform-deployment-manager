@@ -14,21 +14,22 @@ type LocationOpts struct {
 }
 
 type HostOpts struct {
-	Hostname      *string       `json:"hostname,omitempty" mapstructure:"hostname"`
-	Personality   *string       `json:"personality,omitempty" mapstructure:"personality"`
-	SubFunctions  *string       `json:"subfunctions,omitempty" mapstructure:"subfunctions"`
-	Location      *LocationOpts `json:"location,omitempty" mapstructure:"location"`
-	InstallOutput *string       `json:"install_output,omitempty" mapstructure:"install_output"`
-	Console       *string       `json:"console,omitempty" mapstructure:"console"`
-	BootIP        *string       `json:"mgmt_ip,omitempty" mapstructure:"mgmt_ip"`
-	BootMAC       *string       `json:"mgmt_mac,omitempty" mapstructure:"mgmt_mac"`
-	RootDevice    *string       `json:"rootfs_device,omitempty" mapstructure:"rootfs_device"`
-	BootDevice    *string       `json:"boot_device,omitempty" mapstructure:"boot_device"`
-	BMAddress     *string       `json:"bm_ip,omitempty" mapstructure:"bm_ip"`
-	BMType        *string       `json:"bm_type,omitempty" mapstructure:"bm_type"`
-	BMUsername    *string       `json:"bm_username,omitempty" mapstructure:"bm_username"`
-	BMPassword    *string       `json:"-" mapstructure:"bm_password"`
-	Action        *string       `json:"action,omitempty" mapstructure:"action"`
+	Hostname             *string       `json:"hostname,omitempty" mapstructure:"hostname"`
+	Personality          *string       `json:"personality,omitempty" mapstructure:"personality"`
+	SubFunctions         *string       `json:"subfunctions,omitempty" mapstructure:"subfunctions"`
+	Location             *LocationOpts `json:"location,omitempty" mapstructure:"location"`
+	InstallOutput        *string       `json:"install_output,omitempty" mapstructure:"install_output"`
+	Console              *string       `json:"console,omitempty" mapstructure:"console"`
+	BootIP               *string       `json:"mgmt_ip,omitempty" mapstructure:"mgmt_ip"`
+	BootMAC              *string       `json:"mgmt_mac,omitempty" mapstructure:"mgmt_mac"`
+	RootDevice           *string       `json:"rootfs_device,omitempty" mapstructure:"rootfs_device"`
+	BootDevice           *string       `json:"boot_device,omitempty" mapstructure:"boot_device"`
+	BMAddress            *string       `json:"bm_ip,omitempty" mapstructure:"bm_ip"`
+	BMType               *string       `json:"bm_type,omitempty" mapstructure:"bm_type"`
+	BMUsername           *string       `json:"bm_username,omitempty" mapstructure:"bm_username"`
+	BMPassword           *string       `json:"-" mapstructure:"bm_password"`
+	ClockSynchronization *string       `json:"clock_synchronization,omitempty" mapstructure:"clock_synchronization"`
+	Action               *string       `json:"action,omitempty" mapstructure:"action"`
 }
 
 const (

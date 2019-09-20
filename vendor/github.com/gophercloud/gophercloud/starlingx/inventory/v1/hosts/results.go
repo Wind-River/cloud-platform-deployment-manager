@@ -195,6 +195,9 @@ type Host struct {
 	// InventoryState is the current state of the inventory collection process
 	// of the host.
 	InventoryState *string `json:"inv_state,omitempty"`
+
+	// ClockSynchronization is the chosen clock source for the host.
+	ClockSynchronization *string `json:"clock_synchronization,omitempty"`
 }
 
 // HostPage is the page returned by a pager when traversing over a

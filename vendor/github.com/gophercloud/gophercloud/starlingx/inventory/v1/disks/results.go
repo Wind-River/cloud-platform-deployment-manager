@@ -65,7 +65,7 @@ type Disk struct {
 	SerialID *string `json:"serial_id,omitempty"`
 
 	// StorID is the UUID value of the associated storage function.
-	StorID *string `json:"stor_uuid,omitempty"`
+	StorID *string `json:"istor_uuid,omitempty"`
 
 	// Capabilities is a map of applicable device and system capabilities.
 	Capabilities Capabilities `json:"capabilities"`
