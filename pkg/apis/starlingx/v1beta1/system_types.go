@@ -161,10 +161,6 @@ type SystemStorageInfo struct {
 // configurable.
 // +deepequal-gen:ignore-nil-fields=true
 type PTPInfo struct {
-	// Enabled defines whether the system is configured to enable precision time
-	// protocol functionality.
-	Enabled bool `json:"enabled"`
-
 	// Mode defines the precision time protocol mode of the system.
 	// +kubebuilder:validation:Enum=hardware,software,legacy
 	// +optional

@@ -116,10 +116,6 @@ spec:
               description: PTP defines the Precision Time Protocol configuration for
                 the system.
               properties:
-                enabled:
-                  description: Enabled defines whether the system is configured to
-                    enable precision time protocol functionality.
-                  type: boolean
                 mechanism:
                   description: Mechanism defines the high level messaging architecture
                     used to implement the precision time procotol.
@@ -142,8 +138,6 @@ spec:
                   - l2
                   - udp
                   type: string
-              required:
-              - enabled
               type: object
             snmp:
               description: SNMP is the set of SNMP specific attributes to be configured

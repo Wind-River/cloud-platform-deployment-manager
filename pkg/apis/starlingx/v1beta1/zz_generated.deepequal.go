@@ -1098,9 +1098,6 @@ func (in *PTPInfo) DeepEqual(other *PTPInfo) bool {
 		return false
 	}
 
-	if in.Enabled != other.Enabled {
-		return false
-	}
 	if in.Mode != nil {
 		if (in.Mode == nil) != (other.Mode == nil) {
 			return false
@@ -1486,6 +1483,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 			return false
 		} else if in.RootDevice != nil {
 			if *in.RootDevice != *other.RootDevice {
+				return false
+			}
+		}
+	}
+
+	if in.ClockSynchronization != nil {
+		if (in.ClockSynchronization == nil) != (other.ClockSynchronization == nil) {
+			return false
+		} else if in.ClockSynchronization != nil {
+			if *in.ClockSynchronization != *other.ClockSynchronization {
 				return false
 			}
 		}

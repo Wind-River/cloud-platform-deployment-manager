@@ -231,6 +231,13 @@ spec:
                     via the overrides attributes.
                   pattern: ^([0-9a-fA-Z]{2}[:-]){5}([0-9a-fA-Z]{2})$
                   type: string
+                clockSynchronization:
+                  description: ClockSynchronization defines the clock synchronization
+                    source of the host resource.
+                  enum:
+                  - ntp
+                  - ptp
+                  type: string
                 console:
                   description: Console defines the installation output device.
                   pattern: ^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$

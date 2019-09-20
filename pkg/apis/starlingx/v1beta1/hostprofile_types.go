@@ -666,6 +666,12 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:MaxLength=4095
 	// +optional
 	RootDevice *string `json:"rootDevice,omitempty"`
+
+	// ClockSynchronization defines the clock synchronization source of the host
+	// resource.
+	// +kubebuilder:validation:Enum=ntp,ptp
+	// +optional
+	ClockSynchronization *string `json:"clockSynchronization,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile

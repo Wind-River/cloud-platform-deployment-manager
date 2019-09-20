@@ -365,6 +365,13 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile 
 		}
 	}
 
+	if profile.ClockSynchronization != nil {
+		if h.ClockSynchronization == nil || *profile.ClockSynchronization != *h.ClockSynchronization {
+			result = true
+			opts.ClockSynchronization = profile.ClockSynchronization
+		}
+	}
+
 	return opts, result, nil
 }
 

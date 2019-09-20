@@ -22,6 +22,7 @@ func TestStorageSystem(t *testing.T) {
 	contact := string("A sample contact")
 	dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
 	ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
+	ptpMode := "hardware"
 	created := &System{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -34,7 +35,7 @@ func TestStorageSystem(t *testing.T) {
 			DNSServers:  &dnsServers,
 			NTPServers:  &ntpServers,
 			PTP: &PTPInfo{
-				Enabled: false,
+				Mode: &ptpMode,
 			},
 		},
 	}

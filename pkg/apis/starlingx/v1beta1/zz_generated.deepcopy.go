@@ -1415,6 +1415,11 @@ func (in *ProfileBaseAttributes) DeepCopyInto(out *ProfileBaseAttributes) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ClockSynchronization != nil {
+		in, out := &in.ClockSynchronization, &out.ClockSynchronization
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

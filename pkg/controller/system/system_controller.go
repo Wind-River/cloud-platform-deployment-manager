@@ -198,20 +198,6 @@ func ntpUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *ntp.NTP) (ntpOpt
 		}
 	}
 
-	if spec.PTP != nil {
-		// Regardless of whether NTP was defined in the spec or not make sure
-		// that the NTP state is compatible with the PTP state.
-		if spec.PTP.Enabled && info.Enabled {
-			value := strconv.FormatBool(false)
-			ntpOpts.Enabled = &value
-			result = true
-		} else if !spec.PTP.Enabled && !info.Enabled {
-			value := strconv.FormatBool(true)
-			ntpOpts.Enabled = &value
-			result = true
-		}
-	}
-
 	return ntpOpts, result
 }
 
@@ -324,11 +310,6 @@ func (r *ReconcileSystem) ReconcileDRBD(client *gophercloud.ServiceClient, insta
 // is necessary.
 func ptpUpdateRequired(spec *starlingxv1beta1.PTPInfo, p *ptp.PTP) (ptpOpts ptp.PTPOpts, result bool) {
 	if spec != nil {
-		if spec.Enabled != p.Enabled {
-			ptpOpts.Enabled = &spec.Enabled
-			result = true
-		}
-
 		if spec.Mode != nil && *spec.Mode != p.Mode {
 			ptpOpts.Mode = spec.Mode
 			result = true

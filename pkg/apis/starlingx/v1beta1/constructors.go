@@ -753,6 +753,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	spec.BootDevice = &bootDevice
 	rootDevice := fixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
+	spec.ClockSynchronization = host.ClockSynchronization
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
@@ -990,9 +991,8 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 		}
 	}
 
-	if systemInfo.PTP != nil && systemInfo.PTP.Enabled {
+	if systemInfo.PTP != nil {
 		spec.PTP = &PTPInfo{
-			Enabled:   true,
 			Mode:      &systemInfo.PTP.Mode,
 			Transport: &systemInfo.PTP.Transport,
 			Mechanism: &systemInfo.PTP.Mechanism,
