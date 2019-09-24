@@ -9,6 +9,8 @@ namespace: titanium-deployment-manager
 
 nameOverride: ""
 
+imagePullSecrets: []
+
 rbacProxy:
   enabled: true
   port: 8443
