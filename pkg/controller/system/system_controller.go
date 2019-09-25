@@ -895,6 +895,12 @@ func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System
 		status.InSync = inSync
 	}
 
+	if status.InSync && !status.Reconciled {
+		// Record the fact that we have reached inSync at least once.
+		status.Reconciled = true
+		result = true
+	}
+
 	if !strings.EqualFold(status.SystemType, info.SystemType) {
 		result = true
 		status.SystemType = strings.ToLower(info.SystemType)

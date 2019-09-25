@@ -427,6 +427,9 @@ func (in *DataNetworkStatus) DeepEqual(other *DataNetworkStatus) bool {
 		}
 	}
 
+	if in.Reconciled != other.Reconciled {
+		return false
+	}
 	if in.InSync != other.InSync {
 		return false
 	}
@@ -1238,6 +1241,9 @@ func (in *PlatformNetworkStatus) DeepEqual(other *PlatformNetworkStatus) bool {
 		}
 	}
 
+	if in.Reconciled != other.Reconciled {
+		return false
+	}
 	if in.InSync != other.InSync {
 		return false
 	}
@@ -1877,6 +1883,9 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 		return false
 	}
 	if in.InSync != other.InSync {
+		return false
+	}
+	if in.Reconciled != other.Reconciled {
 		return false
 	}
 	if (in.Defaults == nil) != (other.Defaults == nil) {

@@ -281,6 +281,11 @@ spec:
               description: Defines whether the resource has been provisioned on the
                 target system.
               type: boolean
+            reconciled:
+              description: Reconciled defines whether the System has been successfully
+                reconciled at least once.  If further changes are made they will be
+                ignored by the reconciler.
+              type: boolean
             softwareVersion:
               description: SoftwareVersion defines the current software version reported
                 by the system API.
@@ -299,6 +304,7 @@ spec:
           - systemMode
           - softwareVersion
           - inSync
+          - reconciled
           type: object
   version: v1beta1
 status:

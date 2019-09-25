@@ -292,6 +292,11 @@ type SystemStatus struct {
 	// Defines whether the resource has been provisioned on the target system.
 	InSync bool `json:"inSync"`
 
+	// Reconciled defines whether the System has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	Reconciled bool `json:"reconciled"`
+
 	// Defaults defines the configuration attributed collected before applying
 	// any user configuration values.
 	// +optional

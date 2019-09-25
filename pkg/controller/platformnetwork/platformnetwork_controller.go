@@ -538,6 +538,11 @@ func (r *ReconcilePlatformNetwork) ReconcileResource(client *gophercloud.Service
 
 		instance.Status.InSync = inSync
 
+		if !instance.Status.Reconciled {
+			// Record the fact that we have reached inSync at least once.
+			instance.Status.Reconciled = instance.Status.InSync
+		}
+
 		if r.statusUpdateRequired(instance, oldStatus) {
 			err2 := r.Status().Update(context.TODO(), instance)
 			if err2 != nil {

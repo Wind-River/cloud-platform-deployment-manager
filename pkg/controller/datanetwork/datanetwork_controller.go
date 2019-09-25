@@ -252,6 +252,12 @@ func (r *ReconcileDataNetwork) statusUpdateRequired(instance *starlingxv1beta1.D
 		result = true
 	}
 
+	if status.InSync && !status.Reconciled {
+		// Record the fact that we have reached inSync at least once.
+		status.Reconciled = true
+		result = true
+	}
+
 	return result
 }
 

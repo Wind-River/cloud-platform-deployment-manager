@@ -107,7 +107,13 @@ spec:
               description: Defines whether the resource has been provisioned on the
                 target system.
               type: boolean
+            reconciled:
+              description: Reconciled defines whether the host has been successfully
+                reconciled at least once.  If further changes are made they will be
+                ignored by the reconciler.
+              type: boolean
           required:
+          - reconciled
           - inSync
           type: object
   version: v1beta1

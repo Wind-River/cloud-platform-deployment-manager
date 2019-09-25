@@ -67,6 +67,11 @@ type DataNetworkStatus struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// Reconciled defines whether the host has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	Reconciled bool `json:"reconciled"`
+
 	// Defines whether the resource has been provisioned on the target system.
 	InSync bool `json:"inSync"`
 }

@@ -70,6 +70,11 @@ type PlatformNetworkStatus struct {
 	// +optional
 	PoolUUID *string `json:"poolUUID,omitempty"`
 
+	// Reconciled defines whether the network has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	Reconciled bool `json:"reconciled"`
+
 	// Defines whether the resource has been provisioned on the target system.
 	InSync bool `json:"inSync"`
 }

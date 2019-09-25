@@ -133,7 +133,13 @@ spec:
                 that is represents the networks underlying address pool resource.  This
                 will only exist once this resource has been provisioned into the system.
               type: string
+            reconciled:
+              description: Reconciled defines whether the network has been successfully
+                reconciled at least once.  If further changes are made they will be
+                ignored by the reconciler.
+              type: boolean
           required:
+          - reconciled
           - inSync
           type: object
   version: v1beta1
