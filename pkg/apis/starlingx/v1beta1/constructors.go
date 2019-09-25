@@ -14,6 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
@@ -100,6 +101,9 @@ const (
 	ProvioningModeStatic  = "static"
 	ProvioningModeDynamic = "dynamic"
 )
+
+// Defines the default Secret name used for tracking license files.
+const SystemDefaultLicenseName = "system-license"
 
 // ErrMissingSystemResource defines an error to be used when reporting that
 // an operation is unable to find a required system resource from the
@@ -931,6 +935,18 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.F
 	return nil
 }
 
+func parseLicenseInfo(spec *SystemSpec, license *licenses.License) error {
+	if license != nil {
+		// Populate a Secret name reference but for now don't bother trying
+		// to setup the actual Secret with the license data.  That may be
+		// necessary some day in order to properly compare the desired config
+		// with the current config.
+		spec.License = &LicenseInfo{Secret: SystemDefaultLicenseName}
+	}
+
+	return nil
+}
+
 func NewSystemStatus(systemInfo v1info.SystemInfo) (*SystemStatus, error) {
 	status := SystemStatus{}
 
@@ -1027,6 +1043,13 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 		}
 	}
 
+	if systemInfo.License != nil {
+		err := parseLicenseInfo(&spec, systemInfo.License)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &spec, nil
 }
 
@@ -1080,6 +1103,25 @@ func NewBMSecret(name string, namespace string, username string) (*v1.Secret, er
 		Data: map[string][]byte{
 			v1.BasicAuthUsernameKey: []byte(username),
 			v1.BasicAuthPasswordKey: fakePassword,
+		},
+	}
+
+	return &secret, nil
+}
+
+func NewLicenseSecret(name string, namespace string, content string) (*v1.Secret, error) {
+	secret := v1.Secret{
+		TypeMeta: v1types.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Secret",
+		},
+		ObjectMeta: v1types.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: v1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			SecretLicenseContentKey: []byte(content),
 		},
 	}
 

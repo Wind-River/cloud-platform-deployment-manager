@@ -5,6 +5,7 @@ package platform
 
 import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/pkg/errors"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"strconv"
@@ -83,6 +84,7 @@ type SystemInfo struct {
 	SNMPCommunities      []snmpCommunity.SNMPCommunity
 	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
 	FileSystems          []controllerFilesystems.FileSystem
+	License              *licenses.License
 }
 
 func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) error {
@@ -143,6 +145,14 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 	if err != nil {
 		err = errors.Wrap(err, "failed to get filesystem list")
 		return err
+	}
+
+	in.License, err = licenses.Get(client).Extract()
+	if err != nil {
+		if !strings.Contains(err.Error(), "License file not found") {
+			err = errors.Wrap(err, "failed to get license list")
+			return err
+		}
 	}
 
 	return nil

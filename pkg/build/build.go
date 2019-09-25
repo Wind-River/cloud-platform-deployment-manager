@@ -9,6 +9,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
 	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
@@ -124,7 +125,7 @@ func (db *DeploymentBuilder) Build() (*Deployment, error) {
 
 	db.progressUpdate("building system configuration\n")
 
-	err = db.buildSystem(&deployment)
+	systemInfo, err := db.buildSystem(&deployment)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +133,13 @@ func (db *DeploymentBuilder) Build() (*Deployment, error) {
 	db.progressUpdate("building system endpoint secret configuration\n")
 
 	err = db.buildEndpointSecret(&deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	db.progressUpdate("building system license secret configuration\n")
+
+	err = db.buildLicenseSecret(&deployment, systemInfo.License)
 	if err != nil {
 		return nil, err
 	}
@@ -317,30 +325,30 @@ func (db *DeploymentBuilder) filterSystem(system *v1beta1.System, deployment *De
 	return nil
 }
 
-func (db *DeploymentBuilder) buildSystem(d *Deployment) error {
+func (db *DeploymentBuilder) buildSystem(d *Deployment) (*v1info.SystemInfo, error) {
 	// Collect a snapshot of the system info.
 	systemInfo := v1info.SystemInfo{}
 	err := systemInfo.PopulateSystemInfo(db.client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Build a System object from the system snapshot
 	system, err := v1beta1.NewSystem(db.namespace, db.name, systemInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	db.progressUpdate("...filtering system attributes\n")
 
 	err = db.filterSystem(system, d)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	system.DeepCopyInto(&d.System)
 
-	return nil
+	return &systemInfo, nil
 }
 
 func NewEndpointSecretFromEnv(name string, namespace string) (*v1.Secret, error) {
@@ -388,6 +396,18 @@ func (db *DeploymentBuilder) buildEndpointSecret(d *Deployment) error {
 	}
 
 	d.Secrets = append(d.Secrets, cert)
+
+	return nil
+}
+
+func (db *DeploymentBuilder) buildLicenseSecret(d *Deployment, license *licenses.License) error {
+	if d.System.Spec.License != nil {
+		secret, err := v1beta1.NewLicenseSecret(d.System.Spec.License.Secret, db.namespace, license.Content)
+		if err != nil {
+			return err
+		}
+		d.Secrets = append(d.Secrets, secret)
+	}
 
 	return nil
 }

@@ -5,7 +5,9 @@ package system
 
 import (
 	"context"
+	"crypto/md5"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/drbd"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
@@ -795,6 +798,69 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 	return nil
 }
 
+// ReconcileLicense configures the system license to align with the desired
+// license file.
+func (r *ReconcileSystem) ReconcileLicense(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+	if !config.IsReconcilerEnabled(config.License) {
+		return nil
+	}
+
+	if spec.License == nil {
+		return nil
+	}
+
+	// The license cannot be deleted once installed.  Compare the file contents
+	// and replace it if it does not match; otherwise take no action.
+	secret := v1.Secret{}
+	secretName := types.NamespacedName{Namespace: instance.Namespace, Name: spec.License.Secret}
+	err := r.Get(context.TODO(), secretName, &secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			err = perrors.Wrap(err, "failed to get certificate secret")
+			return err
+		}
+
+		msg := fmt.Sprintf("waiting for license %q to be created", spec.License.Secret)
+		r.WarningEvent(instance, common.ResourceDependency, msg)
+		return common.NewMissingKubernetesResource(msg)
+	}
+
+	contents, ok := secret.Data[starlingxv1beta1.SecretLicenseContentKey]
+	if !ok {
+		msg := fmt.Sprintf("missing %q key in certificate secret %s",
+			starlingxv1beta1.SecretLicenseContentKey, spec.License.Secret)
+		return common.NewUserDataError(msg)
+	}
+
+	if info.License == nil || info.License.Content != string(contents) {
+		opts := licenses.LicenseOpts{
+			Contents: contents,
+		}
+
+		checksum := md5.Sum(contents)
+		log.Info("installing license", "md5sum", hex.EncodeToString(checksum[:]))
+
+		err = licenses.Create(client, opts).ExtractErr()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to install license: %s", common.FormatStruct(opts))
+			return err
+		}
+
+		r.NormalEvent(instance, common.ResourceCreated,
+			"license has been installed")
+
+		result, err := licenses.Get(client).Extract()
+		if err != nil {
+			err = perrors.Wrap(err, "failed to refresh license info")
+			return err
+		}
+
+		info.License = result
+	}
+
+	return nil
+}
+
 // ReconcileSystemInitial is responsible for reconciling the system attributes
 // that do not depend on any other resource types (i.e., hosts).  Its purpose
 // is to get the system into a state in which other resources can be
@@ -809,6 +875,11 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 	// communications with the system API are secure if that was the intent
 	// of the user.
 	err = r.ReconcileCertificates(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileLicense(client, instance, spec, info)
 	if err != nil {
 		return err
 	}
@@ -1051,6 +1122,9 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 	// certificate info so that we do not fail when trying to find the
 	// matching Secret.
 	defaults.Certificates = nil
+
+	// Same problem applies to the License file attribute
+	defaults.License = nil
 
 	// Merge the system defaults with the desired attributes so that any
 	// optional attributes not filled in by the user default to how the system

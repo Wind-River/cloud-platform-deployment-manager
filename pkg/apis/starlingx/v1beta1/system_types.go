@@ -20,9 +20,10 @@ const (
 
 const (
 	// List of secret data attribute keys
-	SecretCertKey    = "tls.crt"
-	SecretPrivKeyKey = "tls.key"
-	SecretCaCertKey  = "ca.crt"
+	SecretCertKey           = "tls.crt"
+	SecretPrivKeyKey        = "tls.key"
+	SecretCaCertKey         = "ca.crt"
+	SecretLicenseContentKey = "content"
 )
 
 // CertificateInfo defines the attributes required to define an instance of a
@@ -74,6 +75,21 @@ func (in *CertificateInfo) PrivateKeyExpected() bool {
 // objects.
 // +deepequal-gen:unordered-array=true
 type CertificateList []CertificateInfo
+
+// LicenseInfo defines the attributes which specify an individual License
+// resource.
+type LicenseInfo struct {
+	// Secret is the name of a TLS secret containing the license file contents.
+	// It must refer to a Opaque Kubernetes Secret.
+	Secret string `json:"secret"`
+}
+
+// DeepEqual overrides the code generated DeepEqual method because the License
+// information is stored in a Secret and we cannot compare it easily since it
+// is not directly a part of the SystemSpec.
+func (in *LicenseInfo) DeepEqual(other *LicenseInfo) bool {
+	return other != nil
+}
 
 // +deepequal-gen:ignore-nil-fields=true
 type StorageBackend struct {
@@ -242,6 +258,10 @@ type SystemSpec struct {
 	// installed.
 	// +optional
 	Certificates *CertificateList `json:"certificates,omitempty"`
+
+	// License is a reference to a license file that must be installed.
+	// +optional
+	License *LicenseInfo `json:"license,omitempty"`
 
 	// Storage is a set of storage specific attributes to be configured for the
 	// system.

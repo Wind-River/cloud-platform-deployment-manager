@@ -1830,6 +1830,16 @@ func (in *SystemSpec) DeepEqual(other *SystemSpec) bool {
 		}
 	}
 
+	if in.License != nil {
+		if (in.License == nil) != (other.License == nil) {
+			return false
+		} else if in.License != nil {
+			if !in.License.DeepEqual(other.License) {
+				return false
+			}
+		}
+	}
+
 	if in.Storage != nil {
 		if (in.Storage == nil) != (other.Storage == nil) {
 			return false

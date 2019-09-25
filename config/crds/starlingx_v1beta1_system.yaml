@@ -99,6 +99,16 @@ spec:
               items:
                 type: string
               type: array
+            license:
+              description: License is a reference to a license file that must be installed.
+              properties:
+                secret:
+                  description: Secret is the name of a TLS secret containing the license
+                    file contents. It must refer to a Opaque Kubernetes Secret.
+                  type: string
+              required:
+              - secret
+              type: object
             location:
               description: Location is a short description of the system's physical
                 location.
