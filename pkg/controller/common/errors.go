@@ -3,6 +3,15 @@
 
 package common
 
+// Defines common log strings from commonly performed validation checks across
+// all different reconcilers.
+const (
+	NoChangesAfterReconciled           = "configuration changes ignored after initial synchronization has completed"
+	ChangedAllowedAfterReconciled      = "manual override; allowing configuration changes after initial synchronization"
+	NoProvisioningAfterReconciled      = "resource provisioning ignored after initial synchronization has completed"
+	ProvisioningAllowedAfterReconciled = "manual override; allowing resource provisioning after initial synchronization"
+)
+
 // BaseError defines the common error reporting struct for all other errors
 // defined in this package
 type BaseError struct {

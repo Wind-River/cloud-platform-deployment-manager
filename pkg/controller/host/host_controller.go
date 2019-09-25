@@ -1040,11 +1040,11 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 				// Do not process any further changes once we have reached a
 				// synchronized state unless there is an annotation on the host.
 				if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
-					msg := "host provisioning ignored after initial synchronization has completed"
+					msg := common.NoProvisioningAfterReconciled
 					r.NormalEvent(instance, common.ResourceUpdated, msg)
 					return nil, common.NewChangeAfterInSync(msg)
 				} else {
-					log.Info("Manual override; allowing host provisioning after initial synchronization.")
+					log.Info(common.ProvisioningAllowedAfterReconciled)
 				}
 			}
 
@@ -1214,11 +1214,11 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the host.
 		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
-			msg := "configuration changes ignored after initial synchronization has completed"
+			msg := common.NoChangesAfterReconciled
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return common.NewChangeAfterInSync(msg)
 		} else {
-			log.Info("Manual override; allowing configuration changes after initial synchronization.")
+			log.Info(common.ChangedAllowedAfterReconciled)
 		}
 	}
 
