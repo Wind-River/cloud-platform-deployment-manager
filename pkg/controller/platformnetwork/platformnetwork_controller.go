@@ -170,6 +170,18 @@ func poolUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, p *addresspo
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (*addresspools.AddressPool, error) {
+	if instance.Status.Reconciled && r.StopAfterInSync() {
+		// Do not process any further changes once we have reached a
+		// synchronized state unless there is an annotation on the resource.
+		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+			msg := common.NoProvisioningAfterReconciled
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
+			return nil, common.NewChangeAfterInSync(msg)
+		} else {
+			log.Info(common.ProvisioningAllowedAfterReconciled)
+		}
+	}
+
 	opts := addresspools.AddressPoolOpts{
 		Name:    &instance.Name,
 		Network: &instance.Spec.Subnet,
@@ -209,6 +221,18 @@ func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.S
 // match the desired state of the resource.
 func (r *ReconcilePlatformNetwork) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if opts, ok := poolUpdateRequired(instance, pool); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+				msg := common.NoChangesAfterReconciled
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				log.Info(common.ChangedAllowedAfterReconciled)
+			}
+		}
+
 		// Update existing pool
 		log.Info("updating address pool", "uuid", pool.ID, "opts", opts)
 
@@ -376,6 +400,18 @@ func networkResourceRequired(instance *starlingxv1beta1.PlatformNetwork) bool {
 // ReconcileNewNetwork is a method which handles reconciling a new data resource
 // and creates the corresponding system resource thru the system API.
 func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (*networks.Network, error) {
+	if instance.Status.Reconciled && r.StopAfterInSync() {
+		// Do not process any further changes once we have reached a
+		// synchronized state unless there is an annotation on the resource.
+		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+			msg := common.NoChangesAfterReconciled
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
+			return nil, common.NewChangeAfterInSync(msg)
+		} else {
+			log.Info(common.ChangedAllowedAfterReconciled)
+		}
+	}
+
 	dynamic := bool(instance.Spec.Allocation.Type == AllocationTypeDynamic)
 
 	opts := networks.NetworkOpts{
@@ -404,6 +440,18 @@ func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.Servi
 // match the desired state of the resource.
 func (r *ReconcilePlatformNetwork) ReconcileUpdatedNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, network *networks.Network) error {
 	if opts, ok := networkUpdateRequired(instance, network); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+				msg := common.NoChangesAfterReconciled
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				log.Info(common.ChangedAllowedAfterReconciled)
+			}
+		}
+
 		log.Info("updating platform network", "uuid", network.UUID, "opts", opts)
 
 		result, err := networks.Update(client, network.UUID, opts).Extract()
@@ -576,6 +624,14 @@ func (r *ReconcilePlatformNetwork) ReconcileResource(client *gophercloud.Service
 	}
 
 	return err
+}
+
+// StopAfterInSync determines whether the reconciler should continue processing
+// change requests after the configuration has been reconciled a first time.
+func (r *ReconcilePlatformNetwork) StopAfterInSync() bool {
+	// If the option is not found or the option was specified in a form other
+	// than a bool then assume the safest default value possible.
+	return config.GetReconcilerOptionBool(config.PlatformNetwork, config.StopAfterInSync, true)
 }
 
 // Reconcile reads that state of the cluster for a PlatformNetwork object and makes changes based on the state read

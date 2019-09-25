@@ -105,7 +105,13 @@ var reconcilerOptionDefaults = map[ReconcilerName]map[OptionName]interface{}{
 	BMC: {
 		HTTPSRequired: true,
 	},
+	DataNetwork: {
+		StopAfterInSync: true,
+	},
 	Host: {
+		StopAfterInSync: true,
+	},
+	PlatformNetwork: {
 		StopAfterInSync: true,
 	},
 }
