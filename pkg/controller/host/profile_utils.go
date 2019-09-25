@@ -208,6 +208,35 @@ func (r *ReconcileHost) validateProfileInterfaces(host *starlingxv1beta1.Host, p
 	return nil
 }
 
+// validateBoardManagement performs validation of the Board Management
+// host attributes.
+func (r *ReconcileHost) validateBoardManagement(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+	if profile.BoardManagement == nil {
+		return nil
+	}
+
+	bmInfo := profile.BoardManagement
+	if bmInfo.Type == nil {
+		msg := "Board Management 'type' is a required attribute"
+		return common.NewValidationError(msg)
+	}
+
+	if bmInfo.Credentials == nil {
+		msg := "Board Management 'credentials' is a required attribute"
+		return common.NewValidationError(msg)
+	} else if bmInfo.Credentials.Password == nil {
+		msg := "Board Management 'password' is a required attribute"
+		return common.NewValidationError(msg)
+	}
+
+	if bmInfo.Address == nil {
+		msg := "Board Management 'address' is a required attribute"
+		return common.NewValidationError(msg)
+	}
+
+	return nil
+}
+
 // validateProfileSpec is a private method to validate the contents of a profile
 // spec resource.
 func (r *ReconcileHost) validateProfileSpec(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
@@ -253,6 +282,11 @@ func (r *ReconcileHost) validateProfileSpec(host *starlingxv1beta1.Host, profile
 	}
 
 	err := r.validateProfileInterfaces(host, profile)
+	if err != nil {
+		return err
+	}
+
+	err = r.validateBoardManagement(host, profile)
 	if err != nil {
 		return err
 	}

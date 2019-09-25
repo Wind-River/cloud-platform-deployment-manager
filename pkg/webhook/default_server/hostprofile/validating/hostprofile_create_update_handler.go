@@ -12,8 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	apitypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -37,49 +35,6 @@ type HostProfileCreateUpdateHandler struct {
 
 	// Decoder decodes objects
 	Decoder types.Decoder
-}
-
-func (h *HostProfileCreateUpdateHandler) validateBMPassword(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
-	name := obj.Spec.BoardManagement.Credentials.Password.Secret
-	secret := &corev1.Secret{}
-	secretName := apitypes.NamespacedName{Name: name, Namespace: obj.ObjectMeta.Namespace}
-
-	err := h.Client.Get(ctx, secretName, secret)
-	if err != nil {
-		return false, fmt.Sprintf("unable to retrieve board management password secret %s", secretName), err
-	}
-
-	_, ok := secret.Data[starlingxv1beta1.SecretUsernameKey]
-	if !ok {
-		return false, fmt.Sprintf("board management password secret %s does not contain username", secretName), nil
-	}
-
-	_, ok = secret.Data[starlingxv1beta1.SecretPasswordKey]
-	if !ok {
-		return false, fmt.Sprintf("board management password secret %s does not contain username", secretName), nil
-	}
-
-	return true, AllowedReason, nil
-}
-
-func (h *HostProfileCreateUpdateHandler) validateBMCredentials(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
-	if obj.Spec.BoardManagement.Credentials.Password != nil {
-		return h.validateBMPassword(ctx, obj)
-	}
-
-	return false, "missing board management authentication credentials", nil
-}
-
-func (h *HostProfileCreateUpdateHandler) validateBMInfo(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
-	if obj.Spec.BoardManagement.Type == nil {
-		return false, "missing board management 'type' attribute", nil
-	}
-
-	if obj.Spec.BoardManagement.Credentials == nil {
-		return false, "missing board management 'credentials' attribute", nil
-	}
-
-	return h.validateBMCredentials(ctx, obj)
 }
 
 func (h *HostProfileCreateUpdateHandler) validateMemoryFunction(ctx context.Context, node starlingxv1beta1.MemoryNodeInfo, function starlingxv1beta1.MemoryFunctionInfo) (bool, string, error) {
@@ -183,13 +138,6 @@ func (h *HostProfileCreateUpdateHandler) validatingHostProfileFn(ctx context.Con
 
 	if obj.Spec.Base != nil && *obj.Spec.Base == "" {
 		return false, "profile base name must not be empty", nil
-	}
-
-	if obj.Spec.BoardManagement != nil {
-		allowed, reason, err = h.validateBMInfo(ctx, obj)
-		if !allowed || err != nil {
-			return allowed, reason, err
-		}
 	}
 
 	if obj.Spec.Memory != nil {

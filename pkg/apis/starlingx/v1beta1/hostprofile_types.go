@@ -32,13 +32,16 @@ type BMPasswordInfo struct {
 
 // DeepEqual overrides the code generated DeepEqual method because the
 // credential information built from the running configuration never includes
-// the password so when the profile is created dynamically it can only point
-// to a Secret named by the system (i.e., we may not yet know what the user
-// intends to name the Secret).
+// the password since the system API does not provide it.  Therefore when
+// the BMPasswordInfo is setup dynamically we put a dummy value in the Secret
+// name which will likely never match what is in the desired configuration so
+// there is no point in comparing it.
 func (in *BMPasswordInfo) DeepEqual(other *BMPasswordInfo) bool {
-	// TODO(alegacy): need to find a way to determine if the username has
-	//  changed otherwise we will never resolve it unless some other attribute
-	//  also changed.
+	// TODO(alegacy): A side effect of not being able to compare the password
+	//  based credential information is that we also do not compare the username
+	//  so we will never reconcile it unless some other attribute also changed.
+	//  That is fine for now since we are only supporting the initial
+	//  configuration and not subsequent modifications.
 	return true
 }
 
