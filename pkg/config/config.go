@@ -5,6 +5,8 @@ package config
 
 import (
 	"fmt"
+	"reflect"
+
 	perrors "github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
@@ -166,10 +168,28 @@ func IsReconcilerEnabled(name ReconcilerName) bool {
 	return value
 }
 
-// IsReconcilerEnabled returns whether a specific reconciler is enabled or
-// not.
+// GetReconcilerOption returns the value of the specified option as an Interface
+// value; otherwise nil is returned if the option does not exist in the config.
 func GetReconcilerOption(name ReconcilerName, option OptionName) interface{} {
 	return cfg.Get(ReconcilerOptionPath(name, option))
+}
+
+// GetReconcilerOptionBool returns the value of the specified option as a Bool
+// value; otherwise the specified default value is returned if the option does
+// not exist.
+func GetReconcilerOptionBool(name ReconcilerName, option OptionName, defaultValue bool) bool {
+	value := GetReconcilerOption(name, option)
+	if value != nil {
+		if required, ok := value.(bool); ok {
+			return required
+		} else {
+			log.Info("unexpected option type",
+				"option", option, "type", reflect.TypeOf(value))
+		}
+	}
+
+	// Return the caller's default if not found.
+	return defaultValue
 }
 
 func init() {

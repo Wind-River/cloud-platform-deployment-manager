@@ -972,6 +972,7 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 		status.InSync = inSync
 		result = true
 	}
+
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
@@ -1103,22 +1104,11 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 }
 
 // StopAfterInSync determines whether the reconciler should continue processing
-// change requests after the
-// purpose of configuring host BMC attributes.
+// change requests after the configuration has been reconciled a first time.
 func (r *ReconcileHost) StopAfterInSync() bool {
-	value := config.GetReconcilerOption(config.Host, config.StopAfterInSync)
-	if value != nil {
-		if required, ok := value.(bool); ok {
-			return required
-		} else {
-			log.Info("unexpected option type",
-				"option", config.StopAfterInSync, "type", reflect.TypeOf(value))
-		}
-	}
-
 	// If the option is not found or the option was specified in a form other
 	// than a bool then assume the safest default value possible.
-	return true
+	return config.GetReconcilerOptionBool(config.Host, config.StopAfterInSync, true)
 }
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
