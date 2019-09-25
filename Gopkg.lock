@@ -163,7 +163,7 @@
 
 [[projects]]
   branch = "starlingx"
-  digest = "1:43df41f7d06cde7b8a6c65a632e5e745ef0d496e19ae5f5e1f8009e8708ee0d8"
+  digest = "1:4ea97337754a9b1a98fc0b570fc0b829c485cb13c46f196dc78b0442433c5a71"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -194,6 +194,7 @@
     "starlingx/inventory/v1/interfaceNetworks",
     "starlingx/inventory/v1/interfaces",
     "starlingx/inventory/v1/labels",
+    "starlingx/inventory/v1/licenses",
     "starlingx/inventory/v1/memory",
     "starlingx/inventory/v1/networks",
     "starlingx/inventory/v1/ntp",
@@ -210,7 +211,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "e434265fff54a0be57cfa1b1a5498ca6889423af"
+  revision = "13f5450f396a731021b8e691b566210b3c524de8"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]
@@ -1115,6 +1116,7 @@
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceNetworks",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels",
+    "github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp",
