@@ -640,11 +640,6 @@ func (r *ReconcileSystem) ReconcileSystemAttributes(client *gophercloud.ServiceC
 		}
 	}
 
-	// Set the system type which may be used by other reconcilers to make
-	// decisions about when to reconcile certain resources.
-	value := strings.ToLower(info.System.SystemType)
-	r.SetSystemType(instance.Namespace, titaniumManager.SystemType(value))
-
 	return nil
 }
 
@@ -807,8 +802,11 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 	return nil
 }
 
-func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
-
+// ReconcileSystemInitial is responsible for reconciling the system attributes
+// that do not depend on any other resource types (i.e., hosts).  Its purpose
+// is to get the system into a state in which other resources can be
+// configured.
+func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
 	err := r.ReconcileSystemAttributes(client, instance, spec, info)
 	if err != nil {
 		return err
@@ -847,37 +845,89 @@ func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, ins
 		return err
 	}
 
-	// At this point the system is ready for other resource types to be
-	// reconciled (e.g., host, networks, etc).  We can set the ready flag and
-	// notify other reconcilers but we still need to continue with other
-	// attribute types that require hosts to be configured first.
-	if !r.GetSystemReady(instance.Namespace) {
-		// Unblock all other controllers that are waiting to reconcile
-		// resources.
-		r.SetSystemReady(instance.Namespace, true)
+	return nil
+}
 
-		r.NormalEvent(instance, common.ResourceUpdated,
-			"system is now ready for other reconcilers")
+// ReconcileSystemFinal is responsible for completing the configuration of the
+// system entity by running all steps that can be completed in parallel with
+// other resource types.  That is, once we know that the controllers are already
+// enabled so that we can provision the file systems.
+func (r *ReconcileSystem) ReconcileSystemFinal(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+	err := r.ReconcileFileSystems(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
 
-		err = r.NotifySystemDependencies(instance.Namespace)
-		if err != nil {
-			// Revert to not-ready so that when we reconcile the system
-			// resource again we will push the change out to all other
-			// reconcilers again.
-			r.SetSystemReady(instance.Namespace, false)
-			return err
+	return nil
+}
+
+// ReconcileRequired determines whether reconciliation is allowed/required on
+// the System resource.  Reconciliation is required if there is a difference
+// between the configured Spec and the current system state.  Reconciliation
+// is only allowed if the resource has not already been successfully reconciled
+// at least once; or the user has overridden this check by adding an annotation
+// on the resource.
+func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error, required bool) {
+	// Build a new system spec based on the current configuration so that
+	// we can compare it to the desired configuration.
+	if !instance.Status.Reconciled {
+		// We have not reconciled at least once so skip this check and just
+		// allow reconciliation to proceed.  This will ensure that attributes
+		// that are not readily comparable with the DeepEqual (i.e., licenses
+		// and certificates) will get handled properly when needed.
+		// TODO(alegacy):  This will need to be improved when we need to
+		// support day-2 operations.
+		return nil, true
+	}
+
+	current, err := starlingxv1beta1.NewSystemSpec(*info)
+	if err != nil {
+		return err, false
+	}
+
+	if spec.DeepEqual(current) {
+		log.V(2).Info("no changes between spec and current configuration")
+		return nil, false
+	}
+
+	if instance.Status.Reconciled && r.StopAfterInSync() {
+		// Do not process any further changes once we have reached a
+		// synchronized state unless there is an annotation on the resource.
+		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+			msg := common.NoChangesAfterReconciled
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
+			return common.NewChangeAfterInSync(msg), false
+		} else {
+			log.Info(common.ChangedAllowedAfterReconciled)
 		}
 	}
 
-	err = r.ReconcileFileSystems(client, instance, spec, info)
+	return nil, true
+}
+
+// ReconcileSystem is the main top level reconciler for System resources.
+func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (ready bool, err error) {
+
+	if err, required := r.ReconcileRequired(instance, spec, info); err != nil {
+		return instance.Status.Reconciled, err
+	} else if !required {
+		return instance.Status.Reconciled, nil
+	}
+
+	err = r.ReconcileSystemInitial(client, instance, spec, info)
 	if err != nil {
-		return err
+		return instance.Status.Reconciled, err
+	}
+
+	err = r.ReconcileSystemFinal(client, instance, spec, info)
+	if err != nil {
+		return true, err
 	}
 
 	r.NormalEvent(instance, common.ResourceUpdated,
 		"system has been provisioned")
 
-	return nil
+	return true, nil
 }
 
 // statusUpdateRequired determines whether the resource status attribute
@@ -1017,8 +1067,37 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 		return err
 	}
 
-	err = r.ReconcileSystem(client, instance, spec, &systemInfo)
+	ready, err := r.ReconcileSystem(client, instance, spec, &systemInfo)
 	inSync := err == nil
+
+	if ready {
+		// Regardless of whether an error occurred, if the reconciling got
+		// far enough along to get the system in a state in which the other
+		// reconcilers can make progress than we need to mark the system as
+		// being ready.
+		if !r.GetSystemReady(instance.Namespace) {
+			// Set the system type which may be used by other reconcilers to make
+			// decisions about when to reconcile certain resources.
+			value := strings.ToLower(systemInfo.System.SystemType)
+			r.SetSystemType(instance.Namespace, titaniumManager.SystemType(value))
+
+			// Unblock all other controllers that are waiting to reconcile
+			// resources.
+			r.SetSystemReady(instance.Namespace, true)
+
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"system is now ready for other reconcilers")
+
+			err = r.NotifySystemDependencies(instance.Namespace)
+			if err != nil {
+				// Revert to not-ready so that when we reconcile the system
+				// resource again we will push the change out to all other
+				// reconcilers again.
+				r.SetSystemReady(instance.Namespace, false)
+				return err
+			}
+		}
+	}
 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {
 		log.Info("updating status for system", "status", instance.Status)
@@ -1033,6 +1112,14 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 	log.V(2).Info("reconcile finished", "error", err)
 
 	return err
+}
+
+// StopAfterInSync determines whether the reconciler should continue processing
+// change requests after the configuration has been reconciled a first time.
+func (r *ReconcileSystem) StopAfterInSync() bool {
+	// If the option is not found or the option was specified in a form other
+	// than a bool then assume the safest default value possible.
+	return config.GetReconcilerOptionBool(config.System, config.StopAfterInSync, true)
 }
 
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes

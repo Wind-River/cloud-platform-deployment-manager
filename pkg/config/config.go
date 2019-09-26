@@ -114,6 +114,9 @@ var reconcilerOptionDefaults = map[ReconcilerName]map[OptionName]interface{}{
 	PlatformNetwork: {
 		StopAfterInSync: true,
 	},
+	System: {
+		StopAfterInSync: true,
+	},
 }
 
 // configFilepath is the absolute path of the manager config file.
