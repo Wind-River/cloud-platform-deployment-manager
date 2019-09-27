@@ -348,7 +348,7 @@ func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.Serv
 		}
 	}
 
-	return nil
+	return err
 }
 
 // networkUpdateRequired determines whether a system network resource must be
@@ -556,7 +556,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceC
 		}
 	}
 
-	return nil
+	return err
 }
 
 // statusUpdateRequired is a utility method to determine if the status needs
