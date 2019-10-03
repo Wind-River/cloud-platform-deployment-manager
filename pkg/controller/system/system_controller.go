@@ -6,7 +6,6 @@ package system
 import (
 	"context"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -146,7 +145,7 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1beta1.Sys
 			return err
 		}
 
-		caEncodedBytes, ok := secret.Data[starlingxv1beta1.SecretCaCertKey]
+		caBytes, ok := secret.Data[starlingxv1beta1.SecretCaCertKey]
 		if !ok {
 			// This can be valid as long as the target certificate is signed
 			// by a known CA certificate; otherwise once the target certificate
@@ -155,14 +154,8 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1beta1.Sys
 			continue
 		}
 
-		caBytes := make([]byte, base64.StdEncoding.DecodedLen(len(caEncodedBytes)))
-		_, err = base64.StdEncoding.Decode(caBytes, caEncodedBytes)
-		if err != nil {
-			log.Error(err, "failed to decode ")
-			return err
-		}
 		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, c.Secret)
-		err = InstallCertificate(filename, caEncodedBytes)
+		err = InstallCertificate(filename, caBytes)
 		if err != nil {
 			log.Error(err, "failed to install root certificate")
 			return err
