@@ -3,7 +3,7 @@
 
 package main
 
-import "github.com/wind-river/titanium-deployment-manager/cmd/deploy/cmd"
+import "github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd"
 
 func main() {
 	cmd.Execute()

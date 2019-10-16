@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 )
 
 func TestMergeProfiles(t *testing.T) {

@@ -18,7 +18,7 @@
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package,register
 // +deepequal-gen=package
-// +k8s:conversion-gen=github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx
+// +k8s:conversion-gen=github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=starlingx.windriver.com
 package v1beta1

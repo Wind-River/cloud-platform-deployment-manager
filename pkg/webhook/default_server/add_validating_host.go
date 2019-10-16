@@ -6,7 +6,7 @@ package defaultserver
 import (
 	"fmt"
 
-	"github.com/wind-river/titanium-deployment-manager/pkg/webhook/default_server/host/validating"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/webhook/default_server/host/validating"
 )
 
 func init() {

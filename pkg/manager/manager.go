@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
-	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

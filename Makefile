@@ -29,11 +29,11 @@ test: generate fmt vet manifests helm-lint
 
 # Build manager binary
 manager: generate fmt vet
-	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager github.com/wind-river/titanium-deployment-manager/cmd/manager
+	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager github.com/wind-river/cloud-platform-deployment-manager/cmd/manager
 
 # Build manager binary
 tools: generate fmt vet
-	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy github.com/wind-river/titanium-deployment-manager/cmd/deploy
+	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager

@@ -10,9 +10,9 @@ import (
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/onsi/gomega"
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
+	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

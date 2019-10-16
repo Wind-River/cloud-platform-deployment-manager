@@ -7,8 +7,8 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
-	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"time"
 )
 

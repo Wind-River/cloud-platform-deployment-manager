@@ -21,7 +21,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
-	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	v1 "k8s.io/api/core/v1"
 	v1types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"regexp"

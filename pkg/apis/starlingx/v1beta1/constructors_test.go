@@ -5,7 +5,7 @@ package v1beta1
 
 import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/disks"
-	"github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"reflect"
 	"testing"
 )

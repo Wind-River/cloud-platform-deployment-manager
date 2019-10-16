@@ -7,10 +7,10 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	"github.com/wind-river/titanium-deployment-manager/pkg/config"
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"strconv"
 )
 

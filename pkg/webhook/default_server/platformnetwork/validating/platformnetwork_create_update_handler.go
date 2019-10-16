@@ -5,10 +5,10 @@ package validating
 
 import (
 	"context"
-	"github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"net/http"
 
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"

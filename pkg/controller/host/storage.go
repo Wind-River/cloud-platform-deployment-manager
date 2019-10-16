@@ -16,11 +16,11 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	"github.com/wind-river/titanium-deployment-manager/pkg/config"
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/titanium-deployment-manager/pkg/manager"
-	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
+	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"strings"
 )
 

@@ -4,7 +4,7 @@
 package controller
 
 import (
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/system"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/system"
 )
 
 func init() {

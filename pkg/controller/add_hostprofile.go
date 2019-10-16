@@ -4,7 +4,7 @@
 package controller
 
 import (
-	"github.com/wind-river/titanium-deployment-manager/pkg/controller/hostprofile"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/hostprofile"
 )
 
 func init() {

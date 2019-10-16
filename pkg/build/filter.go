@@ -10,8 +10,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
-	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"regexp"
 	"strings"
 )

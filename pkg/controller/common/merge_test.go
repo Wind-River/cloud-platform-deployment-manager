@@ -6,7 +6,7 @@ package common
 import (
 	"encoding/json"
 	"github.com/imdario/mergo"
-	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"reflect"
 	"testing"
 )

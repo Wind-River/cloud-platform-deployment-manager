@@ -11,8 +11,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
-	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
-	"github.com/wind-river/titanium-deployment-manager/pkg/manager"
+	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"io"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -21,8 +21,8 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	perrors "github.com/pkg/errors"
-	"github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"k8s.io/api/core/v1"
 )
 

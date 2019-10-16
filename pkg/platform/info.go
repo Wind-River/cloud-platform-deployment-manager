@@ -7,7 +7,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hostFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/pkg/errors"
-	utils "github.com/wind-river/titanium-deployment-manager/pkg/common"
+	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"strconv"
 	"strings"
 

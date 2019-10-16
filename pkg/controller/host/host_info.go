@@ -7,8 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/titanium-deployment-manager/pkg/apis/starlingx/v1beta1"
-	v1info "github.com/wind-river/titanium-deployment-manager/pkg/platform"
+	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 )
 
 // BuildHostDefaults takes the current set of host attributes and builds a

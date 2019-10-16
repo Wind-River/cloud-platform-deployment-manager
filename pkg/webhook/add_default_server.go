@@ -4,7 +4,7 @@
 package webhook
 
 import (
-	server "github.com/wind-river/titanium-deployment-manager/pkg/webhook/default_server"
+	server "github.com/wind-river/cloud-platform-deployment-manager/pkg/webhook/default_server"
 )
 
 func init() {
