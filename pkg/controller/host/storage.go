@@ -19,7 +19,7 @@ import (
 	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"strings"
 )
@@ -447,10 +447,10 @@ func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, in
 // to be added to a host.
 func (r *ReconcileHost) OSDProvisioningState(namespace string, personality string) RequiredState {
 	switch r.GetSystemType(namespace) {
-	case titaniumManager.SystemTypeAllInOne:
+	case cloudManager.SystemTypeAllInOne:
 		// OSDs are allowed at any time on AIO systems.
 		return RequiredStateAny
-	case titaniumManager.SystemTypeStandard:
+	case cloudManager.SystemTypeStandard:
 		if strings.EqualFold(personality, hosts.PersonalityStorage) {
 			// OSDs are only allowed while locked/disabled for storage nodes.
 			return RequiredStateDisabled
@@ -484,7 +484,7 @@ func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, 
 
 	} else if cluster.DeploymentModel == clusters.DeploymentModelStorage ||
 		cluster.DeploymentModel == clusters.DeploymentModelController {
-		if r.GetSystemType(instance.Namespace) == titaniumManager.SystemTypeStandard {
+		if r.GetSystemType(instance.Namespace) == cloudManager.SystemTypeStandard {
 			if !r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) {
 				msg := fmt.Sprintf("waiting for %d monitor(s) to be enabled before allowing OSDs",
 					hosts.OSDMinimumMonitorCount)

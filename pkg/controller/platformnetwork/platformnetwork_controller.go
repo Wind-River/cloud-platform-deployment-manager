@@ -13,7 +13,7 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,14 +46,14 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	tMgr := titaniumManager.GetInstance(mgr)
+	tMgr := cloudManager.GetInstance(mgr)
 	return &ReconcilePlatformNetwork{
-		Client:          mgr.GetClient(),
-		scheme:          mgr.GetScheme(),
-		TitaniumManager: tMgr,
+		Client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		CloudManager: tMgr,
 		ReconcilerErrorHandler: &common.ErrorHandler{
-			TitaniumManager: tMgr,
-			Logger:          log},
+			CloudManager: tMgr,
+			Logger:       log},
 		ReconcilerEventLogger: &common.EventLogger{
 			EventRecorder: mgr.GetRecorder(ControllerName),
 			Logger:        log},
@@ -83,7 +83,7 @@ var _ reconcile.Reconciler = &ReconcilePlatformNetwork{}
 type ReconcilePlatformNetwork struct {
 	client.Client
 	scheme *runtime.Scheme
-	titaniumManager.TitaniumManager
+	cloudManager.CloudManager
 	common.ReconcilerErrorHandler
 	common.ReconcilerEventLogger
 }
@@ -173,7 +173,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.S
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
-		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoProvisioningAfterReconciled
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return nil, common.NewChangeAfterInSync(msg)
@@ -224,7 +224,7 @@ func (r *ReconcilePlatformNetwork) ReconcileUpdatedAddressPool(client *gopherclo
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.
-			if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoChangesAfterReconciled
 				r.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
@@ -403,7 +403,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.Servi
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
-		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoChangesAfterReconciled
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return nil, common.NewChangeAfterInSync(msg)
@@ -443,7 +443,7 @@ func (r *ReconcilePlatformNetwork) ReconcileUpdatedNetwork(client *gophercloud.S
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.
-			if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoChangesAfterReconciled
 				r.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)

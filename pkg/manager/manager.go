@@ -38,9 +38,9 @@ const (
 	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
 )
 
-// TitaniumManager wraps a runtime manager and provides the ability to
+// CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
-type TitaniumManager interface {
+type CloudManager interface {
 	ResetPlatformClient(namespace string) error
 	GetPlatformClient(namespace string) *gophercloud.ServiceClient
 	GetKubernetesClient() client.Client
@@ -84,7 +84,7 @@ type PlatformManager struct {
 	monitors map[string]*Monitor
 }
 
-func NewPlatformManager(manager manager.Manager) TitaniumManager {
+func NewPlatformManager(manager manager.Manager) CloudManager {
 	return &PlatformManager{
 		Manager:  manager,
 		systems:  make(map[string]*SystemNamespace),
@@ -417,11 +417,11 @@ func (m *PlatformManager) CancelMonitor(object runtime.Object) {
 	}
 }
 
-var instance TitaniumManager
+var instance CloudManager
 var once sync.Once
 
 // GetInstance returns a singleton instance of the platform manager
-func GetInstance(mgr manager.Manager) TitaniumManager {
+func GetInstance(mgr manager.Manager) CloudManager {
 	once.Do(func() {
 		instance = NewPlatformManager(mgr)
 	})

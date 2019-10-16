@@ -44,7 +44,7 @@ func (in *CommonMonitorBody) SetState(messageFmt string, args ...interface{}) {
 // MonitorManager defines an interface for monitors that need access to the
 // manager reference.
 type MonitorManager interface {
-	SetManager(manager TitaniumManager)
+	SetManager(manager CloudManager)
 }
 
 // Monitor defines the common behaviour of all monitors.  Since the Monitor
@@ -62,9 +62,9 @@ type Monitor struct {
 	// instantiated this monitor.
 	logr.Logger
 
-	// manager is a reference to the Titanium Manager that has been instantiated
-	// to oversee all of the controller objects.
-	Manager TitaniumManager
+	// manager is a reference to the Cloud Platform Manager that has been
+	// instantiated to oversee all of the controller objects.
+	Manager CloudManager
 
 	// interval defines the number of seconds between each polling attempt.
 	Interval time.Duration
@@ -122,7 +122,7 @@ func (m *Monitor) GetNamespace() string {
 
 // Start is responsible for stating the Go routine that will monitor a resource
 // or set of resources.
-func (m *Monitor) Start(manager TitaniumManager) {
+func (m *Monitor) Start(manager CloudManager) {
 	m.V(2).Info("starting")
 
 	if mgr, ok := m.MonitorBody.(MonitorManager); ok {

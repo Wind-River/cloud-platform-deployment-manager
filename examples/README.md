@@ -23,7 +23,7 @@ The Kustomize configurations can be rendered to their final form using the
 following commands:
 
 ```bash
-export EXAMPLES=/tmp/titanium-deployment-manager
+export EXAMPLES=/tmp/wind-river-cloud-platform-deployment-manager
 mkdir -p ${EXAMPLES}
 kustomize build examples/standard/default  > ${EXAMPLES}/standard.yaml
 kustomize build examples/standard/vxlan > ${EXAMPLES}/standard-vxlan.yaml

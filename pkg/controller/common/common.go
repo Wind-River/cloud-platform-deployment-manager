@@ -110,7 +110,7 @@ type ReconcilerErrorHandler interface {
 // interface.
 type ErrorHandler struct {
 	logr.Logger
-	manager.TitaniumManager
+	manager.CloudManager
 }
 
 // HandleReconcilerError is the common error handler implementation for all

@@ -1,14 +1,14 @@
 apiVersion: v1
 entries:
-  titanium-deployment-manager:
+  wind-river-cloud-platform-deployment-manager:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2019-10-11T10:10:21.712852397-05:00"
+    created: "2019-10-17T07:28:34.5788427-05:00"
     description: A Helm chart for the Deployment Manager
-    digest: c2eee1d011e9f7929209f33f5e1cd25e938628ba3a2b6193597b0846b85f1693
+    digest: 70ed120078eb8b67611e8aa63bb3fc7cb41367b091b0f757cd06238b473083b1
     icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png
-    name: titanium-deployment-manager
+    name: wind-river-cloud-platform-deployment-manager
     urls:
-    - titanium-deployment-manager-0.2.0.tgz
+    - wind-river-cloud-platform-deployment-manager-0.2.0.tgz
     version: 0.2.0
-generated: "2019-10-11T10:10:21.710381568-05:00"
+generated: "2019-10-17T07:28:34.576620292-05:00"

@@ -620,7 +620,7 @@ const DefaultKubernetesResourceMonitorInterval = 30 * time.Second
 // the reconciler.
 type kubernetesResourceMonitor struct {
 	manager.CommonMonitorBody
-	manager manager.TitaniumManager
+	manager manager.CloudManager
 	object  runtime.Object
 	name    types.NamespacedName
 }
@@ -651,7 +651,7 @@ func NewKubernetesSecretMonitor(instance *v1beta1.Host, name types.NamespacedNam
 
 // SetManager implements the MonitorManager interface which allows the parent
 // monitor to provide access to the manager reference.
-func (m *kubernetesResourceMonitor) SetManager(manager manager.TitaniumManager) {
+func (m *kubernetesResourceMonitor) SetManager(manager manager.CloudManager) {
 	m.manager = manager
 }
 

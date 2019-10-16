@@ -5,9 +5,11 @@
 
 replicaCount: 1
 
-namespace: titanium-deployment-manager
+namespace: platform-deployment-manager
 
-nameOverride: ""
+# Set the resource name override to be the short form since the helm chart
+# name is overly long.
+nameOverride: platform-deployment-manager
 
 imagePullSecrets: []
 
@@ -24,7 +26,7 @@ manager:
     port: 30000
   logLevel: 0
   image:
-    repository: titanium/deployment-manager
+    repository: wind-river/cloud-platform-deployment-manager
     tag: latest
     pullPolicy: IfNotPresent
   configmap:

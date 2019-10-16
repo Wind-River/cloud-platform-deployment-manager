@@ -28,7 +28,7 @@ import (
 	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"io/ioutil"
 	"k8s.io/api/core/v1"
@@ -60,15 +60,15 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	tMgr := titaniumManager.GetInstance(mgr)
+	tMgr := cloudManager.GetInstance(mgr)
 	return &ReconcileSystem{
-		Manager:         mgr,
-		Client:          mgr.GetClient(),
-		scheme:          mgr.GetScheme(),
-		TitaniumManager: tMgr,
+		Manager:      mgr,
+		Client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		CloudManager: tMgr,
 		ReconcilerErrorHandler: &common.ErrorHandler{
-			TitaniumManager: tMgr,
-			Logger:          log},
+			CloudManager: tMgr,
+			Logger:       log},
 		ReconcilerEventLogger: &common.EventLogger{
 			EventRecorder: mgr.GetRecorder(ControllerName),
 			Logger:        log},
@@ -99,7 +99,7 @@ type ReconcileSystem struct {
 	manager.Manager
 	client.Client
 	scheme *runtime.Scheme
-	titaniumManager.TitaniumManager
+	cloudManager.CloudManager
 	common.ReconcilerErrorHandler
 	common.ReconcilerEventLogger
 	hosts []hosts.Host
@@ -495,7 +495,7 @@ func (r *ReconcileSystem) ControllerNodesAvailable(required int) bool {
 // resized.
 func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.System, info *v1info.SystemInfo, fs controllerFilesystems.FileSystem) (ready bool, err error) {
 	required := 2
-	if strings.EqualFold(info.SystemMode, string(titaniumManager.SystemModeSimplex)) {
+	if strings.EqualFold(info.SystemMode, string(cloudManager.SystemModeSimplex)) {
 		required = 1
 	}
 
@@ -665,7 +665,7 @@ func (r *ReconcileSystem) PrivateKeyTranmissionAllowed(client *gophercloud.Servi
 			return common.NewSystemDependency(msg)
 		}
 
-		if strings.HasPrefix(client.Endpoint, titaniumManager.HTTPPrefix) {
+		if strings.HasPrefix(client.Endpoint, cloudManager.HTTPPrefix) {
 			// If HTTPS is enabled and we are still using an HTTPPrefix then either
 			// the endpoint hasn't been switched over yet, or the user is trying
 			// to do this through the internal URL so disallow, reset the client,
@@ -957,7 +957,7 @@ func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1beta1.System, s
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
-		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoChangesAfterReconciled
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return common.NewChangeAfterInSync(msg), false
@@ -1146,7 +1146,7 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 			// Set the system type which may be used by other reconcilers to make
 			// decisions about when to reconcile certain resources.
 			value := strings.ToLower(systemInfo.System.SystemType)
-			r.SetSystemType(instance.Namespace, titaniumManager.SystemType(value))
+			r.SetSystemType(instance.Namespace, cloudManager.SystemType(value))
 
 			// Unblock all other controllers that are waiting to reconcile
 			// resources.

@@ -1,12 +1,12 @@
-# titanium-deployment-manager
+# wind-river-cloud-platform-deployment-manager
 
-The Titanium Deployment Manager provides a data driven method for configuring
-the platform components of a StarlingX® installation.  The intent of this
-implementation is to ease adoption of StarlingX systems by automated deployment
-systems (e.g., CI/CD pipelines). By providing a data driven method of defining
-each system installation, the end user is no longer required to manually
-interact with the system thru the system CLI, GUI, or directly with the System
-API to perform the initial system installation.
+The Wind River Cloud Platform Deployment Manager provides a data driven method
+for configuring the platform components of a StarlingX® installation.  The
+intent of this implementation is to ease adoption of StarlingX systems by
+automated deployment systems (e.g., CI/CD pipelines). By providing a data
+driven method of defining each system installation, the end user is no longer
+required to manually interact with the system thru the system CLI, GUI, or
+directly with the System API to perform the initial system installation.
 
 
 ## Scope
@@ -146,18 +146,18 @@ The above command will produce this output and the generated examples can be
 found within the listed files.
 
  ```bash
- mkdir -p /tmp/titanium-deployment-manager/system
- kustomize build examples/standard/default  > /tmp/titanium-deployment-manager/system/standard.yaml
- kustomize build examples/standard/vxlan > /tmp/titanium-deployment-manager/system/standard-vxlan.yaml
- kustomize build examples/standard/https > /tmp/titanium-deployment-manager/system/standard-https.yaml
- kustomize build examples/standard/bond > /tmp/titanium-deployment-manager/system/standard-bond.yaml
- kustomize build examples/storage/default  > /tmp/titanium-deployment-manager/system/storage.yaml
- kustomize build examples/aio-sx/default > /tmp/titanium-deployment-manager/system/aio-sx.yaml
- kustomize build examples/aio-sx/vxlan > /tmp/titanium-deployment-manager/system/aio-sx-vxlan.yaml
- kustomize build examples/aio-sx/https > /tmp/titanium-deployment-manager/system/aio-sx-https.yaml
- kustomize build examples/aio-dx/default > /tmp/titanium-deployment-manager/system/aio-dx.yaml
- kustomize build examples/aio-dx/vxlan > /tmp/titanium-deployment-manager/system/aio-dx-vxlan.yaml
- kustomize build examples/aio-dx/https > /tmp/titanium-deployment-manager/system/aio-dx-https.yaml
+ mkdir -p /tmp/wind-river-cloud-platform-deployment-manager/system
+ kustomize build examples/standard/default  > /tmp/wind-river-cloud-platform-deployment-manager/system/standard.yaml
+ kustomize build examples/standard/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-vxlan.yaml
+ kustomize build examples/standard/https > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-https.yaml
+ kustomize build examples/standard/bond > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-bond.yaml
+ kustomize build examples/storage/default  > /tmp/wind-river-cloud-platform-deployment-manager/system/storage.yaml
+ kustomize build examples/aio-sx/default > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx.yaml
+ kustomize build examples/aio-sx/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx-vxlan.yaml
+ kustomize build examples/aio-sx/https > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx-https.yaml
+ kustomize build examples/aio-dx/default > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx.yaml
+ kustomize build examples/aio-dx/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx-vxlan.yaml
+ kustomize build examples/aio-dx/https > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx-https.yaml
  ```
 
 ***Note***: the output directory can be overridden by setting the ```EXAMPLES```
@@ -459,12 +459,12 @@ build an image the following command can be used.
 make docker-build
 ```
 
-This will build the image using the default name "titanium/deployment-manager".
+This will build the image using the default name "wind-river/cloud-platform-deployment-manager".
 To change the default image name the DEFAULT_IMG variable can be overridden
 using the following command syntax.
 
 ```bash
-DEFAULT_IMG=${USER}/titanium-deployment-manager  make docker-build
+DEFAULT_IMG=${USER}/wind-river-cloud-platform-deployment-manager  make docker-build
 ```
 
 To use the built image to install the Deployment Manager onto a StarlingX system
@@ -485,8 +485,8 @@ Docker registry rather than the default local Docker registry.
 
 ```bash
 export PRIVATE_REGISTRY="your.registry.com"
-docker tag titanium/deployment-manager:latest ${PRIVATE_REGISTRY}/titanium/deployment-manager:latest
-docker push ${PRIVATE_REGISTRY}/titanium/deployment-manager:latest
+docker tag wind-river/cloud-platform-deployment-manager:latest ${PRIVATE_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
+docker push ${PRIVATE_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
 ```
 
 ### Exporting The Image For Offline Use
@@ -497,8 +497,8 @@ directly into the StarlingX local Docker registry.
 
 ```bash
 export OFFLINE_IMAGE_PATH="/some/path/to/images"
-docker tag titanium/deployment-manager:latest titanium/deployment-manager:v0.2.0
-docker save titanium/deployment-manager | gzip >  ${OFFLINE_IMAGE_PATH}/titanium-deployment-manager-images.tgz
+docker tag wind-river/cloud-platform-deployment-manager:latest wind-river/cloud-platform-deployment-manager:v0.2.0
+docker save wind-river/cloud-platform-deployment-manager | gzip >  ${OFFLINE_IMAGE_PATH}/wind-river-cloud-platform-deployment-manager-images.tgz
 ```
 
 ### Importing The Image From Offline Storage
@@ -508,26 +508,26 @@ registry.  This command assumes that the compressed image archive has already
 been copied onto the local file system.
 
 ```bash
-sudo docker load -i /home/wrsroot/titanium-deployment-manager-images.tgz
+sudo docker load -i /home/wrsroot/wind-river-cloud-platform-deployment-manager-images.tgz
 ```
 
 ## Installing The Deployment Manager
 
 The Deployment Manager is intended to be deployed as a Helm™ chart.  The chart
-source definition can be found under the ```helm/titanium-deployment-manager```
+source definition can be found under the ```helm/wind-river-cloud-platform-deployment-manager```
 directory and all overridable configuration values are defined in the
-```helm/titanium-deployment-manager/values.yaml``` file.
+```helm/wind-river-cloud-platform-deployment-manager/values.yaml``` file.
 
 A pre-built copy of the Deployment Manager Helm chart can be downloaded from
 this repo at the following location.  Alternatively, it can be accessed
 directly from the cloned repo in the ```docs/charts``` directory.
 
-https://github.com/Wind-River/titanium-deployment-manager/raw/master/docs/charts/titanium-deployment-manager-0.2.0.tgz
+https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-0.2.0.tgz
 
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install deployment-manager titanium-deployment-manager-0.2.0.tgz
+helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-0.2.0.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -536,7 +536,7 @@ further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install deployment-manager --values overrides.yaml titanium-deployment-manager-0.2.0.tgz
+helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-0.2.0.tgz
 ```
 
 The default Helm chart assumes that the Deployment Manager image is present in
@@ -552,7 +552,7 @@ image location can be overridden to specify a private URL using the following
 syntax assuming that the private registry is hosted at "your.registry.org".
 
 ```bash
-helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/titanium/deployment-manager" titanium-deployment-manager-0.2.0.tgz
+helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-0.2.0.tgz
 ```
 
 
@@ -603,7 +603,7 @@ is currently viewed as a best effort functionality.
 ## Using Ansible To Install The Deployment Manager
 
 To provide better integration into existing CI/CD pipelines an Ansible playbook
-has been provided.  The playbook is stored in this repo as the ```docs/playbooks/titanium-deployment-manager-playbook.yaml```
+has been provided.  The playbook is stored in this repo as the ```docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml```
 file.
 
 The playbook will download the latest Helm chart to the local Ansible host,
@@ -629,7 +629,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/titanium-deployment-manager-playbook.yaml -e "manager_chart_source=/some/other/path/titanium-deployment-manager-0.2.0.tgz"
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "manager_chart_source=/some/other/path/wind-river-cloud-platform-deployment-manager-0.2.0.tgz"
 ```
 
 The system deployment configuration file must be specified using the
@@ -651,7 +651,7 @@ stored on a filesystem accessible by the Ansible controller host.
 
 ```yaml
 - import_playbook: /some/path/to/playbookconfig/playbooks/playbooks/bootstrap/bootstrap.yml
-- import_playbook: /some/other/path/to/docs/charts/titanium-deployment-manager-playbook.yaml
+- import_playbook: /some/other/path/to/docs/charts/wind-river-cloud-platform-deployment-manager-playbook.yaml
 ```
 
 An end user can further expand this master playbook by adding additional

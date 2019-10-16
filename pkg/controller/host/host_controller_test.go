@@ -12,7 +12,7 @@ import (
 	"github.com/onsi/gomega"
 	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,15 +65,15 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 	type fields struct {
 		Client                 client.Client
 		scheme                 *runtime.Scheme
-		TitaniumManager        titaniumManager.TitaniumManager
+		CloudManager           cloudManager.CloudManager
 		ReconcilerErrorHandler common.ReconcilerErrorHandler
 		ReconcilerEventLogger  common.ReconcilerEventLogger
 		hosts                  []hosts.Host
 	}
 	namespace := "test"
-	mgr := titaniumManager.NewPlatformManager(nil)
+	mgr := cloudManager.NewPlatformManager(nil)
 	mgr.SetSystemReady(namespace, true)
-	mgr.SetSystemType(namespace, titaniumManager.SystemTypeAllInOne)
+	mgr.SetSystemType(namespace, cloudManager.SystemTypeAllInOne)
 	emptyProfile := starlingxv1beta1.HostProfileSpec{
 		BoardManagement: &starlingxv1beta1.BMInfo{},
 		Interfaces: &starlingxv1beta1.InterfaceInfo{
@@ -656,13 +656,13 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 		// Check that the deepequal methods properly respect the
 		// ignore-nil-fields annotation
 		{name: "ignore-nil-fields",
-			fields: fields{TitaniumManager: mgr},
+			fields: fields{CloudManager: mgr},
 			args:   args{&emptyProfile, &b, namespace, "worker"},
 			want:   true},
 		// Check that the deepequal methods properly respect the
 		// unordered-array annotation
 		{name: "unordered-array",
-			fields: fields{TitaniumManager: mgr},
+			fields: fields{CloudManager: mgr},
 			args:   args{&a, &c, namespace, "worker"},
 			want:   true},
 	}
@@ -671,7 +671,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 			r := &ReconcileHost{
 				Client:                 tt.fields.Client,
 				scheme:                 tt.fields.scheme,
-				TitaniumManager:        tt.fields.TitaniumManager,
+				CloudManager:           tt.fields.CloudManager,
 				ReconcilerErrorHandler: tt.fields.ReconcilerErrorHandler,
 				ReconcilerEventLogger:  tt.fields.ReconcilerEventLogger,
 				hosts:                  tt.fields.hosts,
@@ -691,15 +691,15 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 	type fields struct {
 		Client                 client.Client
 		scheme                 *runtime.Scheme
-		TitaniumManager        titaniumManager.TitaniumManager
+		CloudManager           cloudManager.CloudManager
 		ReconcilerErrorHandler common.ReconcilerErrorHandler
 		ReconcilerEventLogger  common.ReconcilerEventLogger
 		hosts                  []hosts.Host
 	}
 	namespace := "test"
-	mgr := titaniumManager.NewPlatformManager(nil)
+	mgr := cloudManager.NewPlatformManager(nil)
 	mgr.SetSystemReady(namespace, true)
-	mgr.SetSystemType(namespace, titaniumManager.SystemTypeAllInOne)
+	mgr.SetSystemType(namespace, cloudManager.SystemTypeAllInOne)
 	aStorage := starlingxv1beta1.ProfileStorageInfo{
 		OSDs: &starlingxv1beta1.OSDList{
 			starlingxv1beta1.OSDInfo{
@@ -755,11 +755,11 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 		want   bool
 	}{
 		{name: "osds",
-			fields: fields{TitaniumManager: mgr},
+			fields: fields{CloudManager: mgr},
 			args:   args{&a, &b, namespace, "worker"},
 			want:   false},
 		{name: "filesystems",
-			fields: fields{TitaniumManager: mgr},
+			fields: fields{CloudManager: mgr},
 			args:   args{&c, &d, namespace, "worker"},
 			want:   false},
 	}
@@ -768,7 +768,7 @@ func TestReconcileHost_CompareEnabledAttributes(t *testing.T) {
 			r := &ReconcileHost{
 				Client:                 tt.fields.Client,
 				scheme:                 tt.fields.scheme,
-				TitaniumManager:        tt.fields.TitaniumManager,
+				CloudManager:           tt.fields.CloudManager,
 				ReconcilerErrorHandler: tt.fields.ReconcilerErrorHandler,
 				ReconcilerEventLogger:  tt.fields.ReconcilerEventLogger,
 				hosts:                  tt.fields.hosts,
@@ -784,15 +784,15 @@ func TestReconcileHost_CompareDisabledAttributes(t *testing.T) {
 	type fields struct {
 		Client                 client.Client
 		scheme                 *runtime.Scheme
-		TitaniumManager        titaniumManager.TitaniumManager
+		CloudManager           cloudManager.CloudManager
 		ReconcilerErrorHandler common.ReconcilerErrorHandler
 		ReconcilerEventLogger  common.ReconcilerEventLogger
 		hosts                  []hosts.Host
 	}
 	namespace := "test"
-	mgr := titaniumManager.NewPlatformManager(nil)
+	mgr := cloudManager.NewPlatformManager(nil)
 	mgr.SetSystemReady(namespace, true)
-	mgr.SetSystemType(namespace, titaniumManager.SystemTypeAllInOne)
+	mgr.SetSystemType(namespace, cloudManager.SystemTypeAllInOne)
 	a := starlingxv1beta1.HostProfileSpec{
 		Processors: starlingxv1beta1.ProcessorNodeList{
 			starlingxv1beta1.ProcessorInfo{
@@ -832,7 +832,7 @@ func TestReconcileHost_CompareDisabledAttributes(t *testing.T) {
 		want   bool
 	}{
 		{name: "simple",
-			fields: fields{TitaniumManager: mgr},
+			fields: fields{CloudManager: mgr},
 			args:   args{&a, &b, namespace, "worker"},
 			want:   false},
 	}
@@ -841,7 +841,7 @@ func TestReconcileHost_CompareDisabledAttributes(t *testing.T) {
 			r := &ReconcileHost{
 				Client:                 tt.fields.Client,
 				scheme:                 tt.fields.scheme,
-				TitaniumManager:        tt.fields.TitaniumManager,
+				CloudManager:           tt.fields.CloudManager,
 				ReconcilerErrorHandler: tt.fields.ReconcilerErrorHandler,
 				ReconcilerEventLogger:  tt.fields.ReconcilerEventLogger,
 				hosts:                  tt.fields.hosts,

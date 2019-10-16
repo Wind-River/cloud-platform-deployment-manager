@@ -2,8 +2,8 @@
 # Copyright(c) 2019 Wind River Systems, Inc.
 
 # Image URL to use all building/pushing image targets
-DEFAULT_IMG ?= titanium/deployment-manager
-EXAMPLES ?= ${HOME}/tmp/titanium-deployment-manager/examples
+DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
+EXAMPLES ?= ${HOME}/tmp/wind-river-cloud-platform-deployment-manager/examples
 
 ifeq (${DEBUG}, yes)
 	DOCKER_TARGET = debug
@@ -82,11 +82,11 @@ docker-push: docker-build
 
 # Check helm chart validity
 helm-lint: manifests
-	helm lint helm/titanium-deployment-manager
+	helm lint helm/wind-river-cloud-platform-deployment-manager
 
 # Create helm chart package
 helm-package: helm-lint
-	helm package helm/titanium-deployment-manager --destination docs/charts
+	helm package helm/wind-river-cloud-platform-deployment-manager --destination docs/charts
 
 # Update the helm repo
 helm-publish: helm-package

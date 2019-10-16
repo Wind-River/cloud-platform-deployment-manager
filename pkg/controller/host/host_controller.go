@@ -14,7 +14,7 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
-	titaniumManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -73,14 +73,14 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	tMgr := titaniumManager.GetInstance(mgr)
+	tMgr := cloudManager.GetInstance(mgr)
 	return &ReconcileHost{
-		Client:          mgr.GetClient(),
-		scheme:          mgr.GetScheme(),
-		TitaniumManager: tMgr,
+		Client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		CloudManager: tMgr,
 		ReconcilerErrorHandler: &common.ErrorHandler{
-			TitaniumManager: tMgr,
-			Logger:          log},
+			CloudManager: tMgr,
+			Logger:       log},
 		ReconcilerEventLogger: &common.EventLogger{
 			EventRecorder: mgr.GetRecorder(ControllerName),
 			Logger:        log},
@@ -110,7 +110,7 @@ var _ reconcile.Reconciler = &ReconcileHost{}
 type ReconcileHost struct {
 	client.Client
 	scheme *runtime.Scheme
-	titaniumManager.TitaniumManager
+	cloudManager.CloudManager
 	common.ReconcilerErrorHandler
 	common.ReconcilerEventLogger
 	hosts []hosts.Host
@@ -398,7 +398,7 @@ func (r *ReconcileHost) HTTPSRequired() bool {
 func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) error {
 	if opts, ok, err := r.UpdateRequired(instance, profile, host); ok && err == nil {
 
-		if opts.BMPassword != nil && strings.HasPrefix(client.Endpoint, titaniumManager.HTTPPrefix) {
+		if opts.BMPassword != nil && strings.HasPrefix(client.Endpoint, cloudManager.HTTPPrefix) {
 			if r.HTTPSRequired() {
 				// Do not send password information in the clear.
 				msg := fmt.Sprintf("it is unsafe to configure BM credentials thru a non HTTPS URL")
@@ -1039,7 +1039,7 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 			if instance.Status.Reconciled && r.StopAfterInSync() {
 				// Do not process any further changes once we have reached a
 				// synchronized state unless there is an annotation on the host.
-				if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+				if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 					msg := common.NoProvisioningAfterReconciled
 					r.NormalEvent(instance, common.ResourceUpdated, msg)
 					return nil, common.NewChangeAfterInSync(msg)
@@ -1213,7 +1213,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the host.
-		if _, present := instance.Annotations[titaniumManager.ReconcileAfterInSync]; !present {
+		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoChangesAfterReconciled
 			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return common.NewChangeAfterInSync(msg)

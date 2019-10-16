@@ -6,7 +6,7 @@
   become: false
   tasks:
     - set_fact:
-        manager_chart: "{{ deployment_manager_chart | default('titanium-deployment-manager.tgz') }}"
+        manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
     - block:
       # Copy required files up to the target host if this playbook is being
@@ -28,7 +28,7 @@
 
         - name: Reference Downloaded Helm Chart
           set_fact:
-            manager_chart: "{{ lookup('fileglob', '{{ temp.path }}/docs/charts/titanium-deployment-manager-*.tgz', wantlist=true) | first }}"
+            manager_chart: "{{ lookup('fileglob', '{{ temp.path }}/docs/charts/wind-river-cloud-platform-deployment-manager-*.tgz', wantlist=true) | first }}"
 
         when: manager_chart | regex_search("^https|^git")
 
@@ -61,7 +61,7 @@
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
 
     - name: Wait for Deployment Manager to be ready
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=titanium-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
+      shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
       register: wait_for_deployment_manager
 
     - block:
