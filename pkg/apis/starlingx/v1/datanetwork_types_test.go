@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package v1beta1
+package v1
 
 import (
 	"testing"
@@ -12,34 +12,27 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStoragePlatformNetwork(t *testing.T) {
+func TestStorageDataNetwork(t *testing.T) {
 	key := types.NamespacedName{
 		Name:      "foo",
 		Namespace: "default",
 	}
-	order := "sequential"
-	created := &PlatformNetwork{
+	mtu := 1500
+	description := "This is a sample description"
+	created := &DataNetwork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: PlatformNetworkSpec{
-			Type:   "mgmt",
-			Subnet: "1.2.3.0",
-			Prefix: 24,
-			Allocation: AllocationInfo{
-				Type:  "static",
-				Order: &order,
-				Ranges: []AllocationRange{
-					{"1.2.3.10", "1.2.3.49"},
-					{"1.2.3.129", "1.2.3.139"}},
-			},
-		},
-	}
+		Spec: DataNetworkSpec{
+			Type:        "flat",
+			Description: &description,
+			MTU:         &mtu,
+		}}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &PlatformNetwork{}
+	fetched := &DataNetwork{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())

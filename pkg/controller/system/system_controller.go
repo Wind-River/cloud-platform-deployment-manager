@@ -25,7 +25,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/imdario/mergo"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
@@ -84,7 +84,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to SystemNamespace
-	err = c.Watch(&source.Kind{Type: &starlingxv1beta1.System{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &starlingxv1.System{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -129,13 +129,13 @@ func InstallCertificate(filename string, data []byte) error {
 // this approach was used rather than to pass the certificates directly to the
 // gophercloud API since that would require several additional steps by each
 // controller to load the certificates from the system secret.
-func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1beta1.System) error {
+func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1.System) error {
 	if instance.Spec.Certificates == nil {
 		return nil
 	}
 
 	for _, c := range *instance.Spec.Certificates {
-		if c.Type != starlingxv1beta1.PlatformCertificate {
+		if c.Type != starlingxv1.PlatformCertificate {
 			// We only interact with the platform API therefore we do not need
 			// to install any other CA certificate locally.
 			continue
@@ -148,7 +148,7 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1beta1.Sys
 			return err
 		}
 
-		caBytes, ok := secret.Data[starlingxv1beta1.SecretCaCertKey]
+		caBytes, ok := secret.Data[starlingxv1.SecretCaCertKey]
 		if !ok {
 			// This can be valid as long as the target certificate is signed
 			// by a known CA certificate; otherwise once the target certificate
@@ -178,7 +178,7 @@ const NoContent = "NC"
 // ntpUpdateRequired determines whether an update is required to the NTP
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
-func ntpUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *ntp.NTP) (ntpOpts ntp.NTPOpts, result bool) {
+func ntpUpdateRequired(spec *starlingxv1.SystemSpec, info *ntp.NTP) (ntpOpts ntp.NTPOpts, result bool) {
 	if spec.NTPServers != nil {
 		var timeservers string
 
@@ -198,7 +198,7 @@ func ntpUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *ntp.NTP) (ntpOpt
 }
 
 // ReconcileNTP configures the system resources to align with the desired NTP state.
-func (r *ReconcileSystem) ReconcileNTP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileNTP(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.NTP) {
 		return nil
 	}
@@ -222,7 +222,7 @@ func (r *ReconcileSystem) ReconcileNTP(client *gophercloud.ServiceClient, instan
 // dnsUpdateRequired determines whether an update is required to the DNS
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
-func dnsUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *dns.DNS) (dnsOpts dns.DNSOpts, result bool) {
+func dnsUpdateRequired(spec *starlingxv1.SystemSpec, info *dns.DNS) (dnsOpts dns.DNSOpts, result bool) {
 	if spec.DNSServers != nil {
 		var nameservers string
 
@@ -243,7 +243,7 @@ func dnsUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *dns.DNS) (dnsOpt
 
 // ReconcileDNS configures the system resources to align with the desired DNS
 // configuration.
-func (r *ReconcileSystem) ReconcileDNS(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileDNS(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.DNS) {
 		return nil
 	}
@@ -267,7 +267,7 @@ func (r *ReconcileSystem) ReconcileDNS(client *gophercloud.ServiceClient, instan
 // drbdUpdateRequired determines whether an update is required to the DRBD
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
-func drbdUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *drbd.DRBD) (drbdOpts drbd.DRBDOpts, result bool) {
+func drbdUpdateRequired(spec *starlingxv1.SystemSpec, info *drbd.DRBD) (drbdOpts drbd.DRBDOpts, result bool) {
 	if spec.Storage != nil && spec.Storage.DRBD != nil {
 		if spec.Storage.DRBD.LinkUtilization != info.LinkUtilization {
 			drbdOpts.LinkUtilization = spec.Storage.DRBD.LinkUtilization
@@ -280,7 +280,7 @@ func drbdUpdateRequired(spec *starlingxv1beta1.SystemSpec, info *drbd.DRBD) (drb
 
 // ReconcileDRBD configures the system resources to align with the desired DRBD
 // configuration.
-func (r *ReconcileSystem) ReconcileDRBD(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileDRBD(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.DRBD) {
 		return nil
 	}
@@ -304,7 +304,7 @@ func (r *ReconcileSystem) ReconcileDRBD(client *gophercloud.ServiceClient, insta
 // ptpUpdateRequired determines whether an update is required to the PTP
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
-func ptpUpdateRequired(spec *starlingxv1beta1.PTPInfo, p *ptp.PTP) (ptpOpts ptp.PTPOpts, result bool) {
+func ptpUpdateRequired(spec *starlingxv1.PTPInfo, p *ptp.PTP) (ptpOpts ptp.PTPOpts, result bool) {
 	if spec != nil {
 		if spec.Mode != nil && *spec.Mode != p.Mode {
 			ptpOpts.Mode = spec.Mode
@@ -326,7 +326,7 @@ func ptpUpdateRequired(spec *starlingxv1beta1.PTPInfo, p *ptp.PTP) (ptpOpts ptp.
 }
 
 // ReconcilePTP configures the system resources to align with the desired PTP state.
-func (r *ReconcileSystem) ReconcilePTP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcilePTP(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.PTP) {
 		return nil
 	}
@@ -349,7 +349,7 @@ func (r *ReconcileSystem) ReconcilePTP(client *gophercloud.ServiceClient, instan
 
 // ReconcileSNMPCommunities configures the system resources to align with the
 // desired SNMP Community string list.
-func (r *ReconcileSystem) ReconcileSNMPCommunities(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSNMPCommunities(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	configured := make(map[string]bool)
 
 	if spec.SNMP == nil || spec.SNMP.Communities == nil {
@@ -400,7 +400,7 @@ func (r *ReconcileSystem) ReconcileSNMPCommunities(client *gophercloud.ServiceCl
 
 // ReconcileSNMPTrapDestinations configures the system resources to align with
 // the desired SNMP Community string list.
-func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	configured := make(map[string]bool)
 
 	if spec.SNMP == nil || spec.SNMP.TrapDestinations == nil {
@@ -452,7 +452,7 @@ func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.Serv
 
 // ReconcileSNMP configures the system resources to align with the desired SNMP
 // configuration.
-func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.SNMP) {
 		return nil
 	}
@@ -493,7 +493,7 @@ func (r *ReconcileSystem) ControllerNodesAvailable(required int) bool {
 
 // FileSystemResizeAllowed defines whether a particular file system can be
 // resized.
-func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.System, info *v1info.SystemInfo, fs controllerFilesystems.FileSystem) (ready bool, err error) {
+func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1.System, info *v1info.SystemInfo, fs controllerFilesystems.FileSystem) (ready bool, err error) {
 	required := 2
 	if strings.EqualFold(info.SystemMode, string(cloudManager.SystemModeSimplex)) {
 		required = 1
@@ -518,7 +518,7 @@ func (r *ReconcileSystem) FileSystemResizeAllowed(instance *starlingxv1beta1.Sys
 
 // ReconcileFilesystems configures the system resources to align with the
 // desired controller filesystem configuration.
-func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error) {
+func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (err error) {
 	if !config.IsReconcilerEnabled(config.SystemFileSystems) {
 		return nil
 	}
@@ -565,7 +565,7 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 
 		if !found {
 			msg := fmt.Sprintf("unknown controller filesystem %q", fsInfo.Name)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 	}
 
@@ -584,7 +584,7 @@ func (r *ReconcileSystem) ReconcileFileSystems(client *gophercloud.ServiceClient
 	return nil
 }
 
-func systemUpdateRequired(instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, s *system.System) (opts system.SystemOpts, result bool) {
+func systemUpdateRequired(instance *starlingxv1.System, spec *starlingxv1.SystemSpec, s *system.System) (opts system.SystemOpts, result bool) {
 	if instance.Name != s.Name {
 		result = true
 		opts.Name = &instance.Name
@@ -620,7 +620,7 @@ func systemUpdateRequired(instance *starlingxv1beta1.System, spec *starlingxv1be
 }
 
 // ReconcileSystemAttributes configures the system resources to align with the desired state.
-func (r *ReconcileSystem) ReconcileSystemAttributes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSystemAttributes(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if config.IsReconcilerEnabled(config.System) {
 		if opts, ok := systemUpdateRequired(instance, spec, &info.System); ok {
 			log.Info("updating system config", "opts", opts)
@@ -682,7 +682,7 @@ func (r *ReconcileSystem) PrivateKeyTranmissionAllowed(client *gophercloud.Servi
 
 // ReconcileCertificates configures the system certificates to align with the
 // desired list of certificates.
-func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	var cert *x509.Certificate
 	var result *certificates.Certificate
 
@@ -714,10 +714,10 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 			return common.NewMissingKubernetesResource(msg)
 		}
 
-		pemBlock, ok := secret.Data[starlingxv1beta1.SecretCertKey]
+		pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
 		if !ok {
 			msg := fmt.Sprintf("missing %q key in certificate secret %s",
-				starlingxv1beta1.SecretCertKey, c.Secret)
+				starlingxv1.SecretCertKey, c.Secret)
 			return common.NewUserDataError(msg)
 		}
 
@@ -740,10 +740,10 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 				return err
 			}
 
-			keyBytes, ok := secret.Data[starlingxv1beta1.SecretPrivKeyKey]
+			keyBytes, ok := secret.Data[starlingxv1.SecretPrivKeyKey]
 			if !ok {
 				msg := fmt.Sprintf("missing %q key in certificate secret %s",
-					starlingxv1beta1.SecretPrivKeyKey, c.Secret)
+					starlingxv1.SecretPrivKeyKey, c.Secret)
 				return common.NewUserDataError(msg)
 			}
 
@@ -800,7 +800,7 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 
 // ReconcileLicense configures the system license to align with the desired
 // license file.
-func (r *ReconcileSystem) ReconcileLicense(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileLicense(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !config.IsReconcilerEnabled(config.License) {
 		return nil
 	}
@@ -825,10 +825,10 @@ func (r *ReconcileSystem) ReconcileLicense(client *gophercloud.ServiceClient, in
 		return common.NewMissingKubernetesResource(msg)
 	}
 
-	contents, ok := secret.Data[starlingxv1beta1.SecretLicenseContentKey]
+	contents, ok := secret.Data[starlingxv1.SecretLicenseContentKey]
 	if !ok {
 		msg := fmt.Sprintf("missing %q key in certificate secret %s",
-			starlingxv1beta1.SecretLicenseContentKey, spec.License.Secret)
+			starlingxv1.SecretLicenseContentKey, spec.License.Secret)
 		return common.NewUserDataError(msg)
 	}
 
@@ -865,7 +865,7 @@ func (r *ReconcileSystem) ReconcileLicense(client *gophercloud.ServiceClient, in
 // that do not depend on any other resource types (i.e., hosts).  Its purpose
 // is to get the system into a state in which other resources can be
 // configured.
-func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	err := r.ReconcileSystemAttributes(client, instance, spec, info)
 	if err != nil {
 		return err
@@ -916,7 +916,7 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 // system entity by running all steps that can be completed in parallel with
 // other resource types.  That is, once we know that the controllers are already
 // enabled so that we can provision the file systems.
-func (r *ReconcileSystem) ReconcileSystemFinal(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) error {
+func (r *ReconcileSystem) ReconcileSystemFinal(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	err := r.ReconcileFileSystems(client, instance, spec, info)
 	if err != nil {
 		return err
@@ -931,7 +931,7 @@ func (r *ReconcileSystem) ReconcileSystemFinal(client *gophercloud.ServiceClient
 // is only allowed if the resource has not already been successfully reconciled
 // at least once; or the user has overridden this check by adding an annotation
 // on the resource.
-func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (err error, required bool) {
+func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (err error, required bool) {
 	// Build a new system spec based on the current configuration so that
 	// we can compare it to the desired configuration.
 	if !instance.Status.Reconciled {
@@ -944,7 +944,7 @@ func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1beta1.System, s
 		return nil, true
 	}
 
-	current, err := starlingxv1beta1.NewSystemSpec(*info)
+	current, err := starlingxv1.NewSystemSpec(*info)
 	if err != nil {
 		return err, false
 	}
@@ -970,7 +970,7 @@ func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1beta1.System, s
 }
 
 // ReconcileSystem is the main top level reconciler for System resources.
-func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System, spec *starlingxv1beta1.SystemSpec, info *v1info.SystemInfo) (ready bool, err error) {
+func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (ready bool, err error) {
 
 	if err, required := r.ReconcileRequired(instance, spec, info); err != nil {
 		return instance.Status.Reconciled, err
@@ -996,7 +996,7 @@ func (r *ReconcileSystem) ReconcileSystem(client *gophercloud.ServiceClient, ins
 
 // statusUpdateRequired determines whether the resource status attribute
 // needs to be updated to reflect the current system status.
-func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System, info v1info.SystemInfo, inSync bool) (result bool) {
+func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1.System, info v1info.SystemInfo, inSync bool) (result bool) {
 	status := &instance.Status
 
 	if status.ID != info.ID {
@@ -1036,8 +1036,8 @@ func (r *ReconcileSystem) statusUpdateRequired(instance *starlingxv1beta1.System
 // BuildSystemDefaults takes the current set of system attributes and builds a
 // fake system object that can be used as a reference for the current settings
 // applied to the system.  The default settings are saved on the system status.
-func (r *ReconcileSystem) BuildSystemDefaults(instance *starlingxv1beta1.System, system v1info.SystemInfo) (*starlingxv1beta1.SystemSpec, error) {
-	defaults, err := starlingxv1beta1.NewSystemSpec(system)
+func (r *ReconcileSystem) BuildSystemDefaults(instance *starlingxv1.System, system v1info.SystemInfo) (*starlingxv1.SystemSpec, error) {
+	defaults, err := starlingxv1.NewSystemSpec(system)
 	if defaults == nil || err != nil {
 		return nil, err
 	}
@@ -1063,12 +1063,12 @@ func (r *ReconcileSystem) BuildSystemDefaults(instance *starlingxv1beta1.System,
 // GetHostDefaults retrieves the default attributes for a host.  The set of
 // default attributes are collected from the host before any user configurations
 // are applied.
-func (r *ReconcileSystem) GetSystemDefaults(instance *starlingxv1beta1.System) (*starlingxv1beta1.SystemSpec, error) {
+func (r *ReconcileSystem) GetSystemDefaults(instance *starlingxv1.System) (*starlingxv1.SystemSpec, error) {
 	if instance.Status.Defaults == nil {
 		return nil, nil
 	}
 
-	defaults := starlingxv1beta1.SystemSpec{}
+	defaults := starlingxv1.SystemSpec{}
 	err := json.Unmarshal([]byte(*instance.Status.Defaults), &defaults)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to unmarshal system defaults")
@@ -1079,7 +1079,7 @@ func (r *ReconcileSystem) GetSystemDefaults(instance *starlingxv1beta1.System) (
 }
 
 // MergeSystemSpecs invokes the mergo.Merge API with our desired modifiers.
-func MergeSystemSpecs(a, b *starlingxv1beta1.SystemSpec) (*starlingxv1beta1.SystemSpec, error) {
+func MergeSystemSpecs(a, b *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, error) {
 	t := common.DefaultMergeTransformer
 	err := mergo.Merge(a, b, mergo.WithOverride, mergo.WithTransformers(t))
 	if err != nil {
@@ -1092,7 +1092,7 @@ func MergeSystemSpecs(a, b *starlingxv1beta1.SystemSpec) (*starlingxv1beta1.Syst
 
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
-func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1beta1.System) (err error) {
+func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.System) (err error) {
 
 	systemInfo := v1info.SystemInfo{}
 	err = systemInfo.PopulateSystemInfo(client)
@@ -1202,7 +1202,7 @@ func (r *ReconcileSystem) Reconcile(request reconcile.Request) (reconcile.Result
 	log.V(2).Info("reconcile called")
 
 	// Fetch the SystemNamespace instance
-	instance := &starlingxv1beta1.System{}
+	instance := &starlingxv1.System{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

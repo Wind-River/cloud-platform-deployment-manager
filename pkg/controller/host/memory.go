@@ -9,7 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
@@ -17,7 +17,7 @@ import (
 
 // vswitchCountMemoryByFunction returns the number of pages of a particular size
 // that the vswitch function is using on a given processor node/socket.
-func vswitchCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1beta1.PageSize) (int, error) {
+func vswitchCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1.PageSize) (int, error) {
 	count := 0
 
 	for _, mem := range memories {
@@ -39,7 +39,7 @@ func vswitchCountMemoryByFunction(memories []memory.Memory, node int, pagesize s
 
 // vmCountMemoryByFunction returns the number of pages of a particular size
 // that the VM function is using on a given processor node/socket.
-func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1beta1.PageSize) (int, error) {
+func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1.PageSize) (int, error) {
 	count := 0
 
 	for _, mem := range memories {
@@ -47,14 +47,14 @@ func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starli
 			continue
 		}
 
-		if pagesize == starlingxv1beta1.PageSize2M {
+		if pagesize == starlingxv1.PageSize2M {
 			if mem.VM2MHugepagesPending == nil {
 				count += mem.VM2MHugepagesCount
 			} else {
 				count += *mem.VM2MHugepagesPending
 			}
 
-		} else if pagesize == starlingxv1beta1.PageSize1G {
+		} else if pagesize == starlingxv1.PageSize1G {
 			if mem.VM1GHugepagesPending == nil {
 				count += mem.VM1GHugepagesCount
 			} else {
@@ -68,7 +68,7 @@ func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starli
 
 // platformCountMemoryByFunction returns the number of pages of a particular
 // size that the platform function is using on a given processor node/socket.
-func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1beta1.PageSize) (int, error) {
+func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1.PageSize) (int, error) {
 	count := 0
 
 	for _, mem := range memories {
@@ -76,7 +76,7 @@ func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize 
 			continue
 		}
 
-		if pagesize == starlingxv1beta1.PageSize4K {
+		if pagesize == starlingxv1.PageSize4K {
 			// Return the equivalent number of 4K pages that are currently
 			// configured on the host.  Size the returned by the API as MiB we
 			// need to multiply by 1MB and divide by 4K.
@@ -89,7 +89,7 @@ func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize 
 
 // memoryCountByFunction counts the number of pages of a particular size that a
 // specific function is using on a processor node/socket.
-func memoryCountByFunction(data []memory.Memory, node int, function string, pagesize starlingxv1beta1.PageSize) (int, error) {
+func memoryCountByFunction(data []memory.Memory, node int, function string, pagesize starlingxv1.PageSize) (int, error) {
 	switch function {
 	case memory.MemoryFunctionVSwitch:
 		return vswitchCountMemoryByFunction(data, node, pagesize)
@@ -105,28 +105,28 @@ func memoryCountByFunction(data []memory.Memory, node int, function string, page
 
 // memoryUpdateRequired is a utility function which determines whether an
 // update is required to adjust the memory configuration
-func memoryUpdateRequired(f starlingxv1beta1.MemoryFunctionInfo, count int) (opts memory.MemoryOpts, result bool) {
+func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts memory.MemoryOpts, result bool) {
 
 	if count != f.PageCount {
-		pageSize := starlingxv1beta1.PageSize(f.PageSize)
+		pageSize := starlingxv1.PageSize(f.PageSize)
 
 		opts.Function = f.Function
 
 		if f.Function == memory.MemoryFunctionVM {
-			if f.PageSize == string(starlingxv1beta1.PageSize1G) {
+			if f.PageSize == string(starlingxv1.PageSize1G) {
 				opts.VMHugepages1G = &f.PageCount
 
-			} else if f.PageSize == string(starlingxv1beta1.PageSize2M) {
+			} else if f.PageSize == string(starlingxv1.PageSize2M) {
 				opts.VMHugepages2M = &f.PageCount
 			}
 
 		} else if f.Function == memory.MemoryFunctionVSwitch {
-			if f.PageSize == string(starlingxv1beta1.PageSize1G) {
+			if f.PageSize == string(starlingxv1.PageSize1G) {
 				opts.VSwitchHugepages = &f.PageCount
 				hpSize := 1024
 				opts.VSwitchHugepageSize = &hpSize
 
-			} else if f.PageSize == string(starlingxv1beta1.PageSize2M) {
+			} else if f.PageSize == string(starlingxv1.PageSize2M) {
 				opts.VSwitchHugepages = &f.PageCount
 				hpSize := 2
 				opts.VSwitchHugepageSize = &hpSize
@@ -145,7 +145,7 @@ func memoryUpdateRequired(f starlingxv1beta1.MemoryFunctionInfo, count int) (opt
 
 // ReconcileMemory is responsible for reconciling the Memory configuration of a
 // host resource.
-func (r *ReconcileHost) ReconcileMemory(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileMemory(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if len(profile.Memory) == 0 || !config.IsReconcilerEnabled(config.Memory) {
@@ -164,12 +164,12 @@ func (r *ReconcileHost) ReconcileMemory(client *gophercloud.ServiceClient, insta
 		mem, ok := host.FindMemory(nodeInfo.Node)
 		if !ok {
 			msg := fmt.Sprintf("failed to find memory resource for node %d", nodeInfo.Node)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 
 		for _, f := range nodeInfo.Functions {
 			// For each function within a NUMA node configuration
-			pageSize := starlingxv1beta1.PageSize(f.PageSize)
+			pageSize := starlingxv1.PageSize(f.PageSize)
 			count, err := memoryCountByFunction(objects, nodeInfo.Node, f.Function, pageSize)
 			if err != nil {
 				return err

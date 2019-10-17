@@ -744,7 +744,7 @@ spec:
                 type: string
               type: array
           type: object
-  version: v1beta1
+  version: v1
 status:
   acceptedNames:
     kind: ""

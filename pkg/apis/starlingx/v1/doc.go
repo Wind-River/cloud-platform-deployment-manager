@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-// Package v1beta1 contains API Schema definitions for the StarlingX v1beta1 API
+// Package v1 contains API Schema definitions for the StarlingX v1 API
 // group.
 //
 // The schema definitions contained within are based on the StarlingX API
@@ -21,4 +21,4 @@
 // +k8s:conversion-gen=github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=starlingx.windriver.com
-package v1beta1
+package v1

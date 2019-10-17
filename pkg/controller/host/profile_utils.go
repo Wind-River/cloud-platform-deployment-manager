@@ -10,14 +10,14 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/imdario/mergo"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 // MergeProfiles invokes the mergo.Merge API with our desired modifiers.
-func MergeProfiles(a, b *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.HostProfileSpec, error) {
+func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileSpec, error) {
 	t := common.DefaultMergeTransformer
 	err := mergo.Merge(a, b, mergo.WithOverride, mergo.WithTransformers(t))
 	if err != nil {
@@ -29,8 +29,8 @@ func MergeProfiles(a, b *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.Ho
 }
 
 // GetHostProfile retrieves a HostProfileSpec from the kubernetes API
-func (r *ReconcileHost) GetHostProfile(namespace, profile string) (*starlingxv1beta1.HostProfileSpec, error) {
-	instance := &starlingxv1beta1.HostProfile{}
+func (r *ReconcileHost) GetHostProfile(namespace, profile string) (*starlingxv1.HostProfileSpec, error) {
+	instance := &starlingxv1.HostProfile{}
 	name := types.NamespacedName{Namespace: namespace, Name: profile}
 
 	err := r.Get(context.TODO(), name, instance)
@@ -49,7 +49,7 @@ func (r *ReconcileHost) GetHostProfile(namespace, profile string) (*starlingxv1b
 
 // DeleteHostProfile deletes a HostProfile from the kubernetes API
 func (r *ReconcileHost) DeleteHostProfile(namespace, profile string) error {
-	instance := &starlingxv1beta1.HostProfile{}
+	instance := &starlingxv1.HostProfile{}
 	name := types.NamespacedName{Namespace: namespace, Name: profile}
 
 	err := r.Get(context.TODO(), name, instance)
@@ -74,7 +74,7 @@ func (r *ReconcileHost) DeleteHostProfile(namespace, profile string) error {
 // by looking for equivalent entries in the base profile attribute and replacing
 // their values.  Array entries that are not found in the base profile are
 // added to the array.
-func (r *ReconcileHost) mergeProfileChain(namespace string, current *starlingxv1beta1.HostProfileSpec, visited map[string]bool) (*starlingxv1beta1.HostProfileSpec, error) {
+func (r *ReconcileHost) mergeProfileChain(namespace string, current *starlingxv1.HostProfileSpec, visited map[string]bool) (*starlingxv1.HostProfileSpec, error) {
 	if current.Base != nil {
 		if value, ok := visited[*current.Base]; ok && value {
 			msg := fmt.Sprintf("profile loop detected at: %s", *current.Base)
@@ -101,7 +101,7 @@ func (r *ReconcileHost) mergeProfileChain(namespace string, current *starlingxv1
 // BuildCompositeProfile combines the default profile, the profile inheritance
 // chain, and host specific overrides to form a final composite profile that
 // will be applied to the host at configuration time.
-func (r *ReconcileHost) BuildCompositeProfile(host *starlingxv1beta1.Host) (*starlingxv1beta1.HostProfileSpec, error) {
+func (r *ReconcileHost) BuildCompositeProfile(host *starlingxv1.Host) (*starlingxv1.HostProfileSpec, error) {
 	// Start with the explicit profile attached to the host.
 	profile, err := r.GetHostProfile(host.Namespace, host.Spec.Profile)
 	if err != nil {
@@ -146,7 +146,7 @@ func (r *ReconcileHost) BuildCompositeProfile(host *starlingxv1beta1.Host) (*sta
 // system API will check for this on its own but guaranteeing that the interface
 // data is as clean as possible helps simplify some of the coding choice in
 // the interface reconciliation code.
-func (r *ReconcileHost) validateProfileUniqueInterfaces(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) validateProfileUniqueInterfaces(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	present := make(map[string]bool)
 
 	for _, e := range profile.Interfaces.Ethernet {
@@ -177,7 +177,7 @@ func (r *ReconcileHost) validateProfileUniqueInterfaces(host *starlingxv1beta1.H
 // that it references a port with the same name.  This is to ensure that the
 // interface reconciliation code can make some assumptions about the naming
 // strategy and therefore be simplified.
-func (r *ReconcileHost) validateLoopbackInterface(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) validateLoopbackInterface(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	for _, e := range profile.Interfaces.Ethernet {
 		if e.Name == interfaces.LoopbackInterfaceName || e.Port.Name == interfaces.LoopbackInterfaceName {
 			if e.Name != e.Port.Name {
@@ -191,7 +191,7 @@ func (r *ReconcileHost) validateLoopbackInterface(host *starlingxv1beta1.Host, p
 
 // validateProfileInterfaces does minimal validation over the list of
 // interfaces to be configured.
-func (r *ReconcileHost) validateProfileInterfaces(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) validateProfileInterfaces(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	if profile.Interfaces == nil {
 		msg := "'interfaces' profile attribute is required for all hosts"
 		return common.NewValidationError(msg)
@@ -210,7 +210,7 @@ func (r *ReconcileHost) validateProfileInterfaces(host *starlingxv1beta1.Host, p
 
 // validateBoardManagement performs validation of the Board Management
 // host attributes.
-func (r *ReconcileHost) validateBoardManagement(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) validateBoardManagement(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	if profile.BoardManagement == nil {
 		return nil
 	}
@@ -239,7 +239,7 @@ func (r *ReconcileHost) validateBoardManagement(host *starlingxv1beta1.Host, pro
 
 // validateProfileSpec is a private method to validate the contents of a profile
 // spec resource.
-func (r *ReconcileHost) validateProfileSpec(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) validateProfileSpec(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	if profile.Personality == nil {
 		msg := "'personality' is a mandatory profile attribute"
 		return common.NewValidationError(msg)
@@ -264,7 +264,7 @@ func (r *ReconcileHost) validateProfileSpec(host *starlingxv1beta1.Host, profile
 		return common.NewValidationError(msg)
 	}
 
-	if *profile.ProvisioningMode == starlingxv1beta1.ProvioningModeStatic {
+	if *profile.ProvisioningMode == starlingxv1.ProvioningModeStatic {
 		if host.Name == hosts.Controller0 {
 			msg := "controller-0 must use dynamic provisioning"
 			return common.NewValidationError(msg)
@@ -303,7 +303,7 @@ func (r *ReconcileHost) validateProfileSpec(host *starlingxv1beta1.Host, profile
 // profile in the inheritance chain must).  Therefore each individual profile
 // itself may not be valid but when attached to a host the full chain of
 // profiles must produce a valid set of attributes.
-func (r *ReconcileHost) ValidateProfile(host *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) error {
+func (r *ReconcileHost) ValidateProfile(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
 	err := r.validateProfileSpec(host, profile)
 	if err != nil {
 		return err

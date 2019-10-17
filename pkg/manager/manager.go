@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -147,7 +147,7 @@ func getNextCount(value string) string {
 }
 
 func (m *PlatformManager) NotifySystemController(namespace string) error {
-	systems := &v1beta1.SystemList{}
+	systems := &v1.SystemList{}
 	opts := client.ListOptions{}
 	opts.InNamespace(namespace)
 	err := m.GetClient().List(context.TODO(), &opts, systems)
@@ -179,15 +179,15 @@ func (m *PlatformManager) NotifySystemController(namespace string) error {
 // need to be notified.  HostProfiles are consumed by Host resources therefore
 // do not need to be notified.
 var systemDependencies = []schema.GroupVersionKind{
-	{Group: v1beta1.Group,
-		Version: v1beta1.Version,
-		Kind:    v1beta1.KindHost},
-	{Group: v1beta1.Group,
-		Version: v1beta1.Version,
-		Kind:    v1beta1.KindPlatformNetwork},
-	{Group: v1beta1.Group,
-		Version: v1beta1.Version,
-		Kind:    v1beta1.KindDataNetwork},
+	{Group: v1.Group,
+		Version: v1.Version,
+		Kind:    v1.KindHost},
+	{Group: v1.Group,
+		Version: v1.Version,
+		Kind:    v1.KindPlatformNetwork},
+	{Group: v1.Group,
+		Version: v1.Version,
+		Kind:    v1.KindDataNetwork},
 }
 
 // notifyControllers updates an annotation on each of the listed controller
@@ -207,7 +207,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 		for _, obj := range objects.Items {
 			switch obj.GetKind() {
-			case v1beta1.KindHost, v1beta1.KindHostProfile, v1beta1.KindPlatformNetwork, v1beta1.KindDataNetwork:
+			case v1.KindHost, v1.KindHostProfile, v1.KindPlatformNetwork, v1.KindDataNetwork:
 				annotations := obj.GetAnnotations()
 				if annotations == nil {
 					annotations = make(map[string]string)

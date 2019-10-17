@@ -9,7 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to PlatformNetwork
-	err = c.Watch(&source.Kind{Type: &starlingxv1beta1.PlatformNetwork{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &starlingxv1.PlatformNetwork{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ type ReconcilePlatformNetwork struct {
 // address and the second element is the range end address.  This is to align
 // with the system API formatting which represents a pair as an array of two
 // elements.
-func makeRangeArray(ranges []starlingxv1beta1.AllocationRange) [][]string {
+func makeRangeArray(ranges []starlingxv1.AllocationRange) [][]string {
 	result := make([][]string, len(ranges))
 	for index, r := range ranges {
 		result[index] = []string{r.Start, r.End}
@@ -124,7 +124,7 @@ func compareRangeArrays(x, y [][]string) bool {
 // poolUpdateRequired determines whether a system address pool resource must
 // be updated to align with the stored value.  Only the updated fields are
 //// include in the request options to minimum churn and to ease debugging.
-func poolUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, p *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool) {
+func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool) {
 	if instance.Name != p.Name {
 		opts.Name = &instance.Name
 		result = true
@@ -169,7 +169,7 @@ func poolUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, p *addresspo
 
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
-func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (*addresspools.AddressPool, error) {
+func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (*addresspools.AddressPool, error) {
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
@@ -219,7 +219,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNewAddressPool(client *gophercloud.S
 // ReconcileUpdated is a method which handles reconciling an existing data
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
-func (r *ReconcilePlatformNetwork) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, pool *addresspools.AddressPool) error {
+func (r *ReconcilePlatformNetwork) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if opts, ok := poolUpdateRequired(instance, pool); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
@@ -253,7 +253,7 @@ func (r *ReconcilePlatformNetwork) ReconcileUpdatedAddressPool(client *gopherclo
 
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
-func (r *ReconcilePlatformNetwork) ReconciledDeletedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, pool *addresspools.AddressPool) error {
+func (r *ReconcilePlatformNetwork) ReconciledDeletedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if pool != nil {
 		// Unless it was already deleted go ahead and attempt to delete it.
 		err := addresspools.Delete(client, pool.ID).ExtractErr()
@@ -282,7 +282,7 @@ func (r *ReconcilePlatformNetwork) ReconciledDeletedAddressPool(client *gophercl
 // FindExistingAddressPool attempts to re-use the existing resource referenced
 // by the ID value stored in the status or to find another resource with a
 // matching name.
-func (r *ReconcilePlatformNetwork) FindExistingAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (pool *addresspools.AddressPool, err error) {
+func (r *ReconcilePlatformNetwork) FindExistingAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (pool *addresspools.AddressPool, err error) {
 	id := instance.Status.ID
 	if id != nil {
 		// This network was previously provisioned.
@@ -322,7 +322,7 @@ func (r *ReconcilePlatformNetwork) FindExistingAddressPool(client *gophercloud.S
 // needs to be created or updated in the system.  This is done independently of
 // the network resource since at the system level these are two independent
 // resources.
-func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) error {
+func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) error {
 	pool, err := r.FindExistingAddressPool(client, instance)
 	if err != nil {
 		return err
@@ -354,7 +354,7 @@ func (r *ReconcilePlatformNetwork) ReconcileAddressPool(client *gophercloud.Serv
 // networkUpdateRequired determines whether a system network resource must be
 // updated to align with the stored value.  Only the updated fields are
 // include in the request options to minimum churn and to ease debugging.
-func networkUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, n *networks.Network) (opts networks.NetworkOpts, result bool) {
+func networkUpdateRequired(instance *starlingxv1.PlatformNetwork, n *networks.Network) (opts networks.NetworkOpts, result bool) {
 	if instance.Name != n.Name {
 		opts.Name = &instance.Name
 		result = true
@@ -388,7 +388,7 @@ func networkUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, n *networ
 // the future we will hopefully change the system API to require this or even
 // change it so that address pools are not explicitly provisioned, but for now
 // we simply manage this detail here to make the UX better.
-func networkResourceRequired(instance *starlingxv1beta1.PlatformNetwork) bool {
+func networkResourceRequired(instance *starlingxv1.PlatformNetwork) bool {
 	switch instance.Spec.Type {
 	case networks.NetworkTypeOther:
 		return false
@@ -399,7 +399,7 @@ func networkResourceRequired(instance *starlingxv1beta1.PlatformNetwork) bool {
 
 // ReconcileNewNetwork is a method which handles reconciling a new data resource
 // and creates the corresponding system resource thru the system API.
-func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (*networks.Network, error) {
+func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (*networks.Network, error) {
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
@@ -438,7 +438,7 @@ func (r *ReconcilePlatformNetwork) ReconcileNewNetwork(client *gophercloud.Servi
 // ReconcileUpdated is a method which handles reconciling an existing data
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
-func (r *ReconcilePlatformNetwork) ReconcileUpdatedNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, network *networks.Network) error {
+func (r *ReconcilePlatformNetwork) ReconcileUpdatedNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, network *networks.Network) error {
 	if opts, ok := networkUpdateRequired(instance, network); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
@@ -472,7 +472,7 @@ func (r *ReconcilePlatformNetwork) ReconcileUpdatedNetwork(client *gophercloud.S
 
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
-func (r *ReconcilePlatformNetwork) ReconciledDeletedNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork, network *networks.Network) error {
+func (r *ReconcilePlatformNetwork) ReconciledDeletedNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, network *networks.Network) error {
 	if network != nil {
 		// Unless it was already deleted go ahead and attempt to delete it.
 		err := networks.Delete(client, network.UUID).ExtractErr()
@@ -490,7 +490,7 @@ func (r *ReconcilePlatformNetwork) ReconciledDeletedNetwork(client *gophercloud.
 // FindExistingNetwork attempts to re-use the existing resource referenced
 // by the ID value stored in the status or to find another resource with a
 // matching name.
-func (r *ReconcilePlatformNetwork) FindExistingNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (network *networks.Network, err error) {
+func (r *ReconcilePlatformNetwork) FindExistingNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (network *networks.Network, err error) {
 	id := instance.Status.ID
 	if id != nil {
 		// This network was previously provisioned.
@@ -530,7 +530,7 @@ func (r *ReconcilePlatformNetwork) FindExistingNetwork(client *gophercloud.Servi
 // be created or updated in the system.  This is done independently of the
 // address pool resource since at the system level these are two independent
 // resources.
-func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) error {
+func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) error {
 	network, err := r.FindExistingNetwork(client, instance)
 	if err != nil {
 		return err
@@ -561,13 +561,13 @@ func (r *ReconcilePlatformNetwork) ReconcileNetwork(client *gophercloud.ServiceC
 
 // statusUpdateRequired is a utility method to determine if the status needs
 // to be updated at the API.
-func (r *ReconcilePlatformNetwork) statusUpdateRequired(instance *starlingxv1beta1.PlatformNetwork, status *starlingxv1beta1.PlatformNetworkStatus) bool {
+func (r *ReconcilePlatformNetwork) statusUpdateRequired(instance *starlingxv1.PlatformNetwork, status *starlingxv1.PlatformNetworkStatus) bool {
 	return !instance.Status.DeepEqual(status)
 }
 
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
-func (r *ReconcilePlatformNetwork) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1beta1.PlatformNetwork) (err error) {
+func (r *ReconcilePlatformNetwork) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (err error) {
 	oldStatus := instance.Status.DeepCopy()
 
 	if instance.DeletionTimestamp.IsZero() {
@@ -649,7 +649,7 @@ func (r *ReconcilePlatformNetwork) Reconcile(request reconcile.Request) (reconci
 	defer func() { log = savedLog }()
 
 	// Fetch the DataNetwork instance
-	instance := &starlingxv1beta1.PlatformNetwork{}
+	instance := &starlingxv1.PlatformNetwork{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -21,7 +21,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	perrors "github.com/pkg/errors"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	"k8s.io/api/core/v1"
 )
@@ -77,11 +77,11 @@ type Deployment struct {
 	Namespace         v1.Namespace
 	Secrets           []*v1.Secret
 	IncompleteSecrets []*v1.Secret
-	System            v1beta1.System
-	PlatformNetworks  []*v1beta1.PlatformNetwork
-	DataNetworks      []*v1beta1.DataNetwork
-	Profiles          []*v1beta1.HostProfile
-	Hosts             []*v1beta1.Host
+	System            starlingxv1.System
+	PlatformNetworks  []*starlingxv1.PlatformNetwork
+	DataNetworks      []*starlingxv1.DataNetwork
+	Profiles          []*starlingxv1.HostProfile
+	Hosts             []*starlingxv1.Host
 }
 
 // progressUpdate is a utility method to write a progress log to the provided
@@ -304,7 +304,7 @@ func (d *Deployment) ToYAML() (string, error) {
 }
 
 func (db *DeploymentBuilder) buildNamespace(d *Deployment) error {
-	namespace, err := v1beta1.NewNamespace(db.namespace)
+	namespace, err := starlingxv1.NewNamespace(db.namespace)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (db *DeploymentBuilder) buildNamespace(d *Deployment) error {
 	return nil
 }
 
-func (db *DeploymentBuilder) filterSystem(system *v1beta1.System, deployment *Deployment) error {
+func (db *DeploymentBuilder) filterSystem(system *starlingxv1.System, deployment *Deployment) error {
 	for _, f := range db.systemFilters {
 		err := f.Filter(system, deployment)
 		if err != nil {
@@ -334,7 +334,7 @@ func (db *DeploymentBuilder) buildSystem(d *Deployment) (*v1info.SystemInfo, err
 	}
 
 	// Build a System object from the system snapshot
-	system, err := v1beta1.NewSystem(db.namespace, db.name, systemInfo)
+	system, err := starlingxv1.NewSystem(db.namespace, db.name, systemInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +402,7 @@ func (db *DeploymentBuilder) buildEndpointSecret(d *Deployment) error {
 
 func (db *DeploymentBuilder) buildLicenseSecret(d *Deployment, license *licenses.License) error {
 	if d.System.Spec.License != nil {
-		secret, err := v1beta1.NewLicenseSecret(d.System.Spec.License.Secret, db.namespace, license.Content)
+		secret, err := starlingxv1.NewLicenseSecret(d.System.Spec.License.Secret, db.namespace, license.Content)
 		if err != nil {
 			return err
 		}
@@ -417,7 +417,7 @@ func (db *DeploymentBuilder) buildCertificateSecrets(d *Deployment) error {
 	// certificates.
 	if d.System.Spec.Certificates != nil {
 		for _, c := range *d.System.Spec.Certificates {
-			cert, err := v1beta1.NewCertificateSecret(c.Secret, db.namespace)
+			cert, err := starlingxv1.NewCertificateSecret(c.Secret, db.namespace)
 			if err != nil {
 				return err
 			}
@@ -435,9 +435,9 @@ func (db *DeploymentBuilder) buildDataNetworks(d *Deployment) error {
 		return err
 	}
 
-	nets := make([]*v1beta1.DataNetwork, 0)
+	nets := make([]*starlingxv1.DataNetwork, 0)
 	for _, dn := range results {
-		net, err := v1beta1.NewDataNetwork(dn.Name, db.namespace, dn)
+		net, err := starlingxv1.NewDataNetwork(dn.Name, db.namespace, dn)
 		if err != nil {
 			return err
 		}
@@ -462,7 +462,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		return err
 	}
 
-	nets := make([]*v1beta1.PlatformNetwork, 0)
+	nets := make([]*starlingxv1.PlatformNetwork, 0)
 	for _, p := range pools {
 		skip := false
 		for _, n := range results {
@@ -477,7 +477,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		}
 
 		if !skip {
-			net, err := v1beta1.NewPlatformNetwork(p.Name, db.namespace, p)
+			net, err := starlingxv1.NewPlatformNetwork(p.Name, db.namespace, p)
 			if err != nil {
 				return err
 			}
@@ -490,7 +490,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 	return nil
 }
 
-func isInterfaceInUse(ifname string, info *v1beta1.InterfaceInfo) bool {
+func isInterfaceInUse(ifname string, info *starlingxv1.InterfaceInfo) bool {
 	for _, v := range info.VLAN {
 		if ifname == v.Lower {
 			return true
@@ -506,7 +506,7 @@ func isInterfaceInUse(ifname string, info *v1beta1.InterfaceInfo) bool {
 	return false
 }
 
-func (db *DeploymentBuilder) filterHost(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (db *DeploymentBuilder) filterHost(profile *starlingxv1.HostProfile, host *starlingxv1.Host, deployment *Deployment) error {
 	for _, f := range db.hostFilters {
 		err := f.Filter(profile, host, deployment)
 		if err != nil {
@@ -517,7 +517,7 @@ func (db *DeploymentBuilder) filterHost(profile *v1beta1.HostProfile, host *v1be
 	return nil
 }
 
-func (db *DeploymentBuilder) filterHostProfile(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (db *DeploymentBuilder) filterHostProfile(profile *starlingxv1.HostProfile, deployment *Deployment) error {
 	for _, f := range db.profileFilters {
 		err := f.Filter(profile, deployment)
 		if err != nil {
@@ -562,7 +562,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		}
 
 		// Create a host record for this entity.
-		host, err := v1beta1.NewHost(hostname, db.namespace, hostInfo)
+		host, err := starlingxv1.NewHost(hostname, db.namespace, hostInfo)
 		if err != nil {
 			return err
 		}
@@ -570,7 +570,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		db.progressUpdate("...Building host profile configuration for %q\n", hostname)
 
 		// Create a full profile for this one host.
-		profile, err := v1beta1.NewHostProfile(hostname, db.namespace, hostInfo)
+		profile, err := starlingxv1.NewHostProfile(hostname, db.namespace, hostInfo)
 		if err != nil {
 			return err
 		}
@@ -580,7 +580,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 
 		// Force the provisioning mode to static until there is a need to make
 		// this optional.
-		static := v1beta1.ProvioningModeStatic
+		static := starlingxv1.ProvioningModeStatic
 		profile.Spec.ProvisioningMode = &static
 
 		// Link the host to this profile, but we may change the reference later
@@ -594,7 +594,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		if profile.Spec.BoardManagement != nil && !bmSecretGenerated {
 			bm := profile.Spec.BoardManagement
 			if bm.Credentials.Password != nil && h.BMUsername != nil {
-				secret, err := v1beta1.NewBMSecret(bm.Credentials.Password.Secret, db.namespace, *h.BMUsername)
+				secret, err := starlingxv1.NewBMSecret(bm.Credentials.Password.Secret, db.namespace, *h.BMUsername)
 				if err != nil {
 					return err
 				}
@@ -647,9 +647,9 @@ func (db *DeploymentBuilder) filterHostProfiles(d *Deployment) error {
 }
 
 func (db *DeploymentBuilder) simplifyHostProfiles(d *Deployment) error {
-	profiles := make([]*v1beta1.HostProfile, 0)
+	profiles := make([]*starlingxv1.HostProfile, 0)
 	for _, host := range d.Hosts {
-		var profile *v1beta1.HostProfile
+		var profile *starlingxv1.HostProfile
 		for _, p := range d.Profiles {
 			if p.Name == host.Spec.Profile {
 				profile = p

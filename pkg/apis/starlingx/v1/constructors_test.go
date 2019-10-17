@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package v1beta1
+package v1
 
 import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/disks"

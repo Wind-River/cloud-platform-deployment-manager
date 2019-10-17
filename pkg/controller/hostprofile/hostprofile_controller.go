@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,7 +56,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to HostProfile
-	err = c.Watch(&source.Kind{Type: &starlingxv1beta1.HostProfile{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &starlingxv1.HostProfile{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ type ReconcileHostProfile struct {
 // ProfileUses determines whether the 'base' profile references the 'target'
 // profile either directly or indirectly via one of its parent/base profiles.
 func (r *ReconcileHostProfile) ProfileUses(namespace, base, target string) (bool, error) {
-	profile := &starlingxv1beta1.HostProfile{}
+	profile := &starlingxv1.HostProfile{}
 
 	for {
 		// Retrieve the current level profile
@@ -107,8 +107,8 @@ func (r *ReconcileHostProfile) ProfileUses(namespace, base, target string) (bool
 // UpdateHosts will force a update to each host that references this profile.
 // This is to ensure that hosts get reconciled whenever any of their profiles
 // get updated.
-func (r *ReconcileHostProfile) UpdateHosts(instance *starlingxv1beta1.HostProfile) error {
-	hosts := &starlingxv1beta1.HostList{}
+func (r *ReconcileHostProfile) UpdateHosts(instance *starlingxv1.HostProfile) error {
+	hosts := &starlingxv1.HostList{}
 	opts := client.ListOptions{}
 	opts.InNamespace(instance.Namespace)
 	err := r.List(context.TODO(), &opts, hosts)
@@ -167,7 +167,7 @@ func (r *ReconcileHostProfile) Reconcile(request reconcile.Request) (reconcile.R
 	log.V(2).Info("reconcile called")
 
 	// Fetch the HostProfile instance
-	instance := &starlingxv1beta1.HostProfile{}
+	instance := &starlingxv1.HostProfile{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

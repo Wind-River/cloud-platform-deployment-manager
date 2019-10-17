@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
@@ -56,9 +56,9 @@ const (
 // are absolutely required for the proper functioning of this controller should
 // be specified here.
 var AdminLocked = hosts.AdminLocked
-var DynamicProvisioningMode = starlingxv1beta1.ProvioningModeDynamic
-var DefaultHostProfile = starlingxv1beta1.HostProfileSpec{
-	ProfileBaseAttributes: starlingxv1beta1.ProfileBaseAttributes{
+var DynamicProvisioningMode = starlingxv1.ProvioningModeDynamic
+var DefaultHostProfile = starlingxv1.HostProfileSpec{
+	ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
 		AdministrativeState: &AdminLocked,
 		ProvisioningMode:    &DynamicProvisioningMode,
 	},
@@ -96,7 +96,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to Host
-	err = c.Watch(&source.Kind{Type: &starlingxv1beta1.Host{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &starlingxv1.Host{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ type ReconcileHost struct {
 // hostMatchesCriteria evaluates whether a host matches the criteria specified
 // by the operator.  All match attributes must match for a host to match a
 // profile.
-func hostMatchesCriteria(h hosts.Host, criteria *starlingxv1beta1.MatchInfo) bool {
+func hostMatchesCriteria(h hosts.Host, criteria *starlingxv1.MatchInfo) bool {
 	result := true
 	count := 0
 
@@ -195,7 +195,7 @@ func (r *ReconcileHost) getBMPasswordCredentials(namespace string, name string) 
 // buildInitialHostOpts is a utility to assemble the options required to
 // provision a host that needs to be statically provisioned.  Further
 // provisioning of other host attributes will be handled at a later stage.
-func (r *ReconcileHost) buildInitialHostOpts(instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) (hosts.HostOpts, error) {
+func (r *ReconcileHost) buildInitialHostOpts(instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) (hosts.HostOpts, error) {
 	dummy := hosts.Host{}
 	result, _, err := r.UpdateRequired(instance, profile, &dummy)
 	return result, err
@@ -265,7 +265,7 @@ func (r *ReconcileHost) AllControllerNodesEnabled(required int) bool {
 // those in the running system.  If there are mismatches then true is returned
 // in the result and opts is configured with only those values that
 // need to change.
-func (r *ReconcileHost) UpdateRequired(instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, h *hosts.Host) (opts hosts.HostOpts, result bool, err error) {
+func (r *ReconcileHost) UpdateRequired(instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, h *hosts.Host) (opts hosts.HostOpts, result bool, err error) {
 
 	if instance.Name != h.Hostname {
 		result = true
@@ -395,7 +395,7 @@ func (r *ReconcileHost) HTTPSRequired() bool {
 
 // ReconcileAttributes is responsible for reconciling the basic attributes for a
 // host resource.
-func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) error {
+func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host) error {
 	if opts, ok, err := r.UpdateRequired(instance, profile, host); ok && err == nil {
 
 		if opts.BMPassword != nil && strings.HasPrefix(client.Endpoint, cloudManager.HTTPPrefix) {
@@ -430,7 +430,7 @@ func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, i
 }
 
 // ReconcileAttributes is responsible for reconciling the labels on each host.
-func (r *ReconcileHost) ReconcileLabels(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileLabels(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	// Remove any stale or modified labels
@@ -505,7 +505,7 @@ func (r *ReconcileHost) ReconcileLabels(client *gophercloud.ServiceClient, insta
 // Locked if that is the intended state.  Attribute changes may require this and
 // if the operator knows this then they may have set the state to Locked in
 // order to change certain attributes.
-func (r *ReconcileHost) ReconcilePowerState(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcilePowerState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	var action string
 
 	if profile.PowerOn == nil {
@@ -565,7 +565,7 @@ func (r *ReconcileHost) ReconcilePowerState(client *gophercloud.ServiceClient, i
 // Locked if that is the intended state.  Attribute changes may require this and
 // if the operator knows this then they may have set the state to Locked in
 // order to change certain attributes.
-func (r *ReconcileHost) ReconcileInitialState(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileInitialState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	desiredState := profile.AdministrativeState
 	if desiredState != nil && *desiredState != host.AdministrativeState {
 		if *desiredState == hosts.AdminLocked {
@@ -605,7 +605,7 @@ const MinimumEnabledControllerNodesForNonController = 2
 // ReconcileFinalState is intended to be run as the last step.  Once all
 // configuration changes have been applied it is safe to change the state of the
 // host if the desired state is different than the current state.
-func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	state := profile.AdministrativeState
 	if state == nil || *state == host.AdministrativeState {
 		// No action required.
@@ -650,7 +650,7 @@ func (r *ReconcileHost) ReconcileFinalState(client *gophercloud.ServiceClient, i
 	return common.NewResourceStatusDependency("waiting for host state change")
 }
 
-func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	err := r.ReconcileInitialState(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -682,7 +682,7 @@ func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, 
 
 // ReconcileHostByState is responsible for reconciling each individual sub-domain of a
 // host resource.
-func (r *ReconcileHost) ReconcileDisabledHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileDisabledHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	err := r.ReconcileAttributes(client, instance, profile, &host.Host)
 	if err != nil {
@@ -735,7 +735,7 @@ func (r *ReconcileHost) ReconcileDisabledHost(client *gophercloud.ServiceClient,
 // CompareOSDs determine if there has been a change to the list of OSDs between
 // two profile specs. This method takes into consideration that the storage
 // section may be completely empty on either side of the comparison.
-func (r *ReconcileHost) CompareOSDs(in *starlingxv1beta1.HostProfileSpec, other *starlingxv1beta1.HostProfileSpec) bool {
+func (r *ReconcileHost) CompareOSDs(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec) bool {
 	if other == nil {
 		return false
 	}
@@ -768,7 +768,7 @@ func (r *ReconcileHost) CompareOSDs(in *starlingxv1beta1.HostProfileSpec, other 
 // CompareAttributes determines if two profiles are identical for the
 // purpose of reconciling a current host configuration to its desired host
 // profile.
-func (r *ReconcileHost) CompareAttributes(in *starlingxv1beta1.HostProfileSpec, other *starlingxv1beta1.HostProfileSpec, namespace, personality string) bool {
+func (r *ReconcileHost) CompareAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string) bool {
 	// This could be replaced with in.DeepEqual(other) but it is coded this way
 	// (and tested this way) to ensure that if both the "enabled" and "disabled"
 	// comparisons are true then no reconciliation is missed.  The intent is
@@ -783,7 +783,7 @@ func (r *ReconcileHost) CompareAttributes(in *starlingxv1beta1.HostProfileSpec, 
 // is enabled.  The only attributes that we can reconcile while enabled are the
 // storage OSD resources therefore return false if there are any differences
 // in the storage OSD list.
-func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfileSpec, other *starlingxv1beta1.HostProfileSpec, namespace, personality string) bool {
+func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string) bool {
 	if other == nil {
 		return false
 	}
@@ -825,7 +825,7 @@ func (r *ReconcileHost) CompareEnabledAttributes(in *starlingxv1beta1.HostProfil
 // CompareEnabledAttributes determines if two profiles are identical for the
 // purpose of reconciling any attributes that can only be applied when the host
 // is enabled.
-func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfileSpec, other *starlingxv1beta1.HostProfileSpec, namespace, personality string) bool {
+func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string) bool {
 	if other == nil {
 		return false
 	}
@@ -896,7 +896,7 @@ func (r *ReconcileHost) CompareDisabledAttributes(in *starlingxv1beta1.HostProfi
 // host and a disabled host.  Most attributes only support being updated when
 // the host is in a certain state therefore those differences are discriminated
 // here.
-func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, current *starlingxv1beta1.HostProfileSpec, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, current *starlingxv1.HostProfileSpec, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	if host.IsUnlockedEnabled() {
 		if !r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			err := r.ReconcileEnabledHost(client, instance, profile, host)
@@ -941,7 +941,7 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 // statusUpdateRequired is a utility function which determines whether an update
 // is required to the host status attribute.  Updating this unnecessarily
 // will result in an infinite reconciliation loop.
-func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, host *hosts.Host, inSync bool) (result bool) {
+func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1.Host, host *hosts.Host, inSync bool) (result bool) {
 	status := &instance.Status
 
 	if status.ID == nil || *status.ID != host.ID {
@@ -984,7 +984,7 @@ func (r *ReconcileHost) statusUpdateRequired(instance *starlingxv1beta1.Host, ho
 
 // findExistingHost searches the current list of hosts and attempts to find one
 // that fits the provided match criteria.
-func findExistingHost(objects []hosts.Host, hostname string, match *starlingxv1beta1.MatchInfo, bootMAC *string) *hosts.Host {
+func findExistingHost(objects []hosts.Host, hostname string, match *starlingxv1.MatchInfo, bootMAC *string) *hosts.Host {
 	for _, host := range objects {
 		if host.Hostname != "" && host.Hostname == hostname {
 			// Forgo the match criteria if the hostname is a match.
@@ -1018,7 +1018,7 @@ func findExistingHost(objects []hosts.Host, hostname string, match *starlingxv1b
 // a host. This handles both static and dynamic provisioning of hosts.  If a
 // new host is created then the 'host' return parameter will be updated with a
 // pointer to the new host object.
-func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec) (host *hosts.Host, err error) {
+func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) (host *hosts.Host, err error) {
 	host = findExistingHost(r.hosts, instance.Name, instance.Spec.Match, profile.BootMAC)
 	if host != nil {
 		log.Info("found matching host", "id", host.ID)
@@ -1027,7 +1027,7 @@ func (r *ReconcileHost) ReconcileNewHost(client *gophercloud.ServiceClient, inst
 	if host == nil {
 		// A new host needs to be provisioned or we need to wait for one to
 		// appear in the system.
-		if *profile.ProvisioningMode != starlingxv1beta1.ProvioningModeStatic {
+		if *profile.ProvisioningMode != starlingxv1.ProvioningModeStatic {
 			// We only create missing hosts for statically provisioned hosts.
 			// For dynamic, hosts we wait for them to appear in the system
 			msg := "waiting for dynamic host to appear in inventory"
@@ -1113,9 +1113,9 @@ func (r *ReconcileHost) StopAfterInSync() bool {
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
 // existing host.
-func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *hosts.Host) error {
-	var defaults *starlingxv1beta1.HostProfileSpec
-	var current *starlingxv1beta1.HostProfileSpec
+func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host) error {
+	var defaults *starlingxv1.HostProfileSpec
+	var current *starlingxv1.HostProfileSpec
 
 	if !host.Idle() {
 		msg := fmt.Sprintf("waiting for a stable state")
@@ -1172,7 +1172,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		// desired state.
 		log.V(2).Info("building current profile from current config")
 
-		current, err = starlingxv1beta1.NewHostProfileSpec(hostInfo)
+		current, err = starlingxv1.NewHostProfileSpec(hostInfo)
 		if err != nil {
 			return err
 		}
@@ -1234,7 +1234,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
 // existing host.
-func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, host *hosts.Host) (err error) {
+func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, host *hosts.Host) (err error) {
 	if host.Capabilities.Personality != nil {
 		if strings.EqualFold(*host.Capabilities.Personality, hosts.ActiveController) {
 			// Always leave the active controller installed.
@@ -1281,7 +1281,7 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
-func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host) (err error) {
+func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
 	var host *hosts.Host
 	var inSync bool
 
@@ -1408,7 +1408,7 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 	log.V(2).Info("reconcile called")
 
 	// Fetch the Host instance
-	instance := &starlingxv1beta1.Host{}
+	instance := &starlingxv1.Host{}
 	err = r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

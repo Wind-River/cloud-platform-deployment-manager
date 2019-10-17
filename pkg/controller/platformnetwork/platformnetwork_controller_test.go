@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/onsi/gomega"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"golang.org/x/net/context"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +26,7 @@ const timeout = time.Second * 5
 
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
-	instance := &starlingxv1beta1.PlatformNetwork{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	instance := &starlingxv1.PlatformNetwork{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.

@@ -7,7 +7,7 @@ import (
 	"context"
 	"net/http"
 
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -36,7 +36,7 @@ type HostCreateUpdateHandler struct {
 	Decoder types.Decoder
 }
 
-func (h *HostCreateUpdateHandler) validateMatchBMInfo(ctx context.Context, obj *starlingxv1beta1.Host) (bool, string, error) {
+func (h *HostCreateUpdateHandler) validateMatchBMInfo(ctx context.Context, obj *starlingxv1.Host) (bool, string, error) {
 	if obj.Spec.Match.BoardManagement.Address == nil {
 		return false, "board management address must be supplied in match criteria", nil
 	}
@@ -44,7 +44,7 @@ func (h *HostCreateUpdateHandler) validateMatchBMInfo(ctx context.Context, obj *
 	return true, AllowedReason, nil
 }
 
-func (h *HostCreateUpdateHandler) validateMatchDMIInfo(ctx context.Context, obj *starlingxv1beta1.Host) (bool, string, error) {
+func (h *HostCreateUpdateHandler) validateMatchDMIInfo(ctx context.Context, obj *starlingxv1.Host) (bool, string, error) {
 	if obj.Spec.Match.DMI.SerialNumber == nil || obj.Spec.Match.DMI.AssetTag == nil {
 		return false, "DMI Serial Number or Asset Tag must be supplied in match criteria", nil
 	}
@@ -52,7 +52,7 @@ func (h *HostCreateUpdateHandler) validateMatchDMIInfo(ctx context.Context, obj 
 	return true, AllowedReason, nil
 }
 
-func (h *HostCreateUpdateHandler) validateMatchInfo(ctx context.Context, obj *starlingxv1beta1.Host) (bool, string, error) {
+func (h *HostCreateUpdateHandler) validateMatchInfo(ctx context.Context, obj *starlingxv1.Host) (bool, string, error) {
 	match := obj.Spec.Match
 
 	if match.BootMAC == nil && match.BoardManagement == nil && match.DMI == nil {
@@ -76,7 +76,7 @@ func (h *HostCreateUpdateHandler) validateMatchInfo(ctx context.Context, obj *st
 	return true, AllowedReason, nil
 }
 
-func (h *HostCreateUpdateHandler) validatingHostFn(ctx context.Context, obj *starlingxv1beta1.Host) (bool, string, error) {
+func (h *HostCreateUpdateHandler) validatingHostFn(ctx context.Context, obj *starlingxv1.Host) (bool, string, error) {
 	if obj.Spec.Match != nil {
 		allowed, reason, err := h.validateMatchInfo(ctx, obj)
 		if !allowed || err != nil {
@@ -91,7 +91,7 @@ var _ admission.Handler = &HostCreateUpdateHandler{}
 
 // Handle handles admission requests.
 func (h *HostCreateUpdateHandler) Handle(ctx context.Context, req types.Request) types.Response {
-	obj := &starlingxv1beta1.Host{}
+	obj := &starlingxv1.Host{}
 
 	err := h.Decoder.Decode(req, obj)
 	if err != nil {

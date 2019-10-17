@@ -1,4 +1,4 @@
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
 metadata:
   labels:
@@ -32,7 +32,7 @@ spec:
       prefix: 0
       gateway: fd00:0:0:b::1
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: Host
 metadata:
   labels:

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	corev1 "k8s.io/api/core/v1"
 	apitypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -84,7 +84,7 @@ func (h *SystemCreateUpdateHandler) validateBackendServices(backendType string, 
 	return true, AllowedReason, nil
 }
 
-func (h *SystemCreateUpdateHandler) validateBackendAttributes(backend starlingxv1beta1.StorageBackend) (bool, string, error) {
+func (h *SystemCreateUpdateHandler) validateBackendAttributes(backend starlingxv1.StorageBackend) (bool, string, error) {
 	if backend.PartitionSize != nil || backend.ReplicationFactor != nil {
 		if backend.Type != ceph {
 			return false, fmt.Sprintf("partitionSize and ReplicationFactor only permitted with %s backend", ceph), nil
@@ -94,7 +94,7 @@ func (h *SystemCreateUpdateHandler) validateBackendAttributes(backend starlingxv
 	return true, AllowedReason, nil
 }
 
-func (h *SystemCreateUpdateHandler) validateStorageBackends(obj *starlingxv1beta1.System) (bool, string, error) {
+func (h *SystemCreateUpdateHandler) validateStorageBackends(obj *starlingxv1.System) (bool, string, error) {
 	var present = make(map[string]bool)
 
 	for _, b := range *obj.Spec.Storage.Backends {
@@ -120,7 +120,7 @@ func (h *SystemCreateUpdateHandler) validateStorageBackends(obj *starlingxv1beta
 	return true, AllowedReason, nil
 }
 
-func (h *SystemCreateUpdateHandler) validateStorage(ctx context.Context, obj *starlingxv1beta1.System) (bool, string, error) {
+func (h *SystemCreateUpdateHandler) validateStorage(ctx context.Context, obj *starlingxv1.System) (bool, string, error) {
 	if obj.Spec.Storage != nil && obj.Spec.Storage.Backends != nil {
 		allowed, reason, err := h.validateStorageBackends(obj)
 		if !allowed || err != nil {
@@ -131,7 +131,7 @@ func (h *SystemCreateUpdateHandler) validateStorage(ctx context.Context, obj *st
 	return true, AllowedReason, nil
 }
 
-func (h *SystemCreateUpdateHandler) validateCertificates(ctx context.Context, obj *starlingxv1beta1.System) (bool, string, error) {
+func (h *SystemCreateUpdateHandler) validateCertificates(ctx context.Context, obj *starlingxv1.System) (bool, string, error) {
 	if obj.Spec.Certificates != nil {
 		for _, c := range *obj.Spec.Certificates {
 			secret := &corev1.Secret{}
@@ -147,7 +147,7 @@ func (h *SystemCreateUpdateHandler) validateCertificates(ctx context.Context, ob
 	return true, AllowedReason, nil
 }
 
-func (h *SystemCreateUpdateHandler) validatingSystemFn(ctx context.Context, obj *starlingxv1beta1.System) (bool, string, error) {
+func (h *SystemCreateUpdateHandler) validatingSystemFn(ctx context.Context, obj *starlingxv1.System) (bool, string, error) {
 	allowed, reason, err := h.validateStorage(ctx, obj)
 	if !allowed || err != nil {
 		return allowed, reason, err
@@ -165,7 +165,7 @@ var _ admission.Handler = &SystemCreateUpdateHandler{}
 
 // Handle handles admission requests.
 func (h *SystemCreateUpdateHandler) Handle(ctx context.Context, req types.Request) types.Response {
-	obj := &starlingxv1beta1.System{}
+	obj := &starlingxv1.System{}
 
 	err := h.Decoder.Decode(req, obj)
 	if err != nil {

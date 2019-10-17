@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -37,14 +37,14 @@ type HostProfileCreateUpdateHandler struct {
 	Decoder types.Decoder
 }
 
-func (h *HostProfileCreateUpdateHandler) validateMemoryFunction(ctx context.Context, node starlingxv1beta1.MemoryNodeInfo, function starlingxv1beta1.MemoryFunctionInfo) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validateMemoryFunction(ctx context.Context, node starlingxv1.MemoryNodeInfo, function starlingxv1.MemoryFunctionInfo) (bool, string, error) {
 	if function.Function == memory.MemoryFunctionPlatform {
-		if starlingxv1beta1.PageSize(function.PageSize) != starlingxv1beta1.PageSize4K {
+		if starlingxv1.PageSize(function.PageSize) != starlingxv1.PageSize4K {
 			return false, "platform memory must be allocated from 4K pages.", nil
 		}
 	}
 
-	if starlingxv1beta1.PageSize(function.PageSize) == starlingxv1beta1.PageSize4K {
+	if starlingxv1.PageSize(function.PageSize) == starlingxv1.PageSize4K {
 		if function.Function != memory.MemoryFunctionPlatform {
 			return false, "4K pages can only be reserved for platform memory.", nil
 		}
@@ -53,7 +53,7 @@ func (h *HostProfileCreateUpdateHandler) validateMemoryFunction(ctx context.Cont
 	return true, AllowedReason, nil
 }
 
-func (h *HostProfileCreateUpdateHandler) validateMemoryInfo(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validateMemoryInfo(ctx context.Context, obj *starlingxv1.HostProfile) (bool, string, error) {
 	var allowed = true
 	var reason = AllowedReason
 	var err error
@@ -79,7 +79,7 @@ func (h *HostProfileCreateUpdateHandler) validateMemoryInfo(ctx context.Context,
 	return allowed, reason, err
 }
 
-func (h *HostProfileCreateUpdateHandler) validateProcessorInfo(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validateProcessorInfo(ctx context.Context, obj *starlingxv1.HostProfile) (bool, string, error) {
 	for _, n := range obj.Spec.Processors {
 		present := make(map[string]bool)
 		for _, f := range n.Functions {
@@ -96,7 +96,7 @@ func (h *HostProfileCreateUpdateHandler) validateProcessorInfo(ctx context.Conte
 	return true, AllowedReason, nil
 }
 
-func (h *HostProfileCreateUpdateHandler) validatePhysicalVolumeInfo(ctx context.Context, obj *starlingxv1beta1.PhysicalVolumeInfo) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validatePhysicalVolumeInfo(ctx context.Context, obj *starlingxv1.PhysicalVolumeInfo) (bool, string, error) {
 	if obj.Type == physicalvolumes.PVTypePartition {
 		if obj.Size == nil {
 			msg := fmt.Sprintf("partition specifications must include a 'size' attribute")
@@ -107,7 +107,7 @@ func (h *HostProfileCreateUpdateHandler) validatePhysicalVolumeInfo(ctx context.
 	return true, AllowedReason, nil
 }
 
-func (h *HostProfileCreateUpdateHandler) validateVolumeGroupInfo(ctx context.Context, obj *starlingxv1beta1.VolumeGroupInfo) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validateVolumeGroupInfo(ctx context.Context, obj *starlingxv1.VolumeGroupInfo) (bool, string, error) {
 	for _, pv := range obj.PhysicalVolumes {
 		allowed, reason, err := h.validatePhysicalVolumeInfo(ctx, &pv)
 		if !allowed || err != nil {
@@ -118,7 +118,7 @@ func (h *HostProfileCreateUpdateHandler) validateVolumeGroupInfo(ctx context.Con
 	return true, AllowedReason, nil
 }
 
-func (h *HostProfileCreateUpdateHandler) validateStorageInfo(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validateStorageInfo(ctx context.Context, obj *starlingxv1.HostProfile) (bool, string, error) {
 	if obj.Spec.Storage.VolumeGroups != nil {
 		for _, vg := range *obj.Spec.Storage.VolumeGroups {
 			allowed, reason, err := h.validateVolumeGroupInfo(ctx, &vg)
@@ -131,7 +131,7 @@ func (h *HostProfileCreateUpdateHandler) validateStorageInfo(ctx context.Context
 	return true, AllowedReason, nil
 }
 
-func (h *HostProfileCreateUpdateHandler) validatingHostProfileFn(ctx context.Context, obj *starlingxv1beta1.HostProfile) (bool, string, error) {
+func (h *HostProfileCreateUpdateHandler) validatingHostProfileFn(ctx context.Context, obj *starlingxv1.HostProfile) (bool, string, error) {
 	var allowed = true
 	var reason = AllowedReason
 	var err error
@@ -168,7 +168,7 @@ var _ admission.Handler = &HostProfileCreateUpdateHandler{}
 
 // Handle handles admission requests.
 func (h *HostProfileCreateUpdateHandler) Handle(ctx context.Context, req types.Request) types.Response {
-	obj := &starlingxv1beta1.HostProfile{}
+	obj := &starlingxv1.HostProfile{}
 
 	err := h.Decoder.Decode(req, obj)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/partitions"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +36,7 @@ const DefaultPartitionMonitorInterval = 15 * time.Second
 
 // NewPartitionStateMonitor defines a convenience function to instantiate
 // a new partition monitor with all required attributes.
-func NewPartitionStateMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewPartitionStateMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	logger := log.WithName("partition-monitor")
 	return &manager.Monitor{
 		MonitorBody: &partitionStateMonitor{
@@ -87,7 +87,7 @@ type clusterPresenceMonitor struct {
 
 // NewClusterPresenceMonitor defines a convenience function to instantiate
 // a new cluster presence monitor with all required attributes.
-func NewClusterPresenceMonitor(instance *v1beta1.Host, cluster string) *manager.Monitor {
+func NewClusterPresenceMonitor(instance *starlingxv1.Host, cluster string) *manager.Monitor {
 	logger := log.WithName("cluster-presence-monitor")
 	return &manager.Monitor{
 		MonitorBody: &clusterPresenceMonitor{
@@ -138,7 +138,7 @@ type clusterDeploymentModelMonitor struct {
 
 // NewClusterDeploymentModelMonitor defines a convenience function to
 // instantiate a new cluster deployment model monitor.
-func NewClusterDeploymentModelMonitor(instance *v1beta1.Host, clusterId string) *manager.Monitor {
+func NewClusterDeploymentModelMonitor(instance *starlingxv1.Host, clusterId string) *manager.Monitor {
 	logger := log.WithName("deployment-model-monitor")
 	return &manager.Monitor{
 		MonitorBody: &clusterDeploymentModelMonitor{
@@ -185,7 +185,7 @@ type storageMonitorCountMonitor struct {
 
 // NewMonitorCountMonitor defines a convenience function to
 // instantiate a new storage monitor count monitor with all required attributes.
-func NewStorageMonitorCountMonitor(instance *v1beta1.Host, required int) *manager.Monitor {
+func NewStorageMonitorCountMonitor(instance *starlingxv1.Host, required int) *manager.Monitor {
 	logger := log.WithName("storage-mon-monitor")
 	return &manager.Monitor{
 		MonitorBody: &storageMonitorCountMonitor{
@@ -233,7 +233,7 @@ type storageTierMonitor struct {
 
 // NewStorageTierMonitor defines a convenience function to instantiate a new
 // storage monitor count monitor with all required attributes.
-func NewStorageTierMonitor(instance *v1beta1.Host, clusterID, tierName string) *manager.Monitor {
+func NewStorageTierMonitor(instance *starlingxv1.Host, clusterID, tierName string) *manager.Monitor {
 	logger := log.WithName("storage-tier-monitor")
 	return &manager.Monitor{
 		MonitorBody: &storageTierMonitor{
@@ -313,7 +313,7 @@ func (m *stateMonitor) desiredState() string {
 
 // NewMonitorCountMonitor defines a convenience function to instantiate
 // a new host state monitor with all required attributes.
-func NewStateMonitor(instance *v1beta1.Host, id string, admin, oper, avail *string) *manager.Monitor {
+func NewStateMonitor(instance *starlingxv1.Host, id string, admin, oper, avail *string) *manager.Monitor {
 	logger := log.WithName("state-monitor")
 	return &manager.Monitor{
 		MonitorBody: &stateMonitor{
@@ -330,7 +330,7 @@ func NewStateMonitor(instance *v1beta1.Host, id string, admin, oper, avail *stri
 
 // NewUnlockedEnabledHostMonitor is a convenience wrapper around
 // NewStateMonitor to wait for a host to reach the unlocked/enabled state.
-func NewUnlockedEnabledHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewUnlockedEnabledHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	admin := hosts.AdminUnlocked
 	oper := hosts.OperEnabled
 	return NewStateMonitor(instance, id, &admin, &oper, nil)
@@ -339,7 +339,7 @@ func NewUnlockedEnabledHostMonitor(instance *v1beta1.Host, id string) *manager.M
 // NewUnlockedAvailableHostMonitor is a convenience wrapper around
 // NewStateMonitor to wait for a host to reach the unlocked/enabled/available
 // state.
-func NewUnlockedAvailableHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewUnlockedAvailableHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	admin := hosts.AdminUnlocked
 	oper := hosts.OperEnabled
 	avail := hosts.AvailAvailable
@@ -348,7 +348,7 @@ func NewUnlockedAvailableHostMonitor(instance *v1beta1.Host, id string) *manager
 
 // NewLockedDisabledHostMonitor is a convenience wrapper around
 // NewStateMonitor to wait for a host to reach the locked/disabled state.
-func NewLockedDisabledHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewLockedDisabledHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	admin := hosts.AdminLocked
 	oper := hosts.OperDisabled
 	return NewStateMonitor(instance, id, &admin, &oper, nil)
@@ -357,7 +357,7 @@ func NewLockedDisabledHostMonitor(instance *v1beta1.Host, id string) *manager.Mo
 // NewIdleHostMonitor is a convenience wrapper around NewStateMonitor to wait
 // for a host to reach the idle state regardless of what its administrative
 // state, operational status, or availability status values are.
-func NewIdleHostMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewIdleHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	return NewStateMonitor(instance, id, nil, nil, nil)
 }
 
@@ -431,7 +431,7 @@ type inventoryCollectedMonitor struct {
 
 // NewInventoryCollectedMonitor defines a convenience function to
 // instantiate a new inventory collected monitor with all required attributes.
-func NewInventoryCollectedMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewInventoryCollectedMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	logger := log.WithName("inventory-monitor")
 	return &manager.Monitor{
 		MonitorBody: &inventoryCollectedMonitor{
@@ -483,7 +483,7 @@ type enabledControllerNodeMonitor struct {
 
 // NewEnabledControllerNodeMonitor defines a convenience function to
 // instantiate a new enabled controller monitor with all required attributes.
-func NewEnabledControllerNodeMonitor(instance *v1beta1.Host, required int) *manager.Monitor {
+func NewEnabledControllerNodeMonitor(instance *starlingxv1.Host, required int) *manager.Monitor {
 	logger := log.WithName("controller-node-monitor")
 	return &manager.Monitor{
 		MonitorBody: &enabledControllerNodeMonitor{
@@ -529,7 +529,7 @@ type provisioningAllowedMonitor struct {
 
 // NewProvisioningAllowedMonitor defines a convenience function to
 // instantiate a new provisioning allowed monitor with all required attributes.
-func NewProvisioningAllowedMonitor(instance *v1beta1.Host) *manager.Monitor {
+func NewProvisioningAllowedMonitor(instance *starlingxv1.Host) *manager.Monitor {
 	logger := log.WithName("provisioning-monitor")
 	return &manager.Monitor{
 		MonitorBody: &provisioningAllowedMonitor{},
@@ -570,13 +570,13 @@ const DefaultDynamicHostMonitorInterval = 30 * time.Second
 type dynamicHostMonitor struct {
 	manager.CommonMonitorBody
 	hostname string
-	match    *v1beta1.MatchInfo
+	match    *starlingxv1.MatchInfo
 	bootMAC  *string
 }
 
 // NewDynamicHostMonitor defines a convenience function to instantiate a
 // new kubernetes resource monitor with all required attributes.
-func NewDynamicHostMonitor(instance *v1beta1.Host, hostname string, match *v1beta1.MatchInfo, bootMAC *string) *manager.Monitor {
+func NewDynamicHostMonitor(instance *starlingxv1.Host, hostname string, match *starlingxv1.MatchInfo, bootMAC *string) *manager.Monitor {
 	logger := log.WithName("dynamic-host-monitor")
 	return &manager.Monitor{
 		MonitorBody: &dynamicHostMonitor{
@@ -627,7 +627,7 @@ type kubernetesResourceMonitor struct {
 
 // NewKubernetesResourceMonitor defines a convenience function to instantiate a
 // new kubernetes resource monitor with all required attributes.
-func NewKubernetesResourceMonitor(instance *v1beta1.Host, target runtime.Object, name types.NamespacedName) *manager.Monitor {
+func NewKubernetesResourceMonitor(instance *starlingxv1.Host, target runtime.Object, name types.NamespacedName) *manager.Monitor {
 	logger := log.WithName("kubernetes-monitor")
 	return &manager.Monitor{
 		MonitorBody: &kubernetesResourceMonitor{
@@ -644,7 +644,7 @@ func NewKubernetesResourceMonitor(instance *v1beta1.Host, target runtime.Object,
 // NewKubernetesSecretMonitor is a convenience wrapper around
 // NewKubernetesResourceMonitor that instantiates a monitor explicitly for
 // Kubernetes Secret resources.
-func NewKubernetesSecretMonitor(instance *v1beta1.Host, name types.NamespacedName) *manager.Monitor {
+func NewKubernetesSecretMonitor(instance *starlingxv1.Host, name types.NamespacedName) *manager.Monitor {
 	secret := v1.Secret{}
 	return NewKubernetesResourceMonitor(instance, &secret, name)
 }
@@ -692,7 +692,7 @@ type stateChangeMonitor struct {
 
 // NewMonitorCountMonitor defines a convenience function to instantiate
 // a new host state monitor with all required attributes.
-func NewStateChangeMonitor(instance *v1beta1.Host, id string) *manager.Monitor {
+func NewStateChangeMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
 	logger := log.WithName("state-change-monitor")
 	return &manager.Monitor{
 		MonitorBody: &stateChangeMonitor{

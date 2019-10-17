@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"regexp"
 	"strings"
@@ -22,7 +22,7 @@ import (
 // relevant to multiple hosts.  Those fields should be moved to the host
 // overrides attributes.
 type HostFilter interface {
-	Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error
+	Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error
 }
 
 // Controller0Filter defines a host filter which is responsible for changing
@@ -35,15 +35,15 @@ func NewController0Filter() *Controller0Filter {
 	return &Controller0Filter{}
 }
 
-func (in *Controller0Filter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (in *Controller0Filter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
 	if host.Name == hosts.Controller0 {
 		// Controller0 must always be dynamic since it is expected to
 		// already be present.  Set this in the overrides rather than in the
 		// profile to minimize the number of profiles required.
-		dynamic := v1beta1.ProvioningModeDynamic
+		dynamic := v1.ProvioningModeDynamic
 		host.Spec.Overrides.ProvisioningMode = &dynamic
 		if host.Spec.Overrides.BootMAC != nil {
-			host.Spec.Match = &v1beta1.MatchInfo{
+			host.Spec.Match = &v1.MatchInfo{
 				BootMAC: host.Spec.Overrides.BootMAC,
 			}
 			host.Spec.Overrides.BootMAC = nil
@@ -65,7 +65,7 @@ func NewLocationFilter() *LocationFilter {
 	return &LocationFilter{}
 }
 
-func (in *LocationFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (in *LocationFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
 	if profile.Spec.Location != nil {
 		host.Spec.Overrides.Location = profile.Spec.Location
 		profile.Spec.Location = nil
@@ -85,7 +85,7 @@ func NewAddressFilter() *AddressFilter {
 	return &AddressFilter{}
 }
 
-func (in *AddressFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (in *AddressFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
 	// There are certain profile attributes that are most certainly host
 	// specific so move them from the profile to the host overrides.
 	if profile.Spec.Addresses != nil {
@@ -107,12 +107,12 @@ func NewBMAddressFilter() *BMAddressFilter {
 	return &BMAddressFilter{}
 }
 
-func (in *BMAddressFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (in *BMAddressFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
 	if profile.Spec.BoardManagement != nil && profile.Spec.BoardManagement.Address != nil {
 		// If there is a BM address then it is going to be host specific
 		// so move the attribute, but leave the credentials in the profile since
 		// we assume that all hosts share the same credentials
-		host.Spec.Overrides.BoardManagement = &v1beta1.BMInfo{
+		host.Spec.Overrides.BoardManagement = &v1.BMInfo{
 			Address: profile.Spec.BoardManagement.Address,
 		}
 		profile.Spec.BoardManagement.Address = nil
@@ -132,11 +132,11 @@ func NewStorageMonitorFilter() *StorageMonitorFilter {
 	return &StorageMonitorFilter{}
 }
 
-func (in *StorageMonitorFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
+func (in *StorageMonitorFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
 	storage := profile.Spec.Storage
 	if storage != nil && storage.Monitor != nil {
 		if host.Spec.Overrides.Storage == nil {
-			host.Spec.Overrides.Storage = &v1beta1.ProfileStorageInfo{}
+			host.Spec.Overrides.Storage = &v1.ProfileStorageInfo{}
 		}
 		host.Spec.Overrides.Storage.Monitor = storage.Monitor
 
@@ -161,15 +161,15 @@ func NewLoopbackInterfaceFilter() *LoopbackInterfaceFilter {
 	return &LoopbackInterfaceFilter{}
 }
 
-func (in *LoopbackInterfaceFilter) Filter(profile *v1beta1.HostProfile, host *v1beta1.Host, deployment *Deployment) error {
-	var loopbackInfo v1beta1.EthernetInfo
+func (in *LoopbackInterfaceFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+	var loopbackInfo v1.EthernetInfo
 
 	if profile.Spec.Interfaces == nil {
 		return nil
 	}
 	profileInterfaces := profile.Spec.Interfaces
 
-	result := make([]v1beta1.EthernetInfo, 0)
+	result := make([]v1.EthernetInfo, 0)
 	for _, ethInfo := range profileInterfaces.Ethernet {
 		if ethInfo.Name != interfaces.LoopbackInterfaceName {
 			result = append(result, ethInfo)
@@ -182,7 +182,7 @@ func (in *LoopbackInterfaceFilter) Filter(profile *v1beta1.HostProfile, host *v1
 		profileInterfaces.Ethernet = result
 		hostInterfaces := host.Spec.Overrides.Interfaces
 		if hostInterfaces == nil {
-			hostInterfaces = &v1beta1.InterfaceInfo{}
+			hostInterfaces = &v1.InterfaceInfo{}
 		}
 		hostInterfaces.Ethernet = append(hostInterfaces.Ethernet, loopbackInfo)
 		host.Spec.Overrides.Interfaces = hostInterfaces
@@ -196,7 +196,7 @@ func (in *LoopbackInterfaceFilter) Filter(profile *v1beta1.HostProfile, host *v1
 // and remove any fields that are not necessary or relevant to the deployment
 // being generated.
 type ProfileFilter interface {
-	Filter(profile *v1beta1.HostProfile, deployment *Deployment) error
+	Filter(profile *v1.HostProfile, deployment *Deployment) error
 	Reset()
 }
 
@@ -215,14 +215,14 @@ func (in *InterfaceUnusedFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *InterfaceUnusedFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *InterfaceUnusedFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	if profile.Spec.Interfaces == nil {
 		return nil
 	}
 
 	info := profile.Spec.Interfaces
 
-	result := v1beta1.EthernetList{}
+	result := v1.EthernetList{}
 	for _, e := range info.Ethernet {
 		if e.Class != interfaces.IFClassNone || isInterfaceInUse(e.Name, info) {
 			result = append(result, e)
@@ -252,7 +252,7 @@ func (in *MemoryClearAllFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *MemoryClearAllFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *MemoryClearAllFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	profile.Spec.Memory = nil
 	return nil
 }
@@ -270,10 +270,10 @@ func (in *MemoryDefaultsFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *MemoryDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
-	nodes := v1beta1.MemoryNodeList{}
+func (in *MemoryDefaultsFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
+	nodes := v1.MemoryNodeList{}
 	for _, node := range profile.Spec.Memory {
-		functions := v1beta1.MemoryFunctionList{}
+		functions := v1.MemoryFunctionList{}
 		for _, function := range node.Functions {
 			if function.PageCount == 0 {
 				// Unallocated functions do not need to be captured.
@@ -321,10 +321,10 @@ func (in *ProcessorDefaultsFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *ProcessorDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
-	nodes := v1beta1.ProcessorNodeList{}
+func (in *ProcessorDefaultsFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
+	nodes := v1.ProcessorNodeList{}
 	for _, node := range profile.Spec.Processors {
-		functions := v1beta1.ProcessorFunctionList{}
+		functions := v1.ProcessorFunctionList{}
 		for _, function := range node.Functions {
 			if strings.EqualFold(function.Function, cpus.CPUFunctionPlatform) {
 				switch *profile.Spec.Personality {
@@ -382,7 +382,7 @@ func (in *ProcessorClearAllFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *ProcessorClearAllFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *ProcessorClearAllFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	profile.Spec.Processors = nil
 	return nil
 }
@@ -406,13 +406,13 @@ func (in *VolumeGroupFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *VolumeGroupFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *VolumeGroupFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	if profile.Spec.Storage == nil || profile.Spec.Storage.VolumeGroups == nil {
 		return nil
 	}
 
 	storage := profile.Spec.Storage
-	groups := v1beta1.VolumeGroupList{}
+	groups := v1.VolumeGroupList{}
 	for _, vg := range *storage.VolumeGroups {
 		if utils.ContainsString(in.Blacklist, vg.Name) {
 			// This group is blacklisted so skip it.
@@ -423,7 +423,7 @@ func (in *VolumeGroupFilter) Filter(profile *v1beta1.HostProfile, deployment *De
 	}
 
 	if len(groups) != 0 {
-		list := v1beta1.VolumeGroupList(groups)
+		list := v1.VolumeGroupList(groups)
 		storage.VolumeGroups = &list
 	} else {
 		storage.VolumeGroups = nil
@@ -454,7 +454,7 @@ const (
 	oamIface       = "oam0"
 )
 
-func (in *InterfaceNamingFilter) CheckInterface(info *v1beta1.CommonInterfaceInfo) {
+func (in *InterfaceNamingFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
 	if info.Name == interfaces.LoopbackInterfaceName {
 		// Never rename the Loopback interface
 		return
@@ -487,7 +487,7 @@ func (in *InterfaceNamingFilter) Reset() {
 	in.updates = make(map[string]string)
 }
 
-func (in *InterfaceNamingFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *InterfaceNamingFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	if profile.Spec.Interfaces == nil {
 		return nil
 	}
@@ -545,7 +545,7 @@ func (in *InterfaceMTUFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *InterfaceMTUFilter) CheckMTU(info *v1beta1.CommonInterfaceInfo) {
+func (in *InterfaceMTUFilter) CheckMTU(info *v1.CommonInterfaceInfo) {
 	value := interfaces.DefaultMTU
 	if info.MTU != nil {
 		value = *info.MTU
@@ -568,7 +568,7 @@ func (in *InterfaceMTUFilter) CheckMTU(info *v1beta1.CommonInterfaceInfo) {
 	}
 }
 
-func (in *InterfaceMTUFilter) CheckMemberMTU(info *v1beta1.BondInfo, ethernet v1beta1.EthernetList) {
+func (in *InterfaceMTUFilter) CheckMemberMTU(info *v1.BondInfo, ethernet v1.EthernetList) {
 	for idx := range ethernet {
 		if utils.ContainsString(info.Members, ethernet[idx].Name) {
 			ethernet[idx].MTU = info.MTU
@@ -576,7 +576,7 @@ func (in *InterfaceMTUFilter) CheckMemberMTU(info *v1beta1.BondInfo, ethernet v1
 	}
 }
 
-func (in *InterfaceMTUFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *InterfaceMTUFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	ethernet := profile.Spec.Interfaces.Ethernet
 	for idx := range ethernet {
 		in.CheckMTU(&ethernet[idx].CommonInterfaceInfo)
@@ -614,7 +614,7 @@ func (in *ConsoleNameFilter) Reset() {
 	// Nothing to do
 }
 
-func (in *ConsoleNameFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *ConsoleNameFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	if profile.Spec.Console != nil {
 		if in.regex.MatchString(*profile.Spec.Console) {
 			console := fmt.Sprintf("%sn8", *profile.Spec.Console)
@@ -642,7 +642,7 @@ func (in *InterfaceDefaultsFilter) Reset() {
 	in.updates = make(map[string]string)
 }
 
-func (in *InterfaceDefaultsFilter) CheckInterface(info *v1beta1.CommonInterfaceInfo) {
+func (in *InterfaceDefaultsFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
 	if info.MTU != nil && *info.MTU == interfaces.DefaultMTU {
 		info.MTU = nil
 	}
@@ -654,7 +654,7 @@ func (in *InterfaceDefaultsFilter) CheckInterface(info *v1beta1.CommonInterfaceI
 	// values will be used which will cause issues at configuration time.
 }
 
-func (in *InterfaceDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployment *Deployment) error {
+func (in *InterfaceDefaultsFilter) Filter(profile *v1.HostProfile, deployment *Deployment) error {
 	if profile.Spec.Interfaces == nil {
 		return nil
 	}
@@ -682,7 +682,7 @@ func (in *InterfaceDefaultsFilter) Filter(profile *v1beta1.HostProfile, deployme
 // may not be needed for a runtime configuration or to align values to
 // end user requirements.
 type SystemFilter interface {
-	Filter(system *v1beta1.System, deployment *Deployment) error
+	Filter(system *v1.System, deployment *Deployment) error
 }
 
 // CACertificateFilter defines a system filter that removes trusted CA
@@ -701,14 +701,14 @@ func NewCACertificateFilter() *CACertificateFilter {
 	return &CACertificateFilter{}
 }
 
-func (in *CACertificateFilter) Filter(system *v1beta1.System, deployment *Deployment) error {
+func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment) error {
 	if system.Spec.Certificates == nil {
 		return nil
 	}
 
-	result := make([]v1beta1.CertificateInfo, 0)
+	result := make([]v1.CertificateInfo, 0)
 	for _, c := range *system.Spec.Certificates {
-		if c.Type == v1beta1.PlatformCACertificate || c.Type == v1beta1.OpenstackCACertificate {
+		if c.Type == v1.PlatformCACertificate || c.Type == v1.OpenstackCACertificate {
 			continue
 		}
 
@@ -716,7 +716,7 @@ func (in *CACertificateFilter) Filter(system *v1beta1.System, deployment *Deploy
 	}
 
 	if len(result) > 0 {
-		list := v1beta1.CertificateList(result)
+		list := v1.CertificateList(result)
 		system.Spec.Certificates = &list
 	} else {
 		system.Spec.Certificates = nil

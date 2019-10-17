@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package v1beta1
+package v1
 
 import (
 	"fmt"
@@ -46,7 +46,7 @@ const (
 const Group = "starlingx.windriver.com"
 
 // version defines the curent in use API version.
-const Version = "v1beta1"
+const Version = "v1"
 
 const APIVersion = Group + "/" + Version
 

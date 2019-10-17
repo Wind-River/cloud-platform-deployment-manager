@@ -8,7 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"net/http"
 
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -37,7 +37,7 @@ type DataNetworkCreateUpdateHandler struct {
 	Decoder types.Decoder
 }
 
-func (h *DataNetworkCreateUpdateHandler) validateOptionalFields(obj *starlingxv1beta1.DataNetwork) (bool, string, error) {
+func (h *DataNetworkCreateUpdateHandler) validateOptionalFields(obj *starlingxv1.DataNetwork) (bool, string, error) {
 	if obj.Spec.Type != datanetworks.TypeVxLAN {
 		if obj.Spec.VxLAN != nil {
 			return false, "VxLAN attributes are only allowed for VxLAN type data networks.", nil
@@ -47,7 +47,7 @@ func (h *DataNetworkCreateUpdateHandler) validateOptionalFields(obj *starlingxv1
 	return true, AllowedReason, nil
 }
 
-func (h *DataNetworkCreateUpdateHandler) validatingDataNetworkFn(ctx context.Context, obj *starlingxv1beta1.DataNetwork) (bool, string, error) {
+func (h *DataNetworkCreateUpdateHandler) validatingDataNetworkFn(ctx context.Context, obj *starlingxv1.DataNetwork) (bool, string, error) {
 	allowed, reason, err := h.validateOptionalFields(obj)
 	if !allowed || err != nil {
 		return allowed, reason, err
@@ -59,7 +59,7 @@ var _ admission.Handler = &DataNetworkCreateUpdateHandler{}
 
 // Handle handles admission requests.
 func (h *DataNetworkCreateUpdateHandler) Handle(ctx context.Context, req types.Request) types.Response {
-	obj := &starlingxv1beta1.DataNetwork{}
+	obj := &starlingxv1.DataNetwork{}
 
 	err := h.Decoder.Decode(req, obj)
 	if err != nil {

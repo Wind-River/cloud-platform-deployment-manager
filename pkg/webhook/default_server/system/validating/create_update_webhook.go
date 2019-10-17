@@ -4,7 +4,7 @@
 package validating
 
 import (
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/builder"
 )
@@ -18,5 +18,5 @@ func init() {
 		Validating().
 		Operations(admissionregistrationv1beta1.Create, admissionregistrationv1beta1.Update).
 		FailurePolicy(admissionregistrationv1beta1.Fail).
-		ForType(&starlingxv1beta1.System{})
+		ForType(&starlingxv1.System{})
 }

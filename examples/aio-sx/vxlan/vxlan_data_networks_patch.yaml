@@ -1,4 +1,4 @@
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
 metadata:
   labels:

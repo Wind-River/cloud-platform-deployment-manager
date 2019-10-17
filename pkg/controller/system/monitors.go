@@ -7,7 +7,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"time"
 )
@@ -29,7 +29,7 @@ type availableControllerNodeMonitor struct {
 
 // NewAvailableControllerNodeMonitor defines a convenience function to
 // instantiate a new available controller monitor with all required attributes.
-func NewAvailableControllerNodeMonitor(instance *v1beta1.System, required int) *manager.Monitor {
+func NewAvailableControllerNodeMonitor(instance *v1.System, required int) *manager.Monitor {
 	logger := log.WithName("available-controllers-monitor")
 	return &manager.Monitor{
 		MonitorBody: &availableControllerNodeMonitor{
@@ -74,7 +74,7 @@ const DefaultFileSystemResizeMonitorInterval = 15 * time.Second
 
 // NewPartitionStateMonitor defines a convenience function to instantiate
 // a new partition monitor with all required attributes.
-func NewFileSystemResizeMonitor(instance *v1beta1.System) *manager.Monitor {
+func NewFileSystemResizeMonitor(instance *v1.System) *manager.Monitor {
 	logger := log.WithName("fs-resize-monitor")
 	return &manager.Monitor{
 		MonitorBody: &fileSystemResizeMonitor{},

@@ -12,7 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
@@ -28,7 +28,7 @@ import (
 // be modified without deleting and re-adding.  The best we can do here is to
 // look at the member interfaces and if there are any members in common then we
 // treat them as the same interface.
-func findConfiguredBondInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+func findConfiguredBondInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
 	for _, u := range iface.Uses {
 		// Examine each member interface and attempt to find a configured
 		// bond interface that has it in its list of members.
@@ -64,7 +64,7 @@ func findConfiguredBondInterface(profile *starlingxv1beta1.HostProfileSpec, ifac
 // lower interface but to guarantee consistent processing of the interface,
 // address, and route list the code in this module assumes that this function
 // ensures that the lower interface is also the same.
-func findConfiguredVLANInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+func findConfiguredVLANInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
 	// VLAN interfaces are more complicated since the name and vid can
 	// remain the same but the interface can be moved over a different
 	// lower interface.
@@ -101,7 +101,7 @@ func findConfiguredVLANInterface(profile *starlingxv1beta1.HostProfileSpec, ifac
 // an Ethernet interface is configured is simple since the port names are fixed.
 // We only need to ensure that system interface port name and the configured
 // interface port names match.
-func findConfiguredEthernetInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+func findConfiguredEthernetInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
 	if portname, found := host.FindInterfacePortName(iface.ID); found {
 		for _, e := range profile.Interfaces.Ethernet {
 			if e.Port.Name == portname {
@@ -119,7 +119,7 @@ func findConfiguredEthernetInterface(profile *starlingxv1beta1.HostProfileSpec, 
 // still exists in the current configured interface list.  Determining whether
 // an Virtual interface is configured is simple since the interface names are
 // not allowed to change.
-func findConfiguredVirtualInterface(profile *starlingxv1beta1.HostProfileSpec, iface *interfaces.Interface) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+func findConfiguredVirtualInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface) (*starlingxv1.CommonInterfaceInfo, bool) {
 	for _, e := range profile.Interfaces.Ethernet {
 		if e.Name == iface.Name {
 			return &e.CommonInterfaceInfo, true
@@ -133,7 +133,7 @@ func findConfiguredVirtualInterface(profile *starlingxv1beta1.HostProfileSpec, i
 // findConfiguredInterface is a utility function that searches the current set
 // of configured interfaces to determine whether current system interface still
 // exists in the current configured interface list.
-func findConfiguredInterface(iface *interfaces.Interface, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (*starlingxv1beta1.CommonInterfaceInfo, bool) {
+func findConfiguredInterface(iface *interfaces.Interface, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
 	switch iface.Type {
 	case interfaces.IFTypeEthernet:
 		return findConfiguredEthernetInterface(profile, iface, host)
@@ -158,7 +158,7 @@ func findConfiguredInterface(iface *interfaces.Interface, profile *starlingxv1be
 // findConfiguredRoute is a utility function that searches the current set of
 // configured routes to determine whether current system route still exists in
 // the current configured route list.
-func findConfiguredRoute(route routes.Route, profile *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.RouteInfo, bool) {
+func findConfiguredRoute(route routes.Route, profile *starlingxv1.HostProfileSpec) (*starlingxv1.RouteInfo, bool) {
 	for _, x := range profile.Routes {
 		if x.Interface == route.InterfaceName &&
 			strings.EqualFold(x.Network, route.Network) &&
@@ -180,7 +180,7 @@ func findConfiguredRoute(route routes.Route, profile *starlingxv1beta1.HostProfi
 //   A) The system route does not have an equivalent configured entry
 //   B) The configured route has moved to a different underlying interface
 //   C) The underlying interface needs to be deleted and re-added.
-func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Route) {
@@ -248,7 +248,7 @@ func (r *ReconcileHost) ReconcileStaleRoutes(client *gophercloud.ServiceClient, 
 // findConfiguredAddress is a utility function that searches the current set of
 // configured addresses to determine whether current system address still exists
 // in the current configured address list.
-func findConfiguredAddress(addr addresses.Address, profile *starlingxv1beta1.HostProfileSpec) (*starlingxv1beta1.AddressInfo, bool) {
+func findConfiguredAddress(addr addresses.Address, profile *starlingxv1.HostProfileSpec) (*starlingxv1.AddressInfo, bool) {
 	for _, x := range profile.Addresses {
 		if strings.EqualFold(x.Address, addr.Address) && x.Prefix == addr.Prefix {
 			// Addresses cannot be updated so unless both the address
@@ -267,7 +267,7 @@ func findConfiguredAddress(addr addresses.Address, profile *starlingxv1beta1.Hos
 //   A) The system address does not have an equivalent configured entry
 //   B) The configured address has moved to a different underlying interface
 //   C) The underlying interface needs to be deleted and re-added.
-func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Address) {
@@ -346,7 +346,7 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 //      interface
 //   C) it still exists as a Bond, but has no members in common with the system
 //      interface.
-func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Interface) {
@@ -399,7 +399,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClie
 // phases.  The first phase is handled by this method and deletes old
 // associations.  The second phase is handled by Reconcile*Interfaces and adds
 // missing associations.
-func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Interface) {
@@ -446,7 +446,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.Serv
 				} else {
 					msg := fmt.Sprintf("unable to find interface-network id for network %q on interface %q",
 						name, iface.Name)
-					return starlingxv1beta1.NewMissingSystemResource(msg)
+					return starlingxv1.NewMissingSystemResource(msg)
 				}
 			}
 		}
@@ -475,7 +475,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaceNetworks(client *gophercloud.Serv
 // phases.  The first phase is handled by this method and deletes old
 // associations.  The second phase is handled by Reconcile*Interfaces and adds
 // missing associations.
-func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Interface) {
@@ -522,7 +522,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.
 				} else {
 					msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q on interface %q",
 						name, iface.Name)
-					return starlingxv1beta1.NewMissingSystemResource(msg)
+					return starlingxv1.NewMissingSystemResource(msg)
 				}
 			}
 		}
@@ -544,7 +544,7 @@ func (r *ReconcileHost) ReconcileStaleInterfaceDataNetworks(client *gophercloud.
 
 // hasIPv4StaticAddresses is a utility function which determines if an interface
 // has any configured static addresses.
-func hasIPv4StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec) bool {
+func hasIPv4StaticAddresses(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec) bool {
 	for _, addrInfo := range profile.Addresses {
 		if utils.IsIPv4(addrInfo.Address) {
 			if addrInfo.Interface == info.Name {
@@ -557,7 +557,7 @@ func hasIPv4StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *
 
 // hasIPv6StaticAddresses is a utility function which determines if an interface
 // has any configured static addresses.
-func hasIPv6StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec) bool {
+func hasIPv6StaticAddresses(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec) bool {
 	for _, addrInfo := range profile.Addresses {
 		if utils.IsIPv4(addrInfo.Address) {
 			if addrInfo.Interface == info.Name {
@@ -576,7 +576,7 @@ func hasIPv6StaticAddresses(info starlingxv1beta1.CommonInterfaceInfo, profile *
 //  it is dynamic rather than looking for a network to determine if that network
 //  is dynamic or not (which is currently not possible for networks used for
 //  data interfaces).
-func hasIPv4DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
+func hasIPv4DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
 	if info.PlatformNetworks == nil {
 		return nil, false
 	}
@@ -601,7 +601,7 @@ func hasIPv4DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1
 //  it is dynamic rather than looking for a network to determine if that network
 //  is dynamic or not (which is currently not possible for networks used for
 //  data interfaces).
-func hasIPv6DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
+func hasIPv6DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
 	if info.PlatformNetworks == nil {
 		return nil, false
 	}
@@ -620,7 +620,7 @@ func hasIPv6DynamicAddresses(info starlingxv1beta1.CommonInterfaceInfo, host *v1
 
 // getInterfaceIPv4Address is a utility function which determines what address
 // mode settings should be applied to an interface.
-func getInterfaceIPv4Addressing(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (mode string, pool *string) {
+func getInterfaceIPv4Addressing(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (mode string, pool *string) {
 	var ok bool
 
 	if hasIPv4StaticAddresses(info, profile) {
@@ -636,7 +636,7 @@ func getInterfaceIPv4Addressing(info starlingxv1beta1.CommonInterfaceInfo, profi
 
 // getInterfaceIPv6Address is a utility function which determines what address
 // mode settings should be applied to an interface.
-func getInterfaceIPv6Addressing(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (mode string, pool *string) {
+func getInterfaceIPv6Addressing(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (mode string, pool *string) {
 	var ok bool
 
 	if hasIPv6StaticAddresses(info, profile) {
@@ -653,7 +653,7 @@ func getInterfaceIPv6Addressing(info starlingxv1beta1.CommonInterfaceInfo, profi
 // interfaceUpdateRequired is a utility function which determines whether the
 // common interface attributes have changed and if so fills in the opts struct
 // with the values that must be passed to the system API.
-func interfaceUpdateRequired(info starlingxv1beta1.CommonInterfaceInfo, iface *interfaces.Interface, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (opts interfaces.InterfaceOpts, result bool) {
+func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interfaces.Interface, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (opts interfaces.InterfaceOpts, result bool) {
 	if iface.Type != interfaces.IFTypeVirtual {
 		// Only allow name changes for non-virtual interfaces.  That is, never
 		// allow "lo" to be renamed.
@@ -717,7 +717,7 @@ func interfaceUpdateRequired(info starlingxv1beta1.CommonInterfaceInfo, iface *i
 // ethernetUpdateRequired is a utility function which determines whether the
 // ethernet specific interface attributes have changed and if so fills in the
 // opts struct with the values that must be passed to the system API.
-func ethernetUpdateRequired(ethInfo starlingxv1beta1.EthernetInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
+func ethernetUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
 	if ethInfo.CommonInterfaceInfo.Class == interfaces.IFClassPCISRIOV {
 		// Ensure that SRIOV VF count is up to date.
 		if ethInfo.VFCount != nil {
@@ -740,7 +740,7 @@ func ethernetUpdateRequired(ethInfo starlingxv1beta1.EthernetInfo, iface *interf
 
 // ReconcileInterfaceNetworks implements a method to reconcile the list of
 // networks on an interface against the configured set of networks.
-func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, info starlingxv1beta1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
+func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
 	if info.PlatformNetworks == nil {
 		return updated, err
 	}
@@ -768,7 +768,7 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 				"interface-network %q has been removed from %q", id, iface.Name)
 		} else {
 			msg := fmt.Sprintf("unable to find interface-network id for network %q on interface %q", name, iface.Name)
-			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
+			return updated, starlingxv1.NewMissingSystemResource(msg)
 		}
 	}
 
@@ -807,7 +807,7 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 
 // ReconcileInterfaceNetworks implements a method to reconcile the list of
 // networks on an interface against the configured set of networks.
-func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, info starlingxv1beta1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
+func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
 	if info.DataNetworks == nil {
 		return updated, err
 	}
@@ -835,7 +835,7 @@ func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.Servi
 				"interface-datanetwork %q has been removed from %q", id, iface.Name)
 		} else {
 			msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q on interface %q", name, iface.Name)
-			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
+			return updated, starlingxv1.NewMissingSystemResource(msg)
 		}
 	}
 
@@ -861,7 +861,7 @@ func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.Servi
 				"interface-datanetwork %q has been created on %q", name, iface.Name)
 		} else {
 			msg := fmt.Sprintf("unable to find interface-datanetwork id for network %q", name)
-			return updated, starlingxv1beta1.NewMissingSystemResource(msg)
+			return updated, starlingxv1.NewMissingSystemResource(msg)
 		}
 	}
 
@@ -873,7 +873,7 @@ func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.Servi
 // meaning that prior to invoking this function stale interfaces and stale
 // interface configurations have been resolved so that the intended list of
 // ethernet interface configuration will apply cleanly here.
-func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	var iface *interfaces.Interface
 	var ifuuid string
 	var found bool
@@ -897,20 +897,20 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 			ifuuid, found = host.FindPortInterfaceUUID(ethInfo.Port.Name)
 			if !found {
 				msg := fmt.Sprintf("unable to find interface UUID for port: %s", ethInfo.Port.Name)
-				return starlingxv1beta1.NewMissingSystemResource(msg)
+				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
 			iface, found = host.FindInterface(ifuuid)
 			if !found {
 				msg := fmt.Sprintf("unable to find interface: %s", ifuuid)
-				return starlingxv1beta1.NewMissingSystemResource(msg)
+				return starlingxv1.NewMissingSystemResource(msg)
 			}
 		} else {
 			iface, found = host.FindInterfaceByName(interfaces.LoopbackInterfaceName)
 			if !found {
 				msg := fmt.Sprintf("unable to find loopback interface: %s",
 					interfaces.LoopbackInterfaceName)
-				return starlingxv1beta1.NewMissingSystemResource(msg)
+				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
 			ifuuid = iface.ID
@@ -993,7 +993,7 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 // bondUpdateRequired is a utility function which determines whether the
 // bond specificc interface attributes have changed and if so fills in the opts
 // struct with the values that must be passed to the system API.
-func bondUpdateRequired(bond starlingxv1beta1.BondInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
+func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
 	if iface.AEMode != nil && !strings.EqualFold(bond.Mode, *iface.AEMode) {
 		opts.AEMode = &bond.Mode
 		result = true
@@ -1021,7 +1021,7 @@ func bondUpdateRequired(bond starlingxv1beta1.BondInfo, iface *interfaces.Interf
 
 // commonInterfaceOptions is a utility to populate the interface options for
 // all common interface attributes.
-func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) interfaces.InterfaceOpts {
+func commonInterfaceOptions(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) interfaces.InterfaceOpts {
 	opts := interfaces.InterfaceOpts{
 		HostUUID: &host.ID,
 		Name:     &info.Name,
@@ -1046,7 +1046,7 @@ func commonInterfaceOptions(info starlingxv1beta1.CommonInterfaceInfo, profile *
 	return opts
 }
 
-func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
+func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
 	if !config.IsReconcilerEnabled(config.Interface) {
@@ -1092,7 +1092,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 			iface, found = host.FindInterface(ifuuid)
 			if !found {
 				msg := fmt.Sprintf("failed to find interface: %s", ifuuid)
-				return starlingxv1beta1.NewMissingSystemResource(msg)
+				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
 			opts, ok1 := interfaceUpdateRequired(bondInfo.CommonInterfaceInfo, iface, profile, host)
@@ -1150,7 +1150,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 	return nil
 }
 
-func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) (err error) {
+func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (err error) {
 	var iface *interfaces.Interface
 
 	if !config.IsReconcilerEnabled(config.Interface) {
@@ -1195,7 +1195,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 			iface, found = host.FindInterface(ifuuid)
 			if !found {
 				msg := fmt.Sprintf("failed to find interface: %s", ifuuid)
-				return starlingxv1beta1.NewMissingSystemResource(msg)
+				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
 			if opts, ok := interfaceUpdateRequired(vlanInfo.CommonInterfaceInfo, iface, profile, host); ok {
@@ -1253,7 +1253,7 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 	return nil
 }
 
-func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Address) {
@@ -1269,7 +1269,7 @@ func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, in
 		iface, found := host.FindInterfaceByName(addrInfo.Interface)
 		if !found {
 			msg := fmt.Sprintf("unable to find interface: %s", addrInfo.Interface)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 
 		opts := addresses.AddressOpts{
@@ -1307,7 +1307,7 @@ func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, in
 	return nil
 }
 
-func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Route) {
@@ -1323,7 +1323,7 @@ func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, insta
 		iface, found := host.FindInterfaceByName(routeInfo.Interface)
 		if !found {
 			msg := fmt.Sprintf("unable to find interface: %s", routeInfo.Interface)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 
 		opts := routes.RouteOpts{
@@ -1372,7 +1372,7 @@ func (r *ReconcileHost) ReconcileRoutes(client *gophercloud.ServiceClient, insta
 
 // ReconcileNetworking is responsible for reconciling the Memory configuration
 // of a host resource.
-func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	var err error
 
 	if !config.IsReconcilerEnabled(config.Networking) {

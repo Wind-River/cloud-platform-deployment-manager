@@ -16,7 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	perrors "github.com/pkg/errors"
-	starlingxv1beta1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
@@ -26,7 +26,7 @@ import (
 
 // ReconcileMonitor is responsible for reconciling the Ceph storage monitor
 // configuration of a compute host resource.
-func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	if !config.IsReconcilerEnabled(config.StorageMonitor) {
 		return nil
@@ -105,7 +105,7 @@ func (r *ReconcileHost) ReconcileMonitor(client *gophercloud.ServiceClient, inst
 
 // ReconcileMonitor is responsible for reconciling the disk partitions
 // configuration on a host.
-func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
+func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1.VolumeGroupInfo) error {
 	updated := false
 
 	if !config.IsReconcilerEnabled(config.Partition) {
@@ -133,7 +133,7 @@ func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, i
 		disk, ok := host.FindDiskByPath(pvInfo.Path)
 		if !ok {
 			msg := fmt.Sprintf("failed to find disk for path %s", pvInfo.Path)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 
 		// Create a new partition for this physical volume.
@@ -197,7 +197,7 @@ func (r *ReconcileHost) ReconcilePartitions(client *gophercloud.ServiceClient, i
 
 // ReconcilePhysicalVolumes is responsible for reconciling the physical volume
 // configuration on a host.
-func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1beta1.VolumeGroupInfo) error {
+func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo, group starlingxv1.VolumeGroupInfo) error {
 	if !config.IsReconcilerEnabled(config.PhysicalVolume) {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClie
 	if !ok {
 		// The LVG was created by the caller so this should never happen.
 		msg := fmt.Sprintf("unable to find volume group %s", group.Name)
-		return starlingxv1beta1.NewMissingSystemResource(msg)
+		return starlingxv1.NewMissingSystemResource(msg)
 	}
 
 	// Make sure that all required partitions exist.
@@ -244,7 +244,7 @@ func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClie
 
 		if deviceID == "" {
 			msg := fmt.Sprintf("failed to find physical volume device: %s(%s)", pvInfo.Path, pvInfo.Type)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 
 		// Create the new physical volume.
@@ -284,7 +284,7 @@ func (r *ReconcileHost) ReconcilePhysicalVolumes(client *gophercloud.ServiceClie
 
 // ReconcileVolumeGroups is responsible for reconciling the volume group
 // configuration of a host resource.
-func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
 	if profile.Storage.VolumeGroups == nil {
@@ -357,7 +357,7 @@ func (r *ReconcileHost) ReconcileVolumeGroups(client *gophercloud.ServiceClient,
 	return nil
 }
 
-func osdUpdateRequired(osdInfo *starlingxv1beta1.OSDInfo, osd *osds.OSD) (opts osds.OSDOpts, result bool) {
+func osdUpdateRequired(osdInfo *starlingxv1.OSDInfo, osd *osds.OSD) (opts osds.OSDOpts, result bool) {
 	if osdInfo.Journal != nil {
 		if osd.JournalInfo.Location == nil {
 			// No journal existed previously, so add it now.
@@ -380,7 +380,7 @@ func osdUpdateRequired(osdInfo *starlingxv1beta1.OSDInfo, osd *osds.OSD) (opts o
 // ReconcileStaleOSDs is responsible for removing any OSD resources that are
 // either no longer in the configured list or their function or journal has
 // changed.
-func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStaleOSDs(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	present := make(map[string]bool)
 	updated := make(map[string]bool)
 
@@ -464,7 +464,7 @@ func (r *ReconcileHost) OSDProvisioningState(namespace string, personality strin
 // OSDProvisioningAllowed is a utility function which determines whether OSD
 // provisioning is allowed based on the node type, the current cluster
 // deployment model, and the current state of the controllers.
-func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, osdInfo starlingxv1beta1.OSDInfo, tierUUID *string, host *v1info.HostInfo) error {
+func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1.Host, osdInfo starlingxv1.OSDInfo, tierUUID *string, host *v1info.HostInfo) error {
 	clusterName := osdInfo.GetClusterName()
 
 	cluster := host.FindClusterByName(clusterName)
@@ -507,11 +507,11 @@ func (r *ReconcileHost) OSDProvisioningAllowed(instance *starlingxv1beta1.Host, 
 
 // buildOSDOpts is a utility function to contructs OSD request parameters
 // suitable for use in the system API.
-func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1beta1.OSDInfo) (osds.OSDOpts, error) {
+func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1.OSDInfo) (osds.OSDOpts, error) {
 	disk, _ := host.FindDiskByPath(osdInfo.Path)
 	if disk == nil {
 		msg := fmt.Sprintf("unable to find disk for path: %s", osdInfo.Path)
-		return osds.OSDOpts{}, starlingxv1beta1.NewMissingSystemResource(msg)
+		return osds.OSDOpts{}, starlingxv1.NewMissingSystemResource(msg)
 	}
 
 	opts := osds.OSDOpts{
@@ -525,7 +525,7 @@ func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1beta1.OSDInfo) (osds
 		if journal == nil {
 			msg := fmt.Sprintf("unable to find journal OSD with path: %s",
 				osdInfo.Journal.Location)
-			return osds.OSDOpts{}, starlingxv1beta1.NewMissingSystemResource(msg)
+			return osds.OSDOpts{}, starlingxv1.NewMissingSystemResource(msg)
 
 		} else if journal.Function != osds.FunctionOSD {
 			msg := fmt.Sprintf("OSD on disk %s is not a Journal OSD", journal.DiskID)
@@ -547,7 +547,7 @@ func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1beta1.OSDInfo) (osds
 
 // ReconcileOSDsByType is responsible for reconciling the storage OSD
 // configuration of a host resource for a specific type of OSD function.
-func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo, function string) error {
+func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo, function string) error {
 	updated := false
 
 	for _, osdInfo := range *profile.Storage.OSDs {
@@ -614,7 +614,7 @@ func (r *ReconcileHost) ReconcileOSDsByType(client *gophercloud.ServiceClient, i
 
 // ReconcileOSDs is responsible for reconciling the storage OSD configuration
 // of a host resource.
-func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	if profile.Storage.OSDs == nil {
 		return nil
@@ -642,7 +642,7 @@ func (r *ReconcileHost) ReconcileOSDs(client *gophercloud.ServiceClient, instanc
 
 // ReconcileFileSystems is responsible for reconciling the storage file system
 // configuration of a host resource.
-func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	if profile.Storage.FileSystems == nil {
 		return nil
@@ -684,7 +684,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 
 		if !found {
 			msg := fmt.Sprintf("unknown host filesystem %q", fsInfo.Name)
-			return starlingxv1beta1.NewMissingSystemResource(msg)
+			return starlingxv1.NewMissingSystemResource(msg)
 		}
 	}
 
@@ -705,7 +705,7 @@ func (r *ReconcileHost) ReconcileFileSystems(client *gophercloud.ServiceClient, 
 
 // ReconcileStorage is responsible for reconciling the Storage configuration of
 // a host resource.
-func (r *ReconcileHost) ReconcileStorage(client *gophercloud.ServiceClient, instance *starlingxv1beta1.Host, profile *starlingxv1beta1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *ReconcileHost) ReconcileStorage(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	if !config.IsReconcilerEnabled(config.Storage) {
 		return nil
 	}

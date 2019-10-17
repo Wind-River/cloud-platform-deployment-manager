@@ -22,7 +22,7 @@ stringData:
   OS_INTERFACE: internal
 ---
 kind: System
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
@@ -37,7 +37,7 @@ spec:
     - 1.pool.ntp.org
     - 2.pool.ntp.org
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -49,7 +49,7 @@ spec:
   description: group0 data networks for the tenant1 networks.
   mtu: 1500
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -61,7 +61,7 @@ spec:
   description: group0 data networks for the shared internal networks.
   mtu: 1500
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -73,7 +73,7 @@ spec:
   description: group0 data networks for the tenant2 networks.
   mtu: 1500
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -85,7 +85,7 @@ spec:
   description: group0 data networks for the external networks.
   mtu: 1500
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
 metadata:
   labels:
@@ -109,7 +109,7 @@ spec:
         port:
           name: enp0s8
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
 metadata:
   labels:
@@ -154,7 +154,7 @@ spec:
         port:
           name: eth1001
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
 metadata:
   labels:
@@ -179,7 +179,7 @@ spec:
         port:
           name: enp0s3
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: Host
 metadata:
   labels:
@@ -201,7 +201,7 @@ spec:
           port:
             name: lo
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: Host
 metadata:
   labels:
@@ -213,7 +213,7 @@ spec:
   overrides:
     bootMAC: CONTROLLER1MAC
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: Host
 metadata:
   labels:
@@ -228,7 +228,7 @@ spec:
       monitor:
         size: 20
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: Host
 metadata:
   labels:

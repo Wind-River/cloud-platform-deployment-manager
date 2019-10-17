@@ -1,4 +1,4 @@
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
 metadata:
   labels:
@@ -17,7 +17,7 @@ spec:
       - start: 192.168.57.2
         end: 192.168.57.10
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
 metadata:
   labels:
@@ -36,7 +36,7 @@ spec:
       - start: 192.168.58.2
         end: 192.168.58.10
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
 metadata:
   labels:
@@ -55,7 +55,7 @@ spec:
       - start: fd00:0:0:1::2
         end: fd00:0:0:1::a
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
 metadata:
   labels:

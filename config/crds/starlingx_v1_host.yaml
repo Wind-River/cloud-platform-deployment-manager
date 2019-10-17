@@ -864,7 +864,7 @@ spec:
           - inSync
           - reconciled
           type: object
-  version: v1beta1
+  version: v1
 status:
   acceptedNames:
     kind: ""

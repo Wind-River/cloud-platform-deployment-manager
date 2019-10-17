@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package v1beta1
+package v1
 
 import (
 	"testing"
@@ -12,37 +12,39 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStorageSystem(t *testing.T) {
+func TestStorageHost(t *testing.T) {
 	key := types.NamespacedName{
 		Name:      "foo",
 		Namespace: "default",
 	}
-	description := string("A sample description")
-	location := string("A sample location")
-	contact := string("A sample contact")
-	dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
-	ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
-	ptpMode := "hardware"
-	created := &System{
+	bootMac := "01:02:03:04:05:06"
+	bmAddress := "192.168.9.9"
+	match := MatchInfo{
+		BootMAC: &bootMac,
+	}
+	bmType := "bmc"
+	created := &Host{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: SystemSpec{
-			Description: &description,
-			Location:    &location,
-			Contact:     &contact,
-			DNSServers:  &dnsServers,
-			NTPServers:  &ntpServers,
-			PTP: &PTPInfo{
-				Mode: &ptpMode,
+		Spec: HostSpec{
+			Profile: "some-profile",
+			Match:   &match,
+			Overrides: &HostProfileSpec{
+				Addresses: []AddressInfo{
+					{Interface: "enp0s3", Address: "1.2.3.10", Prefix: 24},
+				},
+				BoardManagement: &BMInfo{
+					Type:    &bmType,
+					Address: &bmAddress,
+				},
 			},
-		},
-	}
+		}}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &System{}
+	fetched := &Host{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())

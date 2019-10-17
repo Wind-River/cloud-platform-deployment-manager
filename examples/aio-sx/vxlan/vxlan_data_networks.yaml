@@ -1,4 +1,4 @@
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -14,7 +14,7 @@ spec:
     udpPortNumber: 4789
     ttl: 10
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -31,7 +31,7 @@ spec:
     udpPortNumber: 4789
     ttl: 10
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:
@@ -47,7 +47,7 @@ spec:
     udpPortNumber: 4789
     ttl: 10
 ---
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
 metadata:
   labels:

@@ -9,7 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1beta1"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -216,7 +216,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		h.Error(in, "resource status error", "request", request)
 
 	case manager.ClientError, ErrUserDataError,
-		v1beta1.ErrMissingSystemResource, ErrMissingKubernetesResource:
+		starlingxv1.ErrMissingSystemResource, ErrMissingKubernetesResource:
 		// These errors are user data errors.  Usually a reference to a
 		// non-existent resource.
 		resetClient = false

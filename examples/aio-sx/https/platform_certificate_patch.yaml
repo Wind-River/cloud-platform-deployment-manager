@@ -1,5 +1,5 @@
 kind: System
-apiVersion: starlingx.windriver.com/v1beta1
+apiVersion: starlingx.windriver.com/v1
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
-package v1beta1
+package v1
 
 import (
 	"testing"
@@ -12,27 +12,37 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStorageDataNetwork(t *testing.T) {
+func TestStorageSystem(t *testing.T) {
 	key := types.NamespacedName{
 		Name:      "foo",
 		Namespace: "default",
 	}
-	mtu := 1500
-	description := "This is a sample description"
-	created := &DataNetwork{
+	description := string("A sample description")
+	location := string("A sample location")
+	contact := string("A sample contact")
+	dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
+	ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
+	ptpMode := "hardware"
+	created := &System{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: DataNetworkSpec{
-			Type:        "flat",
+		Spec: SystemSpec{
 			Description: &description,
-			MTU:         &mtu,
-		}}
+			Location:    &location,
+			Contact:     &contact,
+			DNSServers:  &dnsServers,
+			NTPServers:  &ntpServers,
+			PTP: &PTPInfo{
+				Mode: &ptpMode,
+			},
+		},
+	}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &DataNetwork{}
+	fetched := &System{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
