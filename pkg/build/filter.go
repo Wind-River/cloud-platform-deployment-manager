@@ -342,7 +342,7 @@ func (in *ProcessorDefaultsFilter) Filter(profile *v1.HostProfile, deployment *D
 
 			}
 
-			// For the vswitch CPU function we allow any value because it is
+			// For all other CPU functions we allow any value because it is
 			// a bit tricky to guess at the defaults since the system behaves
 			// differently based on the vswitch type, the system mode, and the
 			// system type.
