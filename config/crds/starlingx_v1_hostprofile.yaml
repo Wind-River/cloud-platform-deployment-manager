@@ -337,6 +337,11 @@ spec:
                         maximum: 128
                         minimum: 1
                         type: integer
+                      vfDriver:
+                        description: VFDriver defines the device driver to be associated
+                          with each individual SRIOV VF interface allocated.  Only
+                          applicable if the interface class is set to "pci-sriov".
+                        type: string
                     required:
                     - name
                     - class
