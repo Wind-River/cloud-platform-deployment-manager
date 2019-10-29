@@ -18,6 +18,7 @@ func Get(c *gophercloud.ServiceClient) (r GetResult) {
 	_, r.Err = c.Get(getURL(c), &r.Body, nil)
 	return r
 }
+
 // Create accepts a CreateOpts struct and creates a new License using the
 // values provided. The operation parameters and license file contents are
 // encoded as a MIME multipart message.

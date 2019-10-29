@@ -96,6 +96,9 @@ type Interface struct {
 	// VFCount is the number of SRIOV VF interfaces configured.
 	VFCount *int `json:"sriov_numvfs,omitempty"`
 
+	// VFDriver is the NIC driver to be bound on the host for each VF device
+	VFDriver *string `json:"sriov_vf_driver,omitempty"`
+
 	// Uses is the list of interfaces upon which this interface depends. This is
 	// only applicable to VLAN and Bond interfaces.
 	Uses []string `json:"uses"`

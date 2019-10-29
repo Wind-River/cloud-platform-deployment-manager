@@ -61,6 +61,7 @@ type InterfaceOpts struct {
 	AEMode           *string   `json:"aemode,omitempty" mapstructure:"aemode"`
 	AETransmitHash   *string   `json:"txhashpolicy,omitempty" mapstructure:"txhashpolicy"`
 	VFCount          *int      `json:"sriov_numvfs,omitempty" mapstructure:"sriov_numvfs"`
+	VFDriver         *string   `json:"sriov_vf_driver,omitempty" mapstructure:"sriov_vf_driver"`
 	Uses             *[]string `json:"uses,omitempty" mapstructure:"uses"`
 	UsesModify       *[]string `json:"usesmodify,omitempty" mapstructure:"usesmodify"`
 }
