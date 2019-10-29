@@ -83,7 +83,7 @@ type BMInfo struct {
 // specific function.
 type ProcessorFunctionInfo struct {
 	// Function defines the function for which to allocate a number of cores.
-	// +kubebuilder:validation:Enum=platform,shared,vswitch
+	// +kubebuilder:validation:Enum=platform,shared,vswitch,isolated,applications
 	Function string `json:"function"`
 
 	// Count defines the number of cores to allocate to a specific function.

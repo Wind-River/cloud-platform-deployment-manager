@@ -575,6 +575,8 @@ spec:
                               - platform
                               - shared
                               - vswitch
+                              - isolated
+                              - applications
                               type: string
                           required:
                           - function
