@@ -370,6 +370,11 @@ type EthernetInfo struct {
 	// +optional
 	VFCount *int `json:"vfCount,omitempty"`
 
+	// VFDriver defines the device driver to be associated with each individual
+	// SRIOV VF interface allocated.  Only applicable if the interface class is
+	// set to "pci-sriov".
+	VFDriver *string `json:"vfDriver,omitempty"`
+
 	// Port defines the attributes identifying the underlying port which defines
 	// this Ethernet interface.
 	Port EthernetPortInfo `json:"port"`

@@ -472,6 +472,16 @@ func (in *EthernetInfo) DeepEqual(other *EthernetInfo) bool {
 		}
 	}
 
+	if in.VFDriver != nil {
+		if (in.VFDriver == nil) != (other.VFDriver == nil) {
+			return false
+		} else if in.VFDriver != nil {
+			if *in.VFDriver != *other.VFDriver {
+				return false
+			}
+		}
+	}
+
 	if in.Port != other.Port {
 		return false
 	}

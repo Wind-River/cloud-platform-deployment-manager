@@ -470,6 +470,11 @@ func (in *EthernetInfo) DeepCopyInto(out *EthernetInfo) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.VFDriver != nil {
+		in, out := &in.VFDriver, &out.VFDriver
+		*out = new(string)
+		**out = **in
+	}
 	out.Port = in.Port
 	return
 }

@@ -342,6 +342,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 			if strings.EqualFold(iface.Class, interfaces.IFClassPCISRIOV) {
 				ethernet.VFCount = iface.VFCount
+				ethernet.VFDriver = iface.VFDriver
 			}
 
 			ethernets = append(ethernets, ethernet)

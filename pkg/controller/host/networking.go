@@ -733,6 +733,19 @@ func ethernetUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.
 			opts.VFCount = &zero
 			result = true
 		}
+
+		// Ensure that SRIOV VF driver is up to date.  There is no way to set
+		// this back to the default value of None so just ensure that it is
+		// set to the desired value if one is requested.
+		if ethInfo.VFDriver != nil {
+			if iface.VFDriver == nil {
+				opts.VFDriver = ethInfo.VFDriver
+				result = true
+			} else if *ethInfo.VFDriver != *iface.VFDriver {
+				opts.VFDriver = ethInfo.VFDriver
+				result = true
+			}
+		}
 	}
 
 	return result
