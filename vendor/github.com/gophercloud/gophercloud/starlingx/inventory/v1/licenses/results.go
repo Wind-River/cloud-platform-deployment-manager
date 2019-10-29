@@ -31,7 +31,7 @@ func (r CreateResult) ExtractErr() error {
 	return err
 }
 
-func (r GetResult) Extract() (*License,  error) {
+func (r GetResult) Extract() (*License, error) {
 	var result License
 	var s GetResponse
 	err := r.ExtractInto(&s)
@@ -47,15 +47,15 @@ func (r GetResult) Extract() (*License,  error) {
 // GetResponse defines a special wrapper to deal with the non-standard response
 // format of the license show API.
 type GetResponse struct {
-	Content     string       `json:"content"`
-	Error       string       `json:"error"`
+	Content string `json:"content"`
+	Error   string `json:"error"`
 }
 
 // LicenseResponse defines a special wrapper to deal with the non-standard
 // response format of license install API.
 type CreateResponse struct {
-	Success     string       `json:"success"`
-	Error       string       `json:"error"`
+	Success string `json:"success"`
+	Error   string `json:"error"`
 }
 
 // License defines the internal representation of a license file which is just

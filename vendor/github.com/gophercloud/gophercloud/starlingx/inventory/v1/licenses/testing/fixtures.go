@@ -30,7 +30,7 @@ const LicenseGetResponse = `
 `
 
 func HandleLicenseCreationSuccessfully(t *testing.T, response string) {
-	th.Mux.HandleFunc("/license/license_install", func(w http.ResponseWriter, r *http.Request) {
+	th.Mux.HandleFunc("/license/install_license", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "POST")
 		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
 		th.TestMultipartRequest(t, r, `--f8cf998387ef2df13f3169e0aa11bd03c5e1487f1df63ddca5552f1bb854
