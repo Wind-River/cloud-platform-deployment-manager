@@ -161,7 +161,7 @@ func parseProcessorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		}
 
 		function := strings.ToLower(c.Function)
-		if function == cpus.CPUFunctionApplications {
+		if function == cpus.CPUFunctionApplication {
 			// These cannot be configured.  They are simply a placeholder
 			// for those CPUs that are not allocated for any other function.
 			continue

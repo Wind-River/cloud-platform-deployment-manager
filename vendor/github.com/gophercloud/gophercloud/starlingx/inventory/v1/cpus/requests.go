@@ -8,12 +8,13 @@ import (
 	"github.com/gophercloud/gophercloud/pagination"
 )
 
-// Defines the accepted function values for memory configurations.
+// Defines the accepted function values for CPU configurations.
 const (
-	CPUFunctionPlatform     = "platform"
-	CPUFunctionVSwitch      = "vswitch"
-	CPUFunctionShared       = "shared"
-	CPUFunctionApplications = "applications"
+	CPUFunctionPlatform            = "platform"
+	CPUFunctionVSwitch             = "vswitch"
+	CPUFunctionShared              = "shared"
+	CPUFunctionApplication         = "application"
+	CPUFunctionApplicationIsolated = "application-isolated"
 )
 
 type CPUOpts struct {
