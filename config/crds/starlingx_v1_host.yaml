@@ -580,8 +580,8 @@ spec:
                               - platform
                               - shared
                               - vswitch
-                              - isolated
-                              - applications
+                              - application-isolated
+                              - application
                               type: string
                           required:
                           - function
