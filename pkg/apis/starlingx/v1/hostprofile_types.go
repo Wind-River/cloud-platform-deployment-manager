@@ -420,7 +420,7 @@ type BondInfo struct {
 	Members StringList `json:"members"`
 
 	// Mode defines the Bond interface aggregation mode.
-	// +kubebuilder:validation:Enum=balanced,active-standby,802.3ad
+	// +kubebuilder:validation:Enum=balanced,active_standby,802.3ad
 	Mode string `json:"mode"`
 
 	// TransmitHashPolicy defines the transmit interface selection policy for

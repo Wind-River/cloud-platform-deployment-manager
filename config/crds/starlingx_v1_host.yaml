@@ -295,7 +295,7 @@ spec:
                               mode.
                             enum:
                             - balanced
-                            - active-standby
+                            - active_standby
                             - 802.3ad
                             type: string
                           mtu:
