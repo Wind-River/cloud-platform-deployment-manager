@@ -163,7 +163,7 @@
 
 [[projects]]
   branch = "starlingx"
-  digest = "1:80e4a54ddc8b5c19776af4f38bc4ba651adb2c6bc682ee56970ea73abe3fc870"
+  digest = "1:5b716f256468bb7ae1fc190606464f2ab221b4e6a2398c7f57e3ff87ac1b972d"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -211,7 +211,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "a1067dc6142d795768793aeed20d095a70b08b52"
+  revision = "b674cbac943a3876a05b4bd46f59d7d5c9d03b7e"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]

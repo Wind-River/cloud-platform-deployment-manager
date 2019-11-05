@@ -527,7 +527,7 @@ func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1.OSDInfo) (osds.OSDO
 				osdInfo.Journal.Location)
 			return osds.OSDOpts{}, starlingxv1.NewMissingSystemResource(msg)
 
-		} else if journal.Function != osds.FunctionOSD {
+		} else if journal.Function != osds.FunctionJournal {
 			msg := fmt.Sprintf("OSD on disk %s is not a Journal OSD", journal.DiskID)
 			return osds.OSDOpts{}, common.NewUserDataError(msg)
 		}

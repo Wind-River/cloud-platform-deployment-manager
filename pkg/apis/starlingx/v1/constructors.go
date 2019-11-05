@@ -522,15 +522,13 @@ func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]OSDInfo, 0)
 
 	for _, o := range host.OSDs {
-		clusterName, found := host.FindClusterNameByTier(o.TierUUID)
-		if !found {
-			log.Info("unable to find cluster related to tier", "uuid", o.TierUUID)
-			continue // skip
+		osd := OSDInfo{
+			Function: o.Function,
 		}
 
-		osd := OSDInfo{
-			Function:    o.Function,
-			ClusterName: &clusterName,
+		clusterName, found := host.FindClusterNameByTier(o.TierUUID)
+		if found {
+			osd.ClusterName = &clusterName
 		}
 
 		disk, _ := host.FindDisk(o.DiskID)
