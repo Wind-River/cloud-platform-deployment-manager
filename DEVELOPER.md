@@ -139,6 +139,33 @@ cd cloud-platform-deployment-manager
 make docker-build && DEBUG=yes make docker-build
 ```
 
+## Working with a private fork
+GoLang projects use fully qualified paths for imports and the GoLang tools
+expect to find modules in a matching directory structure within your Go path.
+Working with a direct clone of a Go project is straightforward as you can
+simply clone the repo in a path that exactly matches the repo's github.com
+path.  You cannot use the same method if working with a private fork of an
+existing repo because import paths to the project's own module will not be
+resolvable.  For example, if you clone your fork of this repo to the following
+directory then any imports looking for "github.com/wind-river/cloud-platform-deployment-manager/*"
+will fail.
+
+    ${HOME}/go/src/github.com/${USER}/cloud-platform-deployment-manager
+
+To work around this limitation you need clone your fork to the path used by the
+main repo.
+
+    ${HOME}/go/src/github.com/wind-river/cloud-platform-deployment-manager
+    
+From this directory you can maintain remotes for both the main repo and your
+fork if this is needed by your workflow.  You can setup a remote to your own
+fork if you have already cloned the main repo using the following commands.
+
+```bash
+git remote rename origin upstream
+git remote add origin git@github.com:<my_username>/cloud-platform-deployment-manager.git
+```
+
 ## Publishing
 Building the Deployment Manager image using the "make docker-build" command
 builds the Docker image using the default image name embedded within the
