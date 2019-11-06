@@ -166,6 +166,43 @@ git remote rename origin upstream
 git remote add origin git@github.com:<my_username>/cloud-platform-deployment-manager.git
 ```
 
+## Working with a private fork of a vendor package
+In addition to the issues discussed in the preceding section, making changes to
+vendored packages poses an additional problem.  That is, how to update the 
+local vendored package with the latest commit in a local copy of the fork
+instead of pulling the latest upstream commit.  For instance, if you need to
+make a change to one of the vendor packages (e.g., gophercloud) then you will
+fork that repo, clone it locally, edit your local clone, and run the unit 
+tests provided by that repo.  But, before making a pull request to the upstream
+repo (or pushing to the upstream repo if you are the owner) you should integrate 
+your changes into a DM image and run proper integration tests.  The normal 
+method to pull in the latest vendor package is to run "dep ensure" to pull in 
+the latest package version.  For example, the following command will update only
+a single vendored package:
+
+    dep ensure -update github.com/gophercloud/gophercloud
+    
+By default, this command will go to the actual github.com URL provided and pull
+down the latest commit.  Since you have local changes to your local clone that
+behaviour is undesirable.  Instead, you want your "dep ensure" command to pull
+from the local clone of your fork.  You can redirect the requests automatically
+by adding a few lines to your ${HOME}/.gitconfig file.  
+
+```
+[url "ssh://USER@localhost/home/USER/go/src/github.com/gophercloud/gophercloud"]
+    insteadOf = https://github.com/wind-river/gophercloud
+```
+
+***note:*** The gophercloud repo is a special case because we actually pull from
+a Wind River fork rather than the true upstream repo; therefore, there is an
+extra layer of redirection found in the top-level Gopkg.toml file.
+
+The above two lines added to the ${HOME}/.gitconfig will intercept any pull
+operations directed to https://github.com/wind-river/gophercloud and replace
+them with the local path provided in the "url" element.  In the example above
+"USER" is meant to be replaced by your user id.
+
+
 ## Publishing
 Building the Deployment Manager image using the "make docker-build" command
 builds the Docker image using the default image name embedded within the
