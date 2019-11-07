@@ -177,6 +177,18 @@ The ```manager.debugger.port``` value controls which port is exposed for
 accessibility from outside of the cluster.  This value defaults to ```30000```
 and does not need to be specified unless different from the default value.
 
+## Suspending the Deployment Manager
+
+In some scenarios, it may be necessary to stop the DM from processing changes
+altogether in order to debug an issue or to correct a problem with the
+underlying system API state.  You can adjust the replica count of the DM
+statefulset to 0 to force its termination.  Reversing the change by setting the
+replica count back to the normal value of 1 should relaunch the DM.
+
+```bash
+kubectl scale --replicas=0 -n platform-deployment-manager statefulset platform-deployment-manager
+```
+
 ## Restarting the Deployment Manager
 
 As a last resort, if the DM does not appear to be making progress or you wish to
