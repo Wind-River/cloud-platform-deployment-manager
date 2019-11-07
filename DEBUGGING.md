@@ -198,3 +198,13 @@ DM Pod.
 ```
 kubectl -n platform-deployment-manager delete pods platform-deployment-manager-0
 ```
+
+## Deleting the Deployment Manager
+
+For testing purposes, it is sometimes necessary to remove all resources related
+to the Deployment Manager.  If the DM was installed using the recommended Helm
+chart install method then it can be removed using a similar operation.
+
+```bash
+helm delete --purge deployment-manager
+```
