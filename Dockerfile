@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.10.3 as dlvbuilder
+FROM golang:1.12.9 as dlvbuilder
 
 # Build delve debugger
 RUN apt-get update && apt-get install -y git
