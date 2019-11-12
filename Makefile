@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2019 Wind River Systems, Inc.
 
+# The Helm package command is not capable of figuring out if a package actually
+# needs to be re-built therefore this Makefile will only invoke that command
+# if it determines that any packaged files have changed.  This behaviour
+# can be overridden with this variable.
+HELM_FORCE ?= 0
+
 # Image URL to use all building/pushing image targets
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 EXAMPLES ?= ${HOME}/tmp/wind-river-cloud-platform-deployment-manager/examples
@@ -21,7 +27,7 @@ endif
 all: test manager tools helm-package docker-build
 
 # Publish all artifacts
-publish: helm-publish docker-push
+publish: helm-package docker-push
 
 # Run tests
 test: generate fmt vet manifests helm-lint
@@ -85,12 +91,14 @@ helm-lint: manifests
 	helm lint helm/wind-river-cloud-platform-deployment-manager
 
 # Create helm chart package
+.ONESHELL:
+SHELL = /bin/bash
 helm-package: helm-lint
-	helm package helm/wind-river-cloud-platform-deployment-manager --destination docs/charts
-
-# Update the helm repo
-helm-publish: helm-package
-	helm repo index docs/charts
+	git update-index -q --ignore-submodules --refresh
+	if [[ $$(comm -12 <(git diff-index --name-only HEAD | sort -u) <(find helm/wind-river-cloud-platform-deployment-manager config | sort -u) | wc -l) -ne 0 || ${HELM_FORCE} -ne 0 ]]; then
+		helm package helm/wind-river-cloud-platform-deployment-manager --destination docs/charts;
+		helm repo index docs/charts;
+	fi
 
 # Generate some example deployment configurations
 examples:
