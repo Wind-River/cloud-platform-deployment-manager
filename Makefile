@@ -10,6 +10,7 @@ HELM_FORCE ?= 0
 # Image URL to use all building/pushing image targets
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 EXAMPLES ?= ${HOME}/tmp/wind-river-cloud-platform-deployment-manager/examples
+BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
 
 ifeq (${DEBUG}, yes)
 	DOCKER_TARGET = debug
@@ -85,6 +86,15 @@ docker-build: test
 # Push the docker image
 docker-push: docker-build
 	docker push ${IMG}
+
+# Build the builder image
+builder-build:
+	docker build . -t ${BUILDER_IMG} -f Dockerfile.builder
+
+builder-run: builder-build
+	docker run -v /var/run/docker.sock:/var/run/docker.sock \
+		-v ${PWD}:/go/src/github.com/wind-river/cloud-platform-deployment-manager \
+		--rm ${BUILDER_IMG}
 
 # Check helm chart validity
 helm-lint: manifests
