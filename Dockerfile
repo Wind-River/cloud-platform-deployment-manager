@@ -3,7 +3,7 @@ FROM golang:1.10.3 as dlvbuilder
 
 # Build delve debugger
 RUN apt-get update && apt-get install -y git
-RUN go get github.com/derekparker/delve/cmd/dlv
+RUN go get github.com/go-delve/delve/cmd/dlv
 
 FROM dlvbuilder as builder
 ARG GOBUILD_GCFLAGS=""
