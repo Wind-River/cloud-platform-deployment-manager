@@ -954,6 +954,10 @@ func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1.System, spec *
 		return nil, false
 	}
 
+	log.V(2).Info("spec is:", "values", spec)
+
+	log.V(2).Info("current is:", "values", current)
+
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
