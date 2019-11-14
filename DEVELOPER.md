@@ -186,22 +186,17 @@ By default, this command will go to the actual github.com URL provided and pull
 down the latest commit.  Since you have local changes to your local clone that
 behaviour is undesirable.  Instead, you want your "dep ensure" command to pull
 from the local clone of your fork.  You can redirect the requests automatically
-by adding a few lines to your ${HOME}/.gitconfig file.  
+by adding a few lines to your ${HOME}/.gitconfig file with the following
+command.  It will cause any pull operations directed to https://github.com/wind-river/gophercloud
+to be replaced with the local path to your clone within your GOPATH directory.
 
-```
-[url "ssh://USER@localhost/home/USER/go/src/github.com/gophercloud/gophercloud"]
-    insteadOf = https://github.com/wind-river/gophercloud
+```bash
+git config --global url."ssh://${USER}@localhost${GOPATH}/src/github.com/gophercloud/gophercloud".insteadOf "https://github.com/wind-river/gophercloud"
 ```
 
-***note:*** The gophercloud repo is a special case because we actually pull from
+***note:*** The Gophercloud repo is a special case because we actually pull from
 a Wind River fork rather than the true upstream repo; therefore, there is an
 extra layer of redirection found in the top-level Gopkg.toml file.
-
-The above two lines added to the ${HOME}/.gitconfig will intercept any pull
-operations directed to https://github.com/wind-river/gophercloud and replace
-them with the local path provided in the "url" element.  In the example above
-"USER" is meant to be replaced by your user id.
-
 
 ## Publishing
 Building the Deployment Manager image using the "make docker-build" command
@@ -227,6 +222,195 @@ docker push ${MY_REGISTRY}/${USER}/wind-river-cloud-platform-deployment-manager:
 If your private image has been tested and is ready to publish for consumption by
 a wider audience then it can tagged and pushed using the official image name
 rather than your user id based private image name.
+
+```bash
+export MY_REGISTRY=some.registry.com
+docker tag wind-river/cloud-platform-deployment-manager:latest ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
+docker tag wind-river/cloud-platform-deployment-manager:debug ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:debug
+docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
+docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:debug
+```
+
+## Complete example setup.
+
+This section provides a complete step-by-step example of how to setup local
+clones of the three Github repos that are directly related to this project.
+These steps assume that the developer cloning the repos is an admin of these
+repos and will be pulling and pushing directly from the repo rather than making
+Pull Requests or working with private forks.  This section also assumes that
+SSH keys are already setup in Github to enable Push without needing to input 
+credentials on each Push operation.
+
+```bash
+mkdir -p ${GOPATH}/src/github.com/wind-river/
+cd ${GOPATH}/src/github.com/wind-river/
+git clone https://github.com/Wind-River/cloud-platform-deployment-manager
+cd cloud-platform-deployment-manager
+git checkout master
+git remote set-url origin git@github.com:Wind-River/cloud-platform-deployment-manager
+
+mkdir -p ${GOPATH}/src/github.com/gophercloud/
+cd ${GOPATH}/src/github.com/gophercloud/
+git clone https://github.com/Wind-River/gophercloud
+cd gophercloud
+git checkout starlingx
+git remote set-url origin git@github.com:Wind-River/gophercloud
+
+cd ${GOPATH}/src/github.com/wind-river/
+git clone https://github.com/Wind-River/deepequal-gen
+cd deepequal-gen
+git checkout master 
+git remote set-url origin git@github.com:Wind-River/deepequal-gen
+```
+
+The following two commands create rules to rewrite URL values for the purpose
+of forcing pull requests done by "dep ensure -update ..." so that it is
+possible to test local changes to vendor packages prior to pushing those changes
+to their respective Github repos.  Refer to the [Working with a private fork of
+ a vendor package](#working-with-a-private-fork-of-a-vendor-package) section for further clarification.
+
+```bash
+git config --global url."ssh://${USER}@localhost${GOPATH}/src/github.com/gophercloud/gophercloud".insteadOf "https://github.com/wind-river/gophercloud"
+git config --global url."ssh://${USER}@localhost${GOPATH}/src/github.com/wind-river/deepequal-gen".insteadOf "https://github.com/wind-river/deepequal-gen"
+```
+
+
+## Development workflow
+
+This section provides a complete step-by-step example of what a normal developer
+workflow looks like when making a change.  This workflow assumes that the
+developer making the change is an admin of this repo and will be pulling and
+pushing directly to the repo rather than making a Pull Request or working with a
+private fork.  It also assumes that the developer will be publishing the final
+Docker images directly rather through, a more likely, automated CI/CD pipeline 
+production process (i.e., Jenkins).
+
+Prior to executing of the following steps the [Complete example setup](#complete-example-setup) must
+have been completed successfully.
+
+The first step is to checkout a feature branch in the main repo and to make
+whatever changes are necessary for the feature or bug being addressed.
+
+```bash
+cd ${GOPATH}/src/github.com/wind-river/cloud-platform-deployment-manager
+git checkout master
+git pull --rebase
+git checkout -b feature1
+# ... make changes + add/update unit tests (if applicable)
+```
+
+This workflow also assumes that the change being implemented will require a
+change to the Gophercloud vendor package to enable a add a new or modifying an
+existing system API schema. Refer to previous sections on how to clone and setup
+the Gophercloud repo clone properly.
+
+```bash
+pushd ${GOPATH}/src/github.com/gophercloud/gophercloud
+git checkout starlingx
+git pull --rebase
+# ... make changes + add/update unit tests (if applicable)
+go fmt ./starlingx/...
+go vet ./starlingx/...
+go test ./starlingx/...
+```
+
+Once you are satisfied that the change to the Gophercloud repo looks good enough
+to begin integration testing you must create a commit so that it can be used
+to update the main DM repo.  ***Note:*** Do not push this commit to github until
+it has been integrated tested with an updated DM Docker image that contains this
+change.
+
+```bash
+git add -A
+git commit -s
+# ... update commit message
+```
+
+To pick up the Gophercloud change within the main DM repo you must return to the
+main DM repo directory.
+
+```bash
+popd
+```
+
+Back in the DM repo you must update the project dependencies to pull in your
+local change to the Gophercloud repo.  ***Note:*** Do not run a full "dep ensure" 
+on the full list of vendor packages.  Unless your are undertaking a full
+upgrade of Kubebuilder and the related controller-tools and controller-runtime
+packages you should only update individual packages as needed.
+
+```bash
+dep ensure -update github.com/gophercloud/gophercloud
+dep status | grep gophercloud
+git status
+```
+
+The above commands should update the local copy of the Gophercloud package in
+the "vendor" subdirectory.  You should confirm that the change aligns with what
+you changed in your local clone by confirming the latest commit id reported by
+"dep status" matches what is in your local clone.
+
+When you are confident that your changes to your Gophercloud clone have been
+properly included in your DM repo clone then you can re-build both the 
+production and debug Docker images.  This will run formatting, static analysis, 
+and unit tests before building the Docker images and Helm charts (if necessary).
+
+```bash
+make && DEBUG=yes make docker-build
+```
+
+If the above commands are successful then the updated Docker images and Helm
+charts (if necessary) need to be tested against an actual StarlingX installation
+either on a real hardware system, or in some type of virtualized test
+environment.   Before you can test against the newly built images you will
+need to publish them to a private Docker registry from where it can be pulled
+from the StarlingX installation when the DM Helm chart is installed. 
+
+The following commands will publish your newly built production and debug images
+to a Docker registry of your choice.
+
+```bash
+export MY_REGISTRY=some.registry.com
+docker tag wind-river/cloud-platform-deployment-manager:latest ${MY_REGISTRY}/${USER}/wind-river-cloud-platform-deployment-manager:latest
+docker tag wind-river/cloud-platform-deployment-manager:debug ${MY_REGISTRY}/${USER}/wind-river-cloud-platform-deployment-manager:debug
+docker push ${MY_REGISTRY}/${USER}/wind-river-cloud-platform-deployment-manager:latest
+docker push ${MY_REGISTRY}/${USER}/wind-river-cloud-platform-deployment-manager:debug
+```
+
+Once the images are pushed to your Docker registry you can used them to test
+on your hardware or virtualized test environment.  All affected functionality
+needs to be retested before moving ahead with the steps required to publish the
+changes to Github.  If any tests fail then you must return to the beginning of
+this section and make the necessary changes and continue with each of the
+intermediate steps before retesting a new image.
+
+If all tests have succeeded then you can proceed with creating a commit and
+pushing it to the public Github repo.  The following commands will create a new
+commit and push it to the master branch of the Github repo.
+
+```bash
+git add -A
+git commit -s
+# ... edit commit message
+git push origin HEAD:master
+```
+
+Again, these instructions assume that a dependent change was required in the
+Gophercloud vendor package.  Therefore, you must also return to your local
+Gophercloud clone and push any outstanding commit in that repo.
+
+```bash
+pushd ${GOPATH}/src/github.com/gophercloud/gophercloud
+git push origin HEAD:starlingx
+popd
+```
+
+The final step is to publish your production and debug Docker images to your
+production Docker registry.  This step may not be necessary if your environment
+includes an automated CI/CD pipeline that will automatically pickup your change
+to the Github repo and automatically re-build and re-publish both images.  For
+the sake of this example, we assume that as a developer you are responsible for
+this step and can complete this task with the following steps.
 
 ```bash
 export MY_REGISTRY=some.registry.com
