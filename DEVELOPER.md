@@ -136,7 +136,7 @@ mkdir -p github.com/wind-river
 cd github.com/wind-river
 git clone https://github.com/Wind-River/cloud-platform-deployment-manager
 cd cloud-platform-deployment-manager
-make docker-build && DEBUG=yes make docker-build
+make && DEBUG=yes make docker-build
 ```
 
 ## Working with a private fork
