@@ -382,7 +382,7 @@ metadata:
   namespace: deployment
 stringData:
   OS_AUTH_TYPE: password
-  OS_AUTH_URL: http://192.168.204.2:5000/v3
+  OS_AUTH_URL: http://192.168.204.1:5000/v3
   OS_ENDPOINT_TYPE: internalURL
   OS_IDENTITY_API_VERSION: "3"
   OS_INTERFACE: internal

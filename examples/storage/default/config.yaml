@@ -18,7 +18,7 @@ stringData:
   OS_PROJECT_NAME: admin
   OS_KEYSTONE_REGION_NAME: RegionOne
   OS_IDENTITY_API_VERSION: "3"
-  OS_AUTH_URL: http://192.168.204.2:5000/v3
+  OS_AUTH_URL: http://192.168.204.1:5000/v3
   OS_INTERFACE: internal
 ---
 kind: System
