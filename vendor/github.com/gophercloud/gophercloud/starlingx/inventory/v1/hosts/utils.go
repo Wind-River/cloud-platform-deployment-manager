@@ -14,6 +14,15 @@ func (in *Host) Idle() bool {
 	return in.Task == nil || *in.Task == ""
 }
 
+// Stable returns whether the operational status and administrative states
+// agree.  If they do not then the host is still transitioning to a different
+// state.  The host must also be "Idle" to be considered stable.
+func (in *Host) Stable() bool {
+	return in.Idle() &&
+		((in.AdministrativeState == AdminUnlocked && in.OperationalStatus == OperEnabled) ||
+			(in.AdministrativeState == AdminLocked && in.OperationalStatus == OperDisabled))
+}
+
 // IsUnlockedEnabled is a convenience utility to determine whether a host is
 // unlocked and enabled.
 func (in *Host) IsUnlockedEnabled() bool {

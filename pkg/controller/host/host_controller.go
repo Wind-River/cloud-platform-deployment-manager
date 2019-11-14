@@ -660,7 +660,7 @@ func (r *ReconcileHost) ReconcileEnabledHost(client *gophercloud.ServiceClient, 
 	// necessary.
 	if !host.IsUnlockedEnabled() {
 		msg := "enabled host changed state during reconciliation"
-		m := NewIdleHostMonitor(instance, host.ID)
+		m := NewStableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
 	}
 
@@ -931,7 +931,7 @@ func (r *ReconcileHost) ReconcileHostByState(client *gophercloud.ServiceClient, 
 
 	} else {
 		msg := fmt.Sprintf("waiting for a stable state")
-		m := NewIdleHostMonitor(instance, host.ID)
+		m := NewStableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
 	}
 
@@ -1117,9 +1117,9 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	var defaults *starlingxv1.HostProfileSpec
 	var current *starlingxv1.HostProfileSpec
 
-	if !host.Idle() {
+	if !host.Stable() {
 		msg := fmt.Sprintf("waiting for a stable state")
-		m := NewIdleHostMonitor(instance, host.ID)
+		m := NewStableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
 	}
 
@@ -1137,7 +1137,7 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	if err != nil {
 		return err
 	} else if defaults == nil {
-		if !host.Idle() || host.AvailabilityStatus == hosts.AvailOffline {
+		if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
 			// Ideally we would only ever collect the defaults when the host is
 			// in the locked/disabled/online state.  This is the best approach
 			// when provisioning a system from scratch, but for cases where
@@ -1243,7 +1243,13 @@ func (r *ReconcileHost) ReconcileDeletedHost(client *gophercloud.ServiceClient, 
 		}
 	}
 
-	if host.Idle() && !host.IsLockedDisabled() {
+	if !host.Stable() {
+		msg := fmt.Sprintf("waiting for a stable state before deleting host")
+		m := NewStableHostMonitor(instance, host.ID)
+		return r.StartMonitor(m, msg)
+	}
+
+	if !host.IsLockedDisabled() {
 		action := hosts.ActionLock
 		opts := hosts.HostOpts{Action: &action}
 

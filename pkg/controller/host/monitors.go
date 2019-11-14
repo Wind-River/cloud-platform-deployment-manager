@@ -277,19 +277,18 @@ const DefaultStateMonitorInterval = 30 * time.Second
 // reconciler.
 type stateMonitor struct {
 	manager.CommonMonitorBody
-	lastLoggedState     string
 	hostID              string
 	administrativeState *string
 	availabilityStatus  *string
 	operationalStatus   *string
 }
 
-func (m *stateMonitor) stableOnly() bool {
+func (m *stateMonitor) idleOnly() bool {
 	return m.administrativeState == nil && m.availabilityStatus == nil && m.operationalStatus == nil
 }
 
 func (m *stateMonitor) desiredState() string {
-	if m.stableOnly() {
+	if m.idleOnly() {
 		return "idle"
 	}
 
@@ -354,13 +353,6 @@ func NewLockedDisabledHostMonitor(instance *starlingxv1.Host, id string) *manage
 	return NewStateMonitor(instance, id, &admin, &oper, nil)
 }
 
-// NewIdleHostMonitor is a convenience wrapper around NewStateMonitor to wait
-// for a host to reach the idle state regardless of what its administrative
-// state, operational status, or availability status values are.
-func NewIdleHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
-	return NewStateMonitor(instance, id, nil, nil, nil)
-}
-
 // Run implements the MonitorBody interface Run method which is responsible
 // for monitor one or more resources and returning true when all conditions
 // are satisfied.
@@ -398,19 +390,68 @@ func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err er
 	stop = true
 
 done:
-	if state != m.lastLoggedState {
-		m.lastLoggedState = state
-	}
-
 	if stop {
 		m.SetState("desired state has been reached: %s", m.desiredState())
-	} else if m.stableOnly() {
+	} else if m.idleOnly() {
 		m.SetState("waiting for stable state; current: %s", state)
 	} else {
 		m.SetState("waiting for state: %s; current: %s", m.desiredState(), state)
 	}
 
 	return stop, nil
+}
+
+// DefaultStableHostMonitorInterval represents the default interval between
+// polling attempts to check whether a host has reached a stable state.
+const DefaultStableHostMonitorInterval = 30 * time.Second
+
+// stateHostMonitor waits for a host to reach a stable state.  Once the host has
+// reached the desired state a reconcilable event is generated to kick the
+// reconciler.
+type stableHostMonitor struct {
+	manager.CommonMonitorBody
+	hostID string
+}
+
+// NewStableHostMonitor defines a convenience function to instantiate a new
+// stable host monitor with all required attributes.
+func NewStableHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
+	logger := log.WithName("stable-host-monitor")
+	return &manager.Monitor{
+		MonitorBody: &stableHostMonitor{
+			hostID: id,
+		},
+		Logger:   logger,
+		Object:   instance,
+		Interval: DefaultStableHostMonitorInterval,
+	}
+}
+
+// Run implements the MonitorBody interface Run method which is responsible
+// for monitoring one or more resources and returning true when all conditions
+// are satisfied.
+func (m *stableHostMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
+	host, err := hosts.Get(client, m.hostID).Extract()
+	if err != nil {
+		m.SetState("failed to get host %q: %s", m.hostID, err.Error())
+		return false, err
+	}
+
+	task := "-"
+	if host.Task != nil && *host.Task != "" {
+		task = *host.Task
+	}
+
+	state := fmt.Sprintf("%s/%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus, task)
+
+	if !host.Stable() {
+		m.SetState("waiting for host to reach stable state: %s", state)
+		return false, nil
+	}
+
+	m.SetState("stable state has been reached: %s", state)
+
+	return true, nil
 }
 
 // DefaultInventoryCollectedMonitorInterval represents the default interval
@@ -453,7 +494,7 @@ func (m *inventoryCollectedMonitor) Run(client *gophercloud.ServiceClient) (stop
 		return false, err
 	}
 
-	if !host.Idle() || host.AvailabilityStatus == hosts.AvailOffline {
+	if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
 		m.SetState("waiting for stable state before collecting defaults")
 		return false, nil
 	}
