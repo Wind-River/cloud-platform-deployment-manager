@@ -60,7 +60,7 @@ type BMInfo struct {
 	// Type defines the board management controller type.  This is left as
 	// optional so that the address can be overridden on a per-host basis
 	// without worrying about overwriting the type or credentials.
-	// +kubebuilder:validation:Enum=bmc
+	// +kubebuilder:validation:Enum=none,bmc,dynamic,ipmi,redfish
 	// +optional
 	Type *string `json:"type,omitempty"`
 

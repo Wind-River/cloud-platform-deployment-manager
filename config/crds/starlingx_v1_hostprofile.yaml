@@ -148,7 +148,11 @@ spec:
                     per-host basis without worrying about overwriting the type or
                     credentials.
                   enum:
+                  - none
                   - bmc
+                  - dynamic
+                  - ipmi
+                  - redfish
                   type: string
               type: object
             bootDevice:
