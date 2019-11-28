@@ -677,6 +677,11 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 		result = true
 	}
 
+	if (info.PTPRole == nil && iface.PTPRole != nil) || (info.PTPRole != nil && iface.PTPRole == nil) || (info.PTPRole != nil && *info.PTPRole != *iface.PTPRole) {
+		opts.PTPRole = info.PTPRole
+		result = true
+	}
+
 	if info.Class == interfaces.IFClassData {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our

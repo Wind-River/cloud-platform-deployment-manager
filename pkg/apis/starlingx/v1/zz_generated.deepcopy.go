@@ -267,6 +267,11 @@ func (in *CommonInterfaceInfo) DeepCopyInto(out *CommonInterfaceInfo) {
 			copy(*out, *in)
 		}
 	}
+	if in.PTPRole != nil {
+		in, out := &in.PTPRole, &out.PTPRole
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

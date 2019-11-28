@@ -253,6 +253,14 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: array
+                      ptpRole:
+                        description: PTPRole defines the ptp role as master, slave,
+                          or none
+                        enum:
+                        - master
+                        - slave
+                        - none
+                        type: string
                       transmitHashPolicy:
                         description: TransmitHashPolicy defines the transmit interface
                           selection policy for the Bond interface.  Only applicable
@@ -329,6 +337,14 @@ spec:
                         required:
                         - name
                         type: object
+                      ptpRole:
+                        description: PTPRole defines the ptp role as master, slave,
+                          or none
+                        enum:
+                        - master
+                        - slave
+                        - none
+                        type: string
                       vfCount:
                         description: VFCount defines the number of SRIOV VF interfaces
                           to be allocated.  Only applicable if the interface class
@@ -401,6 +417,14 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: array
+                      ptpRole:
+                        description: PTPRole defines the ptp role as master, slave,
+                          or none
+                        enum:
+                        - master
+                        - slave
+                        - none
+                        type: string
                       vid:
                         description: VID defines the VLAN ID value to be assigned
                           to this VLAN interface.

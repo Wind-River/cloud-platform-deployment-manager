@@ -353,6 +353,10 @@ type CommonInterfaceInfo struct {
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	// +optional
 	DataNetworks *StringList `json:"dataNetworks,omitempty"`
+
+	// PTPRole defines the ptp role as master, slave, or none
+	// +kubebuilder:validation:Enum=master,slave,none
+	PTPRole *string `json:"ptpRole,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single

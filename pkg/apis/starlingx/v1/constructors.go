@@ -327,6 +327,8 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		dataNetList := StringList(dataNets)
 		data.DataNetworks = &dataNetList
 
+		data.PTPRole = iface.PTPRole
+
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
 			portname, found := host.FindInterfacePortName(iface.ID)

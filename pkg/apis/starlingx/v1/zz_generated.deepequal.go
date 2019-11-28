@@ -314,6 +314,16 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		}
 	}
 
+	if in.PTPRole != nil {
+		if (in.PTPRole == nil) != (other.PTPRole == nil) {
+			return false
+		} else if in.PTPRole != nil {
+			if *in.PTPRole != *other.PTPRole {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

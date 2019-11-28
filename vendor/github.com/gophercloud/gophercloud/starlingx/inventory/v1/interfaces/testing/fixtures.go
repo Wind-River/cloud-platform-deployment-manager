@@ -19,6 +19,7 @@ var (
 	IPv6Modes     = [3]string{interfaces.AddressModeStatic, interfaces.AddressModePool, interfaces.AddressModeDisabled}
 	IPv6Pool      = "934d8341-5114-46d2-9560-7c47618892c7"
 	VFCounts      = [3]int{0, 1, 2}
+	PTPRoles      = [2]string{interfaces.PTPRoleMaster, interfaces.PTPRoleSlave}
 	InterfaceHerp = interfaces.Interface{
 		ID:             "7499f727-e19b-4e9b-a571-5919bad20dc3",
 		Name:           "Herp",
@@ -38,6 +39,7 @@ var (
 		VFCount:        &VFCounts[0],
 		Uses:           []string{"data0"},
 		Users:          []string{},
+		PTPRole:        &PTPRoles[0],
 	}
 	InterfaceDerp = interfaces.Interface{
 		ID:             "a5965fee-dc60-40dc-a234-edf87f1f9380",
@@ -114,7 +116,8 @@ const InterfaceListBody = `
         "data0"
       ],
       "uuid": "7499f727-e19b-4e9b-a571-5919bad20dc3",
-      "vlan_id": null
+      "vlan_id": null,
+      "ptp": "master"
     },
     {
       "aemode": null,
@@ -284,7 +287,8 @@ func HandleInterfaceCreationSuccessfully(t *testing.T, response string) {
           "ipv6_pool": "934d8341-5114-46d2-9560-7c47618892c7",
           "sriov_numvfs": 1,
           "uses": [],
-          "usesmodify": []
+          "usesmodify": [],
+          "ptp": "master"
         }`)
 
 		w.WriteHeader(http.StatusAccepted)
