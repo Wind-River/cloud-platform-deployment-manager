@@ -108,7 +108,7 @@ type Interface struct {
 	Users []string `json:"used_by"`
 
 	// PTPRole is the configuration of the interface as ptp master, slave, or none.
-	PTPRole *string `json:"ptp,omitempty"`
+	PTPRole *string `json:"ptp_role,omitempty"`
 }
 
 // InterfacePage is the page returned by a pager when traversing over a

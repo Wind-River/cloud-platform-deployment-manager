@@ -117,7 +117,7 @@ const InterfaceListBody = `
       ],
       "uuid": "7499f727-e19b-4e9b-a571-5919bad20dc3",
       "vlan_id": null,
-      "ptp": "master"
+      "ptp_role": "master"
     },
     {
       "aemode": null,
@@ -288,7 +288,7 @@ func HandleInterfaceCreationSuccessfully(t *testing.T, response string) {
           "sriov_numvfs": 1,
           "uses": [],
           "usesmodify": [],
-          "ptp": "master"
+          "ptp_role": "master"
         }`)
 
 		w.WriteHeader(http.StatusAccepted)
