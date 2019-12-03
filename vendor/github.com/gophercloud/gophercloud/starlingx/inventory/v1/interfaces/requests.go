@@ -72,7 +72,7 @@ type InterfaceOpts struct {
 	VFDriver         *string   `json:"sriov_vf_driver,omitempty" mapstructure:"sriov_vf_driver"`
 	Uses             *[]string `json:"uses,omitempty" mapstructure:"uses"`
 	UsesModify       *[]string `json:"usesmodify,omitempty" mapstructure:"usesmodify"`
-	PTPRole          *string   `json:"ptp,omitempty" mapstructure:"ptp"`
+	PTPRole          *string   `json:"ptp_role,omitempty" mapstructure:"ptp_role"`
 }
 
 // ListOptsBuilder allows extensions to add additional parameters to the
