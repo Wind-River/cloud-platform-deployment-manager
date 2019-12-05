@@ -170,6 +170,13 @@ func (r *ReconcileHost) validateProfileUniqueInterfaces(host *starlingxv1.Host, 
 		}
 	}
 
+	for _, e := range profile.Interfaces.VF {
+		if _, ok := present[e.Name]; ok {
+			msg := fmt.Sprintf("interfaces names must be unique; VF %s is a duplicate.", e.Name)
+			return common.NewValidationError(msg)
+		}
+	}
+
 	return nil
 }
 

@@ -283,6 +283,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	ethernets := make([]EthernetInfo, 0)
 	bonds := make([]BondInfo, 0)
 	vlans := make([]VLANInfo, 0)
+	vfs := make([]VFInfo, 0)
 
 	for _, iface := range host.Interfaces {
 		data := CommonInterfaceInfo{
@@ -372,6 +373,15 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 					Name: data.Name}}
 			ethernet.CommonInterfaceInfo = data
 			ethernets = append(ethernets, ethernet)
+
+		case interfaces.IFTypeVF:
+
+			vf := VFInfo{
+				VFCount:  *iface.VFCount,
+				Lower:    iface.Uses[0],
+				VFDriver: iface.VFDriver}
+			vf.CommonInterfaceInfo = data
+			vfs = append(vfs, vf)
 		}
 	}
 
@@ -385,6 +395,10 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 	if len(bonds) > 0 {
 		result.Bond = bonds
+	}
+
+	if len(vfs) > 0 {
+		result.VF = vfs
 	}
 
 	profile.Interfaces = &result

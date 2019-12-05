@@ -98,6 +98,8 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 	aLVMType2 := "thick"
 	aVolumeSize1 := 100
 	aVolumeSize2 := 10
+	aVFDriver1 := "netdevice"
+	aVFDriver2 := "vfio"
 	a := starlingxv1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
 			Labels: map[string]string{
@@ -259,6 +261,31 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 						DataNetworks:     &starlingxv1.StringList{"data2", "data1", "data0"},
 					},
 					Members: []string{"eth1", "eth0"},
+				},
+			},
+			VF: starlingxv1.VFList{
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov2",
+						DataNetworks: &starlingxv1.StringList{"data2", "data1", "data0"},
+					},
+					VFCount: 1,
+				},
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov1",
+						DataNetworks: &starlingxv1.StringList{"data2", "data1", "data0"},
+					},
+					VFCount:  2,
+					VFDriver: &aVFDriver2,
+				},
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov0",
+						DataNetworks: &starlingxv1.StringList{"data2", "data1", "data0"},
+					},
+					VFCount:  4,
+					VFDriver: &aVFDriver1,
 				},
 			},
 		},
@@ -573,6 +600,31 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 						DataNetworks:     &starlingxv1.StringList{"data0", "data1", "data2"},
 					},
 					Members: []string{"eth4", "eth5"},
+				},
+			},
+			VF: starlingxv1.VFList{
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov0",
+						DataNetworks: &starlingxv1.StringList{"data0", "data1", "data2"},
+					},
+					VFCount:  4,
+					VFDriver: &aVFDriver1,
+				},
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov1",
+						DataNetworks: &starlingxv1.StringList{"data0", "data1", "data2"},
+					},
+					VFCount:  2,
+					VFDriver: &aVFDriver2,
+				},
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:         "sriov2",
+						DataNetworks: &starlingxv1.StringList{"data0", "data1", "data2"},
+					},
+					VFCount: 1,
 				},
 			},
 		},

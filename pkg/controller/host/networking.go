@@ -95,6 +95,31 @@ func findConfiguredVLANInterface(profile *starlingxv1.HostProfileSpec, iface *in
 	return nil, false
 }
 
+// findConfiguredVFInterface is a utility function that searches the current
+// set of configured interfaces to determine whether current system interface
+// still exists in the current configured interface list.  To determine if the
+// SRIOV VF interface is still configured we must determine if the lower interface
+// is still the same.
+func findConfiguredVFInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
+	for _, v := range profile.Interfaces.VF {
+		if oldLower, ok := host.FindInterfaceByName(iface.Uses[0]); ok {
+			// We found the interface object for the lower interface so
+			// check to see if it is still configured.
+			if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
+				// The interface is still in the configured list so
+				// return true as long as the name still matches; otherwise
+				// that means that it is now pointing elsewhere.
+				if v.Lower == newLower.Name {
+					return &v.CommonInterfaceInfo, true
+				}
+			}
+		}
+	}
+
+	// No equivalent interface was found.
+	return nil, false
+}
+
 // findConfiguredEthernetInterface is a utility function that searches the current
 // set of configured interfaces to determine whether current system interface
 // still exists in the current configured interface list.  Determining whether
@@ -147,6 +172,9 @@ func findConfiguredInterface(iface *interfaces.Interface, profile *starlingxv1.H
 	case interfaces.IFTypeVirtual:
 		// These are never deleted or renamed.
 		return findConfiguredVirtualInterface(profile, iface)
+
+	case interfaces.IFTypeVF:
+		return findConfiguredVFInterface(profile, iface, host)
 
 	default:
 		log.Info(fmt.Sprintf("unexpected interface type: %s", iface.Type))
@@ -346,6 +374,7 @@ func (r *ReconcileHost) ReconcileStaleAddresses(client *gophercloud.ServiceClien
 //      interface
 //   C) it still exists as a Bond, but has no members in common with the system
 //      interface.
+//   D) it still exists as a VF, but has a different lower interface.
 func (r *ReconcileHost) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -1271,6 +1300,110 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 	return nil
 }
 
+func (r *ReconcileHost) ReconcileVFInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (err error) {
+	var iface *interfaces.Interface
+
+	if !config.IsReconcilerEnabled(config.Interface) {
+		return nil
+	}
+
+	if profile.Interfaces == nil || len(profile.Interfaces.VF) == 0 {
+		return nil
+	}
+
+	updated := false
+
+	for _, vfInfo := range profile.Interfaces.VF {
+		// For each configured vf interface create or update the related
+		// system resource.
+		ifuuid, found := host.FindVFInterfaceUUID(vfInfo.Name)
+		if !found {
+			// Create the interface
+			opts := commonInterfaceOptions(vfInfo.CommonInterfaceInfo, profile, host)
+
+			iftype := interfaces.IFTypeVF
+			opts.Type = &iftype
+			opts.VFDriver = vfInfo.VFDriver
+			opts.VFCount = &vfInfo.VFCount
+			uses := []string{vfInfo.Lower}
+			opts.Uses = &uses
+
+			log.Info("creating sriov vf interface", "opts", opts)
+
+			iface, err = interfaces.Create(client, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to create sriov vf interface: %s",
+					common.FormatStruct(opts))
+				return err
+			}
+
+			r.NormalEvent(instance, common.ResourceCreated,
+				"sriov vf interface %q has been created", vfInfo.Name)
+
+			updated = true
+		} else {
+			// Update the interface
+			iface, found = host.FindInterface(ifuuid)
+			if !found {
+				msg := fmt.Sprintf("failed to find interface: %s", ifuuid)
+				return starlingxv1.NewMissingSystemResource(msg)
+			}
+
+			if opts, ok := interfaceUpdateRequired(vfInfo.CommonInterfaceInfo, iface, profile, host); ok {
+				log.Info("updating sriov vf interface", "uuid", ifuuid, "opts", opts)
+
+				_, err := interfaces.Update(client, ifuuid, opts).Extract()
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to update interface: %s, %s",
+						ifuuid, common.FormatStruct(opts))
+					return err
+				}
+
+				r.NormalEvent(instance, common.ResourceUpdated,
+					"sriovvf  interface %q has been updated", vfInfo.Name)
+
+				updated = true
+			}
+		}
+
+		networksUpdated, err := r.ReconcileInterfaceNetworks(client, instance, vfInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated, err := r.ReconcileInterfaceDataNetworks(client, instance, vfInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated
+	}
+
+	if updated {
+		// Interfaces have been updated so we need to refresh the list of interfaces
+		// so that the next method that needs to act on the list will have the
+		// updated view of the system.
+		objects, err := interfaces.ListInterfaces(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interfaces for hostid: %s",
+				host.ID)
+			return err
+		}
+
+		host.Interfaces = objects
+
+		results, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = results
+	}
+
+	return nil
+}
+
 func (r *ReconcileHost) ReconcileAddresses(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -1410,7 +1543,7 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 		return err
 	}
 
-	// Remove stale vlans or bond interfaces that will be deleted
+	// Remove stale vlans, bond/vf interfaces that will be deleted
 	err = r.ReconcileStaleInterfaces(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -1442,6 +1575,12 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 
 	// Update/Add vlan interfaces
 	err = r.ReconcileVLANInterfaces(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Update/Add sriov interfaces
+	err = r.ReconcileVFInterfaces(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

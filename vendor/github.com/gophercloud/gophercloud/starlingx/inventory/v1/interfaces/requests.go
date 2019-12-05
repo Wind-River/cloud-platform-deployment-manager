@@ -36,6 +36,7 @@ const (
 	IFTypeVLAN     = "vlan"
 	IFTypeEthernet = "ethernet"
 	IFTypeVirtual  = "virtual"
+	IFTypeVF       = "vf"
 )
 
 // Defines the system defined value for interface MTU settings

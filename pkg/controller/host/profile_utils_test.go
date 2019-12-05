@@ -94,6 +94,9 @@ func TestMergeProfiles(t *testing.T) {
 			Size: 5,
 		},
 	}
+	vfcount1 := 1
+	vfcount2 := 2
+	vfcount3 := 3
 	tests := []struct {
 		name    string
 		args    args
@@ -130,25 +133,31 @@ func TestMergeProfiles(t *testing.T) {
 				Interfaces: &starlingxv1.InterfaceInfo{
 					Ethernet: []starlingxv1.EthernetInfo{
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "eth0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth0"}},
-						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "eth1"}, Port: starlingxv1.EthernetPortInfo{Name: "eth1"}}},
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "eth1"}, Port: starlingxv1.EthernetPortInfo{Name: "eth1"}},
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov0"}, VFCount: &vfcount2, Port: starlingxv1.EthernetPortInfo{Name: "eth4"}}},
 					VLAN: []starlingxv1.VLANInfo{
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "vlan1"}, Lower: "eth0", VID: 1},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "vlan2"}, Lower: "eth1", VID: 2}},
 					Bond: []starlingxv1.BondInfo{
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond0"}, Mode: "balanced", Members: []string{"eth0", "eth1"}},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond1"}, Mode: "balanced", Members: []string{"eth2", "eth3"}}},
+					VF: []starlingxv1.VFInfo{
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov1"}, VFCount: vfcount1, Lower: "sriov0"}},
 				}},
 				b: &starlingxv1.HostProfileSpec{
 					Interfaces: &starlingxv1.InterfaceInfo{
 						Ethernet: []starlingxv1.EthernetInfo{
 							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "mgmt0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth0"}},
-							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "cluster0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth2"}}},
+							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "cluster0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth2"}},
+							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov0"}, VFCount: &vfcount3, Port: starlingxv1.EthernetPortInfo{Name: "eth4"}}},
 						VLAN: []starlingxv1.VLANInfo{
 							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "vlan1"}, Lower: "mgmt0", VID: 1},
 							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "vlan3"}, Lower: "cluster0", VID: 3}},
 						Bond: []starlingxv1.BondInfo{
 							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond0"}, Mode: "802.3ad", Members: []string{"eth10", "eth11"}},
 							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond2"}, Mode: "802.3ad", Members: []string{"eth12", "eth13"}}},
+						VF: []starlingxv1.VFInfo{
+							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov2"}, VFCount: vfcount1, Lower: "sriov0"}},
 					},
 				},
 			},
@@ -158,6 +167,7 @@ func TestMergeProfiles(t *testing.T) {
 					Ethernet: []starlingxv1.EthernetInfo{
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "mgmt0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth0"}},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "eth1"}, Port: starlingxv1.EthernetPortInfo{Name: "eth1"}},
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov0"}, VFCount: &vfcount3, Port: starlingxv1.EthernetPortInfo{Name: "eth4"}},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "cluster0"}, Port: starlingxv1.EthernetPortInfo{Name: "eth2"}}},
 					VLAN: []starlingxv1.VLANInfo{
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "vlan1"}, Lower: "mgmt0", VID: 1},
@@ -167,6 +177,9 @@ func TestMergeProfiles(t *testing.T) {
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond0"}, Mode: "802.3ad", Members: []string{"eth10", "eth11"}},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond1"}, Mode: "balanced", Members: []string{"eth2", "eth3"}},
 						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "bond2"}, Mode: "802.3ad", Members: []string{"eth12", "eth13"}}},
+					VF: []starlingxv1.VFInfo{
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov1"}, VFCount: vfcount1, Lower: "sriov0"},
+						{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "sriov2"}, VFCount: vfcount1, Lower: "sriov0"}},
 				},
 			},
 		},

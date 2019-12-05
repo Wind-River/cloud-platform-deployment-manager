@@ -1,0 +1,5 @@
+bases:
+  - ../default
+
+patches:
+  - vf_data_interface_patch.yaml

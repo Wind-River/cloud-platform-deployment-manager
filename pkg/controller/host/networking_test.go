@@ -15,6 +15,9 @@ import (
 func Test_findConfiguredInterface(t *testing.T) {
 	vid10 := 10
 	vid20 := 20
+	vfcount1 := 1
+	vfdriver1 := "netdevice"
+	vfdriver2 := "vfio"
 	sample := starlingxv1.HostProfileSpec{
 		Interfaces: &starlingxv1.InterfaceInfo{
 			Ethernet: starlingxv1.EthernetList{
@@ -66,6 +69,14 @@ func Test_findConfiguredInterface(t *testing.T) {
 						Name: "eth4",
 					},
 				},
+				starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "sriov0",
+					},
+					Port: starlingxv1.EthernetPortInfo{
+						Name: "eth5",
+					},
+				},
 			},
 			VLAN: starlingxv1.VLANList{
 				starlingxv1.VLANInfo{
@@ -97,6 +108,24 @@ func Test_findConfiguredInterface(t *testing.T) {
 					Members: starlingxv1.StringList{"member3", "member4"},
 				},
 			},
+			VF: starlingxv1.VFList{
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "sriov1",
+					},
+					Lower:    "sriov0",
+					VFCount:  2,
+					VFDriver: &vfdriver2,
+				},
+				starlingxv1.VFInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "sriov2",
+					},
+					Lower:    "sriov0",
+					VFCount:  1,
+					VFDriver: &vfdriver1,
+				},
+			},
 		},
 	}
 	info := v1info.HostInfo{
@@ -115,6 +144,9 @@ func Test_findConfiguredInterface(t *testing.T) {
 			},
 			{Name: "eth4",
 				InterfaceID: "uuid-eth4",
+			},
+			{Name: "eth5",
+				InterfaceID: "uuid-eth5",
 			},
 		},
 		Interfaces: []interfaces.Interface{
@@ -141,6 +173,10 @@ func Test_findConfiguredInterface(t *testing.T) {
 				ID:   "uuid-eth4",
 				Type: interfaces.IFTypeEthernet,
 			},
+			{Name: "sriov0",
+				ID:   "uuid-eth5",
+				Type: interfaces.IFTypeEthernet,
+			},
 			{Name: "cluster0",
 				ID:   "uuid-cluster0",
 				Type: interfaces.IFTypeVLAN,
@@ -160,6 +196,16 @@ func Test_findConfiguredInterface(t *testing.T) {
 				ID:   "uuid-bond0",
 				Type: interfaces.IFTypeAE,
 				Uses: []string{"eth3", "eth4"},
+			},
+			{Name: "sriov1",
+				ID:   "uuid-sriov1",
+				Type: interfaces.IFTypeVF,
+				Uses: []string{"sriov0"},
+			},
+			{Name: "sriov2",
+				ID:   "uuid-sriov2",
+				Type: interfaces.IFTypeVF,
+				Uses: []string{"sriov1"},
 			},
 		},
 	}
@@ -319,6 +365,36 @@ func Test_findConfiguredInterface(t *testing.T) {
 					Name: "bond10",
 					Type: interfaces.IFTypeAE,
 					Uses: []string{"eth9", "eth10"},
+				},
+				host: &info,
+			},
+			want:  nil,
+			want1: false,
+		},
+		{name: "find-vf",
+			args: args{
+				profile: &sample,
+				iface: &interfaces.Interface{
+					ID:      "uuid-sriov1",
+					Name:    "sriov1",
+					Type:    interfaces.IFTypeVF,
+					VFCount: &vfcount1,
+					Uses:    []string{"sriov0"},
+				},
+				host: &info,
+			},
+			want:  &sample.Interfaces.VF[0].CommonInterfaceInfo,
+			want1: true,
+		},
+		{name: "find-vf-different-lower",
+			args: args{
+				profile: &sample,
+				iface: &interfaces.Interface{
+					ID:      "uuid-sriov2",
+					Name:    "sriov2",
+					Type:    interfaces.IFTypeVF,
+					VFCount: &vfcount1,
+					Uses:    []string{"sriov1"},
 				},
 				host: &info,
 			},

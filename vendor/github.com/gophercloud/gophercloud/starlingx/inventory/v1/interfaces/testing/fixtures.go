@@ -19,6 +19,7 @@ var (
 	IPv6Modes     = [3]string{interfaces.AddressModeStatic, interfaces.AddressModePool, interfaces.AddressModeDisabled}
 	IPv6Pool      = "934d8341-5114-46d2-9560-7c47618892c7"
 	VFCounts      = [3]int{0, 1, 2}
+	VFDrivers     = [2]string{"netdevice", "vfio"}
 	PTPRoles      = [2]string{interfaces.PTPRoleMaster, interfaces.PTPRoleSlave}
 	InterfaceHerp = interfaces.Interface{
 		ID:             "7499f727-e19b-4e9b-a571-5919bad20dc3",
@@ -79,6 +80,27 @@ var (
 		AETransmitHash: nil,
 		VFCount:        &VFCounts[2],
 		Uses:           []string{},
+		Users:          []string{"Berp"},
+	}
+	InterfaceBerp = interfaces.Interface{
+		ID:             "355ee3b9-4255-4731-9f45-74b5d3773eb6",
+		Name:           "Berp",
+		Type:           interfaces.IFTypeVF,
+		Class:          interfaces.IFClassPCISRIOV,
+		NetworkType:    "",
+		MTU:            1500,
+		VID:            nil,
+		IPv4Mode:       &IPv4Modes[2],
+		IPv4Pool:       nil,
+		IPv6Mode:       &IPv6Modes[2],
+		IPv6Pool:       nil,
+		Networks:       nil,
+		DataNetworks:   nil,
+		AEMode:         nil,
+		AETransmitHash: nil,
+		VFCount:        &VFCounts[1],
+		VFDriver:       &VFDrivers[1],
+		Uses:           []string{"Merp"},
 		Users:          []string{},
 	}
 )
@@ -176,9 +198,39 @@ const InterfaceListBody = `
       "sriov_numvfs": 2,
       "sriov_vf_driver": null,
       "txhashpolicy": null,
-      "used_by": [],
+      "used_by": ["Berp"],
       "uses": [],
       "uuid": "336132b4-27a1-4b1a-bb05-7f17fe290a66",
+      "vlan_id": null
+    },
+    {
+      "aemode": null,
+      "forihostid": 2,
+      "ifclass": "pci-sriov",
+      "ifname": "Berp",
+      "iftype": "vf",
+      "ihost_uuid": "f73dda8e-be3c-4704-ad1e-ed99e44b846e",
+      "imac": "08:00:27:d8:21:f6",
+      "imtu": 1500,
+      "ipv4_mode": "disabled",
+      "ipv6_mode": "disabled",
+      "links": [
+        {
+          "href": "http://192.168.204.2:6385/v1/iinterfaces/b819e290-7160-4cdf-bdfa-af80731137bb",
+          "rel": "self"
+        },
+        {
+          "href": "http://192.168.204.2:6385/iinterfaces/b819e290-7160-4cdf-bdfa-af80731137bb",
+          "rel": "bookmark"
+        }
+      ],
+      "schedpolicy": null,
+      "sriov_numvfs": 1,
+      "sriov_vf_driver": "vfio",
+      "txhashpolicy": null,
+      "used_by": [],
+      "uses": ["Merp"],
+      "uuid": "355ee3b9-4255-4731-9f45-74b5d3773eb6",
       "vlan_id": null
     }
   ]
