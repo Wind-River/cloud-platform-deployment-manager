@@ -512,6 +512,16 @@ func (in *InterfaceNamingFilter) Filter(profile *v1.HostProfile, deployment *Dep
 		}
 	}
 
+	vfs := profile.Spec.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
+
+		// Update any references to lower interface names that may have changed.
+		if newName, ok := in.updates[vfs[idx].Lower]; ok {
+			vfs[idx].Lower = newName
+		}
+	}
+
 	// Update any address references to interface names that may have changed.
 	for _, a := range profile.Spec.Addresses {
 		if newName, ok := in.updates[a.Interface]; ok {
@@ -593,6 +603,11 @@ func (in *InterfaceMTUFilter) Filter(profile *v1.HostProfile, deployment *Deploy
 		in.CheckMTU(&vlans[idx].CommonInterfaceInfo)
 	}
 
+	vfs := profile.Spec.Interfaces.VF
+	for idx := range vfs {
+		in.CheckMTU(&vfs[idx].CommonInterfaceInfo)
+	}
+
 	return nil
 }
 
@@ -672,6 +687,11 @@ func (in *InterfaceDefaultsFilter) Filter(profile *v1.HostProfile, deployment *D
 	vlans := profile.Spec.Interfaces.VLAN
 	for idx := range vlans {
 		in.CheckInterface(&vlans[idx].CommonInterfaceInfo)
+	}
+
+	vfs := profile.Spec.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
 	}
 
 	return nil

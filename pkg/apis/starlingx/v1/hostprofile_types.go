@@ -325,7 +325,7 @@ type EthernetPortInfo struct {
 // and inlined within each of the different interface type structures.
 // +deepequal-gen:ignore-nil-fields=true
 type CommonInterfaceInfo struct {
-	// SystemName defines the name of the interface to be configured.
+	// Name defines the name of the interface to be configured.
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$
 	Name string `json:"name"`
@@ -438,6 +438,33 @@ type BondInfo struct {
 // +deepequal-gen:unordered-array=true
 type BondList []BondInfo
 
+// VFInfo defines the attributes specific to a single SR-IOV
+// vf interface.
+type VFInfo struct {
+	// CommonInterfaceInfo defines attributes common to all interface
+	// types.
+	CommonInterfaceInfo `json:",inline"`
+
+	// Lower defines the interface name over which this VF interface is to be
+	// configured.
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$
+	Lower string `json:"lower"`
+
+	// VFCount defines the number of SRIOV virtual functions for this VF interface.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=256
+	VFCount int `json:"vfCount"`
+
+	// VFDriver defines the device driver to be associated with each individual
+	// SRIOV VF interface allocated.  Only applicable if the interface class is
+	// set to "pci-sriov".
+	VFDriver *string `json:"vfDriver,omitempty"`
+}
+
+// VFList defines a type to represent a slice of SR-IOV virtual functions.
+// +deepequal-gen:unordered-array=true
+type VFList []VFInfo
+
 // InterfaceInfo defines the attributes specific to a single
 // interface.
 type InterfaceInfo struct {
@@ -450,6 +477,9 @@ type InterfaceInfo struct {
 
 	// Bond defines the list of Bond interfaces to be configured on a host.
 	Bond BondList `json:"bond,omitempty"`
+
+	// VF defines the list of SR-IOV VF interfaces to be configured on a host.
+	VF VFList `json:"vf,omitempty"`
 }
 
 // AddressInfo defines the attributes specific to a single address.
@@ -573,6 +603,13 @@ func (in VLANInfo) IsKeyEqual(x VLANInfo) bool {
 // refer to the same instance.  All other attributes will be merged during
 // profile merging.
 func (in BondInfo) IsKeyEqual(x BondInfo) bool {
+	return in.Name == x.Name && in.Class == x.Class
+}
+
+// IsKeyEqual compares two VF interface array elements and determines if they
+// refer to the same instance.  All other attributes will be merged during
+// profile merging.
+func (in VFInfo) IsKeyEqual(x VFInfo) bool {
 	return in.Name == x.Name && in.Class == x.Class
 }
 

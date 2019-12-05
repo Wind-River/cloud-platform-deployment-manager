@@ -497,6 +497,12 @@ func isInterfaceInUse(ifname string, info *starlingxv1.InterfaceInfo) bool {
 		}
 	}
 
+	for _, v := range info.VF {
+		if ifname == v.Lower {
+			return true
+		}
+	}
+
 	for _, b := range info.Bond {
 		if utils.ContainsString(b.Members, ifname) {
 			return true

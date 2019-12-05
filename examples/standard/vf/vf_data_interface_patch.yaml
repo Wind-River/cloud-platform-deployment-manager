@@ -1,0 +1,45 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  interfaces:
+    ethernet:
+    - class: platform
+      dataNetworks: []
+      name: oam0
+      platformNetworks:
+      - oam
+      port:
+        name: eno1
+    - class: pci-sriov
+      dataNetworks:
+      - group0-data0
+      name: sriov0
+      platformNetworks: []
+      port:
+        name: ens785f0
+      vfCount: 16
+      vfDriver: vfio
+    - class: pci-sriov
+      dataNetworks:
+      - group0-data1
+      name: sriov1
+      platformNetworks: []
+      port:
+        name: ens786f0
+      vfCount: 16
+      vfDriver: vfio
+    vf:
+    - class: pci-sriov
+      dataNetworks:
+      - group0-data2
+      name: sriov2
+      platformNetworks: []
+      vfCount: 8
+      vfDriver: netdevice
+      mtu: 1500
+      lower: sriov0

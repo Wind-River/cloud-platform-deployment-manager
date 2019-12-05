@@ -310,8 +310,8 @@ spec:
                             minimum: 576
                             type: integer
                           name:
-                            description: SystemName defines the name of the interface
-                              to be configured.
+                            description: Name defines the name of the interface to
+                              be configured.
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_\.]+$
                             type: string
@@ -381,8 +381,8 @@ spec:
                             minimum: 576
                             type: integer
                           name:
-                            description: SystemName defines the name of the interface
-                              to be configured.
+                            description: Name defines the name of the interface to
+                              be configured.
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_\.]+$
                             type: string
@@ -436,6 +436,86 @@ spec:
                         - port
                         type: object
                       type: array
+                    vf:
+                      description: VF defines the list of SR-IOV VF interfaces to
+                        be configured on a host.
+                      items:
+                        properties:
+                          class:
+                            description: Class defines the intended usage of this
+                              interface by the system.
+                            enum:
+                            - platform
+                            - data
+                            - pci-sriov
+                            - pci-passthrough
+                            - none
+                            type: string
+                          dataNetworks:
+                            description: DataNetworks defines the list of data networks
+                              to be configured against this interface.
+                            items:
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
+                              type: string
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
+                            type: array
+                          lower:
+                            description: Lower defines the interface name over which
+                              this VF interface is to be configured.
+                            pattern: ^[a-zA-Z0-9\-_\.]+$
+                            type: string
+                          mtu:
+                            description: MTU defines the maximum transmit unit for
+                              this interface.
+                            format: int64
+                            maximum: 9216
+                            minimum: 576
+                            type: integer
+                          name:
+                            description: Name defines the name of the interface to
+                              be configured.
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_\.]+$
+                            type: string
+                          platformNetworks:
+                            description: PlatformNetworks defines the list of platform
+                              networks to be configured against this interface.
+                            items:
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
+                              type: string
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
+                            type: array
+                          ptpRole:
+                            description: PTPRole defines the ptp role as master, slave,
+                              or none
+                            enum:
+                            - master
+                            - slave
+                            - none
+                            type: string
+                          vfCount:
+                            description: VFCount defines the number of SRIOV virtual
+                              functions for this VF interface.
+                            format: int64
+                            maximum: 256
+                            minimum: 1
+                            type: integer
+                          vfDriver:
+                            description: VFDriver defines the device driver to be
+                              associated with each individual SRIOV VF interface allocated.  Only
+                              applicable if the interface class is set to "pci-sriov".
+                            type: string
+                        required:
+                        - name
+                        - class
+                        - lower
+                        - vfCount
+                        type: object
+                      type: array
                     vlan:
                       description: VLAN defines the list of VLAN interfaces to be
                         configured on a host.
@@ -474,8 +554,8 @@ spec:
                             minimum: 576
                             type: integer
                           name:
-                            description: SystemName defines the name of the interface
-                              to be configured.
+                            description: Name defines the name of the interface to
+                              be configured.
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_\.]+$
                             type: string

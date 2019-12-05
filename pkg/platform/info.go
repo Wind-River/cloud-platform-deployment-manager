@@ -419,6 +419,20 @@ func (in *HostInfo) FindVLANInterfaceUUID(vid int) (string, bool) {
 	return "", false
 }
 
+// findVFInterfaceUUID is a utility function to find a VF interface in the
+// list of interfaces returned by the systemAPI.
+func (in *HostInfo) FindVFInterfaceUUID(name string) (string, bool) {
+	for _, i := range in.Interfaces {
+		if i.Type != interfaces.IFTypeVF {
+			continue
+		}
+		if i.Name == name {
+			return i.ID, true
+		}
+	}
+	return "", false
+}
+
 // findBondInterfaceUUID is a utility function to find a bond interface in the
 // list of interfaces returned by the systemAPI. Because a user may rename a
 // bond we try to identify it by its members rather than its name.  This may not
