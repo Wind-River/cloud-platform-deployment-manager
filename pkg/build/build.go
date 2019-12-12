@@ -599,7 +599,7 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		// BMC password (if applicable)
 		if profile.Spec.BoardManagement != nil && !bmSecretGenerated {
 			bm := profile.Spec.BoardManagement
-			if bm.Credentials.Password != nil && h.BMUsername != nil {
+			if bm.Credentials != nil && bm.Credentials.Password != nil && h.BMUsername != nil {
 				secret, err := starlingxv1.NewBMSecret(bm.Credentials.Password.Secret, db.namespace, *h.BMUsername)
 				if err != nil {
 					return err
