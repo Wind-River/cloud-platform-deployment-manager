@@ -694,6 +694,15 @@ func parseBoardManagementInfo(profile *HostProfileSpec, host v1info.HostInfo) er
 		}
 
 		profile.BoardManagement = &info
+	} else {
+		bmType := "none"
+		info := BMInfo{
+			Type:        &bmType,
+			Address:     nil,
+			Credentials: nil,
+		}
+
+		profile.BoardManagement = &info
 	}
 
 	return nil

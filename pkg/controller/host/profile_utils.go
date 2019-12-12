@@ -228,6 +228,10 @@ func (r *ReconcileHost) validateBoardManagement(host *starlingxv1.Host, profile 
 		return common.NewValidationError(msg)
 	}
 
+	if *bmInfo.Type == "none" {
+		return nil
+	}
+
 	if bmInfo.Credentials == nil {
 		msg := "Board Management 'credentials' is a required attribute"
 		return common.NewValidationError(msg)
