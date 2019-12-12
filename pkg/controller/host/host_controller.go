@@ -138,6 +138,11 @@ func hostMatchesCriteria(h hosts.Host, criteria *starlingxv1.MatchInfo) bool {
 			count++
 			result = result && strings.EqualFold(*bm.Address, *h.BMAddress)
 		}
+
+		if bm.Type != nil {
+			count++
+			result = result && strings.EqualFold(*bm.Type, *h.BMType)
+		}
 	}
 
 	if criteria.DMI != nil {
@@ -332,7 +337,7 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1.Host, profile *star
 			opts.BMType = bm.Type
 		}
 
-		if bm.Credentials.Password != nil {
+		if bm.Credentials != nil && bm.Credentials.Password != nil {
 			// Password based authentication therefore retrieve the information
 			// from the provided secret.
 			info := bm.Credentials.Password
@@ -1183,7 +1188,13 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	// build a true representation of the system state.  Trying to reconcile
 	// the system generated BMC info will always result in an error because
 	// it does not contain password info.
-	defaults.BoardManagement = nil
+	bmType := "none"
+	bmInfo := starlingxv1.BMInfo{
+		Type:        &bmType,
+		Address:     nil,
+		Credentials: nil,
+	}
+	defaults.BoardManagement = &bmInfo
 
 	// Create a new composite profile that is backed by the host's default
 	// configuration.  This will ensure that if a user deletes an optional

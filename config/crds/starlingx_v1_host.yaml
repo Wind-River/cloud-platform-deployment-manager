@@ -63,6 +63,15 @@ spec:
                     address:
                       description: Address defines the board management IP address.
                       type: string
+                    type:
+                      description: Type defines the board management type
+                      enum:
+                      - none
+                      - bmc
+                      - dynamic
+                      - ipmi
+                      - redfish
+                      type: string
                   type: object
                 bootMAC:
                   description: BootMAC defines the MAC address that a host used to

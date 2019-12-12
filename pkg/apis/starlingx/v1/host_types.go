@@ -13,6 +13,11 @@ import (
 type MatchBMInfo struct {
 	// Address defines the board management IP address.
 	Address *string `json:"address,omitempty"`
+
+	// Type defines the board management type
+	// +kubebuilder:validation:Enum=none,bmc,dynamic,ipmi,redfish
+	// +optional
+	Type *string `json:"type,omitempty"`
 }
 
 // MatchDMIInfo defines the Desktop Management Interface attributes that can

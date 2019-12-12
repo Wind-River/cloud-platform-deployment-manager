@@ -898,6 +898,14 @@ func (in *MatchBMInfo) DeepEqual(other *MatchBMInfo) bool {
 		}
 	}
 
+	if (in.Type == nil) != (other.Type == nil) {
+		return false
+	} else if in.Type != nil {
+		if *in.Type != *other.Type {
+			return false
+		}
+	}
+
 	return true
 }
 
