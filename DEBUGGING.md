@@ -3,6 +3,35 @@
 This document provides information on the best approaches to debug DM issues on
  a running system.
 
+## Checking deployment-manager status
+The following command will display the deployment-manager status:
+```
+kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems
+```
+
+Of primary interest is the INSYNC column, which shows whether the deployment-manager
+has been able to synchronize the deployment configuration with the system:
+```
+controller-0:~$ kubectl -n deployment get
+datanetworks,hostprofiles,hosts,platformnetworks,systems
+NAME                                                TYPE   INSYNC
+datanetwork.starlingx.windriver.com/group0-data0    vlan   true
+datanetwork.starlingx.windriver.com/group0-data0b   vlan   true
+datanetwork.starlingx.windriver.com/group0-data1    vlan   true
+datanetwork.starlingx.windriver.com/group0-ext0     vlan   true
+
+NAME                                                     BASE
+hostprofile.starlingx.windriver.com/controller-profile
+
+NAME                                        ADMINISTRATIVE   OPERATIONAL
+AVAILABILITY   PROFILE              INSYNC
+host.starlingx.windriver.com/controller-0   unlocked         enabled       available
+controller-profile   true
+
+NAME                                  MODE      TYPE         VERSION   INSYNC
+system.starlingx.windriver.com/vbox   simplex   all-in-one   19.12     true
+```
+
 ## Looking at logs of the currently running Pod
 The logs from the currently running Pod can be queried using the following 
 command.  The "-f" argument follows the log stream much like the Linux "tail" 
