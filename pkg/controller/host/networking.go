@@ -5,6 +5,8 @@ package host
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
@@ -17,7 +19,6 @@ import (
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
-	"strings"
 )
 
 // findConfiguredBondInterface is a utility function that searches the current
@@ -748,10 +749,16 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 	return opts, result
 }
 
-// ethernetUpdateRequired is a utility function which determines whether the
-// ethernet specific interface attributes have changed and if so fills in the
+// sriovUpdateRequired is a utility function which determines whether the
+// SRIOV specific interface attributes have changed and if so fills in the
 // opts struct with the values that must be passed to the system API.
-func ethernetUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
+func sriovUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Interface, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (opts interfaces.InterfaceOpts, result bool) {
+	var ok bool
+
+	if opts, ok = interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+		result = true
+	}
+
 	if ethInfo.CommonInterfaceInfo.Class == interfaces.IFClassPCISRIOV {
 		// Ensure that SRIOV VF count is up to date.
 		if ethInfo.VFCount != nil {
@@ -782,7 +789,7 @@ func ethernetUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.
 		}
 	}
 
-	return result
+	return opts, result
 }
 
 // ReconcileInterfaceNetworks implements a method to reconcile the list of
@@ -852,7 +859,7 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 	return updated, err
 }
 
-// ReconcileInterfaceNetworks implements a method to reconcile the list of
+// ReconcileInterfaceDataNetworks implements a method to reconcile the list of
 // networks on an interface against the configured set of networks.
 func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
 	if info.DataNetworks == nil {
@@ -938,6 +945,12 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	dataNetworksUpdated := false
 
 	for _, ethInfo := range profile.Interfaces.Ethernet {
+		// SRIOV interfaces are deferred until later to avoid interfering with
+		// platform interface configuration.
+		if ethInfo.CommonInterfaceInfo.Class == interfaces.IFClassPCISRIOV {
+			continue
+		}
+
 		// For each configured ethernet interface update the associated system
 		// resource.
 		if ethInfo.Name != interfaces.LoopbackInterfaceName {
@@ -963,9 +976,8 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 			ifuuid = iface.ID
 		}
 
-		opts, ok1 := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host)
-		if ok2 := ethernetUpdateRequired(ethInfo, iface, &opts); ok1 || ok2 {
-			log.Info("updating interface", "uuid", ifuuid, "opts", opts)
+		if opts, ok := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+			log.Info("updating ethernet interface", "uuid", ifuuid, "opts", opts)
 
 			_, err := interfaces.Update(client, ifuuid, opts).Extract()
 			if err != nil {
@@ -1040,7 +1052,13 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 // bondUpdateRequired is a utility function which determines whether the
 // bond specificc interface attributes have changed and if so fills in the opts
 // struct with the values that must be passed to the system API.
-func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, opts *interfaces.InterfaceOpts) (result bool) {
+func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (opts interfaces.InterfaceOpts, result bool) {
+	var ok bool
+
+	if opts, ok = interfaceUpdateRequired(bond.CommonInterfaceInfo, iface, profile, host); ok {
+		result = true
+	}
+
 	if iface.AEMode != nil && !strings.EqualFold(bond.Mode, *iface.AEMode) {
 		opts.AEMode = &bond.Mode
 		result = true
@@ -1063,7 +1081,7 @@ func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, 
 		result = true
 	}
 
-	return result
+	return opts, result
 }
 
 // commonInterfaceOptions is a utility to populate the interface options for
@@ -1142,8 +1160,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
-			opts, ok1 := interfaceUpdateRequired(bondInfo.CommonInterfaceInfo, iface, profile, host)
-			if ok2 := bondUpdateRequired(bondInfo, iface, &opts); ok1 || ok2 {
+			if opts, ok := bondUpdateRequired(bondInfo, iface, profile, host); ok {
 				log.Info("updating bond interface", "uuid", ifuuid, "opts", opts)
 
 				_, err := interfaces.Update(client, ifuuid, opts).Extract()
@@ -1295,6 +1312,119 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 		}
 
 		host.InterfaceNetworks = results
+	}
+
+	return nil
+}
+
+// ReconcileSRIOVInterfaces will update system interfaces to align with the
+// desired configuration.  It is assumed that the configuration will apply;
+// meaning that prior to invoking this function stale interfaces and stale
+// interface configurations have been resolved so that the intended list of
+// ethernet interface configuration will apply cleanly here.
+func (r *ReconcileHost) ReconcileSRIOVInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+	var iface *interfaces.Interface
+	var ifuuid string
+	var found bool
+
+	if !config.IsReconcilerEnabled(config.Interface) {
+		return nil
+	}
+
+	if profile.Interfaces == nil || len(profile.Interfaces.Ethernet) == 0 {
+		return nil
+	}
+
+	updated := false
+	networksUpdated := false
+	dataNetworksUpdated := false
+
+	for _, ethInfo := range profile.Interfaces.Ethernet {
+		// Only processing SRIOV Ethernet interfaces
+		if ethInfo.CommonInterfaceInfo.Class != interfaces.IFClassPCISRIOV {
+			continue
+		}
+
+		ifuuid, found = host.FindPortInterfaceUUID(ethInfo.Port.Name)
+		if !found {
+			msg := fmt.Sprintf("unable to find interface UUID for port: %s", ethInfo.Port.Name)
+			return starlingxv1.NewMissingSystemResource(msg)
+		}
+
+		iface, found = host.FindInterface(ifuuid)
+		if !found {
+			msg := fmt.Sprintf("unable to find interface: %s", ifuuid)
+			return starlingxv1.NewMissingSystemResource(msg)
+		}
+
+		if opts, ok := sriovUpdateRequired(ethInfo, iface, profile, host); ok {
+			log.Info("updating sriov ethernet interface", "uuid", ifuuid, "opts", opts)
+
+			_, err := interfaces.Update(client, ifuuid, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update interface: %s, %s",
+					ifuuid, common.FormatStruct(opts))
+				return err
+			}
+
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ethernet sriov interface %q has been updated", ethInfo.Name)
+
+			updated = true
+		}
+
+		result, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		networksUpdated = networksUpdated || result
+
+		result, err = r.ReconcileInterfaceDataNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		dataNetworksUpdated = dataNetworksUpdated || result
+
+		updated = updated || networksUpdated || dataNetworksUpdated
+	}
+
+	if updated {
+		// Interfaces have been updated so we need to refresh the list of interfaces
+		// so that the next method that needs to act on the list will have the
+		// updated view of the system.
+		objects, err := interfaces.ListInterfaces(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interfaces for hostid: %s", host.ID)
+			return err
+		}
+
+		host.Interfaces = objects
+	}
+
+	if networksUpdated {
+		// Interface network associations have been updated so we need to
+		// refresh the list of interface-network associations.
+		objects, err := interfaceNetworks.ListInterfaceNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-networks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceNetworks = objects
+	}
+
+	if dataNetworksUpdated {
+		// Interface data network associations have been updated so we need to
+		// refresh the list of interface-datanetwork associations.
+		objects, err := interfaceDataNetworks.ListInterfaceDataNetworks(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh interface-datanetworks for hostid: %s", host.ID)
+			return err
+		}
+
+		host.InterfaceDataNetworks = objects
 	}
 
 	return nil
@@ -1579,7 +1709,13 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 		return err
 	}
 
-	// Update/Add sriov interfaces
+	// Update SRIOV interfaces
+	err = r.ReconcileSRIOVInterfaces(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Update/Add VF interfaces
 	err = r.ReconcileVFInterfaces(client, instance, profile, host)
 	if err != nil {
 		return err
