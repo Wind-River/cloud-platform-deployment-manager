@@ -24,6 +24,7 @@ const (
 	NoMemoryFilterArg                = "no-memory"
 	NoProcessorFilterArg             = "no-processors"
 	NoInterfaceDefaultsFilterArg     = "no-interface-defaults"
+	NoServiceParametersFilterArg     = "no-service-parameters"
 	NoSysVgFilterArg                 = "no-sys-vg"
 	NormalizeInterfaceNamesFilterArg = "normalize-interfaces"
 	NormalizeInterfaceMTUFilterArg   = "normalize-mtu"
@@ -36,6 +37,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
 	var noCACertificates bool
+	var noServiceParams bool
 	var outputFile *os.File
 	var minimalConfig bool
 	var noProcessors bool
@@ -156,6 +158,12 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(15)
 	}
 
+	if noServiceParams, err = cmd.Flags().GetBool(NoServiceParametersFilterArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+			NoServiceParametersFilterArg)
+		os.Exit(16)
+	}
+
 	if minimalConfig {
 		noCACertificates = true
 		noDefaults = true
@@ -163,6 +171,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		normalizeInterfaces = true
 		normalizeMTU = true
 		normalizeConsole = true
+		noServiceParams = true
 	}
 
 	ao, err := manager.GetAuthOptionsFromEnv()
@@ -275,6 +284,10 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		systemFilters = append(systemFilters, build.NewCACertificateFilter())
 	}
 
+	if noServiceParams {
+		systemFilters = append(systemFilters, build.NewServiceParametersSystemFilter())
+	}
+
 	if len(systemFilters) > 0 {
 		builder.AddSystemFilters(systemFilters)
 	}
@@ -341,6 +354,7 @@ func init() {
 	collectCmd.Flags().Bool(NoProcessorFilterArg, false, "Exclude all processor configurations from profiles")
 	collectCmd.Flags().Bool(NoInterfaceDefaultsFilterArg, false, "Exclude all interface default values from profiles")
 	collectCmd.Flags().Bool(NoSysVgFilterArg, false, "Exclude system volume groups")
+	collectCmd.Flags().Bool(NoServiceParametersFilterArg, false, "Exclude service parameters")
 	collectCmd.Flags().Bool(NormalizeInterfaceNamesFilterArg, false, "Normalize interface names")
 	collectCmd.Flags().Bool(NormalizeInterfaceMTUFilterArg, false, "Normalize interface MTU values")
 	collectCmd.Flags().Bool(NormalizeConsoleFilterArg, false, "Normalize serial console attributes")

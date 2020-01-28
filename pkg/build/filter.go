@@ -744,3 +744,38 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 
 	return nil
 }
+
+type ServiceParameterFilter struct {
+}
+
+func NewServiceParametersSystemFilter() *ServiceParameterFilter {
+	return &ServiceParameterFilter{}
+}
+
+func IsDefaultServiceParameter(sp *v1.ServiceParameterInfo) bool {
+	return true
+}
+
+func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployment) error {
+	if system.Spec.ServiceParameters == nil {
+		return nil
+	}
+
+	result := make([]v1.ServiceParameterInfo, 0)
+	for _, sp := range *system.Spec.ServiceParameters {
+		// currently this skips everything
+		if IsDefaultServiceParameter(&sp) {
+			continue
+		}
+		result = append(result, sp)
+	}
+
+	if len(result) > 0 {
+		list := v1.ServiceParameterList(result)
+		system.Spec.ServiceParameters = &list
+	} else {
+		system.Spec.ServiceParameters = nil
+	}
+
+	return nil
+}

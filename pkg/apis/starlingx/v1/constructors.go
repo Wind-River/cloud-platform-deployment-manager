@@ -18,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
@@ -898,6 +899,26 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 	return nil
 }
 
+func parseServiceParameterInfo(spec *SystemSpec, serviceParams []serviceparameters.ServiceParameter) error {
+	result := make([]ServiceParameterInfo, 0)
+
+	for _, sp := range serviceParams {
+		info := ServiceParameterInfo{
+			Service:    sp.Service,
+			Section:    sp.Section,
+			ParamName:  sp.ParamName,
+			ParamValue: sp.ParamValue,
+		}
+
+		result = append(result, info)
+	}
+
+	list := ServiceParameterList(result)
+	spec.ServiceParameters = &list
+
+	return nil
+}
+
 func parseSNMPCommunityInfo(spec *SystemSpec, communities []snmpCommunity.SNMPCommunity) error {
 	result := make([]string, 0)
 
@@ -1041,6 +1062,13 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 
 	if len(systemInfo.Certificates) > 0 {
 		err := parseCertificateInfo(&spec, systemInfo.Certificates)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(systemInfo.ServiceParameters) > 0 {
+		err := parseServiceParameterInfo(&spec, systemInfo.ServiceParameters)
 		if err != nil {
 			return nil, err
 		}

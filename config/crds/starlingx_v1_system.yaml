@@ -149,6 +149,46 @@ spec:
                   - udp
                   type: string
               type: object
+            serviceParameters:
+              description: ServiceParameters is a list of service parameters
+              items:
+                properties:
+                  paramname:
+                    description: ParamName identifies the name for this service parameter
+                    maxLength: 255
+                    pattern: ^[a-zA-Z0-9\-_]+$
+                    type: string
+                  paramvalue:
+                    description: ParamValue identifies the value for this service
+                      parameter
+                    type: string
+                  personality:
+                    description: Personality identifies the personality for this service
+                      parameter
+                    type: string
+                  resource:
+                    description: Resource identifies the resource for this service
+                      parameter
+                    type: string
+                  section:
+                    description: Section identifies the section for this service parameter
+                    maxLength: 255
+                    pattern: ^[a-zA-Z0-9\-_]+$
+                    type: string
+                  service:
+                    description: Service identifies the service for this service parameter
+                    maxLength: 255
+                    pattern: ^[a-zA-Z0-9\-_]+$
+                    type: string
+                required:
+                - service
+                - section
+                - paramname
+                - paramvalue
+                - personality
+                - resource
+                type: object
+              type: array
             snmp:
               description: SNMP is the set of SNMP specific attributes to be configured
                 for the system.

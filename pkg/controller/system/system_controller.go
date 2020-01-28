@@ -20,6 +20,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
@@ -342,6 +343,102 @@ func (r *ReconcileSystem) ReconcilePTP(client *gophercloud.ServiceClient, instan
 		info.PTP = result
 
 		r.NormalEvent(instance, common.ResourceUpdated, "PTP info has been updated")
+	}
+
+	return nil
+}
+
+// serviceparametersUpdateRequired determines whether an update is required to the ServiceParameter
+// and returns the field to be changed if an update is necessary.
+// Only the value for a serviceparameter can be changed at this time.
+// To modify service or section, a delete / create is used. (which is not supported by the API)
+func serviceparametersUpdateRequired(spec *starlingxv1.ServiceParameterInfo, p *serviceparameters.ServiceParameter) (serviceparametersOpts serviceparameters.ServiceParameterPatchOpts, result bool) {
+	// this method assumes it is only called when service, section and paramname are all equal
+	if spec != nil {
+		if spec.ParamValue != p.ParamValue {
+			serviceparametersOpts.ParamValue = &spec.ParamValue
+			result = true
+		}
+		// We only need to compare Resource if both are not nil
+		// since it is not supported to remove the resource, or add one to an existing  service param
+		if spec.Resource != nil && p.Resource != nil && *spec.Resource != *p.Resource {
+			serviceparametersOpts.Resource = spec.Resource
+			result = true
+		}
+		// We only need to compare Personality if both are not nil
+		// since it is not supported to remove the resource, or add one to an existing  service param
+		if spec.Personality != nil && p.Personality != nil && *spec.Personality != *p.Personality {
+			serviceparametersOpts.Personality = spec.Personality
+			result = true
+		}
+	}
+	return serviceparametersOpts, result
+}
+
+// ReconcileServiceParameters configures the system resources to align with the desired ServiceParameter state.
+func (r *ReconcileSystem) ReconcileServiceParameters(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
+	if !config.IsReconcilerEnabled(config.ServiceParameters) {
+		return nil
+	}
+	if spec.ServiceParameters == nil {
+		return nil
+	}
+	updated := false
+	for _, spec_sp := range *spec.ServiceParameters {
+		found := false
+		for _, info_sp := range info.ServiceParameters {
+			// A match occurs when service, section and paramname are equal
+			if info_sp.Service == spec_sp.Service &&
+				info_sp.Section == spec_sp.Section &&
+				info_sp.ParamName == spec_sp.ParamName {
+				found = true
+				if spOpts, ok := serviceparametersUpdateRequired(&spec_sp, &info_sp); ok {
+					result, err := serviceparameters.Update(client, info_sp.ID, spOpts).Extract()
+					if err != nil {
+						return err
+					}
+					// success
+					updated = true
+					r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter %q %q %q has been modified", result.Service, result.Section, result.ParamName)
+				}
+				break
+			}
+		}
+		// If a service parameter is found that does not exist in Info, need to create it
+		// Note: the sysinv API does not actually support creating a new service param.  It will be rejected.
+		if !found {
+			// TODO: populate this params object
+			params := make(map[string]string)
+			params[spec_sp.ParamName] = spec_sp.ParamValue
+			opts := serviceparameters.ServiceParameterOpts{
+				Service:     &spec_sp.Service,
+				Section:     &spec_sp.Section,
+				Parameters:  &params,
+				Resource:    spec_sp.Resource,
+				Personality: spec_sp.Personality,
+			}
+
+			result, err := serviceparameters.Create(client, opts).Extract()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
+		}
+
+		// Note: There is no support in the reconcile for DELETE of service parameters, since there are
+		// default service parameters setup by the system, that would complicate a reconcile.
+	}
+	// update the system object with the list of service params
+	if updated {
+		result, err := serviceparameters.ListServiceParameters(client)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to refresh service parameters list")
+			return err
+		}
+		r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
+		info.ServiceParameters = result
 	}
 
 	return nil
@@ -905,6 +1002,11 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 	}
 
 	err = r.ReconcileSNMP(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileServiceParameters(client, instance, spec, info)
 	if err != nil {
 		return err
 	}

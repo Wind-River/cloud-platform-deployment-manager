@@ -55,6 +55,7 @@ const (
 	PTP               ReconcilerName = "system.ptp"
 	SNMP              ReconcilerName = "system.snmp"
 	Backends          ReconcilerName = "system.storage.backend"
+	ServiceParameters ReconcilerName = "system.serviceParameters"
 )
 
 // reconcilerDefaultStates is the default state of each reconciler.
@@ -87,6 +88,7 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	PTP:               true,
 	SNMP:              true,
 	Backends:          true,
+	ServiceParameters: true,
 }
 
 // OptionName is the type alias that represents the path for a reconciler
