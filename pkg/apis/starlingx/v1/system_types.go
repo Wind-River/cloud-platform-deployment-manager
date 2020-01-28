@@ -91,6 +91,41 @@ func (in *LicenseInfo) DeepEqual(other *LicenseInfo) bool {
 	return other != nil
 }
 
+// ServiceParameterInfo defines the attributes required to define an instance of a
+// service parameter to be installed via the system API.
+type ServiceParameterInfo struct {
+	// Service identifies the service for this service parameter
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+	// +kubebuilder:validation:MaxLength=255
+	Service string `json:"service"`
+
+	// Section identifies the section for this service parameter
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+	// +kubebuilder:validation:MaxLength=255
+	Section string `json:"section"`
+
+	// ParamName identifies the name for this service parameter
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+	// +kubebuilder:validation:MaxLength=255
+	ParamName string `json:"paramname"`
+
+	// ParamValue identifies the value for this service parameter
+	ParamValue string `json:"paramvalue"`
+
+	// Personality identifies the personality for this service parameter
+	// +optional
+	Personality *string `json:"personality"`
+
+	// Resource identifies the resource for this service parameter
+	// +optional
+	Resource *string `json:"resource"`
+}
+
+// ServiceParameterList defines a type to represent a slice of service parameter info
+// objects.
+// +deepequal-gen:unordered-array=true
+type ServiceParameterList []ServiceParameterInfo
+
 // +deepequal-gen:ignore-nil-fields=true
 type StorageBackend struct {
 	// SystemName uniquely identifies the storage backend instance.
@@ -262,6 +297,10 @@ type SystemSpec struct {
 	// License is a reference to a license file that must be installed.
 	// +optional
 	License *LicenseInfo `json:"license,omitempty"`
+
+	// ServiceParameters is a list of service parameters
+	// +optional
+	ServiceParameters *ServiceParameterList `json:"serviceParameters,omitempty"`
 
 	// Storage is a set of storage specific attributes to be configured for the
 	// system.

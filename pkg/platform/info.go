@@ -37,6 +37,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ports"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
@@ -81,6 +82,7 @@ type SystemInfo struct {
 	NTP                  *ntp.NTP
 	PTP                  *ptp.PTP
 	Certificates         []certificates.Certificate
+	ServiceParameters    []serviceparameters.ServiceParameter
 	SNMPCommunities      []snmpCommunity.SNMPCommunity
 	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
 	FileSystems          []controllerFilesystems.FileSystem
@@ -126,6 +128,12 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 	in.Certificates, err = certificates.ListCertificates(client)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get certificate list")
+		return err
+	}
+
+	in.ServiceParameters, err = serviceparameters.ListServiceParameters(client)
+	if err != nil {
+		err = errors.Wrap(err, "failed to get service parameters")
 		return err
 	}
 

@@ -2,8 +2,9 @@
 /* Copyright(c) 2019 Wind River Systems, Inc. */
 
 // Generate deepcopy for apis
-//go:generate go run ../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i ./... -h ../../hack/boilerplate.go.txt
-//go:generate go run ../../vendor/github.com/wind-river/deepequal-gen/main.go -O zz_generated.deepequal -i ./... -h ../../hack/boilerplate.go.txt
+// Increase verbosity (-v 5) to help troubleshoot errors
+//go:generate go run ../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -v 1 5 -O zz_generated.deepcopy -i ./... -h ../../hack/boilerplate.go.txt
+//go:generate go run ../../vendor/github.com/wind-river/deepequal-gen/main.go -v 1 -O zz_generated.deepequal -i ./... -h ../../hack/boilerplate.go.txt
 
 // Package apis contains Kubernetes API groups.
 package apis
