@@ -161,23 +161,26 @@ spec:
                   paramvalue:
                     description: ParamValue identifies the value for this service
                       parameter
+                    maxLength: 4096
                     type: string
                   personality:
                     description: Personality identifies the personality for this service
                       parameter
+                    maxLength: 255
                     type: string
                   resource:
                     description: Resource identifies the resource for this service
                       parameter
+                    maxLength: 255
                     type: string
                   section:
                     description: Section identifies the section for this service parameter
-                    maxLength: 255
+                    maxLength: 128
                     pattern: ^[a-zA-Z0-9\-_]+$
                     type: string
                   service:
                     description: Service identifies the service for this service parameter
-                    maxLength: 255
+                    maxLength: 16
                     pattern: ^[a-zA-Z0-9\-_]+$
                     type: string
                 required:
