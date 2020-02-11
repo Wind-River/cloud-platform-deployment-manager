@@ -96,12 +96,12 @@ func (in *LicenseInfo) DeepEqual(other *LicenseInfo) bool {
 type ServiceParameterInfo struct {
 	// Service identifies the service for this service parameter
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-	// +kubebuilder:validation:MaxLength=255
+	// +kubebuilder:validation:MaxLength=16
 	Service string `json:"service"`
 
 	// Section identifies the section for this service parameter
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-	// +kubebuilder:validation:MaxLength=255
+	// +kubebuilder:validation:MaxLength=128
 	Section string `json:"section"`
 
 	// ParamName identifies the name for this service parameter
@@ -110,13 +110,16 @@ type ServiceParameterInfo struct {
 	ParamName string `json:"paramname"`
 
 	// ParamValue identifies the value for this service parameter
+	// +kubebuilder:validation:MaxLength=4096
 	ParamValue string `json:"paramvalue"`
 
 	// Personality identifies the personality for this service parameter
+	// +kubebuilder:validation:MaxLength=255
 	// +optional
 	Personality *string `json:"personality"`
 
 	// Resource identifies the resource for this service parameter
+	// +kubebuilder:validation:MaxLength=255
 	// +optional
 	Resource *string `json:"resource"`
 }

@@ -404,10 +404,7 @@ func (r *ReconcileSystem) ReconcileServiceParameters(client *gophercloud.Service
 				break
 			}
 		}
-		// If a service parameter is found that does not exist in Info, need to create it
-		// Note: the sysinv API does not actually support creating a new service param.  It will be rejected.
 		if !found {
-			// TODO: populate this params object
 			params := make(map[string]string)
 			params[spec_sp.ParamName] = spec_sp.ParamValue
 			opts := serviceparameters.ServiceParameterOpts{

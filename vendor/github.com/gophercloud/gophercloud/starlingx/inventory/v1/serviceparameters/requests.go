@@ -100,7 +100,7 @@ func Create(c *gophercloud.ServiceClient, opts ServiceParameterOpts) (r CreateRe
 	return r
 }
 
-// Apply applies the service parameters through a POST. Optionally a service name can be passed'
+// Apply applies the service parameters through a POST. Optionally a service name can be passed
 func Apply(c *gophercloud.ServiceClient, opts ServiceApplyOpts) (r ApplyResult) {
 	reqBody, err := inventoryv1.ConvertToCreateMap(opts)
 	if err != nil {

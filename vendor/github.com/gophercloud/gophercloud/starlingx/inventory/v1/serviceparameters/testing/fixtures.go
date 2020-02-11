@@ -48,11 +48,11 @@ var (
 	}
 
 	bbqUUID             = "75b3757d-4168-43c8-b921-5231de1955c9"
-	bbqResource         = "bbq::brickets::charcoal::mode"
+	bbqResource         = "bbq::briquettes::charcoal::mode"
 	ServiceParameterBBQ = serviceparameters.ServiceParameter{
 		ID:         "75b3757d-4168-43c8-b921-5231de1955c9",
 		Service:    "bbq",
-		Section:    "brickets",
+		Section:    "briquettes",
 		ParamName:  "charcoal",
 		ParamValue: "enabled",
 		Resource:   &bbqResource,
@@ -176,7 +176,7 @@ const ServiceParameterCreateBody = `
 {
     "uuid": "75b3757d-4168-43c8-b921-5231de1955c9",
     "service": "bbq",
-    "section": "brickets",
+    "section": "briquettes",
     "links": [
     {
       "href": "http://192.168.204.1:6385/v1/parameters/75b3757d-4168-43c8-b921-5231de1955c9",
@@ -189,7 +189,7 @@ const ServiceParameterCreateBody = `
   ],
   "value": "enabled",
   "name": "charcoal",
-  "resource": "bbq::brickets::charcoal::mode",
+  "resource": "bbq::briquettes::charcoal::mode",
   "personality": null
 }
 `
@@ -199,7 +199,7 @@ const ServiceParameterUpdateBody = `
 {
     "uuid": "75b3757d-4168-43c8-b921-5231de1955c9",
     "service": "bbq",
-    "section": "brickets",
+    "section": "briquettes",
     "links": [
     {
       "href": "http://192.168.204.1:6385/v1/parameters/75b3757d-4168-43c8-b921-5231de1955c9",
@@ -212,7 +212,7 @@ const ServiceParameterUpdateBody = `
   ],
   "value": "disabled",
   "name": "charcoal",
-  "resource": "bbq::brickets::charcoal::mode",
+  "resource": "bbq::briquettes::charcoal::mode",
   "personality": null
 }
 `
@@ -267,9 +267,9 @@ func HandleServiceParameterCreationSuccessfully(t *testing.T, response string) {
           		"parameters": {
             			"charcoal": "enabled"
           		},
-          		"section": "brickets",
+			"section": "briquettes",
           		"service": "bbq",
-          		"resource": "bbq::brickets::charcoal::mode"
+			"resource": "bbq::briquettes::charcoal::mode"
         	}`)
 
 		w.WriteHeader(http.StatusAccepted)
