@@ -40,6 +40,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
@@ -85,6 +86,7 @@ type SystemInfo struct {
 	ServiceParameters    []serviceparameters.ServiceParameter
 	SNMPCommunities      []snmpCommunity.SNMPCommunity
 	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
+	StorageBackends      []storagebackends.StorageBackend
 	FileSystems          []controllerFilesystems.FileSystem
 	License              *licenses.License
 }
@@ -134,6 +136,12 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 	in.ServiceParameters, err = serviceparameters.ListServiceParameters(client)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get service parameters")
+		return err
+	}
+
+	in.StorageBackends, err = storagebackends.ListBackends(client)
+	if err != nil {
+		err = errors.Wrap(err, "failed to get storagebackends")
 		return err
 	}
 

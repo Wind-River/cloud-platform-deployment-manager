@@ -36,6 +36,10 @@ spec:
     - 0.pool.ntp.org
     - 1.pool.ntp.org
     - 2.pool.ntp.org
+  storage:
+    backends:
+    - name: ceph-store
+      type: ceph
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
