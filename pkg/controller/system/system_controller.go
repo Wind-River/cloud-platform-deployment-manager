@@ -23,6 +23,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/imdario/mergo"
 	perrors "github.com/pkg/errors"
@@ -215,6 +216,64 @@ func (r *ReconcileSystem) ReconcileNTP(client *gophercloud.ServiceClient, instan
 		info.NTP = result
 
 		r.NormalEvent(instance, common.ResourceUpdated, "NTP servers have been updated")
+	}
+
+	return nil
+}
+
+// ReconcileStorageBackend configures the storage Backend to align with the desired Ceph State
+// Only supports creating storage backends
+func (r *ReconcileSystem) ReconcileStorageBackends(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
+	if !config.IsReconcilerEnabled(config.Backends) {
+		return nil
+	}
+	if spec.Storage == nil {
+		return nil
+	}
+
+	if spec.Storage.Backends == nil {
+		return nil
+	}
+
+	for _, spec_sb := range *spec.Storage.Backends {
+		found := false
+		for _, info_sb := range info.StorageBackends {
+			// The Type parameter in the spec maps to the Backend
+			// parameter in the request
+			if info_sb.Backend == spec_sb.Type &&
+				info_sb.Name == spec_sb.Name {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			continue
+		}
+
+		// In order to apply the backend config, we must set Confirmed
+		// to true
+		opts := storagebackends.StorageBackendOpts{
+			Confirmed: true,
+			Backend:   &spec_sb.Type,
+			Name:      &spec_sb.Name,
+		}
+
+		// Replication is an optional parameter.
+		// In the spec, the parameter is named ReplicationFactor,
+		// and it maps to the replication key in the Capabilities
+		// dictionary
+		if spec_sb.ReplicationFactor != nil {
+			capabilities := make(map[string]interface{})
+			capabilities["replication"] = *spec_sb.ReplicationFactor
+			opts.Capabilities = &capabilities
+		}
+
+		result, err := storagebackends.Create(client, opts).Extract()
+		if err != nil {
+			return err
+		}
+		r.NormalEvent(instance, common.ResourceCreated, "%s storage backend created", result.Name)
 	}
 
 	return nil
@@ -1004,6 +1063,11 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 	}
 
 	err = r.ReconcileServiceParameters(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileStorageBackends(client, instance, spec, info)
 	if err != nil {
 		return err
 	}
