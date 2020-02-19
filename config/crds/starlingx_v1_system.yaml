@@ -188,8 +188,6 @@ spec:
                 - section
                 - paramname
                 - paramvalue
-                - personality
-                - resource
                 type: object
               type: array
             snmp:
