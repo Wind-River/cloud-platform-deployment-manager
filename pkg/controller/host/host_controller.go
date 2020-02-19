@@ -1317,6 +1317,9 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 			// The resource may have been deleted by the system or operator
 			// therefore continue and attempt to recreate it.
 			log.Info("resource no longer exists", "id", *id)
+
+			// Set host to nil, in case hosts.Get() returned a partially populated structure
+			host = nil
 		}
 	}
 
