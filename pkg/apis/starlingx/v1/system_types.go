@@ -116,12 +116,12 @@ type ServiceParameterInfo struct {
 	// Personality identifies the personality for this service parameter
 	// +kubebuilder:validation:MaxLength=255
 	// +optional
-	Personality *string `json:"personality"`
+	Personality *string `json:"personality,omitempty"`
 
 	// Resource identifies the resource for this service parameter
 	// +kubebuilder:validation:MaxLength=255
 	// +optional
-	Resource *string `json:"resource"`
+	Resource *string `json:"resource,omitempty"`
 }
 
 // ServiceParameterList defines a type to represent a slice of service parameter info
