@@ -21,12 +21,14 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
 	v1 "k8s.io/api/core/v1"
 	v1types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"regexp"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"strconv"
 	"strings"
 )
 
@@ -980,6 +982,29 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.F
 	return nil
 }
 
+func parseStorageBackendInfo(spec *SystemSpec, storageBackends []storagebackends.StorageBackend) error {
+	result := make([]StorageBackend, 0)
+
+	for _, sb := range storageBackends {
+		rep, _ := strconv.Atoi(sb.Capabilities.Replication)
+		info := StorageBackend{
+			Name:              sb.Name,
+			Type:              sb.Backend,
+			ReplicationFactor: &rep,
+		}
+		result = append(result, info)
+	}
+
+	if spec.Storage == nil {
+		spec.Storage = &SystemStorageInfo{}
+	}
+
+	list := StorageBackendList(result)
+	spec.Storage.Backends = &list
+
+	return nil
+}
+
 func parseLicenseInfo(spec *SystemSpec, license *licenses.License) error {
 	if license != nil {
 		// Populate a Secret name reference but for now don't bother trying
@@ -1090,6 +1115,13 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 
 	if len(systemInfo.FileSystems) > 0 {
 		err := parseFileSystemInfo(&spec, systemInfo.FileSystems)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(systemInfo.StorageBackends) > 0 {
+		err := parseStorageBackendInfo(&spec, systemInfo.StorageBackends)
 		if err != nil {
 			return nil, err
 		}

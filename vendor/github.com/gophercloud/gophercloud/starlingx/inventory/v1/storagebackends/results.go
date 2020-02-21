@@ -42,6 +42,8 @@ type DeleteResult struct {
 // Capabilities defines the set of system or resource capabilities associated to
 // this resource.
 type Capabilities struct {
+	Replication string `json:"replication,omitempty"`
+	MinReplication string `json:"min_replication,omitempty"`
 }
 
 // StorageBackend defines the data associated to a single StorageBackend

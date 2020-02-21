@@ -235,6 +235,7 @@ func (r *ReconcileSystem) ReconcileStorageBackends(client *gophercloud.ServiceCl
 		return nil
 	}
 
+	updated := false
 	for _, spec_sb := range *spec.Storage.Backends {
 		found := false
 		for _, info_sb := range info.StorageBackends {
@@ -273,7 +274,18 @@ func (r *ReconcileSystem) ReconcileStorageBackends(client *gophercloud.ServiceCl
 		if err != nil {
 			return err
 		}
+		updated = true
 		r.NormalEvent(instance, common.ResourceCreated, "%s storage backend created", result.Name)
+	}
+
+	if updated {
+		result, err := storagebackends.ListBackends(client)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to refresh storage backends")
+			return err
+		}
+		r.NormalEvent(instance, common.ResourceUpdated, "StorageBackend info has been updated")
+		info.StorageBackends = result
 	}
 
 	return nil
