@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019 Wind River Systems, Inc.
+# Copyright(c) 2019-2020 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -11,6 +11,15 @@ HELM_FORCE ?= 0
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 EXAMPLES ?= ${HOME}/tmp/wind-river-cloud-platform-deployment-manager/examples
 BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
+
+GIT_HEAD := $(shell git rev-list -1 HEAD)
+GIT_LAST_TAG_COMMIT := $(shell git rev-list --tags --max-count=1)
+GIT_LAST_TAG := $(shell git describe --tags $(GIT_LAST_TAG_COMMIT) )
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
+DEPLOY_LDFLAGS := -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
 
 ifeq (${DEBUG}, yes)
 	DOCKER_TARGET = debug
@@ -38,9 +47,9 @@ test: generate fmt vet manifests helm-lint
 manager: generate fmt vet
 	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager github.com/wind-river/cloud-platform-deployment-manager/cmd/manager
 
-# Build manager binary
+# Build deploy binary
 tools: generate fmt vet
-	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy
+	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
