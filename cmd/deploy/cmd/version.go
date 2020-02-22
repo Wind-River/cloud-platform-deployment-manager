@@ -13,8 +13,12 @@ var GitLastTag string
 var GitHead string
 var GitBranch string
 
+func VersionToString() string {
+	return (fmt.Sprintf("%s (%s: %s)", GitLastTag, GitBranch, GitHead))
+}
+
 func VersionCmdRun(cmd *cobra.Command, args []string) {
-	fmt.Printf("Version: %s (%s: %s)\n", GitLastTag, GitBranch, GitHead)
+	fmt.Printf("Version: %s\n", VersionToString())
 	os.Exit(0)
 }
 
