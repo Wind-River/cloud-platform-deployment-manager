@@ -23,6 +23,10 @@ spec:
     description: The current synchronization state.
     name: insync
     type: boolean
+  - JSONPath: .status.reconciled
+    description: The current reconciliation state.
+    name: reconciled
+    type: boolean
   group: starlingx.windriver.com
   names:
     kind: System
