@@ -132,6 +132,7 @@ type HostStatus struct {
 // +kubebuilder:printcolumn:name="availability",type="string",JSONPath=".status.availabilityStatus",description="The availability status of the host."
 // +kubebuilder:printcolumn:name="profile",type="string",JSONPath=".spec.profile",description="The configuration profile of the host."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
 type Host struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

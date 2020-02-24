@@ -385,6 +385,7 @@ type SystemStatus struct {
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".status.systemType",description="The configured system type."
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.softwareVersion",description="The current software version"
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
 type System struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

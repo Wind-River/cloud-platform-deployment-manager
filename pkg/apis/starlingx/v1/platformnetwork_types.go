@@ -96,6 +96,7 @@ type PlatformNetworkStatus struct {
 // +kubebuilder:printcolumn:name="subnet",type="string",JSONPath=".spec.subnet",description="The platform network address subnet."
 // +kubebuilder:printcolumn:name="prefix",type="string",JSONPath=".spec.prefix",description="The platform network address prefix."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
 type PlatformNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
