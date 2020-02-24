@@ -336,6 +336,11 @@ func (in TrapDestInfo) IsKeyEqual(x TrapDestInfo) bool {
 	return in.Community == x.Community
 }
 
+// IsKeyEqual compares two ServiceParameter if they mostly match
+func (in ServiceParameterInfo) IsKeyEqual(x ServiceParameterInfo) bool {
+	return in.Service == x.Service && in.Section == x.Section && in.ParamName == x.ParamName && in.Personality == x.Personality && in.Resource == x.Resource
+}
+
 // SystemStatus defines the observed state of System
 type SystemStatus struct {
 	// ID defines the unique identifier assigned by the system.

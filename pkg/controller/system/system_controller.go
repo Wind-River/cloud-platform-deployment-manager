@@ -1145,6 +1145,7 @@ func (r *ReconcileSystem) ReconcileRequired(instance *starlingxv1.System, spec *
 		}
 	}
 
+	log.V(2).Info("A System Reconcile is required")
 	return nil, true
 }
 
