@@ -906,10 +906,12 @@ func parseServiceParameterInfo(spec *SystemSpec, serviceParams []serviceparamete
 
 	for _, sp := range serviceParams {
 		info := ServiceParameterInfo{
-			Service:    sp.Service,
-			Section:    sp.Section,
-			ParamName:  sp.ParamName,
-			ParamValue: sp.ParamValue,
+			Service:     sp.Service,
+			Section:     sp.Section,
+			ParamName:   sp.ParamName,
+			ParamValue:  sp.ParamValue,
+			Resource:    sp.Resource,
+			Personality: sp.Personality,
 		}
 
 		result = append(result, info)
