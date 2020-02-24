@@ -9,7 +9,6 @@ HELM_FORCE ?= 0
 
 # Image URL to use all building/pushing image targets
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
-EXAMPLES ?= ${HOME}/tmp/wind-river-cloud-platform-deployment-manager/examples
 BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
 
 GIT_HEAD := $(shell git rev-list -1 HEAD)
@@ -34,7 +33,7 @@ endif
 .PHONY: examples
 
 # Build all artifacts
-all: test manager tools helm-package docker-build
+all: test manager tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -121,15 +120,14 @@ helm-package: helm-lint
 
 # Generate some example deployment configurations
 examples:
-	mkdir -p ${EXAMPLES}
-	kustomize build examples/standard/default  > ${EXAMPLES}/standard.yaml
-	kustomize build examples/standard/vxlan > ${EXAMPLES}/standard-vxlan.yaml
-	kustomize build examples/standard/https > ${EXAMPLES}/standard-https.yaml
-	kustomize build examples/standard/bond > ${EXAMPLES}/standard-bond.yaml
-	kustomize build examples/storage/default  > ${EXAMPLES}/storage.yaml
-	kustomize build examples/aio-sx/default > ${EXAMPLES}/aio-sx.yaml
-	kustomize build examples/aio-sx/vxlan > ${EXAMPLES}/aio-sx-vxlan.yaml
-	kustomize build examples/aio-sx/https > ${EXAMPLES}/aio-sx-https.yaml
-	kustomize build examples/aio-dx/default > ${EXAMPLES}/aio-dx.yaml
-	kustomize build examples/aio-dx/vxlan > ${EXAMPLES}/aio-dx-vxlan.yaml
-	kustomize build examples/aio-dx/https > ${EXAMPLES}/aio-dx-https.yaml
+	kustomize build examples/standard/default > examples/standard.yaml
+	kustomize build examples/standard/vxlan > examples/standard-vxlan.yaml
+	kustomize build examples/standard/https > examples/standard-https.yaml
+	kustomize build examples/standard/bond > examples/standard-bond.yaml
+	kustomize build examples/storage/default > examples/storage.yaml
+	kustomize build examples/aio-sx/default > examples/aio-sx.yaml
+	kustomize build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
+	kustomize build examples/aio-sx/https > examples/aio-sx-https.yaml
+	kustomize build examples/aio-dx/default > examples/aio-dx.yaml
+	kustomize build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
+	kustomize build examples/aio-dx/https > examples/aio-dx-https.yaml
