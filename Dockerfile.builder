@@ -8,6 +8,9 @@ RUN wget https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz -q -O - | tar zx -C
 # version without significant effort.
 RUN wget https://github.com/kubernetes-sigs/kubebuilder/releases/download/v1.0.8/kubebuilder_1.0.8_linux_amd64.tar.gz -q -O - | tar zx -C /usr/local/ --transform 's/kubebuilder_1.0.8_linux_amd64/kubebuilder/'
 
+# Install our required version of Kustomize
+RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
+
 # Install our current version of golangci-lint.  We can probably upgrade to a
 # new version but this one has been tested and verified to work.
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
