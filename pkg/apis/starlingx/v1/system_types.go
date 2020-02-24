@@ -338,7 +338,14 @@ func (in TrapDestInfo) IsKeyEqual(x TrapDestInfo) bool {
 
 // IsKeyEqual compares two ServiceParameter if they mostly match
 func (in ServiceParameterInfo) IsKeyEqual(x ServiceParameterInfo) bool {
-	return in.Service == x.Service && in.Section == x.Section && in.ParamName == x.ParamName && in.Personality == x.Personality && in.Resource == x.Resource
+	if in.Service == x.Service && in.Section == x.Section && in.ParamName == x.ParamName {
+		if (in.Personality == x.Personality) || (in.Personality != nil && x.Personality != nil && *in.Personality == *x.Personality) {
+			if (in.Resource == x.Resource) || (in.Resource != nil && x.Resource != nil && *in.Resource == *x.Resource) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // SystemStatus defines the observed state of System
