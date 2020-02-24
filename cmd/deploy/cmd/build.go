@@ -13,6 +13,7 @@ import (
 	neturl "net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -302,6 +303,14 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to convert deployment struct to YAML: %s\n", err.Error())
 		os.Exit(41)
+	}
+
+	_, err = fmt.Fprintf(outputFile, "# Generated: %s\n# Tool version: %s\n",
+		time.Now().Format(time.UnixDate),
+		VersionToString())
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to write to output file: %s\n", err.Error())
+		os.Exit(42)
 	}
 
 	_, err = fmt.Fprintf(outputFile, "%s", yamlBuf)
