@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+// Version info variables are set in the Makefile
 var GitLastTag string
 var GitHead string
 var GitBranch string
