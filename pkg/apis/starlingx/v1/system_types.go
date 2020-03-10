@@ -63,6 +63,12 @@ func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
 	return false
 }
 
+// IsKeyEqual compares two CertificateInfo list elements and determines
+// if they refer to the same instance.
+func (in CertificateInfo) IsKeyEqual(x CertificateInfo) bool {
+	return in.Type == x.Type
+}
+
 // PrivateKeyExpected determines whether a certificate requires a private key
 // to be supplied to the system API.
 func (in *CertificateInfo) PrivateKeyExpected() bool {
