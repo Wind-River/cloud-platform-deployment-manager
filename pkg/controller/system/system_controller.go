@@ -874,9 +874,12 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 				return err
 			}
 
-			msg := fmt.Sprintf("waiting for %q certificate %q to be created", c.Type, c.Secret)
+			// If we don't find the corresponding secret, this is most likely
+			// a certificate installed outside the scope of deployment-manager
+			// and will be ignored here.
+			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
 			r.WarningEvent(instance, common.ResourceDependency, msg)
-			return common.NewMissingKubernetesResource(msg)
+			continue
 		}
 
 		pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
@@ -1294,14 +1297,6 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 		r.NormalEvent(instance, common.ResourceCreated,
 			"system defaults collected and stored")
 	}
-
-	// NOTE(alegacy): The defaults collected may include certificate info
-	// and since the API does not return the private key we are unable to
-	// build a true representation of what the system looks like and that
-	// means we cannot reconcile it back to the original state.  Remove the
-	// certificate info so that we do not fail when trying to find the
-	// matching Secret.
-	defaults.Certificates = nil
 
 	// Same problem applies to the License file attribute
 	defaults.License = nil
