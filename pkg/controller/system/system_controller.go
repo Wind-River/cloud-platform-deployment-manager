@@ -874,7 +874,11 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 				return err
 			}
 
-			log.Info(fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret))
+			// If we don't find the corresponding secret, this is most likely
+			// a certificate installed outside the scope of deployment-manager
+			// and will be ignored here.
+			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
+			r.WarningEvent(instance, common.ResourceDependency, msg)
 			continue
 		}
 
