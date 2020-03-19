@@ -247,7 +247,7 @@ spec:
                           This attribute is only applicable for Ceph storage backends.
                         format: int64
                         maximum: 3
-                        minimum: 2
+                        minimum: 1
                         type: integer
                       services:
                         description: Services is a list of services to enable for
