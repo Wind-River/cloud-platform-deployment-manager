@@ -155,7 +155,7 @@ type StorageBackend struct {
 	// ReplicationFactor is the number of storage hosts required in each
 	// replication group for storage redundancy.
 	// This attribute is only applicable for Ceph storage backends.
-	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false

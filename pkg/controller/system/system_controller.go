@@ -266,7 +266,7 @@ func (r *ReconcileSystem) ReconcileStorageBackends(client *gophercloud.ServiceCl
 		// dictionary
 		if spec_sb.ReplicationFactor != nil {
 			capabilities := make(map[string]interface{})
-			capabilities["replication"] = *spec_sb.ReplicationFactor
+			capabilities["replication"] = strconv.Itoa(*spec_sb.ReplicationFactor)
 			opts.Capabilities = &capabilities
 		}
 
