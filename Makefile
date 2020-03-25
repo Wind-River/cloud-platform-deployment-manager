@@ -12,8 +12,7 @@ DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
 
 GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG_COMMIT := $(shell git rev-list --tags --max-count=1)
-GIT_LAST_TAG := $(shell git describe --tags $(GIT_LAST_TAG_COMMIT) )
+GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 DEPLOY_LDFLAGS := -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
