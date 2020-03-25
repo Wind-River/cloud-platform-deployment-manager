@@ -1215,11 +1215,11 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 		return nil
 	}
 
-	log.V(2).Info("defaults are:", "values", defaults)
+	log.Info("defaults are:", "values", defaults)
 
-	log.V(2).Info("final profile is:", "values", profile)
+	log.Info("final profile is:", "values", profile)
 
-	log.V(2).Info("current config is:", "values", current)
+	log.Info("current config is:", "values", current)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
