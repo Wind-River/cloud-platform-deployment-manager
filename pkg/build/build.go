@@ -17,6 +17,7 @@ import (
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"regexp"
+	"sort"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
@@ -463,21 +464,35 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 	}
 
 	nets := make([]*starlingxv1.PlatformNetwork, 0)
+	always_generate_networks := []string{"storage"}
+	sort.Strings(always_generate_networks)
 	for _, p := range pools {
 		skip := false
+		network_type := networks.NetworkTypeOther
 		for _, n := range results {
 			if n.PoolUUID == p.ID {
 				// TODO(alegacy): for now we only support networks used for data
 				//  interfaces which are realized in the system as a standalone
 				//  pool without a network so if we find a matching network then
 				//  skip it.
-				skip = true
+				//
+				// sdinescu: we special case storage network type, since this is
+				// a user configurable network type with an attached address pool
+				// and we should always create this network.
+				// Since go doesn't seem to have an easy way to determine if an
+				// element is part of a slice, we sort it and then use
+				// sort.SearchStrings to look for the element.
+				index := sort.SearchStrings(always_generate_networks, n.Type)
+				if always_generate_networks[index] != n.Type {
+					skip = true
+				}
+				network_type = n.Type
 				break
 			}
 		}
 
 		if !skip {
-			net, err := starlingxv1.NewPlatformNetwork(p.Name, db.namespace, p)
+			net, err := starlingxv1.NewPlatformNetwork(p.Name, db.namespace, p, network_type)
 			if err != nil {
 				return err
 			}

@@ -283,7 +283,7 @@ func (r *ReconcilePlatformNetwork) ReconciledDeletedAddressPool(client *gophercl
 // by the ID value stored in the status or to find another resource with a
 // matching name.
 func (r *ReconcilePlatformNetwork) FindExistingAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (pool *addresspools.AddressPool, err error) {
-	id := instance.Status.ID
+	id := instance.Status.PoolUUID
 	if id != nil {
 		// This network was previously provisioned.
 		pool, err = addresspools.Get(client, *id).Extract()
@@ -366,7 +366,7 @@ func networkUpdateRequired(instance *starlingxv1.PlatformNetwork, n *networks.Ne
 		result = true
 	}
 
-	dynamic := bool(spec.Allocation.Type != AllocationTypeDynamic)
+	dynamic := bool(spec.Allocation.Type == AllocationTypeDynamic)
 	if dynamic != n.Dynamic {
 		opts.Dynamic = &dynamic
 		result = true
