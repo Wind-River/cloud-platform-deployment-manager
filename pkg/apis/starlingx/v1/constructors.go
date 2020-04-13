@@ -1336,14 +1336,15 @@ func NewDataNetwork(name string, namespace string, net datanetworks.DataNetwork)
 	return &dataNetwork, nil
 }
 
-func NewPlatformNetworkSpec(pool addresspools.AddressPool) (*PlatformNetworkSpec, error) {
+func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
-		Type:    networks.NetworkTypeOther,
+		Type:    network_type,
 		Subnet:  pool.Network,
 		Prefix:  pool.Prefix,
 		Gateway: pool.Gateway,
 		Allocation: AllocationInfo{
-			Type: networks.AllocationOrderDynamic,
+			Type:  networks.AllocationOrderDynamic,
+			Order: &pool.Order,
 		},
 	}
 
@@ -1361,7 +1362,7 @@ func NewPlatformNetworkSpec(pool addresspools.AddressPool) (*PlatformNetworkSpec
 	return &spec, nil
 }
 
-func NewPlatformNetwork(name string, namespace string, pool addresspools.AddressPool) (*PlatformNetwork, error) {
+func NewPlatformNetwork(name string, namespace string, pool addresspools.AddressPool, network_type string) (*PlatformNetwork, error) {
 	platformNetwork := PlatformNetwork{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
@@ -1376,7 +1377,7 @@ func NewPlatformNetwork(name string, namespace string, pool addresspools.Address
 		},
 	}
 
-	spec, err := NewPlatformNetworkSpec(pool)
+	spec, err := NewPlatformNetworkSpec(pool, network_type)
 	if err != nil {
 		return nil, err
 	}

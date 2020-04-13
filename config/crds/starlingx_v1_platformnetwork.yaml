@@ -114,6 +114,7 @@ spec:
               - cluster-host
               - cluster-pod
               - cluster-service
+              - storage
               - other
               type: string
           required:
