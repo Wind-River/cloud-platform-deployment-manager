@@ -4,6 +4,7 @@
   hosts: all
   gather_facts: false
   become: false
+  tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
