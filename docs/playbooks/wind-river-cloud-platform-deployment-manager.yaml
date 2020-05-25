@@ -32,10 +32,7 @@
 
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
-        platform_path: /opt/platform
-        software_version: "{{ sw_version_result.stdout_lines[0] }}"
-        config_permdir: "{{ platform_path + '/config/' + software_version }}"
-        bootstrap_finalized_flag: "{{ config_permdir }}/.bootstrap_finalized"
+
     - block:
       # Copy required files up to the target host if this playbook is being
       # executed remotely.
