@@ -5,6 +5,31 @@
   gather_facts: false
   become: false
   tasks:
+    - block:
+      - name: Retrieve software version number
+        shell: source /etc/build.info; echo $SW_VERSION
+        register: sw_version_result
+
+      - name: Fail if software version is not defined
+        fail:
+          msg: "SW_VERSION is missing in /etc/build.info"
+        when: sw_version_result.stdout_lines|length == 0
+
+      - name: Set software version and platform path
+        set_fact:
+          software_version: "{{ sw_version_result.stdout_lines[0] }}"
+          platform_path: /opt/platform
+
+      - name: Set config path facts
+        set_fact:
+          config_permdir: "{{ platform_path + '/config/' + software_version }}"
+
+      - name: Mark the bootstrap as finalized
+        file:
+          path: "{{ config_permdir }}/.bootstrap_finalized"
+          state: touch
+        become: yes
+
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
@@ -54,30 +79,6 @@
           state: absent
         delegate_to: localhost
         when: temp.path is defined
-
-      - name: Retrieve software version number
-        shell: source /etc/build.info; echo $SW_VERSION
-        register: sw_version_result
-
-      - name: Fail if software version is not defined
-        fail:
-          msg: "SW_VERSION is missing in /etc/build.info"
-        when: sw_version_result.stdout_lines|length == 0
-
-      - name: Set software version and platform path
-        set_fact:
-          software_version: "{{ sw_version_result.stdout_lines[0] }}"
-          platform_path: /opt/platform
-
-      - name: Set config path facts
-        set_fact:
-          config_permdir: "{{ platform_path + '/config/' + software_version }}"
-
-      - name: Mark the bootstrap as finalized
-        file:
-          path: "{{ config_permdir }}/.bootstrap_finalized"
-          state: touch
-        become: yes
 
       when: inventory_hostname != 'localhost'
 
