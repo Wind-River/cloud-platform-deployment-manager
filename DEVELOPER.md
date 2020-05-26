@@ -125,6 +125,13 @@ sudo usermod -a -G docker ${USER}
 newgrp docker
 ```
 
+#### Dep
+Dep is a depedency management tool for Go installed to the ${GOPATH}/bin directory.
+
+```bash
+curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+```
+
 ## Environment Test/Verification
 
 If you have setup your environment properly you should be able to clone the
@@ -418,4 +425,80 @@ docker tag wind-river/cloud-platform-deployment-manager:latest ${MY_REGISTRY}/wi
 docker tag wind-river/cloud-platform-deployment-manager:debug ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:debug
 docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
 docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:debug
+```
+
+## Troubleshooting dep
+If you encounter issues with dep (eg, dep command hangs), check the following:
+
+#### ~/.cache directory
+
+Your home directory is a shared file system under /folk. Having the .cache
+directory in your folk directory can end up filling up the disk quota. Use a
+symbolic link instead.
+
+```bash
+mv /folk/${USER}/.cache /localdisk/loadbuild/${USER}/.cache and
+ln -s /localdisk/loadbuild/${USER}/.cache /folk/${USER}/.cache
+```
+
+#### Hanging processes
+
+Ctrl-C may not completely terminate dep. Check ps -a for dep and its
+subprocesses:
+```bash
+dep
+ssh
+git
+```
+Before killing any of these subprocess, ensure you are not running other
+background process that involve git or ssh.
+
+#### ssh keys
+
+Ensure your ssh keys are set up properly. Check that the commands work without
+prompting for your password:
+```bash
+> ssh -T git@github.com
+Warning: Permanently added the RSA host key for IP address '140.82.113.4' to the list of known hosts.
+Hi <your-git-username>! You've successfully authenticated, but GitHub does not provide shell access.
+
+> ssh -T localhost ls
+Pictures
+public
+```
+
+If not, check that you added your public key to github. If you ran ssh-keygen
+again after ~/.ssh/authorized_keys was already created/added, copy your latest
+public key to ~/.ssh/authorized_keys.
+
+#### Versions
+
+Try using Go 1.12 if newer versions aren't working. Check with:
+```bash
+> go version
+go version go1.12.9 linux/amd64
+```
+
+Check that dep version matches:
+```bash
+> dep version
+dep:
+ version     : v0.5.4
+ build date  : 2019-07-01
+ git hash    : 1f7c19e
+ go version  : go1.12.6
+ go compiler : gc
+ platform    : linux/amd64
+ features    : ImportDuringSolve=false
+```
+
+#### Additional troubleshooting methods
+Use the -v flag for verbose output, ie
+```bash
+dep ensure -v -update github.com/gophercloud/gophercloud
+```
+
+Or use strace
+```bash
+strace ensure -v -update github.com/gophercloud/gophercloud
 ```
