@@ -437,13 +437,13 @@ limited space, the .cache directory could end up filling up your quota. Use a
 symbolic link instead.
 
 ```bash
-mv /folk/${USER}/.cache /localdisk/loadbuild/${USER}/.cache and
-ln -s /localdisk/loadbuild/${USER}/.cache /folk/${USER}/.cache
+mv ${HOME}/.cache /localdisk/loadbuild/${USER}/.cache and
+ln -s /localdisk/loadbuild/${USER}/.cache ${HOME}/.cache
 ```
 
 #### Hanging processes
 
-Ctrl-C may not completely terminate dep. Check ps -a for dep and its
+If "dep ensure -update" command is hung, use ps -a to check for dep and its
 subprocesses:
 ```bash
 dep
