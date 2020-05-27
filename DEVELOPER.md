@@ -432,8 +432,8 @@ If you encounter issues with dep (eg, dep command hangs), check the following:
 
 #### ~/.cache directory
 
-Your home directory is a shared file system under /folk. Having the .cache
-directory in your folk directory can end up filling up the disk quota. Use a
+Your home directory is a shared file system. If disk quotas are enabled due to
+limited space, the .cache directory could end up filling up your quota. Use a
 symbolic link instead.
 
 ```bash
