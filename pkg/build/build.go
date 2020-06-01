@@ -483,7 +483,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 				// element is part of a slice, we sort it and then use
 				// sort.SearchStrings to look for the element.
 				index := sort.SearchStrings(always_generate_networks, n.Type)
-				if always_generate_networks[index] != n.Type {
+				if index >= len(always_generate_networks) || always_generate_networks[index] != n.Type {
 					skip = true
 				}
 				network_type = n.Type
