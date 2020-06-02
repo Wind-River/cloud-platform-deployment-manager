@@ -240,9 +240,13 @@ func parseMemoryInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 			// VM memory allocations
 			vm2m := MemoryFunctionInfo{
-				Function:  memory.MemoryFunctionVM,
-				PageSize:  string(PageSize2M),
-				PageCount: m.VM2MHugepagesCount,
+				Function: memory.MemoryFunctionVM,
+				PageSize: string(PageSize2M),
+			}
+			if m.VM2MHugepagesPending == nil {
+				vm2m.PageCount = m.VM2MHugepagesCount
+			} else {
+				vm2m.PageCount = *m.VM2MHugepagesPending
 			}
 
 			if m.VSwitchHugepagesSize == PageSize2M.Megabytes() {
@@ -263,9 +267,13 @@ func parseMemoryInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			info.Functions = append(info.Functions, vm2m)
 
 			vm1g := MemoryFunctionInfo{
-				Function:  memory.MemoryFunctionVM,
-				PageSize:  string(PageSize1G),
-				PageCount: m.VM1GHugepagesCount,
+				Function: memory.MemoryFunctionVM,
+				PageSize: string(PageSize1G),
+			}
+			if m.VM1GHugepagesPending == nil {
+				vm1g.PageCount = m.VM1GHugepagesCount
+			} else {
+				vm1g.PageCount = *m.VM1GHugepagesPending
 			}
 			info.Functions = append(info.Functions, vm1g)
 		}
