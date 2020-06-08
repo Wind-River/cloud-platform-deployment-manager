@@ -297,15 +297,6 @@ spec:
                       name:
                         description: Name defines the system defined name of the filesystem
                           resource.
-                        enum:
-                        - cgcs
-                        - platform
-                        - cinder
-                        - database
-                        - docker-distribution
-                        - etcd
-                        - extension
-                        - patch-vault
                         type: string
                       size:
                         format: int64
