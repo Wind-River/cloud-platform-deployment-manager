@@ -622,14 +622,25 @@ Helm chart from this repo.  If a specific version needs to be used or if the
 Helm chart has simply already been stored locally, then a playbook variable must
 be overridden to provide an alternative source for the chart.
 
-To override the location of the chart to a local file simply set the ```manager_chart_source```
+The playbook consists of tasks that require privilege escalation. For this reason
+it is important to provide the ansible become password through an ansible overrides
+file. This password is supplied to Ansible through command line using the ```-e```
+option. For reference, a sample ansible overrides file is given below.
+
+```bash
+$ cat ansible-overrides.yaml
+
+ansible_become_pass: Li69nux*
+```
+
+To override the location of the chart to a local file simply set the ```deployment_manager_chart```
 variable to the absolute or relative path to the chart.  This can be accomplished
 at the command line using a ```-e``` override using the following syntax. For
 more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "manager_chart_source=/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.5.tgz"
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.5.tgz -e @ansible-overrides.yaml"
 ```
 
 The system deployment configuration file must be specified using the

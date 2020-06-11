@@ -57,6 +57,30 @@
 
       when: inventory_hostname != 'localhost'
 
+    - name: Retrieve software version number
+      shell: source /etc/build.info; echo $SW_VERSION
+      register: sw_version_result
+
+    - name: Fail if software version is not defined
+      fail:
+        msg: "SW_VERSION is missing in /etc/build.info"
+      when: sw_version_result.stdout_lines|length == 0
+
+    - name: Set software version and platform path
+      set_fact:
+        software_version: "{{ sw_version_result.stdout_lines[0] }}"
+        platform_path: /opt/platform
+
+    - name: Set config path facts
+      set_fact:
+        config_permdir: "{{ platform_path + '/config/' + software_version }}"
+
+    - name: Mark the bootstrap as finalized
+      file:
+        path: "{{ config_permdir }}/.bootstrap_finalized"
+        state: touch
+      become: yes
+
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
 
