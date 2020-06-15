@@ -630,7 +630,7 @@ option. For reference, a sample ansible overrides file is given below.
 ```bash
 $ cat ansible-overrides.yaml
 
-ansible_become_pass: Li69nux*
+ansible_become_pass: TestSysadminPassword
 ```
 
 To override the location of the chart to a local file simply set the ```deployment_manager_chart```
@@ -640,7 +640,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.5.tgz -e @ansible-overrides.yaml"
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.5.tgz" -e @ansible-overrides.yaml
 ```
 
 The system deployment configuration file must be specified using the
