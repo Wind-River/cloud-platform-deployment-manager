@@ -522,12 +522,12 @@ A pre-built copy of the Deployment Manager Helm chart can be downloaded from
 this repo at the following location.  Alternatively, it can be accessed
 directly from the cloned repo in the ```docs/charts``` directory.
 
-https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.5.tgz
+https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.6.tgz
 
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.5.tgz
+helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.6.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -536,7 +536,7 @@ further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.5.tgz
+helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.6.tgz
 ```
 
 The default Helm chart assumes that the Deployment Manager image is present in
@@ -552,7 +552,7 @@ image location can be overridden to specify a private URL using the following
 syntax assuming that the private registry is hosted at "your.registry.org".
 
 ```bash
-helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.5.tgz
+helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.6.tgz
 ```
 
 
@@ -640,7 +640,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.5.tgz" -e @ansible-overrides.yaml
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.6.tgz" -e @ansible-overrides.yaml
 ```
 
 The system deployment configuration file must be specified using the
