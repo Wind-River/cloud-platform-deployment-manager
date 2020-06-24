@@ -10,26 +10,30 @@ kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,syste
 ```
 
 Of primary interest is the INSYNC column, which shows whether the deployment-manager
-has been able to synchronize the deployment configuration with the system:
+has been able to synchronize the deployment configuration with the system, and
+the RECONCILED column, which shows that the synchronization completed once:
 ```
-controller-0:~$ kubectl -n deployment get
-datanetworks,hostprofiles,hosts,platformnetworks,systems
-NAME                                                TYPE   INSYNC
-datanetwork.starlingx.windriver.com/group0-data0    vlan   true
-datanetwork.starlingx.windriver.com/group0-data0b   vlan   true
-datanetwork.starlingx.windriver.com/group0-data1    vlan   true
-datanetwork.starlingx.windriver.com/group0-ext0     vlan   true
+controller-0:~$ kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems
+NAME                                               TYPE   INSYNC   RECONCILED
+datanetwork.starlingx.windriver.com/group0-data0   vlan   true     true
 
-NAME                                                     BASE
-hostprofile.starlingx.windriver.com/controller-profile
+NAME                                                       BASE
+hostprofile.starlingx.windriver.com/compute-0-profile
+hostprofile.starlingx.windriver.com/compute-1-profile
+hostprofile.starlingx.windriver.com/controller-0-profile
+hostprofile.starlingx.windriver.com/storage-0-profile
 
-NAME                                        ADMINISTRATIVE   OPERATIONAL
-AVAILABILITY   PROFILE              INSYNC
-host.starlingx.windriver.com/controller-0   unlocked         enabled       available
-controller-profile   true
+NAME                                        ADMINISTRATIVE   OPERATIONAL   AVAILABILITY   PROFILE                INSYNC   RECONCILED
+host.starlingx.windriver.com/compute-0      unlocked         enabled       available      compute-0-profile      true     true
+host.starlingx.windriver.com/compute-1      unlocked         enabled       available      compute-1-profile      true     true
+host.starlingx.windriver.com/compute-2      unlocked         enabled       available      compute-1-profile      true     true
+host.starlingx.windriver.com/controller-0   unlocked         enabled       available      controller-0-profile   true     true
+host.starlingx.windriver.com/controller-1   unlocked         enabled       available      controller-0-profile   true     true
+host.starlingx.windriver.com/storage-0      unlocked         enabled       available      storage-0-profile      true     true
+host.starlingx.windriver.com/storage-1      unlocked         enabled       available      storage-0-profile      true     true
 
-NAME                                  MODE      TYPE         VERSION   INSYNC
-system.starlingx.windriver.com/vbox   simplex   all-in-one   19.12     true
+NAME                                                    MODE     TYPE       VERSION   INSYNC   RECONCILED
+system.starlingx.windriver.com/sample-system   duplex   standard   20.06     true     true
 ```
 
 ## Looking at logs of the currently running Pod
@@ -49,6 +53,13 @@ data collection mechanism.
  
 ```
 kubectl -n platform-deployment-manager logs platform-deployment-manager-0 manager -p
+```
+
+## Viewing event history
+Recorded events can show actions taken by deployment-manager and system events.
+
+```
+kubectl -n deployment get events --sort-by='.metadata.creationTimestamp'
 ```
 
 ## Increasing the log level
