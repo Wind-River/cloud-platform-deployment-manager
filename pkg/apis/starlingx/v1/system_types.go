@@ -111,7 +111,6 @@ type ServiceParameterInfo struct {
 	Section string `json:"section"`
 
 	// ParamName identifies the name for this service parameter
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	// +kubebuilder:validation:MaxLength=255
 	ParamName string `json:"paramname"`
 
