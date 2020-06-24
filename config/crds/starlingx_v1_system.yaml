@@ -160,7 +160,6 @@ spec:
                   paramname:
                     description: ParamName identifies the name for this service parameter
                     maxLength: 255
-                    pattern: ^[a-zA-Z0-9\-_]+$
                     type: string
                   paramvalue:
                     description: ParamValue identifies the value for this service
