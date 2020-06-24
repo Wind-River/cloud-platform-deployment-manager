@@ -3,12 +3,12 @@ entries:
   wind-river-cloud-platform-deployment-manager:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2020-06-24T14:18:01.938710042-04:00"
+    created: "2020-06-24T17:04:49.732509509-04:00"
     description: A Helm chart for the Deployment Manager
-    digest: 4e212378d7740b27565e0f81b8d3922c408a09e36efffa2537370517eaad7c2f
+    digest: cf0b189a3a3229f2cbec157e64bea898dea0ae5c9b323c43bc4d67684c37e41d
     icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png
     name: wind-river-cloud-platform-deployment-manager
     urls:
-    - wind-river-cloud-platform-deployment-manager-2.0.5.tgz
-    version: 2.0.5
-generated: "2020-06-24T14:18:01.936666206-04:00"
+    - wind-river-cloud-platform-deployment-manager-2.0.6.tgz
+    version: 2.0.6
+generated: "2020-06-24T17:04:49.7307285-04:00"
