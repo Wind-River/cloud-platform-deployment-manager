@@ -429,7 +429,7 @@ func init() {
 func (in *System) HTTPSEnabled() bool {
 	if in.Spec.Certificates != nil {
 		for _, c := range *in.Spec.Certificates {
-			if c.Type == PlatformCertificate {
+			if (c.Type == PlatformCertificate) || (c.Type == TPMCertificate) {
 				return true
 			}
 		}
