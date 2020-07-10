@@ -14,6 +14,7 @@ import (
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"net"
 )
 
 // MergeProfiles invokes the mergo.Merge API with our desired modifiers.
@@ -139,6 +140,35 @@ func (r *ReconcileHost) BuildCompositeProfile(host *starlingxv1.Host) (*starling
 		composite.Interfaces.Ethernet = nil
 	}
 
+	// Remove leading zeros from each IP address in the composite profile
+	addressList := make([]starlingxv1.AddressInfo, 0)
+	for _, addr := range composite.Addresses {
+		address := starlingxv1.AddressInfo{
+			Interface: addr.Interface,
+			Address:   net.ParseIP(addr.Address).String(),
+			Prefix:    addr.Prefix,
+		}
+		addressList = append(addressList, address)
+	}
+	if len(addressList) > 0 {
+		composite.Addresses = addressList
+	}
+
+	routeList := make([]starlingxv1.RouteInfo, 0)
+	for _, rt := range composite.Routes {
+		route := starlingxv1.RouteInfo{
+			Interface: rt.Interface,
+			Network:   net.ParseIP(rt.Network).String(),
+			Prefix:    rt.Prefix,
+			Gateway:   net.ParseIP(rt.Gateway).String(),
+			Metric:    rt.Metric,
+		}
+		routeList = append(routeList, route)
+	}
+	if len(routeList) > 0 {
+		composite.Routes = routeList
+	}
+
 	return composite, nil
 }
 
@@ -248,6 +278,30 @@ func (r *ReconcileHost) validateBoardManagement(host *starlingxv1.Host, profile 
 	return nil
 }
 
+// validateProfileAddresses performs validation of IPv4 and IPv6 addresses
+// configured for the host
+func (r *ReconcileHost) validateProfileAddresses(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
+	for _, addr := range profile.Addresses {
+		if net.ParseIP(addr.Address) == nil {
+			msg := "'address' profile attributes need to be in a valid IPv4 or IPv6 address format"
+			return common.NewValidationError(msg)
+		}
+	}
+
+	for _, rt := range profile.Routes {
+		if net.ParseIP(rt.Network) == nil {
+			msg := "'network' profile attributes need to be in a valid IPv4 or IPv6 address format"
+			return common.NewValidationError(msg)
+		}
+		if net.ParseIP(rt.Gateway) == nil {
+			msg := "'gateway' profile attributes need to be in a valid IPv4 or IPv6 address format"
+			return common.NewValidationError(msg)
+		}
+	}
+
+	return nil
+}
+
 // validateProfileSpec is a private method to validate the contents of a profile
 // spec resource.
 func (r *ReconcileHost) validateProfileSpec(host *starlingxv1.Host, profile *starlingxv1.HostProfileSpec) error {
@@ -298,6 +352,11 @@ func (r *ReconcileHost) validateProfileSpec(host *starlingxv1.Host, profile *sta
 	}
 
 	err = r.validateBoardManagement(host, profile)
+	if err != nil {
+		return err
+	}
+
+	err = r.validateProfileAddresses(host, profile)
 	if err != nil {
 		return err
 	}
