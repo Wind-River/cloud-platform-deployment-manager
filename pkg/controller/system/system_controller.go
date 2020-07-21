@@ -848,8 +848,9 @@ func (r *ReconcileSystem) PrivateKeyTranmissionAllowed(client *gophercloud.Servi
 // ReconcileCertificates configures the system certificates to align with the
 // desired list of certificates.
 func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
+
 	var cert *x509.Certificate
-	var result *certificates.Certificate
+	var resultList []*certificates.Certificate
 
 	if !config.IsReconcilerEnabled(config.Certificate) {
 		return nil
@@ -939,15 +940,16 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 
 			log.Info("installing certificate", "signature", signature)
 
-			result, err = certificates.Create(client, opts).Extract()
+			resultList, err = certificates.Create(client, opts).Extract()
+
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to create certificate: %s", common.FormatStruct(opts))
 				return err
 			}
-
-			r.NormalEvent(instance, common.ResourceCreated,
-				"certificate %q has been installed", result.Signature)
-
+			for _, res := range resultList {
+				r.NormalEvent(instance, common.ResourceCreated,
+					"certificate %q has been installed", res.Signature)
+			}
 			updated = true
 		}
 	}
@@ -961,6 +963,7 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 		}
 
 		info.Certificates = result
+
 	}
 
 	return nil

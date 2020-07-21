@@ -57,7 +57,7 @@ type CertificateInfo struct {
 // point to a Secret named by the system.
 func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
 	if other != nil {
-		return in.Type == other.Type
+		return (in.Type == other.Type) && (in.Secret == other.Secret)
 	}
 
 	return false
@@ -66,7 +66,7 @@ func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
 // IsKeyEqual compares two CertificateInfo list elements and determines
 // if they refer to the same instance.
 func (in CertificateInfo) IsKeyEqual(x CertificateInfo) bool {
-	return in.Type == x.Type
+	return (in.Type == x.Type) && (in.Secret == x.Secret)
 }
 
 // PrivateKeyExpected determines whether a certificate requires a private key

@@ -25,7 +25,7 @@ type CreateResult struct {
 	commonResult
 }
 
-func (r CreateResult) Extract() (*Certificate, error) {
+func (r CreateResult) Extract() ([]*Certificate, error) {
 	var s CreateResponse
 	err := r.ExtractInto(&s)
 	if s.Error != "" {
@@ -52,7 +52,7 @@ type DeleteResult struct {
 // CertificateResponse defines a special wrapper to deal with the non-standard
 // response format of certificate install API.
 type CreateResponse struct {
-	Certificate *Certificate `json:"certificates,omitempty"`
+	Certificate []*Certificate `json:"certificates,omitempty"`
 	Body        string       `json:"body"`
 	Success     string       `json:"success"`
 	Error       string       `json:"error"`
