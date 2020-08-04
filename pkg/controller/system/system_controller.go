@@ -963,7 +963,6 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 		}
 
 		info.Certificates = result
-
 	}
 
 	return nil
