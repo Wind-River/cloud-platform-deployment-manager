@@ -48,6 +48,10 @@ type CertificateInfo struct {
 	// "tpm" certificate types, and only if the supplied public certificate is
 	// signed by a non-standard root CA.
 	Secret string `json:"secret"`
+
+	// Signature is the serial number of the certificate prepended with its
+	// type. This attribute is for internal use only, when making comparisons
+	Signature string `json:"-"`
 }
 
 // DeepEqual overrides the code generated DeepEqual method because the
@@ -57,7 +61,12 @@ type CertificateInfo struct {
 // point to a Secret named by the system.
 func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
 	if other != nil {
-		return (in.Type == other.Type) && (in.Secret == other.Secret)
+		// If signature attribute is blank, the certificate is defined outside
+		// of deployment manager's scope. Instead, compare secret names
+		if in.Signature == "" {
+			return (in.Type == other.Type) && (in.Secret == other.Secret)
+		}
+		return (in.Type == other.Type) && (in.Signature == other.Signature)
 	}
 
 	return false
@@ -66,7 +75,12 @@ func (in *CertificateInfo) DeepEqual(other *CertificateInfo) bool {
 // IsKeyEqual compares two CertificateInfo list elements and determines
 // if they refer to the same instance.
 func (in CertificateInfo) IsKeyEqual(x CertificateInfo) bool {
-	return (in.Type == x.Type) && (in.Secret == x.Secret)
+	// If signature attribute is blank, the certificate is defined outside
+	// of deployment manager's scope. Instead, compare secret names
+	if (in.Signature == "") || (x.Signature == "") {
+		return (in.Type == x.Type) && (in.Secret == x.Secret)
+	}
+	return (in.Type == x.Type) && (in.Signature == x.Signature)
 }
 
 // PrivateKeyExpected determines whether a certificate requires a private key

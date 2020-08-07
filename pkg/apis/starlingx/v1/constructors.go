@@ -897,7 +897,8 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 			Type: c.Type,
 			// Use a fixed naming so that we can document how we auto-generate
 			// a full system description for cloning purposes
-			Secret: autoGenerateCertName(c.Type, index),
+			Secret:    autoGenerateCertName(c.Type, index),
+			Signature: c.Signature,
 		}
 
 		result = append(result, cert)
