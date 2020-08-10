@@ -213,7 +213,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "9a97d9a2ef3ac06c3a6e00e8ff2c48520186faee"
+  revision = "abb0f022084ae9d905c97d757cd5950ec722dd12"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]
