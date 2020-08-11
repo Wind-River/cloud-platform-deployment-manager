@@ -1280,9 +1280,10 @@ func (r *ReconcileSystem) GetCertificateSignatures(instance *starlingxv1.System)
 	var cert *x509.Certificate
 	result := make([]starlingxv1.CertificateInfo, 0)
 
-	// Certificates cannot be deleted once they are installed so look at the
-	// list of certificates coming from the user and add any that are missing
-	// from the system.
+	if instance.Spec.Certificates == nil {
+		return nil
+	}
+
 	for _, c := range *instance.Spec.Certificates {
 		secret := v1.Secret{}
 
