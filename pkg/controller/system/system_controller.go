@@ -137,7 +137,8 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1.System) 
 	}
 
 	for _, c := range *instance.Spec.Certificates {
-		if c.Type != starlingxv1.PlatformCertificate {
+		if c.Type != starlingxv1.PlatformCertificate &&
+			c.Type != starlingxv1.TPMCertificate {
 			// We only interact with the platform API therefore we do not need
 			// to install any other CA certificate locally.
 			continue
@@ -849,7 +850,6 @@ func (r *ReconcileSystem) PrivateKeyTranmissionAllowed(client *gophercloud.Servi
 // desired list of certificates.
 func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 
-	var cert *x509.Certificate
 	var certificateList []*certificates.Certificate
 
 	if !config.IsReconcilerEnabled(config.Certificate) {
@@ -865,6 +865,12 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 	// from the system.
 	updated := false
 	for _, c := range *spec.Certificates {
+		if c.Type == starlingxv1.TPMCertificate {
+			// Skip TPM certificates for now, they can only be installed after
+			// the hosts are unlocked
+			continue
+		}
+
 		secret := v1.Secret{}
 
 		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
@@ -884,23 +890,9 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 			continue
 		}
 
-		pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
-		if !ok {
-			msg := fmt.Sprintf("missing %q key in certificate secret %s",
-				starlingxv1.SecretCertKey, c.Secret)
-			return common.NewUserDataError(msg)
-		}
-
-		block, _ := pem.Decode(pemBlock)
-		if block == nil {
-			msg := fmt.Sprintf("unexpected certificate contents in secret %s", c.Secret)
-			return common.NewUserDataError(msg)
-		}
-
-		cert, err = x509.ParseCertificate(block.Bytes)
-		if cert == nil || err != nil {
-			msg := fmt.Sprintf("corrupt certificate contents in secret %s", c.Secret)
-			return common.NewUserDataError(msg)
+		signature, pemBlock, err := r.GetCertificateContents(instance, c)
+		if err != nil {
+			return err
 		}
 
 		if c.PrivateKeyExpected() {
@@ -920,10 +912,131 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 			pemBlock = append(pemBlock, keyBytes...)
 		}
 
-		// The system API reports the serial number prepended with the mode as
-		// a "signature" rather than the actual signature so replicate that here
-		// for the purpose of comparisons.
-		signature := fmt.Sprintf("%s_%d", c.Type, cert.SerialNumber)
+		found := false
+		for _, certificate := range info.Certificates {
+			if certificate.Signature == signature {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			opts := certificates.CertificateOpts{
+				Type: c.Type,
+				File: pemBlock,
+			}
+
+			log.Info("installing certificate", "signature", signature)
+
+			certificateList, err = certificates.Create(client, opts).Extract()
+
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to create certificate: %s", common.FormatStruct(opts))
+				return err
+			}
+			for _, certificate := range certificateList {
+				r.NormalEvent(instance, common.ResourceCreated,
+					"certificate %q has been installed", certificate.Signature)
+			}
+			updated = true
+		}
+	}
+
+	if updated {
+
+		result, err := certificates.ListCertificates(client)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to refresh certificate list")
+			return err
+		}
+
+		info.Certificates = result
+	}
+
+	return nil
+}
+
+func (r *ReconcileSystem) ReconcileTPMCertificates(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
+	var certificateList []*certificates.Certificate
+
+	if !config.IsReconcilerEnabled(config.Certificate) {
+		return nil
+	}
+
+	if spec.Certificates == nil {
+		return nil
+	}
+
+	// Certificates cannot be deleted once they are installed so look at the
+	// list of certificates coming from the user and add any that are missing
+	// from the system.
+	updated := false
+	for _, c := range *spec.Certificates {
+		if c.Type != starlingxv1.TPMCertificate {
+			// Skip certificates that are not TPM certs, they were installed
+			// earlier in ReconcileCertificates
+			continue
+		}
+
+		required := 2
+		if !strings.EqualFold(info.SystemMode, string(cloudManager.SystemModeDuplex)) {
+			// If the system mode is Simplex, skip installing the TPM certificate
+			msg := fmt.Sprintf("skipping %q certificate %q from system, system must be Duplex", c.Type, c.Secret)
+			r.WarningEvent(instance, common.ResourceDependency, msg)
+			continue
+		}
+		hostsList, err := hosts.ListHosts(client)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to list hosts")
+			return err
+		}
+
+		if !controllerNodesAvailable(hostsList, required) {
+			msg := fmt.Sprintf("waiting for %d controller(s) in available state before installing TPM certificate", required)
+			m := NewAvailableControllerNodeMonitor(instance, required)
+			return r.StartMonitor(m, msg)
+		}
+
+		secret := v1.Secret{}
+
+		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
+		err = r.Get(context.TODO(), secretName, &secret)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				err = perrors.Wrap(err, "failed to get certificate secret")
+				return err
+			}
+
+			// If we don't find the corresponding secret, this is most likely
+			// a certificate installed outside the scope of deployment-manager
+			// and will be ignored here.
+
+			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
+			r.WarningEvent(instance, common.ResourceDependency, msg)
+			continue
+		}
+
+		signature, pemBlock, err := r.GetCertificateContents(instance, c)
+		if err != nil {
+			return err
+		}
+
+		if c.PrivateKeyExpected() {
+			if err := r.PrivateKeyTranmissionAllowed(client, info); err != nil {
+				// The system is not in a state to safely transmit private key
+				// information.
+				return err
+			}
+
+			keyBytes, ok := secret.Data[starlingxv1.SecretPrivKeyKey]
+			if !ok {
+				msg := fmt.Sprintf("missing %q key in certificate secret %s",
+					starlingxv1.SecretPrivKeyKey, c.Secret)
+				return common.NewUserDataError(msg)
+			}
+
+			pemBlock = append(pemBlock, keyBytes...)
+		}
 
 		found := false
 		for _, certificate := range info.Certificates {
@@ -1098,7 +1211,11 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 // other resource types.  That is, once we know that the controllers are already
 // enabled so that we can provision the file systems.
 func (r *ReconcileSystem) ReconcileSystemFinal(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
-	err := r.ReconcileFileSystems(client, instance, spec, info)
+	err := r.ReconcileTPMCertificates(client, instance, spec, info)
+	if err != nil {
+		return err
+	}
+	err = r.ReconcileFileSystems(client, instance, spec, info)
 	if err != nil {
 		return err
 	}
@@ -1276,64 +1393,53 @@ func MergeSystemSpecs(a, b *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, er
 	return a, nil
 }
 
-func (r *ReconcileSystem) GetCertificateSignatures(instance *starlingxv1.System) error {
+// GetCertificateContents retrieves the signature and the contents of the
+// secrets for a given certificate.
+func (r *ReconcileSystem) GetCertificateContents(instance *starlingxv1.System, c starlingxv1.CertificateInfo) (signature string, pemBlock []byte, err error) {
+
 	var cert *x509.Certificate
-	result := make([]starlingxv1.CertificateInfo, 0)
 
-	if instance.Spec.Certificates == nil {
-		return nil
+	secret := v1.Secret{}
+
+	secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
+	err = r.Get(context.TODO(), secretName, &secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			err = perrors.Wrap(err, "failed to get certificate secret")
+			return "", nil, err
+		}
+
+		// If we don't find the corresponding secret, this is most likely
+		// a certificate installed outside the scope of deployment-manager
+		// and will be ignored here.
+		msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
+		r.WarningEvent(instance, common.ResourceDependency, msg)
 	}
 
-	for _, c := range *instance.Spec.Certificates {
-		secret := v1.Secret{}
-
-		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
-		err := r.Get(context.TODO(), secretName, &secret)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				err = perrors.Wrap(err, "failed to get certificate secret")
-				return err
-			}
-
-			// If we don't find the corresponding secret, this is most likely
-			// a certificate installed outside the scope of deployment-manager
-			// and will be ignored here.
-			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
-			r.WarningEvent(instance, common.ResourceDependency, msg)
-		}
-
-		pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
-		if !ok {
-			msg := fmt.Sprintf("missing %q key in certificate secret %s",
-				starlingxv1.SecretCertKey, c.Secret)
-			return common.NewUserDataError(msg)
-		}
-
-		block, _ := pem.Decode(pemBlock)
-		if block == nil {
-			msg := fmt.Sprintf("unexpected certificate contents in secret %s", c.Secret)
-			return common.NewUserDataError(msg)
-		}
-
-		cert, err = x509.ParseCertificate(block.Bytes)
-		if cert == nil || err != nil {
-			msg := fmt.Sprintf("corrupt certificate contents in secret %s", c.Secret)
-			return common.NewUserDataError(msg)
-		}
-
-		// Determine the "signature" based on the certificate type and the
-		// serial number reported by the system API
-		signature := fmt.Sprintf("%s_%d", c.Type, cert.SerialNumber)
-
-		certificate := starlingxv1.CertificateInfo{
-			Type:      c.Type,
-			Secret:    c.Secret,
-			Signature: signature,
-		}
-		result = append(result, certificate)
+	pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
+	if !ok {
+		msg := fmt.Sprintf("missing %q key in certificate secret %s",
+			starlingxv1.SecretCertKey, c.Secret)
+		return "", nil, common.NewUserDataError(msg)
 	}
-	*instance.Spec.Certificates = result
-	return nil
+
+	block, _ := pem.Decode(pemBlock)
+	if block == nil {
+		msg := fmt.Sprintf("unexpected certificate contents in secret %s", c.Secret)
+		return "", nil, common.NewUserDataError(msg)
+	}
+
+	cert, err = x509.ParseCertificate(block.Bytes)
+	if cert == nil || err != nil {
+		msg := fmt.Sprintf("corrupt certificate contents in secret %s", c.Secret)
+		return "", nil, common.NewUserDataError(msg)
+	}
+
+	// Determine the "signature" based on the certificate type and the
+	// serial number reported by the system API
+	signature = fmt.Sprintf("%s_%d", c.Type, cert.SerialNumber)
+
+	return signature, pemBlock, nil
 }
 
 // ReconcileResource interacts with the system API in order to reconcile the
@@ -1364,9 +1470,22 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 	// Same problem applies to the License file attribute
 	defaults.License = nil
 
-	err = r.GetCertificateSignatures(instance)
-	if err != nil {
-		return err
+	// Populate the signature field of each certificate
+	if instance.Spec.Certificates != nil {
+		certificateList := make([]starlingxv1.CertificateInfo, 0)
+		for _, c := range *instance.Spec.Certificates {
+			signature, _, err := r.GetCertificateContents(instance, c)
+			if err != nil {
+				return err
+			}
+			certificate := starlingxv1.CertificateInfo{
+				Type:      c.Type,
+				Secret:    c.Secret,
+				Signature: signature,
+			}
+			certificateList = append(certificateList, certificate)
+		}
+		*instance.Spec.Certificates = certificateList
 	}
 
 	// Merge the system defaults with the desired attributes so that any
