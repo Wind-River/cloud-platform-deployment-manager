@@ -39,7 +39,10 @@ publish: helm-package docker-push
 
 # Run tests
 test: generate fmt vet manifests helm-lint
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	for idx in $$(seq 1 3) ; do \
+		echo "Trial #$${idx}" ; \
+		(go test ./pkg/... ./cmd/... -coverprofile cover.out) && break ; \
+	done
 
 # Build manager binary
 manager: generate fmt vet
