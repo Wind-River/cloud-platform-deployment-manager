@@ -39,7 +39,15 @@ publish: helm-package docker-push
 
 # Run tests
 test: generate fmt vet manifests helm-lint
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	# Retry up to 3 times in case of intermittent control-plane failure
+	for idx in $$(seq 1 3) ; do \
+		echo "Trial #$${idx}" ; \
+		go test ./pkg/... ./cmd/... -coverprofile cover.out && break ; \
+		if [ "$$idx" -lt "3" ]; then
+			echo "Retrying after 1 second..."
+			sleep 1
+		fi
+	done
 
 # Build manager binary
 manager: generate fmt vet
