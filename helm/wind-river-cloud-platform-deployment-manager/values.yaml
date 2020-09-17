@@ -38,16 +38,6 @@ manager:
         bmc:
           httpsRequired: false
 
-tolerations:
-  - effect: NoSchedule
-    key: services
-    operator: Equal
-    value: disabled
-  - effect: NoExecute
-    key: services
-    operator: Equal
-    value: disabled
-
 resources: {}
 # NOTE(alegacy): disabled until required.
 #  limits:
