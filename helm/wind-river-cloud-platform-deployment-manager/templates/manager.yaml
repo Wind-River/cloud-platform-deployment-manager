@@ -137,7 +137,7 @@ spec:
         - mountPath: /etc/manager
           name: config
       nodeSelector:
-        kubernetes.io/hostname: controller-0
+        node-role.kubernetes.io/master: ""
       terminationGracePeriodSeconds: 10
 {{- with .Values.tolerations }}
       tolerations:
