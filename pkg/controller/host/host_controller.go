@@ -208,7 +208,7 @@ func (r *ReconcileHost) buildInitialHostOpts(instance *starlingxv1.Host, profile
 
 func provisioningAllowed(objects []hosts.Host) bool {
 	for _, host := range objects {
-		if host.Hostname == hosts.Controller0 {
+		if host.Hostname == hosts.Controller0 || host.Hostname == "controller-1" {
 			if host.IsUnlockedEnabled() {
 				return true
 			}

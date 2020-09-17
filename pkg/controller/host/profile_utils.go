@@ -330,11 +330,6 @@ func (r *ReconcileHost) validateProfileSpec(host *starlingxv1.Host, profile *sta
 	}
 
 	if *profile.ProvisioningMode == starlingxv1.ProvioningModeStatic {
-		if host.Name == hosts.Controller0 {
-			msg := "controller-0 must use dynamic provisioning"
-			return common.NewValidationError(msg)
-		}
-
 		if profile.BootMAC == nil {
 			msg := "'bootMAC' profile attribute is required for static provisioning"
 			return common.NewValidationError(msg)
