@@ -37,7 +37,7 @@ ENV PATH="${PATH}:/usr/local/kubebuilder/bin:/bin"
 WORKDIR /go/src/github.com/wind-river/cloud-platform-deployment-manager
 
 # Initialize helm within the container otherwise no helm commands will work.
-RUN helm init --client-only
+RUN helm init --stable-repo-url=https://charts.helm.sh/stable --client-only
 
 # The entry command can be overwritten when launched but by default these are
 # the build steps that we will be running.
