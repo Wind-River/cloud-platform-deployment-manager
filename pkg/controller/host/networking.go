@@ -953,43 +953,95 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 
 		// For each configured ethernet interface update the associated system
 		// resource.
-		if ethInfo.Name != interfaces.LoopbackInterfaceName {
-			ifuuid, found = host.FindPortInterfaceUUID(ethInfo.Port.Name)
+		if ethInfo.Lower != "" {
+			// if this is a ethernet created on top of a ethernet
+			_, found = host.FindInterfaceByName(ethInfo.Lower)
 			if !found {
-				msg := fmt.Sprintf("unable to find interface UUID for port: %s", ethInfo.Port.Name)
+				msg := fmt.Sprintf("unable to find lower interface UUID for ethernet: %s", ethInfo.Name)
 				return starlingxv1.NewMissingSystemResource(msg)
 			}
 
-			iface, found = host.FindInterface(ifuuid)
+			iface, found = host.FindInterfaceByName(ethInfo.Name)
 			if !found {
-				msg := fmt.Sprintf("unable to find interface: %s", ifuuid)
-				return starlingxv1.NewMissingSystemResource(msg)
+				// Create the interface
+				opts := commonInterfaceOptions(ethInfo.CommonInterfaceInfo, profile, host)
+
+				iftype := interfaces.IFTypeEthernet
+				opts.Type = &iftype
+				uses := []string{ethInfo.Lower}
+				opts.Uses = &uses
+
+				log.Info("creating ethernet interface", "opts", opts)
+
+				new_iface, err := interfaces.Create(client, opts).Extract()
+				iface = new_iface
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to create ethernet interface: %s",
+						common.FormatStruct(opts))
+					return err
+				}
+
+				r.NormalEvent(instance, common.ResourceCreated,
+					"ethernet interface %q has been created", ethInfo.Name)
+
+				updated = true
+			} else {
+				ifuuid = iface.ID
+				if opts, ok := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+					log.Info("updating ethernet interface", "uuid", ifuuid, "opts", opts)
+
+					_, err := interfaces.Update(client, ifuuid, opts).Extract()
+					if err != nil {
+						err = perrors.Wrapf(err, "failed to update interface: %s, %s",
+							ifuuid, common.FormatStruct(opts))
+						return err
+					}
+
+					r.NormalEvent(instance, common.ResourceUpdated,
+						"ethernet interface %q has been updated", ethInfo.Name)
+
+					updated = true
+				}
 			}
 		} else {
-			iface, found = host.FindInterfaceByName(interfaces.LoopbackInterfaceName)
-			if !found {
-				msg := fmt.Sprintf("unable to find loopback interface: %s",
-					interfaces.LoopbackInterfaceName)
-				return starlingxv1.NewMissingSystemResource(msg)
+			if ethInfo.Name != interfaces.LoopbackInterfaceName {
+				ifuuid, found = host.FindPortInterfaceUUID(ethInfo.Port.Name)
+				if !found {
+					msg := fmt.Sprintf("unable to find interface UUID for port: %s", ethInfo.Port.Name)
+					return starlingxv1.NewMissingSystemResource(msg)
+				}
+
+				iface, found = host.FindInterface(ifuuid)
+				if !found {
+					msg := fmt.Sprintf("unable to find interface: %s", ifuuid)
+					return starlingxv1.NewMissingSystemResource(msg)
+				}
+			} else {
+				iface, found = host.FindInterfaceByName(interfaces.LoopbackInterfaceName)
+				if !found {
+					msg := fmt.Sprintf("unable to find loopback interface: %s",
+						interfaces.LoopbackInterfaceName)
+					return starlingxv1.NewMissingSystemResource(msg)
+				}
+
+				ifuuid = iface.ID
 			}
 
-			ifuuid = iface.ID
-		}
+			if opts, ok := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+				log.Info("updating ethernet interface", "uuid", ifuuid, "opts", opts)
 
-		if opts, ok := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
-			log.Info("updating ethernet interface", "uuid", ifuuid, "opts", opts)
+				_, err := interfaces.Update(client, ifuuid, opts).Extract()
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to update interface: %s, %s",
+						ifuuid, common.FormatStruct(opts))
+					return err
+				}
 
-			_, err := interfaces.Update(client, ifuuid, opts).Extract()
-			if err != nil {
-				err = perrors.Wrapf(err, "failed to update interface: %s, %s",
-					ifuuid, common.FormatStruct(opts))
-				return err
+				r.NormalEvent(instance, common.ResourceUpdated,
+					"ethernet interface %q has been updated", ethInfo.Name)
+
+				updated = true
 			}
-
-			r.NormalEvent(instance, common.ResourceUpdated,
-				"ethernet interface %q has been updated", ethInfo.Name)
-
-			updated = true
 		}
 
 		result, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
@@ -1691,6 +1743,18 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 		return err
 	}
 
+	// Update SRIOV interfaces
+	err = r.ReconcileSRIOVInterfaces(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Update/Add VF interfaces
+	err = r.ReconcileVFInterfaces(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	// Update ethernet interfaces
 	err = r.ReconcileEthernetInterfaces(client, instance, profile, host)
 	if err != nil {
@@ -1705,18 +1769,6 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 
 	// Update/Add vlan interfaces
 	err = r.ReconcileVLANInterfaces(client, instance, profile, host)
-	if err != nil {
-		return err
-	}
-
-	// Update SRIOV interfaces
-	err = r.ReconcileSRIOVInterfaces(client, instance, profile, host)
-	if err != nil {
-		return err
-	}
-
-	// Update/Add VF interfaces
-	err = r.ReconcileVFInterfaces(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

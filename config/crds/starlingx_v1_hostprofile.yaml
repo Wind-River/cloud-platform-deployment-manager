@@ -305,6 +305,11 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: array
+                      lower:
+                        description: Lower defines the interface name over which this
+                          ethernet interface is to be configured.
+                        pattern: ^[a-zA-Z0-9\-_\.]+$
+                        type: string
                       mtu:
                         description: MTU defines the maximum transmit unit for this
                           interface.
