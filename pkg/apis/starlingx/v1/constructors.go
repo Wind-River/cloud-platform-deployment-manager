@@ -343,15 +343,22 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
-			portname, found := host.FindInterfacePortName(iface.ID)
-			if !found {
-				msg := fmt.Sprintf("unable to find port name for interface id %s", iface.ID)
-				return NewMissingSystemResource(msg)
+			var ethernet EthernetInfo
+			if len(iface.Uses) > 0 {
+				ethernet = EthernetInfo{
+					Lower: iface.Uses[0],
+					Port:  EthernetPortInfo{Name: "dummy"}}
+			} else {
+				portname, found := host.FindInterfacePortName(iface.ID)
+				if !found {
+					msg := fmt.Sprintf("unable to find port name for interface id %s", iface.ID)
+					return NewMissingSystemResource(msg)
+				}
+				ethernet = EthernetInfo{
+					Port: EthernetPortInfo{
+						Name: portname}}
 			}
 
-			ethernet := EthernetInfo{
-				Port: EthernetPortInfo{
-					Name: portname}}
 			ethernet.CommonInterfaceInfo = data
 
 			if strings.EqualFold(iface.Class, interfaces.IFClassPCISRIOV) {
