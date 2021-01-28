@@ -382,6 +382,11 @@ type EthernetInfo struct {
 	// Port defines the attributes identifying the underlying port which defines
 	// this Ethernet interface.
 	Port EthernetPortInfo `json:"port"`
+
+	// Lower defines the interface name over which this ethernet interface is to be
+	// configured.
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$
+	Lower string `json:"lower,omitempty"`
 }
 
 // EthernetList defines a type to represent a slice of ethernet interfaces.

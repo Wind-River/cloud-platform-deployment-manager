@@ -496,6 +496,10 @@ func (in *EthernetInfo) DeepEqual(other *EthernetInfo) bool {
 		return false
 	}
 
+	if in.Lower != other.Lower {
+		return false
+	}
+
 	return true
 }
 
