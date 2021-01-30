@@ -2149,6 +2149,14 @@ func (in *VFInfo) DeepEqual(other *VFInfo) bool {
 		}
 	}
 
+	if (in.MaxTxRate == nil) != (other.MaxTxRate == nil) {
+		return false
+	} else if in.MaxTxRate != nil {
+		if *in.MaxTxRate != *other.MaxTxRate {
+			return false
+		}
+	}
+
 	return true
 }
 

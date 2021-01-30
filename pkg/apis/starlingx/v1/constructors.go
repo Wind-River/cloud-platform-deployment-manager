@@ -395,9 +395,10 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		case interfaces.IFTypeVF:
 
 			vf := VFInfo{
-				VFCount:  *iface.VFCount,
-				Lower:    iface.Uses[0],
-				VFDriver: iface.VFDriver}
+				VFCount:   *iface.VFCount,
+				Lower:     iface.Uses[0],
+				VFDriver:  iface.VFDriver,
+				MaxTxRate: iface.MaxTxRate}
 			vf.CommonInterfaceInfo = data
 			vfs = append(vfs, vf)
 		}

@@ -403,6 +403,12 @@ spec:
                           VF interface is to be configured.
                         pattern: ^[a-zA-Z0-9\-_\.]+$
                         type: string
+                      maxTxRate:
+                        description: MaxTxRate defines the maximum tx rate of SRIOV
+                          VF interfaces. Only applicable if the interface class is
+                          set to "pci-sriov" and interface type is set to "vf".
+                        format: int64
+                        type: integer
                       mtu:
                         description: MTU defines the maximum transmit unit for this
                           interface.
