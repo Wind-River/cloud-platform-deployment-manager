@@ -464,6 +464,11 @@ type VFInfo struct {
 	// SRIOV VF interface allocated.  Only applicable if the interface class is
 	// set to "pci-sriov".
 	VFDriver *string `json:"vfDriver,omitempty"`
+
+	// MaxTxRate defines the maximum tx rate of SRIOV VF
+	// interfaces. Only applicable if the interface class is set to
+	// "pci-sriov" and interface type is set to "vf".
+	MaxTxRate *int `json:"maxTxRate,omitempty"`
 }
 
 // VFList defines a type to represent a slice of SR-IOV virtual functions.
