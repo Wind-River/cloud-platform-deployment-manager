@@ -1506,6 +1506,7 @@ func (r *ReconcileHost) ReconcileVFInterfaces(client *gophercloud.ServiceClient,
 			iftype := interfaces.IFTypeVF
 			opts.Type = &iftype
 			opts.VFDriver = vfInfo.VFDriver
+			opts.MaxTxRate = vfInfo.MaxTxRate
 			opts.VFCount = &vfInfo.VFCount
 			uses := []string{vfInfo.Lower}
 			opts.Uses = &uses

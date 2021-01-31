@@ -1983,6 +1983,11 @@ func (in *VFInfo) DeepCopyInto(out *VFInfo) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.MaxTxRate != nil {
+		in, out := &in.MaxTxRate, &out.MaxTxRate
+		*out = new(int)
+		**out = **in
+	}
 	return
 }
 
