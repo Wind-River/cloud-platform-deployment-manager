@@ -109,6 +109,10 @@ type Interface struct {
 
 	// PTPRole is the configuration of the interface as ptp master, slave, or none.
 	PTPRole *string `json:"ptp_role,omitempty"`
+
+	// VFCount is the number of SRIOV VF interfaces configured.
+	MaxTxRate *int `json:"max_tx_rate,omitempty"`
+
 }
 
 // InterfacePage is the page returned by a pager when traversing over a
