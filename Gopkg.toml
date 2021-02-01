@@ -24,7 +24,7 @@ required = [
   # Until our extensions to the gophercloud package are merged into the main
   # repo we need to use our own fork to access our API modules.
   name="github.com/gophercloud/gophercloud"
-  branch="starlingx"
+  branch="stable/starlingx-v2.0.5"
   source="https://github.com/wind-river/gophercloud"
 
 # STANZAS BELOW ARE GENERATED AND MAY BE WRITTEN - DO NOT MODIFY BELOW THIS LINE.

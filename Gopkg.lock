@@ -162,7 +162,7 @@
   version = "v0.2.0"
 
 [[projects]]
-  branch = "starlingx"
+  branch = "stable/starlingx-v2.0.5"
   digest = "1:649e83ea0746773c9dbd0d0e98d7a79ba8592bde668721aeb9daf3405f496f87"
   name = "github.com/gophercloud/gophercloud"
   packages = [
