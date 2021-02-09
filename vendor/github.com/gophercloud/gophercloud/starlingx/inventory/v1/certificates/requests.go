@@ -82,6 +82,12 @@ func Create(c *gophercloud.ServiceClient, opts CertificateOpts) (r CreateResult)
 		return r
 	}
 
+	err = w.WriteField("force", "true")
+	if err != nil {
+		r.Err = err
+		return r
+	}
+
 	if opts.Passphrase != nil {
 		err = w.WriteField("passphrase", *opts.Passphrase)
 		if err != nil {
