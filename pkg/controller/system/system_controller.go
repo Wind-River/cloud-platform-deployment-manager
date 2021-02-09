@@ -48,6 +48,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var log = logf.Log.WithName("controller").WithName("system")
@@ -150,13 +151,18 @@ func (r *ReconcileSystem) installRootCertificates(instance *starlingxv1.System) 
 			return err
 		}
 
-		caBytes, ok := secret.Data[starlingxv1.SecretCaCertKey]
-		if !ok {
-			// This can be valid as long as the target certificate is signed
-			// by a known CA certificate; otherwise once the target certificate
-			// is installed we will not be able to verify the TLS session.
-			log.Info("platform certificate without a CA certificate; ignoring", "name", c.Secret)
-			continue
+		var caBytes []byte
+		var ok bool
+		numRetries := 30
+		for iter := 0; iter < numRetries; iter++ {
+			caBytes, ok = secret.Data[starlingxv1.SecretCaCertKey]
+			if !ok {
+				log.Info("Platform certificate CA not ready/available", "name", c.Secret)
+				time.Sleep(5 * time.Second)
+			} else {
+				log.Info("Platform certificate CA ready!")
+				break
+			}
 		}
 
 		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, c.Secret)

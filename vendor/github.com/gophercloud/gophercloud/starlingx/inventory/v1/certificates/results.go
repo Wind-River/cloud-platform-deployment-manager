@@ -53,9 +53,9 @@ type DeleteResult struct {
 // response format of certificate install API.
 type CreateResponse struct {
 	Certificate []*Certificate `json:"certificates,omitempty"`
-	Body        string       `json:"body"`
-	Success     string       `json:"success"`
-	Error       string       `json:"error"`
+	Body        string         `json:"body"`
+	Success     string         `json:"success"`
+	Error       string         `json:"error"`
 }
 
 // Certificate defines the data associated to a single Certificate instance.
