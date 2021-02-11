@@ -19,8 +19,6 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/pkg/platform"
@@ -939,45 +937,6 @@ func parseServiceParameterInfo(spec *SystemSpec, serviceParams []serviceparamete
 	return nil
 }
 
-func parseSNMPCommunityInfo(spec *SystemSpec, communities []snmpCommunity.SNMPCommunity) error {
-	result := make([]string, 0)
-
-	for _, c := range communities {
-		result = append(result, c.Community)
-	}
-
-	if spec.SNMP == nil {
-		spec.SNMP = &SNMPInfo{}
-	}
-
-	list := StringList(result)
-	spec.SNMP.Communities = &list
-
-	return nil
-}
-
-func parseSNMPTrapDestInfo(spec *SystemSpec, trapDestinations []snmpTrapDest.SNMPTrapDest) error {
-	result := make([]TrapDestInfo, 0)
-
-	for _, t := range trapDestinations {
-		info := TrapDestInfo{
-			Community: t.Community,
-			IPAddress: t.IPAddress,
-		}
-
-		result = append(result, info)
-	}
-
-	if spec.SNMP == nil {
-		spec.SNMP = &SNMPInfo{}
-	}
-
-	list := TrapDestList(result)
-	spec.SNMP.TrapDestinations = &list
-
-	return nil
-}
-
 func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.FileSystem) error {
 	result := make([]ControllerFileSystemInfo, 0)
 
@@ -1112,20 +1071,6 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 
 	if len(systemInfo.ServiceParameters) > 0 {
 		err := parseServiceParameterInfo(&spec, systemInfo.ServiceParameters)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(systemInfo.SNMPCommunities) > 0 {
-		err := parseSNMPCommunityInfo(&spec, systemInfo.SNMPCommunities)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(systemInfo.SNMPTrapDestinations) > 0 {
-		err := parseSNMPTrapDestInfo(&spec, systemInfo.SNMPTrapDestinations)
 		if err != nil {
 			return nil, err
 		}

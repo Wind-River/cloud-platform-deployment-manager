@@ -237,28 +237,6 @@ type PTPInfo struct {
 	Mechanism *string `json:"mechanism,omitempty"`
 }
 
-// TrapDestInfo defines the SNMP community information related to a single
-// SNMP trap destination.
-type TrapDestInfo struct {
-	Community string `json:"community"`
-	IPAddress string `json:"address"`
-}
-
-// TrapDestList represents a list of SNMP trap destinations.
-// +deepequal-gen:unordered-array=true
-type TrapDestList []TrapDestInfo
-
-// SNMPInfo defines the system level SNMP attributes that are configurable.
-// +deepequal-gen:ignore-nil-fields=true
-type SNMPInfo struct {
-	// Communities defines the list of SNMP communities to be configured.
-	Communities *StringList `json:"communities,omitempty"`
-
-	// TrapDestinations defines the list of SNMP Trap Destinations to be
-	// configured.
-	TrapDestinations *TrapDestList `json:"trapDestinations,omitempty"`
-}
-
 // SystemSpec defines the desired state of System
 // +deepequal-gen:ignore-nil-fields=true
 type SystemSpec struct {
@@ -314,11 +292,6 @@ type SystemSpec struct {
 	// +optional
 	Storage *SystemStorageInfo `json:"storage,omitempty"`
 
-	// SNMP is the set of SNMP specific attributes to be configured for the
-	// system.
-	// +optional
-	SNMP *SNMPInfo `json:"snmp,omitempty"`
-
 	// VSwitchType is the desired vswitch implementation to be configured. This
 	// is intentionally left unvalidated to avoid issues with proprietary
 	// vswitch implementation.
@@ -331,13 +304,6 @@ type SystemSpec struct {
 // during profile merging.
 func (in ControllerFileSystemInfo) IsKeyEqual(x ControllerFileSystemInfo) bool {
 	return in.Name == x.Name
-}
-
-// IsKeyEqual compares two SNMP trap destination array elements and determines
-// if they refer to the same instance.  All other attributes will be merged
-// during profile merging.
-func (in TrapDestInfo) IsKeyEqual(x TrapDestInfo) bool {
-	return in.Community == x.Community
 }
 
 // IsKeyEqual compares two ServiceParameter if they mostly match

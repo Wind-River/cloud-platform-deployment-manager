@@ -53,7 +53,6 @@ const (
 	License           ReconcilerName = "system.license"
 	NTP               ReconcilerName = "system.ntp"
 	PTP               ReconcilerName = "system.ptp"
-	SNMP              ReconcilerName = "system.snmp"
 	Backends          ReconcilerName = "system.storage.backend"
 	ServiceParameters ReconcilerName = "system.serviceParameters"
 )
@@ -86,7 +85,6 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	License:           true,
 	NTP:               true,
 	PTP:               true,
-	SNMP:              true,
 	Backends:          true,
 	ServiceParameters: true,
 }
