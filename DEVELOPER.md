@@ -46,12 +46,12 @@ The recommended installation method of the Deployment Manager is to use a Helm
 chart.  This ensures that the required CRD resources are installed before the
 Deployment Manager pods are created.  It also ensures that recommended default
 values for specific Kubernetes attributes are used.  The minimum required 
-version of Helm is v2.14.3 and can be installed on your workstation using the 
+version of Helm is v2.16.10 and can be installed on your workstation using the
 following commands.
  
 ```bash
-wget https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz
-tar zxf helm-v2.14.3-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz
+tar zxf helm-v2.16.10-linux-amd64.tar.gz
 sudo cp linux-amd64/helm /usr/local/bin/
 ```
 
