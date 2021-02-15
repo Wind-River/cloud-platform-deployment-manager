@@ -15,6 +15,10 @@ GIT_HEAD := $(shell git rev-list -1 HEAD)
 GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
+HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{print $$NF}' | sed 's/^v//')
+HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
+HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
+
 DEPLOY_LDFLAGS := -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
 DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitHead=${GIT_HEAD}
 DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
@@ -32,7 +36,7 @@ endif
 .PHONY: examples
 
 # Build all artifacts
-all: test manager tools helm-package docker-build examples
+all: helm-ver-check test manager tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -103,6 +107,13 @@ builder-run: builder-build
 		-v ${PWD}:/go/src/github.com/wind-river/cloud-platform-deployment-manager \
 		--rm ${BUILDER_IMG}
 
+# Check minimum helm version
+helm-ver-check:
+	@if [[ ${HELM_CLIENT_VER_REL} < 2 || ( ${HELM_CLIENT_VER_REL} == 2 && ${HELM_CLIENT_VER_MAJ} < 16 ) ]]; then
+		@echo "Minimum required helm client version is v2.16. Installed version is ${HELM_CLIENT_VER}"
+		@/bin/false
+	@fi
+
 # Check helm chart validity
 helm-lint: manifests
 	helm lint helm/wind-river-cloud-platform-deployment-manager
@@ -110,7 +121,7 @@ helm-lint: manifests
 # Create helm chart package
 .ONESHELL:
 SHELL = /bin/bash
-helm-package: helm-lint
+helm-package: helm-ver-check helm-lint
 	git update-index -q --ignore-submodules --refresh
 	if [[ $$(comm -12 <(git diff-index --name-only HEAD | sort -u) <(find helm/wind-river-cloud-platform-deployment-manager config | sort -u) | wc -l) -ne 0 || ${HELM_FORCE} -ne 0 ]]; then
 		helm package helm/wind-river-cloud-platform-deployment-manager --destination docs/charts;

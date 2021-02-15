@@ -2,7 +2,7 @@ FROM golang:1.12.9
 
 # Install our current version of Helm.  We can probably upgrade to a new version
 # but this one has been tested and verified to work.
-RUN wget https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz -q -O - | tar zx -C /bin --strip-components=1 linux-amd64/helm
+RUN wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz -q -O - | tar zx -C /bin --strip-components=1 linux-amd64/helm
 
 # Install our required version of Kubebuilder.  We cannot upgrade to a later
 # version without significant effort.
