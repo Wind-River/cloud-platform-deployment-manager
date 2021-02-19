@@ -147,18 +147,14 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 
 	in.SNMPCommunities, err = snmpCommunity.ListSNMPCommunities(client)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Resource not found") {
-			err = errors.Wrap(err, "failed to get SNMP community list")
-			return err
-		}
+		err = errors.Wrap(err, "failed to get SNMP community list")
+		return err
 	}
 
 	in.SNMPTrapDestinations, err = snmpTrapDest.ListSNMPTrapDests(client)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Resource not found") {
-			err = errors.Wrap(err, "failed to get SNMP trap destination list")
-			return err
-		}
+		err = errors.Wrap(err, "failed to get SNMP trap destination list")
+		return err
 	}
 
 	in.FileSystems, err = controllerFilesystems.ListFileSystems(client)
