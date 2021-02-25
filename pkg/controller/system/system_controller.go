@@ -21,8 +21,6 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/imdario/mergo"
@@ -512,129 +510,6 @@ func (r *ReconcileSystem) ReconcileServiceParameters(client *gophercloud.Service
 	return nil
 }
 
-// ReconcileSNMPCommunities configures the system resources to align with the
-// desired SNMP Community string list.
-func (r *ReconcileSystem) ReconcileSNMPCommunities(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
-	configured := make(map[string]bool)
-
-	if spec.SNMP == nil || spec.SNMP.Communities == nil {
-		return nil
-	}
-
-	for _, name := range *spec.SNMP.Communities {
-		configured[name] = true
-		found := false
-		for _, community := range info.SNMPCommunities {
-			if community.Community == name {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			opts := snmpCommunity.SNMPCommunityOpts{
-				Community: &name,
-			}
-
-			log.Info("creating a new SNMP community string", "opts", opts)
-
-			_, err := snmpCommunity.Create(client, opts).Extract()
-			if err != nil {
-				return err
-			}
-
-			r.NormalEvent(instance, common.ResourceUpdated, "SNMP community %q has been created", name)
-		}
-	}
-
-	for _, c := range info.SNMPCommunities {
-		if _, present := configured[c.Community]; !present {
-			log.Info("deleting SNMP community string", "name", c.Community)
-
-			err := snmpCommunity.Delete(client, c.ID).ExtractErr()
-			if err != nil {
-				return err
-			}
-
-			r.NormalEvent(instance, common.ResourceDeleted, "SNMP community %q has been deleted", c.Community)
-		}
-	}
-
-	return nil
-}
-
-// ReconcileSNMPTrapDestinations configures the system resources to align with
-// the desired SNMP Community string list.
-func (r *ReconcileSystem) ReconcileSNMPTrapDestinations(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
-	configured := make(map[string]bool)
-
-	if spec.SNMP == nil || spec.SNMP.TrapDestinations == nil {
-		return nil
-	}
-
-	for _, destInfo := range *spec.SNMP.TrapDestinations {
-		configured[destInfo.IPAddress] = true
-		found := false
-		for _, dest := range info.SNMPTrapDestinations {
-			if dest.IPAddress == destInfo.IPAddress {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			opts := snmpTrapDest.SNMPTrapDestOpts{
-				Community: &destInfo.Community,
-				IPAddress: &destInfo.IPAddress,
-			}
-
-			log.Info("creating a new SNMP Trap Destination", "opts", opts)
-
-			_, err := snmpTrapDest.Create(client, opts).Extract()
-			if err != nil {
-				return err
-			}
-
-			r.NormalEvent(instance, common.ResourceUpdated, "SNMP Trap Destination %q has been created", destInfo.IPAddress)
-		}
-	}
-
-	for _, d := range info.SNMPTrapDestinations {
-		if _, present := configured[d.IPAddress]; !present {
-			log.Info("deleting SNMP Trap Destination", "name", d.IPAddress, "community", d.Community)
-
-			err := snmpTrapDest.Delete(client, d.ID).ExtractErr()
-			if err != nil {
-				return err
-			}
-
-			r.NormalEvent(instance, common.ResourceDeleted, "SNMP Trap Destination %q has been deleted", d.IPAddress)
-		}
-	}
-
-	return nil
-}
-
-// ReconcileSNMP configures the system resources to align with the desired SNMP
-// configuration.
-func (r *ReconcileSystem) ReconcileSNMP(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
-	if !config.IsReconcilerEnabled(config.SNMP) {
-		return nil
-	}
-
-	err := r.ReconcileSNMPCommunities(client, instance, spec, info)
-	if err != nil {
-		return nil
-	}
-
-	err = r.ReconcileSNMPTrapDestinations(client, instance, spec, info)
-	if err != nil {
-		return nil
-	}
-
-	return nil
-}
-
 func controllerNodesAvailable(objects []hosts.Host, required int) bool {
 	count := 0
 	for _, host := range objects {
@@ -1071,11 +946,6 @@ func (r *ReconcileSystem) ReconcileSystemInitial(client *gophercloud.ServiceClie
 	}
 
 	err = r.ReconcilePTP(client, instance, spec, info)
-	if err != nil {
-		return err
-	}
-
-	err = r.ReconcileSNMP(client, instance, spec, info)
 	if err != nil {
 		return err
 	}
