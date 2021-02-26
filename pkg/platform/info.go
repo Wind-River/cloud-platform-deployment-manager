@@ -38,8 +38,6 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpCommunity"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/snmpTrapDest"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
@@ -78,17 +76,15 @@ type HostInfo struct {
 
 type SystemInfo struct {
 	system.System
-	DRBD                 *drbd.DRBD
-	DNS                  *dns.DNS
-	NTP                  *ntp.NTP
-	PTP                  *ptp.PTP
-	Certificates         []certificates.Certificate
-	ServiceParameters    []serviceparameters.ServiceParameter
-	SNMPCommunities      []snmpCommunity.SNMPCommunity
-	SNMPTrapDestinations []snmpTrapDest.SNMPTrapDest
-	StorageBackends      []storagebackends.StorageBackend
-	FileSystems          []controllerFilesystems.FileSystem
-	License              *licenses.License
+	DRBD              *drbd.DRBD
+	DNS               *dns.DNS
+	NTP               *ntp.NTP
+	PTP               *ptp.PTP
+	Certificates      []certificates.Certificate
+	ServiceParameters []serviceparameters.ServiceParameter
+	StorageBackends   []storagebackends.StorageBackend
+	FileSystems       []controllerFilesystems.FileSystem
+	License           *licenses.License
 }
 
 func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) error {
@@ -143,22 +139,6 @@ func (in *SystemInfo) PopulateSystemInfo(client *gophercloud.ServiceClient) erro
 	if err != nil {
 		err = errors.Wrap(err, "failed to get storagebackends")
 		return err
-	}
-
-	in.SNMPCommunities, err = snmpCommunity.ListSNMPCommunities(client)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Resource not found") {
-			err = errors.Wrap(err, "failed to get SNMP community list")
-			return err
-		}
-	}
-
-	in.SNMPTrapDestinations, err = snmpTrapDest.ListSNMPTrapDests(client)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Resource not found") {
-			err = errors.Wrap(err, "failed to get SNMP trap destination list")
-			return err
-		}
 	}
 
 	in.FileSystems, err = controllerFilesystems.ListFileSystems(client)

@@ -193,31 +193,6 @@ spec:
                 - paramvalue
                 type: object
               type: array
-            snmp:
-              description: SNMP is the set of SNMP specific attributes to be configured
-                for the system.
-              properties:
-                communities:
-                  description: Communities defines the list of SNMP communities to
-                    be configured.
-                  items:
-                    type: string
-                  type: array
-                trapDestinations:
-                  description: TrapDestinations defines the list of SNMP Trap Destinations
-                    to be configured.
-                  items:
-                    properties:
-                      address:
-                        type: string
-                      community:
-                        type: string
-                    required:
-                    - community
-                    - address
-                    type: object
-                  type: array
-              type: object
             storage:
               description: Storage is a set of storage specific attributes to be configured
                 for the system.
