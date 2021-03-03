@@ -1,0 +1,76 @@
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  description: Physical setup with SRIOV NICs
+---
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  interfaces:
+    ethernet:
+    - name: lo
+      class: platform
+      platformNetworks:
+        - mgmt
+        - cluster-host
+      port:
+        name: lo
+    - class: pci-sriov
+      dataNetworks: []
+      name: sriov0
+      platformNetworks: []
+      port:
+        name: eno1
+      ptpRole: none
+      vfCount: 12
+      vfDriver: netdevice
+    - class: platform
+      dataNetworks: []
+      lower: sriov0
+      name: pxeboot0
+      platformNetworks:
+      - pxeboot
+      port:
+        name: dummy
+      ptpRole: none
+    vf:
+    - class: pci-sriov
+      dataNetworks:
+      - physnet0
+      lower: sriov0
+      name: sriov00
+      platformNetworks: []
+      ptpRole: none
+      vfCount: 6
+      vfDriver: vfio
+    - class: pci-sriov
+      dataNetworks:
+      - physnet1
+      lower: sriov0
+      name: sriov01
+      platformNetworks: []
+      ptpRole: none
+      vfCount: 5
+      vfDriver: netdevice
+    vlan:
+    - class: platform
+      dataNetworks: []
+      lower: sriov0
+      name: oam0
+      platformNetworks:
+      - oam
+      ptpRole: none
+      vid: 200
+  labels:
+    kube-cpu-mgr-policy: static
+    sriovdp: enabled
