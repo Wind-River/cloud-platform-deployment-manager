@@ -1,0 +1,19 @@
+apiVersion: starlingx.windriver.com/v1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: physnet0
+  namespace: deployment
+spec:
+  type: vlan
+---
+apiVersion: starlingx.windriver.com/v1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: physnet1
+  namespace: deployment
+spec:
+  type: vlan
