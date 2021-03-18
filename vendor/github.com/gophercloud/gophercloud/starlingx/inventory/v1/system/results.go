@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2021 Wind River Systems, Inc. */
 
 package system
 
@@ -67,6 +67,12 @@ type System struct {
 
 	// Location is a description of the physical location of the system.
 	Location string `json:"location"`
+
+	// Latitude is the latitude geolocation coordinate of the system's physical
+	Latitude string `json:"latitude"`
+
+	// Longitude is the longitude geolocation coordinate of the system's physical
+	Longitude string `json:"longitude"`
 
 	// Contact is the name and address information of the system contact person.
 	Contact string `json:"contact"`
