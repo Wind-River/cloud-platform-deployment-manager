@@ -257,6 +257,11 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: array
+                      primaryReselect:
+                        description: PrimaryReselect defines the reselection policy
+                          for the Bond interface. Only applicable for active_standby
+                          mode.
+                        type: string
                       ptpRole:
                         description: PTPRole defines the ptp role as master, slave,
                           or none

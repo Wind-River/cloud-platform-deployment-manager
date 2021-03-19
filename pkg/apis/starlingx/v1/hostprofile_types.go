@@ -437,6 +437,12 @@ type BondInfo struct {
 	// +kubebuilder:validation:Enum=layer2,layer2+3
 	// +optional
 	TransmitHashPolicy *string `json:"transmitHashPolicy,omitempty"`
+
+	// PrimaryReselect defines the reselection policy for the Bond interface.
+	// Only applicable for active_standby mode.
+	// +kubebuilder:valiation:Enum=always,better,failure
+	// +optional
+	PrimaryReselect *string `json:"primaryReselect,omitempty"`
 }
 
 // BondList defines a type to represent a slice of Bond interfaces.

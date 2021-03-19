@@ -1123,6 +1123,13 @@ func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, 
 		}
 	}
 
+	if bond.PrimaryReselect != nil {
+		if iface.AEPrimReselect != nil && !strings.EqualFold(*bond.PrimaryReselect, *iface.AEPrimReselect) {
+			opts.AEPrimReselect = bond.PrimaryReselect
+			result = true
+		}
+	}
+
 	if utils.ListChanged(bond.Members, iface.Uses) {
 		// The system API handles "uses" inconsistently between create and
 		// update.  It requires a different attribute name for both.  This
@@ -1187,6 +1194,7 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 			opts.Type = &iftype
 			opts.AEMode = &bondInfo.Mode
 			opts.AETransmitHash = bondInfo.TransmitHashPolicy
+			opts.AEPrimReselect = bondInfo.PrimaryReselect
 
 			members := bondInfo.Members.ToStringList()
 			opts.Uses = &members

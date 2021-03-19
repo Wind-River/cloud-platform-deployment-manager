@@ -93,6 +93,10 @@ type Interface struct {
 	// the interface is a Bond interface.
 	AETransmitHash *string `json:"txhashpolicy,omitempty"`
 
+	// AEPrimReselect is the primary reselection policy assigned to the interface if
+	// the interface is a Bond interface.
+	AEPrimReselect *string `json:"primary_reselect,omitempty"`
+
 	// VFCount is the number of SRIOV VF interfaces configured.
 	VFCount *int `json:"sriov_numvfs,omitempty"`
 
@@ -112,7 +116,6 @@ type Interface struct {
 
 	// VFCount is the number of SRIOV VF interfaces configured.
 	MaxTxRate *int `json:"max_tx_rate,omitempty"`
-
 }
 
 // InterfacePage is the page returned by a pager when traversing over a

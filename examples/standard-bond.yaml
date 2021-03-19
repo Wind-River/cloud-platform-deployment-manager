@@ -143,14 +143,18 @@ spec:
   console: tty0
   installOutput: text
   interfaces:
-    ethernet:
+    bond:
     - class: platform
+      dataNetworks: []
+      members:
+      - enp0s8
+      - enp0s9
+      mode: active_standby
       name: mgmt0
       platformNetworks:
       - mgmt
       - cluster-host
-      port:
-        name: enp0s8
+      primaryReselect: failure
   provisioningMode: static
   rootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
 ---
@@ -190,6 +194,17 @@ spec:
   base: common-profile
   interfaces:
     bond:
+    - class: platform
+      dataNetworks: []
+      members:
+      - enp0s8
+      - enp0s9
+      mode: active_standby
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      - cluster-host
+      primaryReselect: failure
     - class: data
       dataNetworks:
       - group0-vxlan0
@@ -213,14 +228,6 @@ spec:
       - group0-data1v4
       - group0-data1v6
       transmitHashPolicy: layer2
-    ethernet:
-    - class: platform
-      name: mgmt0
-      platformNetworks:
-      - mgmt
-      - cluster-host
-      port:
-        name: enp0s8
     vlan:
     - class: data
       dataNetworks:

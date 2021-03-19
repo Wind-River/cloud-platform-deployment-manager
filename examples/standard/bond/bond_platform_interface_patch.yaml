@@ -1,0 +1,22 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: common-profile
+  namespace: deployment
+spec:
+  interfaces:
+    bond:
+    - class: platform
+      dataNetworks: []
+      members:
+      - enp0s8
+      - enp0s9
+      mode: active_standby
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      - cluster-host
+      primaryReselect: failure
+    ethernet:

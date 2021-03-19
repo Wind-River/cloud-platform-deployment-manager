@@ -377,6 +377,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			bond := BondInfo{
 				Mode:               *iface.AEMode,
 				TransmitHashPolicy: iface.AETransmitHash,
+				PrimaryReselect:    iface.AEPrimReselect,
 				Members:            iface.Uses}
 			bond.CommonInterfaceInfo = data
 			bonds = append(bonds, bond)
