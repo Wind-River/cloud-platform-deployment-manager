@@ -163,8 +163,8 @@ metadata:
 spec:
   contact: info@windriver.com
   description: Virtual Box Standard System
-  location: vbox
   latitude: 45.35189954974955
+  location: vbox
   longitude: -75.91866628453701
   ntpServers:
   - 0.pool.ntp.org
