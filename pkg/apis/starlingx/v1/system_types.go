@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2021 Wind River Systems, Inc. */
 
 package v1
 
@@ -264,6 +264,20 @@ type SystemSpec struct {
 	// +kubebuilder:validation:MaxLength=255
 	// +optional
 	Location *string `json:"location,omitempty"`
+
+	// Latitude is the latitude geolocation coordinate of the system's physical
+	// location.
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\. ]+$
+	// +kubebuilder:validation:MaxLength=30
+	// +optional
+	Latitude *string `json:"latitude,omitempty"`
+
+	// Longitude is the longitude geolocation coordinate of the system's physical
+	// location.
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\. ]+$
+	// +kubebuilder:validation:MaxLength=30
+	// +optional
+	Longitude *string `json:"longitude,omitempty"`
 
 	// Contact is a method to reach the person responsible for the system.  For
 	// example it could be an email address,

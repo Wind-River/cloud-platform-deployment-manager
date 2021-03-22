@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2021 Wind River Systems, Inc. */
 
 package system
 
@@ -653,6 +653,16 @@ func systemUpdateRequired(instance *starlingxv1.System, spec *starlingxv1.System
 	if spec.Location != nil && *spec.Location != s.Location {
 		result = true
 		opts.Location = spec.Location
+	}
+
+	if spec.Latitude != nil && *spec.Latitude != s.Latitude {
+		result = true
+		opts.Latitude = spec.Latitude
+	}
+
+	if spec.Longitude != nil && *spec.Longitude != s.Longitude {
+		result = true
+		opts.Longitude = spec.Longitude
 	}
 
 	if instance.HTTPSEnabled() != s.Capabilities.HTTPSEnabled {

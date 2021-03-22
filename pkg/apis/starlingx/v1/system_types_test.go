@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2021 Wind River Systems, Inc. */
 
 package v1
 
@@ -20,6 +20,8 @@ func TestStorageSystem(t *testing.T) {
 	description := string("A sample description")
 	location := string("A sample location")
 	contact := string("A sample contact")
+	latitude := string("A sample latitude")
+	longitude := string("A sample longitude")
 	dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
 	ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
 	ptpMode := "hardware"
@@ -31,6 +33,8 @@ func TestStorageSystem(t *testing.T) {
 		Spec: SystemSpec{
 			Description: &description,
 			Location:    &location,
+			Latitude:    &latitude,
+			Longitude:   &longitude,
 			Contact:     &contact,
 			DNSServers:  &dnsServers,
 			NTPServers:  &ntpServers,

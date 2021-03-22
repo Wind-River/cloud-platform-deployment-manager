@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2021 Wind River Systems, Inc. */
 
 package system
 
@@ -15,6 +15,8 @@ type SystemOpts struct {
 	Name         *string `json:"name,omitempty" mapstructure:"name"`
 	Description  *string `json:"description,omitempty" mapstructure:"description"`
 	Location     *string `json:"location,omitempty" mapstructure:"location"`
+	Latitude     *string `json:"latitude,omitempty" mapstructure:"latitude"`
+	Longitude    *string `json:"longitude,omitempty" mapstructure:"longitude"`
 	Contact      *string `json:"contact,omitempty" mapstructure:"contact"`
 	HTTPSEnabled *string `json:"https_enabled,omitempty" mapstructure:"https_enabled"`
 	SDNEnabled   *string `json:"sdn_enabled,omitempty" mapstructure:"sdn_enabled"`
