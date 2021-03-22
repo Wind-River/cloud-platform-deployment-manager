@@ -20,8 +20,8 @@ func TestStorageSystem(t *testing.T) {
 	description := string("A sample description")
 	location := string("A sample location")
 	contact := string("A sample contact")
-	latitude := string("A sample latitude")
-	longitude := string("A sample longitude")
+	latitude := string("45.35189954974955")
+	longitude := string("-75.91866628453701")
 	dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
 	ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
 	ptpMode := "hardware"
