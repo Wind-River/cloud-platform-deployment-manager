@@ -3,7 +3,7 @@ kind: System
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: geo-location
+  name: vbox
   namespace: deployment
 spec:
   latitude: 45.35189954974955
