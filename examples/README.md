@@ -33,6 +33,7 @@ kustomize build examples/storage/default > ${EXAMPLES}/storage.yaml
 kustomize build examples/aio-sx/default > ${EXAMPLES}/aio-sx.yaml
 kustomize build examples/aio-sx/vxlan > ${EXAMPLES}/aio-sx-vxlan.yaml
 kustomize build examples/aio-sx/https > ${EXAMPLES}/aio-sx-https.yaml
+kustomize build examples/aio-sx/geo-location > ${EXAMPLES}/aio-sx-geo-location.yaml
 kustomize build examples/aio-dx/default > ${EXAMPLES}/aio-dx.yaml
 kustomize build examples/aio-dx/vxlan > ${EXAMPLES}/aio-dx-vxlan.yaml
 kustomize build examples/aio-dx/https > ${EXAMPLES}/aio-dx-https.yaml

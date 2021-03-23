@@ -172,3 +172,14 @@ spec:
     backends:
     - name: ceph-store
       type: ceph
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: geo-location
+spec:
+  latitude: 45.35189954974955
+  longitude: -75.91866628453701
