@@ -103,6 +103,12 @@ spec:
               items:
                 type: string
               type: array
+            latitude:
+              description: Latitude is the latitude geolocation coordinate of the
+                system's physical location.
+              maxLength: 30
+              pattern: ^[a-zA-Z0-9\-_\. ]+$
+              type: string
             license:
               description: License is a reference to a license file that must be installed.
               properties:
@@ -117,6 +123,12 @@ spec:
               description: Location is a short description of the system's physical
                 location.
               maxLength: 255
+              pattern: ^[a-zA-Z0-9\-_\. ]+$
+              type: string
+            longitude:
+              description: Longitude is the longitude geolocation coordinate of the
+                system's physical location.
+              maxLength: 30
               pattern: ^[a-zA-Z0-9\-_\. ]+$
               type: string
             ntpServers:

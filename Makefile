@@ -148,6 +148,7 @@ examples:
 	kustomize build examples/aio-sx/https > examples/aio-sx-https.yaml
 	kustomize build examples/aio-sx/single-nic > examples/aio-sx-single-nic.yaml
 	kustomize build examples/aio-sx/vf-rate-limit > examples/aio-sx-vf-rate-limit.yaml
+	kustomize build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	kustomize build examples/aio-dx/default > examples/aio-dx.yaml
 	kustomize build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	kustomize build examples/aio-dx/https > examples/aio-dx-https.yaml

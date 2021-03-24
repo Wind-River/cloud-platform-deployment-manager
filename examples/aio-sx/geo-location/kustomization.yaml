@@ -1,0 +1,6 @@
+bases:
+  - ../default
+
+patches:
+  - geo-location.yaml
+
