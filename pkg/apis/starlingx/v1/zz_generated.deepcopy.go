@@ -170,6 +170,11 @@ func (in *BondInfo) DeepCopyInto(out *BondInfo) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PrimaryReselect != nil {
+		in, out := &in.PrimaryReselect, &out.PrimaryReselect
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

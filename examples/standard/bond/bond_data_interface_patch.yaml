@@ -8,14 +8,18 @@ metadata:
 spec:
   interfaces:
     ethernet:
-      - name: mgmt0
-        class: platform
-        platformNetworks:
-          - mgmt
-          - cluster-host
-        port:
-          name: enp0s8
     bond:
+      - class: platform
+        dataNetworks: []
+        members:
+        - enp0s8
+        - enp0s9
+        mode: active_standby
+        name: mgmt0
+        platformNetworks:
+        - mgmt
+        - cluster-host
+        primaryReselect: failure
       - name: data0
         class: data
         platformNetworks:

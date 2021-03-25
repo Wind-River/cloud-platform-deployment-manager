@@ -69,6 +69,7 @@ type InterfaceOpts struct {
 	DataNetworks     *[]string `json:"datanetworks,omitempty" mapstructure:"datanetworks"`
 	AEMode           *string   `json:"aemode,omitempty" mapstructure:"aemode"`
 	AETransmitHash   *string   `json:"txhashpolicy,omitempty" mapstructure:"txhashpolicy"`
+	AEPrimReselect   *string   `json:"primary_reselect,omitempty" mapstructure:"primary_reselect"`
 	VFCount          *int      `json:"sriov_numvfs,omitempty" mapstructure:"sriov_numvfs"`
 	VFDriver         *string   `json:"sriov_vf_driver,omitempty" mapstructure:"sriov_vf_driver"`
 	Uses             *[]string `json:"uses,omitempty" mapstructure:"uses"`

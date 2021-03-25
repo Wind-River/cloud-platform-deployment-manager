@@ -214,6 +214,14 @@ func (in *BondInfo) DeepEqual(other *BondInfo) bool {
 		}
 	}
 
+	if (in.PrimaryReselect == nil) != (other.PrimaryReselect == nil) {
+		return false
+	} else if in.PrimaryReselect != nil {
+		if *in.PrimaryReselect != *other.PrimaryReselect {
+			return false
+		}
+	}
+
 	return true
 }
 
