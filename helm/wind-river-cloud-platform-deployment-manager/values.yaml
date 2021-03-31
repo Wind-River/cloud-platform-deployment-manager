@@ -11,7 +11,8 @@ namespace: platform-deployment-manager
 # name is overly long.
 nameOverride: platform-deployment-manager
 
-imagePullSecrets: []
+imagePullSecrets:
+ - name: default-registry-key
 
 rbacProxy:
   enabled: true
