@@ -16,6 +16,7 @@ type StorageBackendOpts struct {
 	State        *string                 `json:"state,omitempty" mapstructure:"state"`
 	Task         *string                 `json:"task,omitempty" mapstructure:"task"`
 	Services     *string                 `json:"services,omitempty" mapstructure:"services"`
+	Network      *string                 `json:"network,omitempty" mapstructure:"network"`
 	Capabilities *map[string]interface{} `json:"capabilities,omitempty" mapstructure:"capabilities"`
 }
 

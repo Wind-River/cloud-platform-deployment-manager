@@ -266,6 +266,7 @@ func (r *ReconcileSystem) ReconcileStorageBackends(client *gophercloud.ServiceCl
 			Confirmed: true,
 			Backend:   &spec_sb.Type,
 			Name:      &spec_sb.Name,
+			Network:   spec_sb.Network,
 		}
 
 		// Replication is an optional parameter.

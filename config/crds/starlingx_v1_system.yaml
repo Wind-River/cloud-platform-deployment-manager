@@ -220,6 +220,13 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: string
+                      network:
+                        description: Network is the network type associated with this
+                          backend. At the momemnt it is used only for ceph backend.
+                        enum:
+                        - mgmt
+                        - cluster-host
+                        type: string
                       partitionSize:
                         description: PartitionSize is the controller disk partition
                           size to be allocated for the Ceph monitor - in gigabytes.
