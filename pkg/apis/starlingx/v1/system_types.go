@@ -182,6 +182,12 @@ type StorageBackend struct {
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +optional
 	PartitionSize *int `json:"partitionSize,omitempty"`
+
+	// Network is the network type associated with this backend.
+	// At the momemnt it is used only for ceph backend.
+	// +kubebuilder:validation:Enum=mgmt,cluster-host
+	// +optional
+	Network *string `json:"network,omitempty"`
 }
 
 // DRBDConfiguration defines the DRBD file system settings for the system.

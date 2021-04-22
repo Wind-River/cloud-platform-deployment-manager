@@ -1795,6 +1795,16 @@ func (in *StorageBackend) DeepEqual(other *StorageBackend) bool {
 		}
 	}
 
+	if in.Network != nil {
+		if (in.Network == nil) != (other.Network == nil) {
+			return false
+		} else if in.Network != nil {
+			if *in.Network != *other.Network {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

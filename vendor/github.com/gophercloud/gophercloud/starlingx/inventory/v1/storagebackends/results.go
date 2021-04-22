@@ -55,6 +55,7 @@ type StorageBackend struct {
 	State        string       `json:"state"`
 	Task         string       `json:"task"`
 	Services     string       `json:"services"`
+	Network      string       `json:"network"`
 	Capabilities Capabilities `json:"capabilities"`
 
 	// CreatedAt defines the timestamp at which the resource was created.

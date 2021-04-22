@@ -1637,6 +1637,11 @@ func (in *StorageBackend) DeepCopyInto(out *StorageBackend) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.Network != nil {
+		in, out := &in.Network, &out.Network
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
