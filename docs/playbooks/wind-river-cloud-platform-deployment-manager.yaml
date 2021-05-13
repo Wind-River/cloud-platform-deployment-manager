@@ -107,5 +107,9 @@
 
         - name: Apply Deployment Configuration File
           shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f deployment-config.yaml
+          register: apply_deployment_config
+          retries: 5
+          delay: 10
+          until: apply_deployment_config.rc == 0
 
       when: deployment_config is defined
