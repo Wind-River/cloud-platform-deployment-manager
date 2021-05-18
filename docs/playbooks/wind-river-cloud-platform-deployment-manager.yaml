@@ -113,3 +113,19 @@
           until: apply_deployment_config.rc == 0
 
       when: deployment_config is defined
+
+    # Create default registry key in platform-deployment-manager for future image pulls
+    - name: Get platform-deployment-manager namespace default registry key
+      command: >-
+        kubectl --kubeconfig=/etc/kubernetes/admin.conf get secret default-registry-key --namespace=platform-deployment-manager
+      failed_when: false
+      register: get_dm_default_registry_key
+
+    - name: Copy default-registry-key to platform-deployment-manager namespace
+      shell: >-
+        kubectl get secret default-registry-key --namespace=kube-system -o yaml
+        | sed 's/namespace: kube-system/namespace: platform-deployment-manager/'
+        | kubectl apply --namespace=platform-deployment-manager -f -
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      when: get_dm_default_registry_key.stdout == ""
