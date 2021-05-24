@@ -1167,6 +1167,26 @@ func MergeSystemSpecs(a, b *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, er
 	return a, nil
 }
 
+// After MergeSystemSpecs fill out any missing optional value
+func FillOptionalMergedSystemSpec(spec *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, error) {
+	if spec.Storage != nil && spec.Storage.Backends != nil {
+		backends := *spec.Storage.Backends
+		for i := range backends {
+			sb := backends[i]
+			// Fill missing network parameter for ceph backend
+			if sb.Type == "ceph" && sb.Network == nil {
+				default_value := "mgmt"
+				sb.Network = &default_value
+			}
+			backends[i] = sb
+		}
+
+		spec.Storage.Backends = &backends
+	}
+
+	return spec, nil
+}
+
 func (r *ReconcileSystem) GetCertificateSignatures(instance *starlingxv1.System) error {
 	var cert *x509.Certificate
 	result := make([]starlingxv1.CertificateInfo, 0)
@@ -1263,7 +1283,12 @@ func (r *ReconcileSystem) ReconcileResource(client *gophercloud.ServiceClient, i
 	// Merge the system defaults with the desired attributes so that any
 	// optional attributes not filled in by the user default to how the system
 	// looked when it was first installed.
-	spec, err := MergeSystemSpecs(defaults, &instance.Spec)
+	temp_spec, err := MergeSystemSpecs(defaults, &instance.Spec)
+	if err != nil {
+		return err
+	}
+
+	spec, err := FillOptionalMergedSystemSpec(temp_spec)
 	if err != nil {
 		return err
 	}
