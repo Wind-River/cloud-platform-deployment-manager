@@ -969,6 +969,7 @@ func parseStorageBackendInfo(spec *SystemSpec, storageBackends []storagebackends
 		info := StorageBackend{
 			Name:              sb.Name,
 			Type:              sb.Backend,
+			Network:           &sb.Network,
 			ReplicationFactor: &rep,
 		}
 		result = append(result, info)
