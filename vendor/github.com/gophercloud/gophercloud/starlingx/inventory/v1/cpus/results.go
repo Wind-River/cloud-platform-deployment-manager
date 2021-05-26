@@ -42,15 +42,15 @@ type CPU struct {
 	// Processor is the processor package number.  A host usually has 1 or 2
 	// processors but that number could be higher.  Each is usually associated
 	// to a seperate NUMA socket.
-	Processor int `json:"processor"`
+	Processor int `json:"numa_node"`
 
 	// LogicalCore is the logical core number of the core.  If hypher-threading
 	// is disabled then this may map directly to the physical core number.
-	LogicalCore int `json:"logical_core"`
+	LogicalCore int `json:"cpu"`
 
 	// PhysicalCore is the physical core number.  If hyper-threading is enabled
 	// then multiple logical cores will share the same physical core.
-	PhysicalCore int `json:"physical_core"`
+	PhysicalCore int `json:"core"`
 
 	// Thread is the hyper-threading thread number.
 	Thread int `json:"thread"`

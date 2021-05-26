@@ -170,7 +170,7 @@ func parseProcessorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		if f, ok := nodes[c.Processor]; !ok {
 			nodes[c.Processor] = map[string]int{function: 1}
-			if profile.HasWorkerSubFunction() && function != cpus.CPUFunctionVSwitch {
+			if profile.HasWorkerSubFunction() && function != cpus.CPUFunctionVSwitch && c.Processor == 0 {
 				// Always add the vswitch function since if it is set to 0
 				// it won't show up in the list and will be missing from the
 				// profile that we create.
