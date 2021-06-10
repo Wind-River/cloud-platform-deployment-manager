@@ -81,8 +81,85 @@
         state: touch
       become: yes
 
+    # Check if DM already exists in either helmv2 or helmv3
+    - name: Get list of releases in helmv2
+      command: >-
+        /usr/local/sbin/helmv2-cli -- helm list --output json
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      ignore_errors: yes
+      register: helmv2_releases
+
+    - name: Query for DM release in helmv2
+      shell: |
+        grep -iq '"name":"deployment-manager"' <<< {{ helmv2_releases.stdout_lines }}
+      ignore_errors: yes
+      register: helmv2_dm_exists
+
+    - name: Get list of releases in helmv3
+      command: >-
+        /usr/sbin/helm list --output json
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      ignore_errors: yes
+      register: helmv3_releases
+
+    - name: Query for DM release in helmv3
+      shell: |
+        grep -iq '"name":"deployment-manager"' <<< {{ helmv3_releases.stdout_lines }}
+      ignore_errors: yes
+      register: helmv3_dm_exists
+
+    # Follow a different reinstallation procedure if DM is installed in helmv2
+    - block:
+      - name: Get armada pod name
+        command: >-
+          kubectl get pods -n armada -o custom-columns=NAME:metadata.name --no-headers
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: armada_pod
+
+      - name: Show armada pod
+        debug:
+          msg:
+          - "armada pod ID: {{ armada_pod.stdout }}"
+
+      - name: Copy files into tiller container if using helmv2
+        command: "{{ item }}"
+        with_items:
+          - kubectl -n armada cp
+            /home/{{ ansible_ssh_user }}/{{ manager_chart | basename }}
+            {{ armada_pod.stdout }}:/tmp/.
+            -c tiller
+          - kubectl -n armada cp
+            /home/{{ ansible_ssh_user }}/{{ deployment_manager_overrides | basename }}
+            {{ armada_pod.stdout }}:/tmp/.
+            -c tiller
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+      - name: Reinstall Deployment Manager (helmv2)
+        command: >-
+          /usr/local/sbin/helmv2-cli -- helm upgrade
+          --install deployment-manager
+          --values /tmp/{{ deployment_manager_overrides | basename }}
+          /tmp/{{ manager_chart | basename }}
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+      when: helmv2_dm_exists.rc == 0
+
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
+      when: helmv2_dm_exists.rc != 0
+
+    # Restart Deployment Manager if it was reinstalled
+    - name: Restart Deployment Manager if reinstalled
+      command: >-
+        kubectl -n platform-deployment-manager delete pods platform-deployment-manager-0
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      when: helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
