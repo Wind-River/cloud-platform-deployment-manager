@@ -1,0 +1,12 @@
+kind: System
+apiVersion: starlingx.windriver.com/v1
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  description: Virtual Box Standard System (HTTPS)
+  certificates:
+    - type: ssl
+      secret: system-restapi-gui-certificate
