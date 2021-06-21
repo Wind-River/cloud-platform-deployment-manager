@@ -32,7 +32,7 @@ spec:
   renewBefore: 360h  # 15d
   commonName:
   organization:
-  - WRCP-System
+  - Example-Org
   ipAddresses:
   -
   dnsNames:
