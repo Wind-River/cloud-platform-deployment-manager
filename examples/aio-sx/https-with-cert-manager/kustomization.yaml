@@ -1,0 +1,8 @@
+bases:
+  - ../default
+
+resources:
+  - platform_certificate_certmanager.yaml
+
+patches:
+  - platform_certificate_patch.yaml
