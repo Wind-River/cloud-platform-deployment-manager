@@ -6,56 +6,14 @@
   become: false
   tasks:
     - set_fact:
-        manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
+        manager_chart: "{{ deployment_manager_chart | default('/usr/local/share/applications/helm/wind-river-cloud-platform-deployment-manager-2.0.7.tgz') }}"
 
-    - block:
-      # Copy required files up to the target host if this playbook is being
-      # executed remotely.
+    - set_fact:
+        deployment_manager_overrides: "{{ deployment_manager_overrides | default('/usr/local/share/applications/overrides/wind-river-cloud-platform-deployment-manager-overrides.yaml') }}"
 
-      - block:
-        # Download a copy of the deployment manager helm chart if the location
-        # supplied by the end user references a git repo.
-
-        - name: Create A Temporary Download Directory
-          tempfile:
-            state: directory
-          register: temp
-          delegate_to: localhost
-
-        - name: Download Deployment Manager Helm Chart From Repo
-          shell: "git archive --remote={{ manager_chart }} | tar -x -C {{ temp.path }}"
-          delegate_to: localhost
-
-        - name: Reference Downloaded Helm Chart
-          set_fact:
-            manager_chart: "{{ lookup('fileglob', '{{ temp.path }}/docs/charts/wind-river-cloud-platform-deployment-manager-*.tgz', wantlist=true) | first }}"
-
-        when: manager_chart | regex_search("^https|^git")
-
-      - name: Upload Deployment Manager Helm Chart
-        copy:
-          src: "{{ manager_chart }}"
-          dest: /home/{{ ansible_ssh_user }}/
-          owner: "{{ ansible_ssh_user }}"
-          group: root
-          mode: 0644
-
-      - name: Upload Deployment Manager Helm Chart Overrides
-        copy:
-          src: "{{ deployment_manager_overrides }}"
-          dest: /home/{{ ansible_ssh_user }}/
-          group: root
-          mode: 0644
-        when: deployment_manager_overrides is defined
-
-      - name: Clean download directory
-        file:
-          path: "{{ temp.path }}"
-          state: absent
-        delegate_to: localhost
-        when: temp.path is defined
-
-      when: inventory_hostname != 'localhost'
+    - set_fact:
+        deployment_config: "{{ deployment_config }}"
+      when: deployment_config is defined
 
     - name: Retrieve software version number
       shell: source /etc/build.info; echo $SW_VERSION
@@ -128,11 +86,11 @@
         command: "{{ item }}"
         with_items:
           - kubectl -n armada cp
-            /home/{{ ansible_ssh_user }}/{{ manager_chart | basename }}
+            {{ manager_chart }}
             {{ armada_pod.stdout }}:/tmp/.
             -c tiller
           - kubectl -n armada cp
-            /home/{{ ansible_ssh_user }}/{{ deployment_manager_overrides | basename }}
+            {{ deployment_manager_overrides }}
             {{ armada_pod.stdout }}:/tmp/.
             -c tiller
         environment:
@@ -150,7 +108,7 @@
       when: helmv2_dm_exists.rc == 0
 
     - name: Install Deployment Manager
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
+      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides }}{% endif %} {{ manager_chart }}
       when: helmv2_dm_exists.rc != 0
 
     # Restart Deployment Manager if it was reinstalled
@@ -173,6 +131,11 @@
             owner: "{{ ansible_ssh_user }}"
             group: root
             mode: 0755
+          when: inventory_hostname != 'localhost'
+
+        - set_fact:
+            deployment_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
+          when: inventory_hostname != 'localhost'
 
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment
@@ -183,7 +146,7 @@
             msg: Waiting for the Deployment Manager validation webhooks to start
 
         - name: Apply Deployment Configuration File
-          shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f deployment-config.yaml
+          shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f {{ deployment_config }}
           register: apply_deployment_config
           retries: 5
           delay: 10
