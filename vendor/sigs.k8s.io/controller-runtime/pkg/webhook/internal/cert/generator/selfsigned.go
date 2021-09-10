@@ -72,10 +72,15 @@ func (cp *SelfSignedCertGenerator) Generate(commonName string) (*Artifacts, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the private key: %v", err)
 	}
+	var dnsNames []string
+	altNames := cert.AltNames{
+		DNSNames: append(dnsNames, commonName),
+	}
 	signedCert, err := cert.NewSignedCert(
 		cert.Config{
 			CommonName: commonName,
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			AltNames:   altNames,
 		},
 		key, signingCert, signingKey,
 	)
