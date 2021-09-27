@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019 Wind River Systems, Inc.
+# Copyright(c) 2021 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -7,6 +7,14 @@
   tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
+    
+    - set_fact:
+        helm_chart_overrides: "{{ deployment_manager_overrides }}"
+      when: deployment_manager_overrides is defined
+    
+    - set_fact:
+        deploy_config: "{{ deployment_config }}"
+      when: deployment_config is defined
 
     - block:
       # Copy required files up to the target host if this playbook is being
@@ -40,14 +48,21 @@
           group: root
           mode: 0644
 
+      - set_fact:
+          manager_chart: "/home/{{ ansible_ssh_user }}/{{ manager_chart | basename }}"
+
       - name: Upload Deployment Manager Helm Chart Overrides
         copy:
-          src: "{{ deployment_manager_overrides }}"
+          src: "{{ helm_chart_overrides }}"
           dest: /home/{{ ansible_ssh_user }}/
           group: root
           mode: 0644
-        when: deployment_manager_overrides is defined
+        when: helm_chart_overrides is defined
 
+      - set_fact:
+          helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
+        when: helm_chart_overrides is defined
+      
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
@@ -128,11 +143,11 @@
         command: "{{ item }}"
         with_items:
           - kubectl -n armada cp
-            /home/{{ ansible_ssh_user }}/{{ manager_chart | basename }}
+            {{ manager_chart }}
             {{ armada_pod.stdout }}:/tmp/.
             -c tiller
           - kubectl -n armada cp
-            /home/{{ ansible_ssh_user }}/{{ deployment_manager_overrides | basename }}
+            {% if helm_chart_overrides is defined %}{{ helm_chart_overrides }}{% endif %}
             {{ armada_pod.stdout }}:/tmp/.
             -c tiller
         environment:
@@ -142,7 +157,7 @@
         command: >-
           /usr/local/sbin/helmv2-cli -- helm upgrade
           --install deployment-manager
-          --values /tmp/{{ deployment_manager_overrides | basename }}
+          --values /tmp/{{ helm_chart_overrides | basename }}
           /tmp/{{ manager_chart | basename }}
         environment:
           KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -150,7 +165,7 @@
       when: helmv2_dm_exists.rc == 0
 
     - name: Install Deployment Manager
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if deployment_manager_overrides is defined %}--values {{ deployment_manager_overrides | basename }}{% endif %} {{ manager_chart | basename }}
+      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
       when: helmv2_dm_exists.rc != 0
 
     # Restart Deployment Manager if it was reinstalled
@@ -168,11 +183,16 @@
     - block:
         - name: Upload Deployment Configuration File
           copy:
-            src: "{{ deployment_config }}"
+            src: "{{ deploy_config }}"
             dest: /home/{{ ansible_ssh_user }}/deployment-config.yaml
             owner: "{{ ansible_ssh_user }}"
             group: root
             mode: 0755
+          when: inventory_hostname != 'localhost'
+
+        - set_fact:
+            deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
+          when: inventory_hostname != 'localhost'
 
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment
@@ -183,13 +203,13 @@
             msg: Waiting for the Deployment Manager validation webhooks to start
 
         - name: Apply Deployment Configuration File
-          shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f deployment-config.yaml
-          register: apply_deployment_config
+          shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f {{ deploy_config }}
+          register: apply_deploy_config
           retries: 5
           delay: 10
-          until: apply_deployment_config.rc == 0
+          until: apply_deploy_config.rc == 0
 
-      when: deployment_config is defined
+      when: deploy_config is defined
 
     # Create default registry key in platform-deployment-manager for future image pulls
     - name: Get platform-deployment-manager namespace default registry key
