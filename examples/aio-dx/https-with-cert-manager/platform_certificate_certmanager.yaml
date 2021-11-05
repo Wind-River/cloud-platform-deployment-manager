@@ -5,19 +5,19 @@ data:
   tls.key: ""
 kind: Secret
 metadata:
-  name: my-ica-cert-and-key
-  namespace: deployment
+  name: system-local-ca
+  namespace: cert-manager
 type: kubernetes.io/tls
 ---
 apiVersion: cert-manager.io/v1alpha2
-kind: Issuer
+kind: ClusterIssuer
 metadata:
-  name: my-ica-cert-and-key-issuer
-  namespace: deployment
+  name: system-local-ca
 spec:
   ca:
-    secretName: my-ica-cert-and-key
+    secretName: system-local-ca
 ---
+# StarlingX REST & GUI Certificate
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
@@ -26,14 +26,47 @@ metadata:
 spec:
   secretName: system-restapi-gui-certificate
   issuerRef:
-    name: my-ica-cert-and-key-issuer
-    kind: Issuer
-  duration: 2160h    # 90d 
+    name: system-local-ca
+    kind: ClusterIssuer
+  duration: 2160h    # 90d
   renewBefore: 360h  # 15d
-  commonName:
-  organization:
-  - Example-Org
+  commonName: null # Common Name
+  subject:
+    countries:
+    - null # Country
+    provinces:
+    - null # State/Province
+    organizationalUnits:
+    - WRCP-System
   ipAddresses:
-  -
+  -  null # OAM floating IP
   dnsNames:
-  -
+  - null # OAM IP or FQDN 
+---
+# StarlingX Docker Registry Certificate
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: system-registry-local-certificate
+  namespace: deployment
+spec:
+  secretName: system-registry-local-certificate
+  issuerRef:
+    name: system-local-ca
+    kind: ClusterIssuer
+  duration: 2160h    # 90d
+  renewBefore: 360h  # 15d
+  subject:
+    countries:
+    - null # Country
+    provinces:
+    - null # State/Province
+    organizationalUnits:
+    - WRCP-System
+  ipAddresses:
+  - null # oam floating IP address
+  - null # oam mgmt IP address
+  dnsNames:
+  - registry.local
+  - registry.central
+---

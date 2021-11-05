@@ -8,5 +8,7 @@ metadata:
 spec:
   description: Virtual Box Standard System (HTTPS)
   certificates:
-    - type: ssl
-      secret: platform-certificate
+  - secret: system-restapi-gui-certificate
+    type: ssl
+  - secret: system-registry-local-certificate
+    type: docker_registry

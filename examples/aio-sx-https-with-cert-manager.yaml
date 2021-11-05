@@ -10,8 +10,8 @@ data:
   tls.key: ""
 kind: Secret
 metadata:
-  name: my-ica-cert-and-key
-  namespace: deployment
+  name: system-local-ca
+  namespace: cert-manager
 type: kubernetes.io/tls
 ---
 apiVersion: v1
@@ -37,31 +37,61 @@ type: Opaque
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
+  name: system-registry-local-certificate
+  namespace: deployment
+spec:
+  dnsNames:
+  - registry.local
+  - registry.central
+  duration: 2160h
+  ipAddresses:
+  - null
+  - null
+  issuerRef:
+    kind: ClusterIssuer
+    name: system-local-ca
+  renewBefore: 360h
+  secretName: system-registry-local-certificate
+  subject:
+    countries:
+    - null
+    organizationalUnits:
+    - WRCP-System
+    provinces:
+    - null
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
   name: system-restapi-gui-certificate
   namespace: deployment
 spec:
-  commonName: 10.10.10.3
+  commonName: null
   dnsNames:
-  - example-hostname.com
+  - null
   duration: 2160h
   ipAddresses:
-  - 10.10.10.3
+  - null
   issuerRef:
-    kind: Issuer
-    name: my-ica-cert-and-key-issuer
-  organization:
-  - WRCP-System
+    kind: ClusterIssuer
+    name: system-local-ca
   renewBefore: 360h
   secretName: system-restapi-gui-certificate
+  subject:
+    countries:
+    - null
+    organizationalUnits:
+    - WRCP-System
+    provinces:
+    - null
 ---
 apiVersion: cert-manager.io/v1alpha2
-kind: Issuer
+kind: ClusterIssuer
 metadata:
-  name: my-ica-cert-and-key-issuer
-  namespace: deployment
+  name: system-local-ca
 spec:
   ca:
-    secretName: my-ica-cert-and-key
+    secretName: system-local-ca
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
@@ -204,6 +234,8 @@ spec:
   certificates:
   - secret: system-restapi-gui-certificate
     type: ssl
+  - secret: system-registry-local-certificate
+    type: docker_registry
   contact: info@windriver.com
   description: Virtual Box Standard System (HTTPS)
   location: vbox
