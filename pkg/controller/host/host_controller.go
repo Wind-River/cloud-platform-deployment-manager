@@ -1222,12 +1222,18 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	log.Info("current config is:", "values", current)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
-		// Do not process any further changes once we have reached a
-		// synchronized state unless there is an annotation on the host.
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
-			msg := common.NoChangesAfterReconciled
-			r.NormalEvent(instance, common.ResourceUpdated, msg)
-			return common.NewChangeAfterInSync(msg)
+			if !host.IsUnlockedAvailable() {
+				msg := "waiting for the host reach available state"
+				m := NewUnlockedAvailableHostMonitor(instance, host.ID)
+				return r.StartMonitor(m, msg)
+			} else {
+				// Do not process any further changes once we have reached a
+				// synchronized state unless there is an annotation on the host.
+				msg := common.NoChangesAfterReconciled
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			}
 		} else {
 			log.Info(common.ChangedAllowedAfterReconciled)
 		}
