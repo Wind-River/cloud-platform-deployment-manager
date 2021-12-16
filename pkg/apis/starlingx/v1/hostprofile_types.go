@@ -357,6 +357,13 @@ type CommonInterfaceInfo struct {
 	// PTPRole defines the ptp role as master, slave, or none
 	// +kubebuilder:validation:Enum=master,slave,none
 	PTPRole *string `json:"ptpRole,omitempty"`
+
+	// PtpInterface defines the ptp interface to be configured against this
+	// interface.
+	// +kubebuilder:validation:MaxLength=255
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+	// +optional
+	PtpInterface *string `json:"ptpInterface,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single
@@ -724,6 +731,13 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:Pattern=^([0-9a-fA-Z]{2}[:-]){5}([0-9a-fA-Z]{2})$
 	// +optional
 	BootMAC *string `json:"bootMAC,omitempty"`
+
+	// PtpInstances defines the list of ptp instance to be configured
+	// against this interface.
+	// +kubebuilder:validation:MaxLength=255
+	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+	// +optional
+	PtpInstances *StringList `json:"ptpInstances,omitempty"`
 
 	// RootDevice defines the absolute device path of the device to be used as
 	// the root file system.

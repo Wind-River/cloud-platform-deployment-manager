@@ -1,0 +1,25 @@
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInterface
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ptpint1
+  namespace: deployment
+spec:
+  ptpinstance: ptp1
+  parameters:
+    - parameterKey: serverOnly
+      parameterValue: "1"
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInterface
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ptpint2
+  namespace: deployment
+spec:
+  ptpinstance: phc2sys1
+  parameters:
+    - parameterKey: foo
+      parameterValue: bar

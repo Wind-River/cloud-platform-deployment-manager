@@ -1,0 +1,20 @@
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0
+  namespace: deployment
+spec:
+  overrides:
+    ptpInstances:
+      - ptp4l
+      - phc2sys1
+    interfaces:
+      ethernet:
+      - class: platform
+        name: oam0
+        ptpInterface: ptpint1
+      - class: platform
+        name: mgmt0
+        ptpInterface: ptpint2
