@@ -18,14 +18,12 @@ func TestPtpInterface(t *testing.T) {
 		Namespace: "default",
 	}
 	ptpinstance := "ptp1"
-	description := "This is a sample description"
 	created := &PtpInterface{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
 		Spec: PtpInterfaceSpec{
-			Description: &description,
 			PtpInstance: &ptpinstance,
 		}}
 	g := gomega.NewGomegaWithT(t)

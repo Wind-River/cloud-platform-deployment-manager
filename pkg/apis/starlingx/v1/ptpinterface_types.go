@@ -7,29 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// InterfaceParameter defines a parameter assigned to the ptp interface
-type InterfaceParameter struct {
-	// ParameterKey defines the key of the ptp interface parameter
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9@\-_\. ]+$
-	// +kubebuilder:validation:MaxLength=255
-	ParameterKey string `json:"parameterKey"`
-
-	// ParameterValue defines the value of the ptp interface parameter
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9@\-_\. ]+$
-	// +kubebuilder:validation:MaxLength=255
-	ParameterValue string `json:"parameterValue"`
-}
-
-// InterfaceParameters defines a type to represent a slice of parameter objects
-// +deepequal-gen:unordered-array=true
-type InterfaceParameters []InterfaceParameter
-
 // PtpInterfaceSpec defines the desired state of a PtpInterface resource
 type PtpInterfaceSpec struct {
-	// Description defines a user define description which explains the purpose
-	// of the ptp interface.
-	// +optional
-	Description *string `json:"description,omitempty"`
 
 	// ptpinstance defines the ptp instance assigned to the ptp interface
 	// +kubebuilder:validation:MaxLength=255
@@ -37,7 +16,7 @@ type PtpInterfaceSpec struct {
 	PtpInstance *string `json:"ptpinstance"`
 
 	// InterfaceParameters contains a list of parameters assigned to the ptp interface
-	InterfaceParameters InterfaceParameters `json:"parameters,omitempty"`
+	InterfaceParameters []string `json:"parameters,omitempty"`
 }
 
 // PtpInterfaceStatus defines the observed state of a PtpInterface resource

@@ -39,31 +39,11 @@ spec:
           type: object
         spec:
           properties:
-            description:
-              description: Description defines a user define description which explains
-                the purpose of the ptp instance.
-              type: string
             parameters:
               description: Parameters contains a list of parameters assigned to the
                 ptp instance
               items:
-                properties:
-                  parameterKey:
-                    description: ParameterKey defines the key of the ptp instance
-                      parameter
-                    maxLength: 255
-                    pattern: ^[a-zA-Z0-9@\-_\. ]+$
-                    type: string
-                  parameterValue:
-                    description: ParameterValue defines the value of the ptp instance
-                      parameter
-                    maxLength: 255
-                    pattern: ^[a-zA-Z0-9@\-_\. ]+$
-                    type: string
-                required:
-                - parameterKey
-                - parameterValue
-                type: object
+                type: string
               type: array
             service:
               description: Serivce defines the service type of the ptp instance

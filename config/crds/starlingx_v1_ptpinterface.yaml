@@ -39,31 +39,11 @@ spec:
           type: object
         spec:
           properties:
-            description:
-              description: Description defines a user define description which explains
-                the purpose of the ptp interface.
-              type: string
             parameters:
               description: InterfaceParameters contains a list of parameters assigned
                 to the ptp interface
               items:
-                properties:
-                  parameterKey:
-                    description: ParameterKey defines the key of the ptp interface
-                      parameter
-                    maxLength: 255
-                    pattern: ^[a-zA-Z0-9@\-_\. ]+$
-                    type: string
-                  parameterValue:
-                    description: ParameterValue defines the value of the ptp interface
-                      parameter
-                    maxLength: 255
-                    pattern: ^[a-zA-Z0-9@\-_\. ]+$
-                    type: string
-                required:
-                - parameterKey
-                - parameterValue
-                type: object
+                type: string
               type: array
             ptpinstance:
               description: ptpinstance defines the ptp instance assigned to the ptp

@@ -7,36 +7,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// InstanceParameter defines a parameter assigned to the ptp instance
-type InstanceParameter struct {
-	// ParameterKey defines the key of the ptp instance parameter
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9@\-_\. ]+$
-	// +kubebuilder:validation:MaxLength=255
-	ParameterKey string `json:"parameterKey"`
-
-	// ParameterValue defines the value of the ptp instance parameter
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9@\-_\. ]+$
-	// +kubebuilder:validation:MaxLength=255
-	ParameterValue string `json:"parameterValue"`
-}
-
-// InstanceParameters defines a type to represent a slice of instance parameter objects
-// +deepequal-gen:unordered-array=true
-type InstanceParameters []InstanceParameter
-
 // PtpInstanceSpec defines the desired state of a PtpInstance resource
 type PtpInstanceSpec struct {
-	// Description defines a user define description which explains the purpose
-	// of the ptp instance.
-	// +optional
-	Description *string `json:"description,omitempty"`
 
 	// Serivce defines the service type of the ptp instance
 	// +kubebuilder:validation:Enum=ptp4l,phc2sys,ts2phc
 	Service *string `json:"service"`
 
 	// Parameters contains a list of parameters assigned to the ptp instance
-	InstanceParameters InstanceParameters `json:"parameters,omitempty"`
+	InstanceParameters []string `json:"parameters,omitempty"`
 }
 
 // PtpInstanceStatus defines the observed state of a PtpInstance resource
