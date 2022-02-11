@@ -17,14 +17,13 @@ func TestPtpInstance(t *testing.T) {
 		Name:      "foo",
 		Namespace: "default",
 	}
-	service := "ptp4l"
 	created := &PtpInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
 		Spec: PtpInstanceSpec{
-			Service: &service,
+			Service: "ptp4l",
 		}}
 	g := gomega.NewGomegaWithT(t)
 

@@ -17,19 +17,19 @@ func TestPtpInterface(t *testing.T) {
 		Name:      "foo",
 		Namespace: "default",
 	}
-	ptpinstance := "ptp1"
 	created := &PtpInterface{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
 		Spec: PtpInterfaceSpec{
-			PtpInstance: &ptpinstance,
+			PtpInstance:         "ptp1",
+			InterfaceParameters: []string{"foo1=bar1", "foo2=bar2"},
 		}}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &PtpInstance{}
+	fetched := &PtpInterface{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())

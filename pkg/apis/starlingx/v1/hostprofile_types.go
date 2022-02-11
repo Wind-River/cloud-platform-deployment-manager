@@ -737,7 +737,7 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	// +optional
-	PtpInstances *StringList `json:"ptpInstances,omitempty"`
+	PtpInstances StringList `json:"ptpInstances,omitempty"`
 
 	// RootDevice defines the absolute device path of the device to be used as
 	// the root file system.

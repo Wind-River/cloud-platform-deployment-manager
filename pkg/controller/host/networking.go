@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package host
 
@@ -12,6 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
@@ -288,6 +289,58 @@ func findConfiguredAddress(addr addresses.Address, profile *starlingxv1.HostProf
 	}
 
 	return nil, false
+}
+
+// ReconcileStalePTPInstance examines the current set of PTP instances and deletes
+// any PTP instances that are stale or need to be re-provisioned.
+func (r *ReconcileHost) ReconcileStalePTPInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+
+	if !config.IsReconcilerEnabled(config.Interface) {
+		return nil
+	}
+
+	for _, iface := range host.Interfaces {
+		// ReconcileStaleInterfaces is assumed to have been invoked before this
+		// method therefore ignore any failures to find a configured interface
+		// since they would have been already deleted in a previous step.
+
+		if info, found := findConfiguredInterface(&iface, profile, host); found {
+			if info.PtpInterface == nil {
+				// The user did not specify any ptp interfaces (an empty list or
+				// otherwise) so accept whatever is currently provisioned as
+				// the desired list.
+				continue
+			}
+
+			// Get the lists of current and configured networks on this interface
+			// TODO(yuxing): need a function in host.info named "FindPTPInterfaceByInterface"
+			// The return value of it should be a ptpinterfaces.PTPInterface or nil
+			current := host.FindPTPInterfaceByInterface(iface)
+			configured := *info.PtpInterface
+
+			if current != nil {
+				if current.Name != configured {
+					opts := ptpinterfaces.PTPIntToIntOpt{
+						PTPinterfaceID: &current.ID,
+					}
+					// Remove the stale PTP interface
+					log.Info("deleting stale PTP interface from interface",
+						"ifname", iface.Name)
+					_, err := ptpinterfaces.RemovePTPIntFromInt(client, iface.ID, opts).Extract()
+					if err != nil {
+						err = perrors.Wrapf(err, "failed to remove stale PTP interface %q from iface %q",
+							configured, iface.Name)
+						return err
+					}
+
+					r.NormalEvent(instance, common.ResourceDeleted,
+						"stale PTP interface %q has been removed from %q",
+						configured, iface.Name)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // ReconcileStaleAddresses examines the current set of addresses and deletes
@@ -859,6 +912,70 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 	return updated, err
 }
 
+// ReconcilePTPInterface implements a method to reconcile the PTP interface on
+// an interface against the configured set of networks.
+func (r *ReconcileHost) ReconcilePTPInterface(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
+	if info.PtpInterface == nil {
+		return updated, err
+	}
+
+	// Get the current and configured PTP interface on this interface
+	// TODO(yuxing): need a function in host.info named "FindPTPInterfaceByInterface"
+	// The return value of it should be a ptpinterfaces.PTPInterface or nil
+	current := host.FindPTPInterfaceByInterface(iface)
+	configured := *info.PtpInterface
+
+	if current != nil {
+		if current.Name != configured {
+			opts := ptpinterfaces.PTPIntToIntOpt{
+				PTPinterfaceID: &current.ID,
+			}
+			// Remove the PTP interface not expected
+			log.Info("deleting stale PTP interface from interface",
+				"ifname", iface.Name)
+			_, err = ptpinterfaces.RemovePTPIntFromInt(client, iface.ID, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to remove stale PTP interface %q from iface %q",
+					configured, iface.Name)
+				return updated, err
+			}
+
+			updated = true
+			r.NormalEvent(instance, common.ResourceDeleted,
+				"PTP interface %q has been removed from %q", current.Name, iface.Name)
+
+		} else {
+			// The configred PTP interface is already added, no operation expected
+			return updated, err
+		}
+	}
+
+	// Add the PTP interface to this interface
+	for _, existing := range host.PTPInterfaces {
+		if existing.Name == configured {
+			opts := ptpinterfaces.PTPIntToIntOpt{
+				PTPinterfaceID: &existing.ID,
+			}
+			// Add the PTP interface to the interface
+			log.Info("adding PTP interface to interface",
+				"ifname", iface.Name)
+			_, err = ptpinterfaces.AddPTPIntToInt(client, iface.ID, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to add PTP interface %q from iface %q",
+					configured, iface.Name)
+				return updated, err
+			}
+
+			updated = true
+			r.NormalEvent(instance, common.ResourceDeleted,
+				"PTP interface %q has been added to %q", current.Name, iface.Name)
+			break
+		}
+	}
+
+	return updated, err
+}
+
 // ReconcileInterfaceDataNetworks implements a method to reconcile the list of
 // networks on an interface against the configured set of networks.
 func (r *ReconcileHost) ReconcileInterfaceDataNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
@@ -943,6 +1060,7 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 	updated := false
 	networksUpdated := false
 	dataNetworksUpdated := false
+	ptpInterfaceUpdated := false
 
 	for _, ethInfo := range profile.Interfaces.Ethernet {
 		// SRIOV interfaces are deferred until later to avoid interfering with
@@ -1058,7 +1176,14 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 
 		dataNetworksUpdated = dataNetworksUpdated || result
 
-		updated = updated || networksUpdated || dataNetworksUpdated
+		result, err = r.ReconcilePTPInterface(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		ptpInterfaceUpdated = ptpInterfaceUpdated || result
+
+		updated = updated || networksUpdated || dataNetworksUpdated || ptpInterfaceUpdated
 	}
 
 	if updated {
@@ -1096,6 +1221,18 @@ func (r *ReconcileHost) ReconcileEthernetInterfaces(client *gophercloud.ServiceC
 		}
 
 		host.InterfaceDataNetworks = objects
+	}
+
+	if ptpInterfaceUpdated {
+		// PTP interface associated with the interface have been updated so we
+		// need to refresh the list of interface-datanetwork associations.
+		objects, err := ptpinterfaces.ListHostPTPInterfaces(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh PTP interface for hostid: %s", host.ID)
+			return err
+		}
+
+		host.PTPInterfaces = objects
 	}
 
 	return nil
@@ -1247,7 +1384,12 @@ func (r *ReconcileHost) ReconcileBondInterfaces(client *gophercloud.ServiceClien
 			return err
 		}
 
-		updated = updated || networksUpdated || dataNetworksUpdated
+		ptpInterfaceUpdated, err := r.ReconcilePTPInterface(client, instance, bondInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated || ptpInterfaceUpdated
 	}
 
 	if updated {
@@ -1349,7 +1491,12 @@ func (r *ReconcileHost) ReconcileVLANInterfaces(client *gophercloud.ServiceClien
 			return err
 		}
 
-		updated = updated || networksUpdated || dataNetworksUpdated
+		ptpInterfaceUpdated, err := r.ReconcilePTPInterface(client, instance, vlanInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated || ptpInterfaceUpdated
 	}
 
 	if updated {
@@ -1398,6 +1545,7 @@ func (r *ReconcileHost) ReconcileSRIOVInterfaces(client *gophercloud.ServiceClie
 	updated := false
 	networksUpdated := false
 	dataNetworksUpdated := false
+	ptpInterfaceUpdated := false
 
 	for _, ethInfo := range profile.Interfaces.Ethernet {
 		// Only processing SRIOV Ethernet interfaces
@@ -1447,7 +1595,14 @@ func (r *ReconcileHost) ReconcileSRIOVInterfaces(client *gophercloud.ServiceClie
 
 		dataNetworksUpdated = dataNetworksUpdated || result
 
-		updated = updated || networksUpdated || dataNetworksUpdated
+		result, err = r.ReconcilePTPInterface(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		ptpInterfaceUpdated = ptpInterfaceUpdated || result
+
+		updated = updated || networksUpdated || dataNetworksUpdated || ptpInterfaceUpdated
 	}
 
 	if updated {
@@ -1485,6 +1640,18 @@ func (r *ReconcileHost) ReconcileSRIOVInterfaces(client *gophercloud.ServiceClie
 		}
 
 		host.InterfaceDataNetworks = objects
+	}
+
+	if ptpInterfaceUpdated {
+		// PTP interface associated with the interface have been updated so we
+		// need to refresh the list of interface-datanetwork associations.
+		objects, err := ptpinterfaces.ListHostPTPInterfaces(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh PTP interface for hostid: %s", host.ID)
+			return err
+		}
+
+		host.PTPInterfaces = objects
 	}
 
 	return nil
@@ -1567,7 +1734,12 @@ func (r *ReconcileHost) ReconcileVFInterfaces(client *gophercloud.ServiceClient,
 			return err
 		}
 
-		updated = updated || networksUpdated || dataNetworksUpdated
+		ptpInterfaceUpdated, err := r.ReconcilePTPInterface(client, instance, vfInfo.CommonInterfaceInfo, *iface, host)
+		if err != nil {
+			return err
+		}
+
+		updated = updated || networksUpdated || dataNetworksUpdated || ptpInterfaceUpdated
 	}
 
 	if updated {
@@ -1748,6 +1920,12 @@ func (r *ReconcileHost) ReconcileNetworking(client *gophercloud.ServiceClient, i
 
 	// Remove stale interface-network associations
 	err = r.ReconcileStaleInterfaceDataNetworks(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	// Remove stale PTP interface associations
+	err = r.ReconcileStalePTPInterfaces(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

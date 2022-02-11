@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package host
 
@@ -9,6 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
@@ -434,6 +435,72 @@ func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, i
 	return nil
 }
 
+// ReconcilePTPInstances is responsible for reconciling the PTP instances
+// associated with each host.
+func (r *ReconcileHost) ReconcilePTPInstances(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+	updated := false
+
+	// Remove any stale PTP instances
+	for _, existing := range host.PTPInstances {
+		found := false
+		for _, configured := range profile.PtpInstances {
+			if configured == existing.Name {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Info("removing PTP instance", "PTP instance", existing)
+
+			opt := ptpinstances.PTPInstToHostOpts{
+				PTPInstanceID: &existing.ID,
+			}
+			_, err := ptpinstances.RemovePTPInstanceFromHost(client, host.ID, opt).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to remove PTP instance from host: %s", host.ID)
+				return err
+			}
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ptp instance %s removed from host", existing.Name)
+			updated = true
+			break
+		}
+	}
+
+	// Add PTP instance
+	for _, configured := range profile.PtpInstances {
+		for _, result := range host.PTPInstances {
+			if configured == result.Name {
+				opt2 := ptpinstances.PTPInstToHostOpts{
+					PTPInstanceID: &result.ID,
+				}
+				_, err := ptpinstances.AddPTPInstanceToHost(client, host.ID, opt2).Extract()
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to add PTP instance to host: %s", host.ID)
+					return err
+				}
+				r.NormalEvent(instance, common.ResourceUpdated,
+					"ptp instance %s added to host", configured)
+				updated = true
+				break
+			}
+		}
+	}
+
+	if updated {
+		results, err := ptpinstances.ListHostPTPInstances(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh PTP instances from host: %s", host.ID)
+			return err
+		}
+
+		host.PTPInstances = results
+	}
+
+	return nil
+}
+
 // ReconcileAttributes is responsible for reconciling the labels on each host.
 func (r *ReconcileHost) ReconcileLabels(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
@@ -695,6 +762,11 @@ func (r *ReconcileHost) ReconcileDisabledHost(client *gophercloud.ServiceClient,
 	}
 
 	err = r.ReconcileLabels(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcilePTPInstances(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

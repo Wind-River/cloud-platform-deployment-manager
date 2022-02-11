@@ -13,9 +13,10 @@ type PtpInterfaceSpec struct {
 	// ptpinstance defines the ptp instance assigned to the ptp interface
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-	PtpInstance *string `json:"ptpinstance"`
+	PtpInstance string `json:"ptpinstance"`
 
 	// InterfaceParameters contains a list of parameters assigned to the ptp interface
+	// +optional
 	InterfaceParameters []string `json:"parameters,omitempty"`
 }
 

@@ -1558,12 +1558,26 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
-	if in.PtpInstances != nil {
-		if (in.PtpInstances == nil) != (other.PtpInstances == nil) {
+	if ((in.PtpInstances != nil) && (other.PtpInstances != nil)) || ((in.PtpInstances == nil) != (other.PtpInstances == nil)) {
+		in, other := &in.PtpInstances, &other.PtpInstances
+		if other == nil {
 			return false
-		} else if in.PtpInstances != nil {
-			if !in.PtpInstances.DeepEqual(other.PtpInstances) {
-				return false
+		}
+
+		if len(*in) != len(*other) {
+			return false
+		} else {
+			for _, inElement := range *in {
+				found := false
+				for _, otherElement := range *other {
+					if inElement == otherElement {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
 			}
 		}
 	}
@@ -1648,14 +1662,9 @@ func (in *PtpInstanceSpec) DeepEqual(other *PtpInstanceSpec) bool {
 		return false
 	}
 
-	if (in.Service == nil) != (other.Service == nil) {
+	if in.Service != other.Service {
 		return false
-	} else if in.Service != nil {
-		if *in.Service != *other.Service {
-			return false
-		}
 	}
-
 	if ((in.InstanceParameters != nil) && (other.InstanceParameters != nil)) || ((in.InstanceParameters == nil) != (other.InstanceParameters == nil)) {
 		in, other := &in.InstanceParameters, &other.InstanceParameters
 		if other == nil {
@@ -1708,14 +1717,9 @@ func (in *PtpInterfaceSpec) DeepEqual(other *PtpInterfaceSpec) bool {
 		return false
 	}
 
-	if (in.PtpInstance == nil) != (other.PtpInstance == nil) {
+	if in.PtpInstance != other.PtpInstance {
 		return false
-	} else if in.PtpInstance != nil {
-		if *in.PtpInstance != *other.PtpInstance {
-			return false
-		}
 	}
-
 	if ((in.InterfaceParameters != nil) && (other.InterfaceParameters != nil)) || ((in.InterfaceParameters == nil) != (other.InterfaceParameters == nil)) {
 		in, other := &in.InterfaceParameters, &other.InterfaceParameters
 		if other == nil {

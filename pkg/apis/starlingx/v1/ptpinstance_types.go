@@ -12,9 +12,10 @@ type PtpInstanceSpec struct {
 
 	// Serivce defines the service type of the ptp instance
 	// +kubebuilder:validation:Enum=ptp4l,phc2sys,ts2phc
-	Service *string `json:"service"`
+	Service string `json:"service"`
 
 	// Parameters contains a list of parameters assigned to the ptp instance
+	// +optional
 	InstanceParameters []string `json:"parameters,omitempty"`
 }
 

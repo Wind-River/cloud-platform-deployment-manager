@@ -122,6 +122,60 @@ rules:
 - apiGroups:
   - starlingx.windriver.com
   resources:
+  - ptpinstances
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - ptpinstances/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - ptpinterfaces
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - ptpinterfaces/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
   - systems
   verbs:
   - get
