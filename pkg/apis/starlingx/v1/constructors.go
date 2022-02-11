@@ -60,8 +60,8 @@ const (
 	KindPlatformNetwork = "PlatformNetwork"
 	KindDataNetwork     = "DataNetwork"
 	KindSystem          = "System"
-	KindPTPInstance     = "PTPInstance"
-	KindPTPInterface    = "PTPInterface"
+	KindPTPInstance     = "PtpInstance"
+	KindPTPInterface    = "PtpInterface"
 )
 
 type PageSize string
@@ -343,12 +343,8 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		data.PTPRole = iface.PTPRole
 
-<<<<<<< HEAD
-		data.PtpInterface = host.FindPTPInterfaceNameByInterface(iface)
-=======
 		dataPtpInterface := host.FindPTPInterfaceNameByInterface(iface)
 		data.PtpInterface = &dataPtpInterface
->>>>>>> Add ptpInstance and ptpInterface to constructor (#88)
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
@@ -813,7 +809,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	spec.ClockSynchronization = host.ClockSynchronization
 	ptpInstances := host.BuildPTPInstanceList()
 	ptpInstanceList := StringList(ptpInstances)
-	spec.PtpInstances = &ptpInstanceList
+	spec.PtpInstances = ptpInstanceList
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
@@ -1314,25 +1310,22 @@ func NewDataNetwork(name string, namespace string, net datanetworks.DataNetwork)
 	return &dataNetwork, nil
 }
 
-
 func NewPtpInstanceSpec(inst ptpinstances.PTPInstance) (*PtpInstanceSpec, error) {
 	spec := PtpInstanceSpec{
-		Service: inst.Service
+		Service: inst.Service,
 	}
-	
+
 	if inst.Parameters != nil && len(inst.Parameters) > 0 {
-		instanceParameters = StringList(inst.Parameters)
-		spec.InstanceParameters = &instanceParameters
+		spec.InstanceParameters = inst.Parameters
 	} else {
-		empty := StringList(make([]string, 0))
-		spec.InstanceParameters = &empty
+		spec.InstanceParameters = nil
 	}
 
 	return &spec, nil
 }
 
-func NewPTPInstance(name string, namespace string, inst ptpinstances.PTPInstance) (*PTPInstance, error) {
-	ptpInstance := PTPInstance{
+func NewPTPInstance(name string, namespace string, inst ptpinstances.PTPInstance) (*PtpInstance, error) {
+	ptpInstance := PtpInstance{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPTPInstance,
@@ -1358,22 +1351,20 @@ func NewPTPInstance(name string, namespace string, inst ptpinstances.PTPInstance
 
 func NewPtpInterfaceSpec(PTPint ptpinterfaces.PTPInterface) (*PtpInterfaceSpec, error) {
 	spec := PtpInterfaceSpec{
-		PtpInstance: PTPint.PTPInstanceName
+		PtpInstance: PTPint.PTPInstanceName,
 	}
-	
+
 	if PTPint.Parameters != nil && len(PTPint.Parameters) > 0 {
-		InterfaceParameters = StringList(PTPint.Parameters)
-		spec.InterfaceParameters = &InterfaceParameters
+		spec.InterfaceParameters = PTPint.Parameters
 	} else {
-		empty := StringList(make([]string, 0))
-		spec.InstanceParameters = &empty
+		spec.InterfaceParameters = nil
 	}
 
 	return &spec, nil
 }
 
-func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInterface) (*PTPInterface, error) {
-	ptpInterface := PTPInterface{
+func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInterface) (*PtpInterface, error) {
+	ptpInterface := PtpInterface{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPTPInstance,

@@ -313,12 +313,10 @@ func (r *ReconcileHost) ReconcileStalePTPInterfaces(client *gophercloud.ServiceC
 			}
 
 			// Get the lists of current and configured networks on this interface
-			// TODO(yuxing): need a function in host.info named "FindPTPInterfaceByInterface"
-			// The return value of it should be a ptpinterfaces.PTPInterface or nil
-			current := host.FindPTPInterfaceByInterface(iface)
+			current, ok := host.FindPTPInterfaceByInterface(iface)
 			configured := *info.PtpInterface
 
-			if current != nil {
+			if ok {
 				if current.Name != configured {
 					opts := ptpinterfaces.PTPIntToIntOpt{
 						PTPinterfaceID: &current.ID,
@@ -912,20 +910,51 @@ func (r *ReconcileHost) ReconcileInterfaceNetworks(client *gophercloud.ServiceCl
 	return updated, err
 }
 
+// findPTPInterfaceByName is to search for a PTP interface by its name,
+// this instance may or may not associate with the current host/interface.
+func findPTPinterfaceByName(client *gophercloud.ServiceClient, name string) (*ptpinterfaces.PTPInterface, error) {
+	founds, err := ptpinterfaces.ListPTPInterfaces(client)
+	if err != nil {
+		return nil, err
+	}
+	for _, found := range founds {
+		if found.Name == name {
+			return &found, nil
+		}
+	}
+	return nil, nil
+}
+
+func addPTPInterfaceRequired(client *gophercloud.ServiceClient, ptpifaceUUID string, ifaceID string) (bool, error) {
+	result := true
+	founds, err := ptpinterfaces.ListInterfacePTPInterfaces(client, ifaceID)
+	if err != nil {
+		return result, err
+	}
+	for _, found := range founds {
+		if found.UUID == ptpifaceUUID {
+			result = false
+			break
+		}
+	}
+	return result, nil
+}
+
 // ReconcilePTPInterface implements a method to reconcile the PTP interface on
 // an interface against the configured set of networks.
 func (r *ReconcileHost) ReconcilePTPInterface(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
 	if info.PtpInterface == nil {
 		return updated, err
 	}
+	configured := *info.PtpInterface
+	if configured == "" {
+		return updated, err
+	}
 
 	// Get the current and configured PTP interface on this interface
-	// TODO(yuxing): need a function in host.info named "FindPTPInterfaceByInterface"
-	// The return value of it should be a ptpinterfaces.PTPInterface or nil
-	current := host.FindPTPInterfaceByInterface(iface)
-	configured := *info.PtpInterface
+	current, ok := host.FindPTPInterfaceByInterface(iface)
 
-	if current != nil {
+	if ok {
 		if current.Name != configured {
 			opts := ptpinterfaces.PTPIntToIntOpt{
 				PTPinterfaceID: &current.ID,
@@ -943,34 +972,41 @@ func (r *ReconcileHost) ReconcilePTPInterface(client *gophercloud.ServiceClient,
 			updated = true
 			r.NormalEvent(instance, common.ResourceDeleted,
 				"PTP interface %q has been removed from %q", current.Name, iface.Name)
-
-		} else {
-			// The configred PTP interface is already added, no operation expected
-			return updated, err
 		}
 	}
 
 	// Add the PTP interface to this interface
-	for _, existing := range host.PTPInterfaces {
-		if existing.Name == configured {
-			opts := ptpinterfaces.PTPIntToIntOpt{
-				PTPinterfaceID: &existing.ID,
-			}
-			// Add the PTP interface to the interface
-			log.Info("adding PTP interface to interface",
-				"ifname", iface.Name)
-			_, err = ptpinterfaces.AddPTPIntToInt(client, iface.ID, opts).Extract()
-			if err != nil {
-				err = perrors.Wrapf(err, "failed to add PTP interface %q from iface %q",
-					configured, iface.Name)
-				return updated, err
-			}
+	found, err := findPTPinterfaceByName(client, configured)
 
-			updated = true
-			r.NormalEvent(instance, common.ResourceDeleted,
-				"PTP interface %q has been added to %q", current.Name, iface.Name)
-			break
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to find PTP interface for interface: %s", iface.Name)
+		return updated, err
+	} else if found == nil {
+		err = common.NewResourceStatusDependency("PTP interface is not created, waiting for the creation")
+		return updated, err
+	}
+
+	required, err2 := addPTPInterfaceRequired(client, found.UUID, iface.ID)
+	if err2 != nil {
+		return updated, err2
+	}
+	if required {
+		opts := ptpinterfaces.PTPIntToIntOpt{
+			PTPinterfaceID: &found.ID,
 		}
+
+		log.Info("adding PTP interface to interface", "ifname", iface.Name)
+
+		_, err = ptpinterfaces.AddPTPIntToInt(client, iface.ID, opts).Extract()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to add PTP interface %q from iface %q",
+				configured, iface.Name)
+			return updated, err
+		}
+
+		updated = true
+		r.NormalEvent(instance, common.ResourceCreated,
+			"PTP interface %q has been added to %q", found.Name, iface.Name)
 	}
 
 	return updated, err

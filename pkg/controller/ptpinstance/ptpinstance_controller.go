@@ -71,7 +71,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcilePtpInstance{}
 
-// ReconcileResource reconciles a PtpInstance object
+// ReconcilePtpInstance reconciles a PtpInstance object
 type ReconcilePtpInstance struct {
 	client.Client
 	scheme *runtime.Scheme
@@ -354,9 +354,10 @@ func (r *ReconcilePtpInstance) ReconcileUpdated(client *gophercloud.ServiceClien
 }
 
 // ReconcileResource interacts with the system API in order to reconcile the
-// state of a data network with the state stored in the k8s database.
+// state of a ptp instance with the state stored in the k8s database.
 func (r *ReconcilePtpInstance) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInstance) error {
 	found, err := r.FindExistingPTPInstance(client, instance)
+
 	if err != nil {
 		return err
 	}
@@ -411,6 +412,8 @@ func (r *ReconcilePtpInstance) Reconcile(request reconcile.Request) (reconcile.R
 	savedLog := log
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
+
+	log.Info("PTP instance reconcile called")
 
 	// Fetch the PTPInstance instance
 	instance := &starlingxv1.PtpInstance{}

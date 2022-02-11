@@ -188,6 +188,12 @@ var systemDependencies = []schema.GroupVersionKind{
 	{Group: v1.Group,
 		Version: v1.Version,
 		Kind:    v1.KindDataNetwork},
+	{Group: v1.Group,
+		Version: v1.Version,
+		Kind:    v1.KindPTPInstance},
+	{Group: v1.Group,
+		Version: v1.Version,
+		Kind:    v1.KindPTPInterface},
 }
 
 // notifyControllers updates an annotation on each of the listed controller
@@ -207,7 +213,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 		for _, obj := range objects.Items {
 			switch obj.GetKind() {
-			case v1.KindHost, v1.KindHostProfile, v1.KindPlatformNetwork, v1.KindDataNetwork:
+			case v1.KindHost, v1.KindHostProfile, v1.KindPlatformNetwork, v1.KindDataNetwork, v1.KindPTPInstance, v1.KindPTPInterface:
 				annotations := obj.GetAnnotations()
 				if annotations == nil {
 					annotations = make(map[string]string)

@@ -72,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcilePtpInterface{}
 
-// ReconcileResource reconciles a PtpInterface object
+// ReconcilePtpInterface reconciles a PtpInterface object
 type ReconcilePtpInterface struct {
 	client.Client
 	scheme *runtime.Scheme
@@ -153,21 +153,19 @@ func (r *ReconcilePtpInterface) ReconcileParamRemoved(client *gophercloud.Servic
 	return i, nil
 }
 
-func (r *ReconcilePtpInterface) GetPTPInstanceUUIDByName(client *gophercloud.ServiceClient, name string) (string, error) {
-
-	associatedInst, err := ptpinstances.Get(client, name).Extract()
-
+// findPTPInstanceByName is to search for a PTP instance by its name,
+// this instance may or may not associate with the current host.
+func findPTPInstanceByName(client *gophercloud.ServiceClient, name string) (*ptpinstances.PTPInstance, error) {
+	founds, err := ptpinstances.ListPTPInstances(client)
 	if err != nil {
-		err = perrors.Wrapf(err, "Failed to get UUID of ptp instance: %s", name)
-		return "", err
+		return nil, err
 	}
-
-	if associatedInst == nil {
-		err = perrors.Wrapf(err, "No ptp instance provisioned as: %s", name)
-		return "", err
+	for _, found := range founds {
+		if found.Name == name {
+			return &found, nil
+		}
 	}
-
-	return associatedInst.UUID, nil
+	return nil, nil
 }
 
 // ReconcileNew is a method which handles reconciling a new data resource and
@@ -186,15 +184,20 @@ func (r *ReconcilePtpInterface) ReconcileNew(client *gophercloud.ServiceClient, 
 	}
 
 	// Get the UUID of the PTP instance that associated with this PTP interface
-	uuid, err := r.GetPTPInstanceUUIDByName(client, instance.Spec.PtpInstance)
+	found, err := findPTPInstanceByName(client, instance.Spec.PtpInstance)
 	if err != nil {
+		err = perrors.Wrapf(err, "failed to find PTP instance for PTP interface: %s", instance.Name)
 		return nil, err
+	}
+
+	if found == nil {
+		return nil, common.NewResourceStatusDependency("PTP instance is not created, waiting for the creation")
 	}
 
 	// Create a new PTP instance
 	opts := ptpinterfaces.PTPInterfaceOpts{
 		Name:            &instance.Name,
-		PTPInstanceUUID: &uuid,
+		PTPInstanceUUID: &found.UUID,
 	}
 
 	log.Info("creating ptp interface", "opts", opts)
@@ -378,8 +381,9 @@ func (r *ReconcilePtpInterface) ReconcileUpdated(client *gophercloud.ServiceClie
 }
 
 // ReconcileResource interacts with the system API in order to reconcile the
-// state of a data network with the state stored in the k8s database.
+// state of a PTP interface with the state stored in the k8s database.
 func (r *ReconcilePtpInterface) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInterface) error {
+	log.Info("ptp interface reconcile resource")
 	found, err := r.FindExistingPTPInterface(client, instance)
 	if err != nil {
 		return err
@@ -435,6 +439,8 @@ func (r *ReconcilePtpInterface) Reconcile(request reconcile.Request) (reconcile.
 	savedLog := log
 	log = log.WithName(request.NamespacedName.String())
 	defer func() { log = savedLog }()
+
+	log.Info("PTP interface reconcile called")
 
 	// Fetch the PTPInterface instance
 	instance := &starlingxv1.PtpInterface{}

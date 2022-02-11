@@ -435,6 +435,21 @@ func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, i
 	return nil
 }
 
+// findPTPInstanceByName is to search for a PTP instance by its name,
+// this instance may or may not associate with the current host.
+func findPTPInstanceByName(client *gophercloud.ServiceClient, name string) (*ptpinstances.PTPInstance, error) {
+	founds, err := ptpinstances.ListPTPInstances(client)
+	if err != nil {
+		return nil, err
+	}
+	for _, found := range founds {
+		if found.Name == name {
+			return &found, nil
+		}
+	}
+	return nil, nil
+}
+
 // ReconcilePTPInstances is responsible for reconciling the PTP instances
 // associated with each host.
 func (r *ReconcileHost) ReconcilePTPInstances(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
@@ -464,27 +479,38 @@ func (r *ReconcileHost) ReconcilePTPInstances(client *gophercloud.ServiceClient,
 			r.NormalEvent(instance, common.ResourceUpdated,
 				"ptp instance %s removed from host", existing.Name)
 			updated = true
-			break
 		}
 	}
 
-	// Add PTP instance
 	for _, configured := range profile.PtpInstances {
+		found := false
 		for _, result := range host.PTPInstances {
 			if configured == result.Name {
-				opt2 := ptpinstances.PTPInstToHostOpts{
-					PTPInstanceID: &result.ID,
-				}
-				_, err := ptpinstances.AddPTPInstanceToHost(client, host.ID, opt2).Extract()
-				if err != nil {
-					err = perrors.Wrapf(err, "failed to add PTP instance to host: %s", host.ID)
-					return err
-				}
-				r.NormalEvent(instance, common.ResourceUpdated,
-					"ptp instance %s added to host", configured)
-				updated = true
+				found = true
 				break
 			}
+		}
+
+		if !found {
+			result, err := findPTPInstanceByName(client, configured)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to find PTP instance for host: %s", host.ID)
+				return err
+			} else if result == nil {
+				return common.NewResourceStatusDependency("PTP instance is not created, waiting for the creation")
+			}
+
+			opt2 := ptpinstances.PTPInstToHostOpts{
+				PTPInstanceID: &result.ID,
+			}
+			_, err = ptpinstances.AddPTPInstanceToHost(client, host.ID, opt2).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to add PTP instance to host: %s", host.ID)
+				return err
+			}
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ptp instance %s added to host", configured)
+			updated = true
 		}
 	}
 
