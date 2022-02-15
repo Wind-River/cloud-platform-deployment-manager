@@ -343,7 +343,12 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		data.PTPRole = iface.PTPRole
 
+<<<<<<< HEAD
 		data.PtpInterface = host.FindPTPInterfaceNameByInterface(iface)
+=======
+		dataPtpInterface := host.FindPTPInterfaceNameByInterface(iface)
+		data.PtpInterface = &dataPtpInterface
+>>>>>>> Add ptpInstance and ptpInterface to constructor (#88)
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
@@ -806,6 +811,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	rootDevice := fixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
 	spec.ClockSynchronization = host.ClockSynchronization
+	ptpInstances := host.BuildPTPInstanceList()
+	ptpInstanceList := StringList(ptpInstances)
+	spec.PtpInstances = &ptpInstanceList
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.

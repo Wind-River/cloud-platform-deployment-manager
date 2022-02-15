@@ -789,6 +789,7 @@ func (in *HostInfo) BuildInterfaceDataNetworkList(iface interfaces.Interface) []
 	return result
 }
 
+<<<<<<< HEAD
 
 // FindPTPInterfaceNameByInterface is a utility function to search for the name
 //// of a PTP interface by the interface info. 
@@ -808,6 +809,25 @@ func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) 
 					//// assigned to an interface, so this result will be 
 					//// assigned once.
 					result = singlePTPInterface.Name
+=======
+// FindPTPInterfaceNameByInterface is a utility function to search for the name
+// of a PTP interface by the interface info.
+func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) string {
+	result := ""
+
+	// Interface name is formatted as "hostname/ifname" in PTPinterfaces,
+	// eg. "controller-0/data0"
+	interfaceStr := in.Host.Hostname + "/" + iface.Name
+
+	if len(in.PTPInterfaces) > 0 {
+		for _, singlePTPInterface := range in.PTPInterfaces {
+			for _, singleInterface := range singlePTPInterface.InterfaceNames {
+				if interfaceStr == singleInterface {
+					// Note: we currently only allow one PTP interface to be
+					// assigned to an interface, so this result will be
+					// assigned once.
+					return singlePTPInterface.Name
+>>>>>>> Add ptpInstance and ptpInterface to constructor (#88)
 				}
 			}
 		}
@@ -816,6 +836,22 @@ func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) 
 	return result
 }
 
+<<<<<<< HEAD
+=======
+// BuildPTPInstanceList is a utility function to iterate through
+// all PTP instances associated with the host and return a list
+// of PTP instance names.
+func (in *HostInfo) BuildPTPInstanceList() []string {
+	result := make([]string, 0)
+
+	for _, ptpInstance := range in.PTPInstances {
+		result = append(result, ptpInstance.Name)
+	}
+
+	return result
+}
+
+>>>>>>> Add ptpInstance and ptpInterface to constructor (#88)
 // FindLabel is a utility function which searchs the current list of host
 // labels and finds the first entry that matches the specified key.
 func (in *HostInfo) FindLabel(key string) (string, bool) {
