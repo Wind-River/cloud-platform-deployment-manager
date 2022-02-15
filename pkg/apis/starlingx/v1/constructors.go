@@ -58,6 +58,8 @@ const (
 	KindPlatformNetwork = "PlatformNetwork"
 	KindDataNetwork     = "DataNetwork"
 	KindSystem          = "System"
+	KindPTPInstance     = "PTPInstance"
+	KindPTPInterface    = "PTPInterface"
 )
 
 type PageSize string
@@ -338,6 +340,9 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		data.DataNetworks = &dataNetList
 
 		data.PTPRole = iface.PTPRole
+
+		dataPtpInterface := host.FindPTPInterfaceNameByInterface(iface)
+		data.PtpInterface = &dataPtpInterface
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
@@ -800,6 +805,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	rootDevice := fixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
 	spec.ClockSynchronization = host.ClockSynchronization
+	ptpInstances := host.BuildPTPInstanceList()
+	ptpInstanceList := StringList(ptpInstances)
+	spec.PtpInstances = &ptpInstanceList
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.

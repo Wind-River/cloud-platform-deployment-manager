@@ -36,6 +36,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ports"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
@@ -72,6 +74,8 @@ type HostInfo struct {
 	Clusters              []clusters.Cluster
 	StorageTiers          map[string]*storagetiers.StorageTier
 	FileSystems           []hostFilesystems.FileSystem
+	PTPInstances          []ptpinstances.PTPInstance
+	PTPInterfaces         []ptpinterfaces.PTPInterface
 }
 
 type SystemInfo struct {
@@ -342,6 +346,18 @@ func (in *HostInfo) PopulateHostInfo(client *gophercloud.ServiceClient, hostid s
 	in.Clusters, err = clusters.ListClusters(client)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to list clusters for host %s", hostid)
+		return err
+	}
+
+	in.PTPInstances, err = ptpinstances.ListHostPTPInstances(client, hostid)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list PTP instances for host %s", hostid)
+		return err
+	}
+
+	in.PTPInterfaces, err = ptpinterfaces.ListHostPTPInterfaces(client, hostid)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list PTP interfaces for host %s", hostid)
 		return err
 	}
 
@@ -768,6 +784,44 @@ func (in *HostInfo) BuildInterfaceDataNetworkList(iface interfaces.Interface) []
 		if association.InterfaceUUID == iface.ID {
 			result = append(result, association.DataNetworkName)
 		}
+	}
+
+	return result
+}
+
+// FindPTPInterfaceNameByInterface is a utility function to search for the name
+// of a PTP interface by the interface info.
+func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) string {
+	result := ""
+
+	// Interface name is formatted as "hostname/ifname" in PTPinterfaces,
+	// eg. "controller-0/data0"
+	interfaceStr := in.Host.Hostname + "/" + iface.Name
+
+	if len(in.PTPInterfaces) > 0 {
+		for _, singlePTPInterface := range in.PTPInterfaces {
+			for _, singleInterface := range singlePTPInterface.InterfaceNames {
+				if interfaceStr == singleInterface {
+					// Note: we currently only allow one PTP interface to be
+					// assigned to an interface, so this result will be
+					// assigned once.
+					return singlePTPInterface.Name
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// BuildPTPInstanceList is a utility function to iterate through
+// all PTP instances associated with the host and return a list
+// of PTP instance names.
+func (in *HostInfo) BuildPTPInstanceList() []string {
+	result := make([]string, 0)
+
+	for _, ptpInstance := range in.PTPInstances {
+		result = append(result, ptpInstance.Name)
 	}
 
 	return result
