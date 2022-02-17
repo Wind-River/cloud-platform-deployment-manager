@@ -811,7 +811,6 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	ptpInstanceList := StringList(ptpInstances)
 	spec.PtpInstances = ptpInstanceList
 
-
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
 	powerState := true
