@@ -814,6 +814,29 @@ func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) 
 	return result
 }
 
+// FindPTPInterfaceByInterface is a utility function to search for a PTP
+// interface by the interface info.
+func (in *HostInfo) FindPTPInterfaceByInterface(iface interfaces.Interface) (ptpinterfaces.PTPInterface, bool) {
+	result := ptpinterfaces.PTPInterface{}
+	// Interface name is formatted as "hostname/ifname" in PTPinterfaces,
+	// eg. "controller-0/data0"
+	interfaceStr := in.Host.Hostname + "/" + iface.Name
+
+	if len(in.PTPInterfaces) > 0 {
+		for _, singlePTPInterface := range in.PTPInterfaces {
+			for _, singleInterface := range singlePTPInterface.InterfaceNames {
+				if interfaceStr == singleInterface {
+					// Note: we currently only allow one PTP interface to be
+					// assigned to an interface, so this result will be
+					// assigned once.
+					return singlePTPInterface, true
+				}
+			}
+		}
+	}
+	return result, false
+}
+
 // BuildPTPInstanceList is a utility function to iterate through
 // all PTP instances associated with the host and return a list
 // of PTP instance names.

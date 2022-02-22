@@ -8,8 +8,7 @@ metadata:
 spec:
   ptpinstance: ptp1
   parameters:
-    - parameterKey: serverOnly
-      parameterValue: "1"
+    - serverOnly=1
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PtpInterface
@@ -21,5 +20,4 @@ metadata:
 spec:
   ptpinstance: phc2sys1
   parameters:
-    - parameterKey: foo
-      parameterValue: bar
+    - foo=bar

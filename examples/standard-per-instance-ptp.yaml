@@ -237,8 +237,7 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - parameterKey: cmdline_opts
-    parameterValue: -a -r
+  - cmdline_opts=-a -r
   service: phc2sys
 ---
 apiVersion: starlingx.windriver.com/v1
@@ -250,10 +249,8 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - parameterKey: domainNumber
-    parameterValue: "24"
-  - parameterKey: clientOnly
-    parameterValue: "0"
+  - domainNumber=24
+  - clientOnly=0
   service: ptp4l
 ---
 apiVersion: starlingx.windriver.com/v1
@@ -265,8 +262,7 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - parameterKey: serverOnly
-    parameterValue: "1"
+  - serverOnly=1
   ptpinstance: ptp1
 ---
 apiVersion: starlingx.windriver.com/v1
@@ -278,8 +274,7 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - parameterKey: foo
-    parameterValue: bar
+  - foo=bar
   ptpinstance: phc2sys1
 ---
 apiVersion: starlingx.windriver.com/v1
