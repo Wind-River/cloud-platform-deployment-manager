@@ -241,6 +241,8 @@ building system endpoint secret configuration
 building certificate secret configurations
 building data network configurations
 building platform network configurations
+building PTP instance configurations
+building PTP interface configurations
 building host and profile configurations
 ...Building host configuration for "controller-0"
 ...Building host profile configuration for "controller-0"
