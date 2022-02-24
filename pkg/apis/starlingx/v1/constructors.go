@@ -343,8 +343,9 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		data.PTPRole = iface.PTPRole
 
-		dataPtpInterface := host.FindPTPInterfaceNameByInterface(iface)
-		data.PtpInterface = &dataPtpInterface
+		dataPtpInterfaceList := host.FindPTPInterfaceNameByInterface(iface)
+		dataPtpInterfaces := StringList(dataPtpInterfaceList)
+		data.PtpInterfaces = &dataPtpInterfaces
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:

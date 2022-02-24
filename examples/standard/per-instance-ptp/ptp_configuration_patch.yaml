@@ -17,4 +17,5 @@ spec:
         ptpInterface: ptpint1
       - class: platform
         name: mgmt0
-        ptpInterface: ptpint2
+        ptpInterfaces:
+        - ptpint2

@@ -358,12 +358,12 @@ type CommonInterfaceInfo struct {
 	// +kubebuilder:validation:Enum=master,slave,none
 	PTPRole *string `json:"ptpRole,omitempty"`
 
-	// PtpInterface defines the ptp interface to be configured against this
+	// PtpInterfaces defines the ptp interfaces to be configured against this
 	// interface.
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	// +optional
-	PtpInterface *string `json:"ptpInterface,omitempty"`
+	PtpInterfaces *StringList `json:"ptpInterfaces,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single
