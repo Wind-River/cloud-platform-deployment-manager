@@ -277,10 +277,14 @@ func (in *CommonInterfaceInfo) DeepCopyInto(out *CommonInterfaceInfo) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.PtpInterface != nil {
-		in, out := &in.PtpInterface, &out.PtpInterface
-		*out = new(string)
-		**out = **in
+	if in.PtpInterfaces != nil {
+		in, out := &in.PtpInterfaces, &out.PtpInterfaces
+		*out = new(StringList)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]string, len(*in))
+			copy(*out, *in)
+		}
 	}
 	return
 }

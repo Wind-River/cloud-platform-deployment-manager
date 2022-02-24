@@ -194,7 +194,7 @@ func (r *ReconcilePtpInterface) ReconcileNew(client *gophercloud.ServiceClient, 
 		return nil, common.NewResourceStatusDependency("PTP instance is not created, waiting for the creation")
 	}
 
-	// Create a new PTP instance
+	// Create a new PTP interface
 	opts := ptpinterfaces.PTPInterfaceOpts{
 		Name:            &instance.Name,
 		PTPInstanceUUID: &found.UUID,

@@ -332,11 +332,11 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		}
 	}
 
-	if in.PtpInterface != nil {
-		if (in.PtpInterface == nil) != (other.PtpInterface == nil) {
+	if in.PtpInterfaces != nil {
+		if (in.PtpInterfaces == nil) != (other.PtpInterfaces == nil) {
 			return false
-		} else if in.PtpInterface != nil {
-			if *in.PtpInterface != *other.PtpInterface {
+		} else if in.PtpInterfaces != nil {
+			if !in.PtpInterfaces.DeepEqual(other.PtpInterfaces) {
 				return false
 			}
 		}
