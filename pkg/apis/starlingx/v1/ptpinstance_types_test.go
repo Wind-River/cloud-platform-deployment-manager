@@ -23,7 +23,8 @@ func TestPtpInstance(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: PtpInstanceSpec{
-			Service: "ptp4l",
+			Service:            "ptp4l",
+			InstanceParameters: []string{"domainNumber=24", "clientOnly=0"},
 		}}
 	g := gomega.NewGomegaWithT(t)
 
