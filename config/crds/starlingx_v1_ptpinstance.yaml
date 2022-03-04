@@ -1,0 +1,83 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ptpinstances.starlingx.windriver.com
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.inSync
+    description: The current synchronization state.
+    name: insync
+    type: boolean
+  - JSONPath: .status.reconciled
+    description: The current reconciliation state.
+    name: reconciled
+    type: boolean
+  group: starlingx.windriver.com
+  names:
+    kind: PtpInstance
+    plural: ptpinstances
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            parameters:
+              description: Parameters contains a list of parameters assigned to the
+                ptp instance
+              items:
+                type: string
+              type: array
+            service:
+              description: Serivce defines the service type of the ptp instance
+              enum:
+              - ptp4l
+              - phc2sys
+              - ts2phc
+              type: string
+          required:
+          - service
+          type: object
+        status:
+          properties:
+            id:
+              description: ID defines the system assigned unique identifier.  This
+                will only exist once this resource has been provisioned into the system.
+              type: string
+            inSync:
+              description: Defines whether the resource has been provisioned on the
+                target system.
+              type: boolean
+            reconciled:
+              description: Reconciled defines whether the host has been successfully
+                reconciled at least once.  If further changes are made they will be
+                ignored by the reconciler.
+              type: boolean
+          required:
+          - reconciled
+          - inSync
+          type: object
+  version: v1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

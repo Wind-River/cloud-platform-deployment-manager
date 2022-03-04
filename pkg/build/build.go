@@ -11,6 +11,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	"io"
@@ -83,6 +85,8 @@ type Deployment struct {
 	DataNetworks      []*starlingxv1.DataNetwork
 	Profiles          []*starlingxv1.HostProfile
 	Hosts             []*starlingxv1.Host
+	PtpInstances      []*starlingxv1.PtpInstance
+	PtpInterfaces     []*starlingxv1.PtpInterface
 }
 
 // progressUpdate is a utility method to write a progress log to the provided
@@ -162,6 +166,20 @@ func (db *DeploymentBuilder) Build() (*Deployment, error) {
 	db.progressUpdate("building platform network configurations\n")
 
 	err = db.buildPlatformNetworks(&deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	db.progressUpdate("building PTP instance configurations\n")
+
+	err = db.buildPTPInstances(&deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	db.progressUpdate("building PTP interface configurations\n")
+
+	err = db.buildPTPInterfaces(&deployment)
 	if err != nil {
 		return nil, err
 	}
@@ -272,6 +290,28 @@ func (d *Deployment) ToYAML() (string, error) {
 		buf, err := yaml.Marshal(n)
 		if err != nil {
 			err = perrors.Wrap(err, "failed to render data network to YAML")
+			return "", err
+		}
+
+		b.Write(buf)
+		b.Write([]byte(yamlSeparator))
+	}
+
+	for _, n := range d.PtpInstances {
+		buf, err := yaml.Marshal(n)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to render ptp instance to YAML")
+			return "", err
+		}
+
+		b.Write(buf)
+		b.Write([]byte(yamlSeparator))
+	}
+
+	for _, n := range d.PtpInterfaces {
+		buf, err := yaml.Marshal(n)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to render ptp interface to YAML")
 			return "", err
 		}
 
@@ -501,6 +541,54 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 	}
 
 	d.PlatformNetworks = nets
+
+	return nil
+}
+
+func (db *DeploymentBuilder) buildPTPInstances(d *Deployment) error {
+	results, err := ptpinstances.ListPTPInstances(db.client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list PTP instances")
+		return err
+	}
+	if results == nil {
+		return nil
+	}
+
+	instances := make([]*starlingxv1.PtpInstance, 0)
+	for _, n := range results {
+		single, err := starlingxv1.NewPTPInstance(n.Name, db.namespace, n)
+		if err != nil {
+			return err
+		}
+		instances = append(instances, single)
+	}
+
+	d.PtpInstances = instances
+
+	return nil
+}
+
+func (db *DeploymentBuilder) buildPTPInterfaces(d *Deployment) error {
+	results, err := ptpinterfaces.ListPTPInterfaces(db.client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list PTP interfaces")
+		return err
+	}
+	if results == nil {
+		return nil
+	}
+
+	interfaces := make([]*starlingxv1.PtpInterface, 0)
+	for _, n := range results {
+		single, err := starlingxv1.NewPTPInterface(n.Name, db.namespace, n)
+		if err != nil {
+			return err
+		}
+		interfaces = append(interfaces, single)
+	}
+
+	d.PtpInterfaces = interfaces
 
 	return nil
 }

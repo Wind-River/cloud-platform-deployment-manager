@@ -262,6 +262,16 @@ spec:
                           for the Bond interface. Only applicable for active_standby
                           mode.
                         type: string
+                      ptpInterfaces:
+                        description: PtpInterfaces defines the ptp interfaces to be
+                          configured against this interface.
+                        items:
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
+                          type: string
+                        maxLength: 255
+                        pattern: ^[a-zA-Z0-9\-_]+$
+                        type: array
                       ptpRole:
                         description: PTPRole defines the ptp role as master, slave,
                           or none
@@ -351,6 +361,16 @@ spec:
                         required:
                         - name
                         type: object
+                      ptpInterfaces:
+                        description: PtpInterfaces defines the ptp interfaces to be
+                          configured against this interface.
+                        items:
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
+                          type: string
+                        maxLength: 255
+                        pattern: ^[a-zA-Z0-9\-_]+$
+                        type: array
                       ptpRole:
                         description: PTPRole defines the ptp role as master, slave,
                           or none
@@ -437,6 +457,16 @@ spec:
                         maxLength: 255
                         pattern: ^[a-zA-Z0-9\-_]+$
                         type: array
+                      ptpInterfaces:
+                        description: PtpInterfaces defines the ptp interfaces to be
+                          configured against this interface.
+                        items:
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
+                          type: string
+                        maxLength: 255
+                        pattern: ^[a-zA-Z0-9\-_]+$
+                        type: array
                       ptpRole:
                         description: PTPRole defines the ptp role as master, slave,
                           or none
@@ -510,6 +540,16 @@ spec:
                       platformNetworks:
                         description: PlatformNetworks defines the list of platform
                           networks to be configured against this interface.
+                        items:
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
+                          type: string
+                        maxLength: 255
+                        pattern: ^[a-zA-Z0-9\-_]+$
+                        type: array
+                      ptpInterfaces:
+                        description: PtpInterfaces defines the ptp interfaces to be
+                          configured against this interface.
                         items:
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_]+$
@@ -665,6 +705,16 @@ spec:
               - static
               - dynamic
               type: string
+            ptpInstances:
+              description: PtpInstances defines the list of ptp instance to be configured
+                against this interface.
+              items:
+                maxLength: 255
+                pattern: ^[a-zA-Z0-9\-_]+$
+                type: string
+              maxLength: 255
+              pattern: ^[a-zA-Z0-9\-_]+$
+              type: array
             rootDevice:
               description: RootDevice defines the absolute device path of the device
                 to be used as the root file system.

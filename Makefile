@@ -143,6 +143,7 @@ examples:
 	kustomize build examples/standard/https > examples/standard-https.yaml
 	kustomize build examples/standard/https-with-cert-manager > examples/standard-https-with-cert-manager.yaml
 	kustomize build examples/standard/bond > examples/standard-bond.yaml
+	kustomize build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
 	kustomize build examples/storage/default > examples/storage.yaml
 	kustomize build examples/aio-sx/default > examples/aio-sx.yaml
 	kustomize build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml

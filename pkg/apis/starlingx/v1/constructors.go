@@ -18,6 +18,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
@@ -58,6 +60,8 @@ const (
 	KindPlatformNetwork = "PlatformNetwork"
 	KindDataNetwork     = "DataNetwork"
 	KindSystem          = "System"
+	KindPTPInstance     = "PtpInstance"
+	KindPTPInterface    = "PtpInterface"
 )
 
 type PageSize string
@@ -338,6 +342,10 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		data.DataNetworks = &dataNetList
 
 		data.PTPRole = iface.PTPRole
+
+		dataPtpInterfaceList := host.FindPTPInterfaceNameByInterface(iface)
+		dataPtpInterfaces := StringList(dataPtpInterfaceList)
+		data.PtpInterfaces = &dataPtpInterfaces
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
@@ -800,6 +808,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	rootDevice := fixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
 	spec.ClockSynchronization = host.ClockSynchronization
+	ptpInstances := host.BuildPTPInstanceList()
+	ptpInstanceList := StringList(ptpInstances)
+	spec.PtpInstances = ptpInstanceList
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
@@ -1298,6 +1309,84 @@ func NewDataNetwork(name string, namespace string, net datanetworks.DataNetwork)
 	spec.DeepCopyInto(&dataNetwork.Spec)
 
 	return &dataNetwork, nil
+}
+
+func NewPtpInstanceSpec(inst ptpinstances.PTPInstance) (*PtpInstanceSpec, error) {
+	spec := PtpInstanceSpec{
+		Service: inst.Service,
+	}
+
+	if inst.Parameters != nil && len(inst.Parameters) > 0 {
+		spec.InstanceParameters = inst.Parameters
+	} else {
+		spec.InstanceParameters = nil
+	}
+
+	return &spec, nil
+}
+
+func NewPTPInstance(name string, namespace string, inst ptpinstances.PTPInstance) (*PtpInstance, error) {
+	ptpInstance := PtpInstance{
+		TypeMeta: v1types.TypeMeta{
+			APIVersion: APIVersion,
+			Kind:       KindPTPInstance,
+		},
+		ObjectMeta: v1types.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ControllerToolsLabel: ControllerToolsVersion,
+			},
+		},
+	}
+
+	spec, err := NewPtpInstanceSpec(inst)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.DeepCopyInto(&ptpInstance.Spec)
+
+	return &ptpInstance, nil
+}
+
+func NewPtpInterfaceSpec(PTPint ptpinterfaces.PTPInterface) (*PtpInterfaceSpec, error) {
+	spec := PtpInterfaceSpec{
+		PtpInstance: PTPint.PTPInstanceName,
+	}
+
+	if PTPint.Parameters != nil && len(PTPint.Parameters) > 0 {
+		spec.InterfaceParameters = PTPint.Parameters
+	} else {
+		spec.InterfaceParameters = nil
+	}
+
+	return &spec, nil
+}
+
+func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInterface) (*PtpInterface, error) {
+	ptpInterface := PtpInterface{
+		TypeMeta: v1types.TypeMeta{
+			APIVersion: APIVersion,
+			Kind:       KindPTPInstance,
+		},
+		ObjectMeta: v1types.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ControllerToolsLabel: ControllerToolsVersion,
+			},
+		},
+	}
+
+	spec, err := NewPtpInterfaceSpec(PTPint)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.DeepCopyInto(&ptpInterface.Spec)
+
+	return &ptpInterface, nil
 }
 
 func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) (*PlatformNetworkSpec, error) {

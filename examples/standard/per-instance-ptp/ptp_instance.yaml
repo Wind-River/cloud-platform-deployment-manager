@@ -1,0 +1,24 @@
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ptp1
+  namespace: deployment
+spec:
+  service: ptp4l
+  parameters:
+    - domainNumber=24
+    - clientOnly=0
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: phc2sys1
+  namespace: deployment
+spec:
+  service: phc2sys
+  parameters:
+    - cmdline_opts=-a -r

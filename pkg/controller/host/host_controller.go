@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package host
 
@@ -9,6 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
@@ -434,6 +435,98 @@ func (r *ReconcileHost) ReconcileAttributes(client *gophercloud.ServiceClient, i
 	return nil
 }
 
+// findPTPInstanceByName is to search for a PTP instance by its name,
+// this instance may or may not associate with the current host.
+func findPTPInstanceByName(client *gophercloud.ServiceClient, name string) (*ptpinstances.PTPInstance, error) {
+	founds, err := ptpinstances.ListPTPInstances(client)
+	if err != nil {
+		return nil, err
+	}
+	for _, found := range founds {
+		if found.Name == name {
+			return &found, nil
+		}
+	}
+	return nil, nil
+}
+
+// ReconcilePTPInstances is responsible for reconciling the PTP instances
+// associated with each host.
+func (r *ReconcileHost) ReconcilePTPInstances(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+	updated := false
+
+	// Remove any stale PTP instances
+	for _, existing := range host.PTPInstances {
+		found := false
+		for _, configured := range profile.PtpInstances {
+			if configured == existing.Name {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Info("removing PTP instance", "PTP instance", existing)
+
+			opt := ptpinstances.PTPInstToHostOpts{
+				PTPInstanceID: &existing.ID,
+			}
+			_, err := ptpinstances.RemovePTPInstanceFromHost(client, host.ID, opt).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to remove PTP instance from host: %s", host.ID)
+				return err
+			}
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ptp instance %s removed from host", existing.Name)
+			updated = true
+		}
+	}
+
+	for _, configured := range profile.PtpInstances {
+		found := false
+		for _, result := range host.PTPInstances {
+			if configured == result.Name {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			result, err := findPTPInstanceByName(client, configured)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to find PTP instance for host: %s", host.ID)
+				return err
+			} else if result == nil {
+				return common.NewResourceStatusDependency("PTP instance is not created, waiting for the creation")
+			}
+
+			opt2 := ptpinstances.PTPInstToHostOpts{
+				PTPInstanceID: &result.ID,
+			}
+			_, err = ptpinstances.AddPTPInstanceToHost(client, host.ID, opt2).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to add PTP instance to host: %s", host.ID)
+				return err
+			}
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ptp instance %s added to host", configured)
+			updated = true
+		}
+	}
+
+	if updated {
+		results, err := ptpinstances.ListHostPTPInstances(client, host.ID)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to refresh PTP instances from host: %s", host.ID)
+			return err
+		}
+
+		host.PTPInstances = results
+	}
+
+	return nil
+}
+
 // ReconcileAttributes is responsible for reconciling the labels on each host.
 func (r *ReconcileHost) ReconcileLabels(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
@@ -695,6 +788,11 @@ func (r *ReconcileHost) ReconcileDisabledHost(client *gophercloud.ServiceClient,
 	}
 
 	err = r.ReconcileLabels(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcilePTPInstances(client, instance, profile, host)
 	if err != nil {
 		return err
 	}
@@ -1222,12 +1320,18 @@ func (r *ReconcileHost) ReconcileExistingHost(client *gophercloud.ServiceClient,
 	log.Info("current config is:", "values", current)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
-		// Do not process any further changes once we have reached a
-		// synchronized state unless there is an annotation on the host.
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
-			msg := common.NoChangesAfterReconciled
-			r.NormalEvent(instance, common.ResourceUpdated, msg)
-			return common.NewChangeAfterInSync(msg)
+			if !host.IsUnlockedAvailable() {
+				msg := "waiting for the host reach available state"
+				m := NewUnlockedAvailableHostMonitor(instance, host.ID)
+				return r.StartMonitor(m, msg)
+			} else {
+				// Do not process any further changes once we have reached a
+				// synchronized state unless there is an annotation on the host.
+				msg := common.NoChangesAfterReconciled
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			}
 		} else {
 			log.Info(common.ChangedAllowedAfterReconciled)
 		}

@@ -55,6 +55,8 @@ const (
 	PTP               ReconcilerName = "system.ptp"
 	Backends          ReconcilerName = "system.storage.backend"
 	ServiceParameters ReconcilerName = "system.serviceParameters"
+	PTPInstance       ReconcilerName = "ptpInstance"
+	PTPInterface      ReconcilerName = "ptpInterface"
 )
 
 // reconcilerDefaultStates is the default state of each reconciler.
@@ -87,6 +89,8 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	PTP:               true,
 	Backends:          true,
 	ServiceParameters: true,
+	PTPInstance:       true,
+	PTPInterface:      true,
 }
 
 // OptionName is the type alias that represents the path for a reconciler
@@ -108,6 +112,12 @@ var reconcilerOptionDefaults = map[ReconcilerName]map[OptionName]interface{}{
 		HTTPSRequired: true,
 	},
 	DataNetwork: {
+		StopAfterInSync: true,
+	},
+	PTPInterface: {
+		StopAfterInSync: true,
+	},
+	PTPInstance: {
 		StopAfterInSync: true,
 	},
 	Host: {
