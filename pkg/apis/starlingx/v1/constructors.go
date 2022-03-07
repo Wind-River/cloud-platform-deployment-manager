@@ -1368,7 +1368,7 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 	ptpInterface := PtpInterface{
 		TypeMeta: v1types.TypeMeta{
 			APIVersion: APIVersion,
-			Kind:       KindPTPInstance,
+			Kind:       KindPTPInterface,
 		},
 		ObjectMeta: v1types.ObjectMeta{
 			Name:      name,
