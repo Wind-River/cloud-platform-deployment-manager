@@ -107,11 +107,13 @@ spec:
   match:
     bootMAC: CONTROLLER0MAC
   overrides:
+    clockSynchronization: ptp
     interfaces:
       ethernet:
       - class: platform
         name: oam0
-        ptpInterface: ptpint1
+        ptpInterfaces:
+        - ptpint1
       - class: platform
         name: mgmt0
         ptpInterfaces:
