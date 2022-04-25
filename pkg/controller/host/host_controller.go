@@ -10,6 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/pkg/common"
@@ -64,6 +65,8 @@ var DefaultHostProfile = starlingxv1.HostProfileSpec{
 		ProvisioningMode:    &DynamicProvisioningMode,
 	},
 }
+
+var CephPrimaryGroup []string
 
 // Add creates a new Host Controller and adds it to the Manager with default
 // RBAC. The Manager will set fields on the Controller and Start it when the
@@ -1519,6 +1522,85 @@ func (r *ReconcileHost) ReconcileResource(client *gophercloud.ServiceClient, ins
 	return err
 }
 
+// Function to obtain ceph replication factor
+func CephReplicationFactor(client *gophercloud.ServiceClient) (rep int, err error) {
+	n := 0
+	result, err := storagebackends.ListBackends(client)
+	if err == nil {
+		rep := result[0].Capabilities.Replication
+		n, err = strconv.Atoi(rep)
+		if err != nil {
+			return n, err
+		}
+	} else {
+		return n, err
+	}
+
+	log.Info("Ceph replication factor", "num", n)
+	return n, nil
+}
+
+// Function to judge the specified host is in the ceph
+// primary group or not. Add host uid to primary group
+// list up to replication factor.
+func IsCephPrimaryGroup(host_uid string, rep int) (pg bool, err error) {
+	if len(host_uid) > 0 {
+		for _, c := range CephPrimaryGroup {
+			if c == host_uid {
+				return true, nil
+			}
+		}
+		if len(CephPrimaryGroup) < rep {
+			CephPrimaryGroup = append(CephPrimaryGroup, host_uid)
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// Check if the ceph primary group hosts are unlocked available.
+func (r *ReconcileHost) GetCephPrimaryGroupReady(client *gophercloud.ServiceClient) (ready bool, err error) {
+	rep, err := CephReplicationFactor(client)
+	if err != nil {
+		return false, err
+	}
+	cephReady := false
+	num := 0
+	for _, host := range r.hosts {
+		if host.Personality == hosts.PersonalityStorage && host.IsUnlockedAvailable() {
+			num += 1
+		}
+	}
+	if num == rep {
+		cephReady = true
+	}
+	return cephReady, nil
+}
+
+// Check the specified host is to be delay to be added.
+// This will return true if the specified host is storage
+// node and in the ceph non-primary group.
+func (r *ReconcileHost) IsCephDelayTargetGroup(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (target bool, err error) {
+	profile, err := r.BuildCompositeProfile(instance)
+	if err != nil {
+		return false, err
+	}
+	personality := profile.Personality
+	if *personality != hosts.PersonalityStorage {
+		return false, nil
+	}
+	rep, err := CephReplicationFactor(client)
+	if err != nil {
+		return false, err
+	}
+	pg, err := IsCephPrimaryGroup(string(instance.UID), rep)
+	if err != nil {
+		return false, err
+	} else {
+		return !pg, nil
+	}
+}
+
 // Reconcile reads that state of the cluster for a Host object and makes changes
 // based on the state read and what is in the Host.Spec
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -1581,6 +1663,31 @@ func (r *ReconcileHost) Reconcile(request reconcile.Request) (result reconcile.R
 		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
+	}
+
+	target, err := r.IsCephDelayTargetGroup(platformClient, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if target {
+		// If the node is storage but not in the ceph primary group,
+		// it needs to wait until the ceph primary group are unlocked
+		// and available.
+		ready, err := r.GetCephPrimaryGroupReady(platformClient)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if !ready {
+			log.Info("waiting for ceph primary group nodes unlocked-available")
+			r.WarningEvent(instance, common.ResourceDependency,
+				"waiting for ceph primary group nodes unlocked-available")
+			return common.RetryCephPrimaryGroupNotReady, nil
+		} else {
+			r.NormalEvent(instance, common.ResourceUpdated,
+				"ceph primary group is ready. Add host.")
+		}
+	} else {
+		log.Info("not storage node or in ceph primary group. continue")
 	}
 
 	err = r.ReconcileResource(platformClient, instance)

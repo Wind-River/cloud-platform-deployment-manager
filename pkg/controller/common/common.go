@@ -36,6 +36,10 @@ var (
 	// is no need to automatically requeue these events.
 	RetrySystemNotReady = reconcile.Result{Requeue: false}
 
+	// RetryCephPrimaryGroupNotReady should be used whenever a storage node needs to wait
+	// for the ceph primary storage group to finish its reconcile task.
+	RetryCephPrimaryGroupNotReady = reconcile.Result{Requeue: true}
+
 	// RetryMissingClient should be used for any object reconciliation that
 	// fails because of the platform client is missing or was reset.  The system
 	// controller is responsible for re-creating the client and it will kick
