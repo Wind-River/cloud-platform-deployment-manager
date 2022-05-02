@@ -163,7 +163,7 @@
 
 [[projects]]
   branch = "starlingx"
-  digest = "1:ba0e4d1f0af9b2bae80bc74666d5526d29f3b4844140e33497bb5db3723580af"
+  digest = "1:005e12a1df47d58d97ee1fc4ac98fe261ca3a863e4870183fe421027db13d04d"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -203,6 +203,8 @@
     "starlingx/inventory/v1/physicalvolumes",
     "starlingx/inventory/v1/ports",
     "starlingx/inventory/v1/ptp",
+    "starlingx/inventory/v1/ptpinstances",
+    "starlingx/inventory/v1/ptpinterfaces",
     "starlingx/inventory/v1/routes",
     "starlingx/inventory/v1/serviceparameters",
     "starlingx/inventory/v1/storagebackends",
@@ -211,7 +213,7 @@
     "starlingx/inventory/v1/volumegroups",
   ]
   pruneopts = "T"
-  revision = "16b5a22f24f6e5731a09f810fd7ef376a37c1f20"
+  revision = "192cf245ebfd6af45bb22d39f7e4f80e3e366dc2"
   source = "https://github.com/wind-river/gophercloud"
 
 [[projects]]
@@ -1125,6 +1127,8 @@
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/ports",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp",
+    "github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances",
+    "github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/routes",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters",
     "github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends",

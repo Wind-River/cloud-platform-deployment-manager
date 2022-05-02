@@ -1602,6 +1602,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
+	if in.MaxCPUFrequency != nil {
+		if (in.MaxCPUFrequency == nil) != (other.MaxCPUFrequency == nil) {
+			return false
+		} else if in.MaxCPUFrequency != nil {
+			if *in.MaxCPUFrequency != *other.MaxCPUFrequency {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

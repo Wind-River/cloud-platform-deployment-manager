@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package hosts
 
@@ -198,6 +198,9 @@ type Host struct {
 
 	// ClockSynchronization is the chosen clock source for the host.
 	ClockSynchronization *string `json:"clock_synchronization,omitempty"`
+
+	//MaxCPUFrequency is the max limit of the CPU frequency set on the host.
+	MaxCPUFrequency string `json:"max_cpu_frequency,omitempty"`
 }
 
 // HostPage is the page returned by a pager when traversing over a

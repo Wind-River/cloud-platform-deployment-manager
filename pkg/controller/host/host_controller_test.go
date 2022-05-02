@@ -376,6 +376,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 	bProvisioningMode := "static"
 	bVolumeSize1 := 100
 	bVolumeSize2 := 10
+	bMaxCPUFrequency := "2400"
 	b := starlingxv1.HostProfileSpec{
 		ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
 			Personality:         &bPersonality,
@@ -388,6 +389,7 @@ func TestReconcileHost_CompareAttributes(t *testing.T) {
 			ProvisioningMode:    &bProvisioningMode,
 			BootMAC:             &bBootMAC,
 			RootDevice:          &bRootDevice,
+			MaxCPUFrequency:     &bMaxCPUFrequency,
 		},
 		BoardManagement: &starlingxv1.BMInfo{
 			Address: &bAddress,

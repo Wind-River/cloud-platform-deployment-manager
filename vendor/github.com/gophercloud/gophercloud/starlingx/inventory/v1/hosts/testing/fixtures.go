@@ -1,119 +1,121 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package testing
 
 import (
-	"fmt"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
-	"github.com/gophercloud/gophercloud/testhelper/client"
-	"net/http"
-	"testing"
+  "fmt"
+  "github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
+  "github.com/gophercloud/gophercloud/testhelper/client"
+  "net/http"
+  "testing"
 
-	th "github.com/gophercloud/gophercloud/testhelper"
+  th "github.com/gophercloud/gophercloud/testhelper"
 )
 
 var (
-	clockSynchronization = "ntp"
-	invState             = "inventoried"
-	task                 = "Unlocking"
-	standbyController    = "Controller-Standby"
-	activeController     = "Controller-Active"
-	monitorFunction      = "monitor"
-	vboxLocation         = "vbox"
-	icewallLocation      = "The Ice Wall"
-	ottawaLocation       = "Ottawa, Canada"
-	HostHerp             = hosts.Host{
-		ID:           "d99637e9-5451-45c6-98f4-f18968e43e91",
-		Hostname:     "controller-0",
-		Personality:  "controller",
-		SubFunctions: "controller,worker",
-		Capabilities: hosts.Capabilities{
-			StorFunction: &monitorFunction,
-			Personality:  &activeController,
-		},
-		Location:             hosts.Location{Name: &vboxLocation},
-		InstallOutput:        "text",
-		Console:              "tty0",
-		BootMAC:              "08:08:08:08:08:08",
-		BootIP:               "1.2.3.4",
-		RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BMType:               nil,
-		BMAddress:            nil,
-		BMUsername:           nil,
-		SerialNumber:         nil,
-		AssetTag:             nil,
-		ConfigurationStatus:  "Config out-of-date",
-		ConfigurationApplied: "53296bf3-d205-4675-8c57-411c875c164e",
-		ConfigurationTarget:  "2da20c19-2157-4231-b9b3-194175e7dad0",
-		Task:                 nil,
-		AdministrativeState:  "unlocked",
-		OperationalStatus:    "enabled",
-		AvailabilityStatus:   "online",
-		InventoryState:       &invState,
-		ClockSynchronization: &clockSynchronization,
-	}
-	HostDerp = hosts.Host{
-		ID:           "f73dda8e-be3c-4704-ad1e-ed99e44b846e",
-		Hostname:     "controller-1",
-		Personality:  "controller",
-		SubFunctions: "controller,worker",
-		Capabilities: hosts.Capabilities{
-			StorFunction: &monitorFunction,
-			Personality:  &standbyController,
-		},
-		Location:             hosts.Location{Name: &icewallLocation},
-		InstallOutput:        "graphic",
-		Console:              "tty0",
-		BootMAC:              "01:02:03:04:05:06",
-		BootIP:               "4.3.2.1",
-		RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BMType:               nil,
-		BMAddress:            nil,
-		BMUsername:           nil,
-		SerialNumber:         nil,
-		AssetTag:             nil,
-		ConfigurationStatus:  "Config out-of-date",
-		ConfigurationApplied: "2491d46f-d3ad-4460-981f-f86dc5a8bf6c",
-		ConfigurationTarget:  "dd798e27-362e-49e7-9dc3-4e8ef7d0aa59",
-		Task:                 &task,
-		AdministrativeState:  "locked",
-		OperationalStatus:    "disabled",
-		AvailabilityStatus:   "online",
-		InventoryState:       nil,
-	}
-	HostMerp = hosts.Host{
-		ID:           "66b62c51-974b-4bcc-b273-e8365833157e",
-		Hostname:     "compute-0",
-		Personality:  "compute",
-		SubFunctions: "worker",
-		Capabilities: hosts.Capabilities{
-			StorFunction: &monitorFunction,
-			Personality:  nil,
-		},
-		Location:             hosts.Location{Name: &ottawaLocation},
-		InstallOutput:        "text",
-		Console:              "tty0",
-		BootMAC:              "fe:00:27:af:22:96",
-		BootIP:               "2.4.8.16",
-		RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
-		BMType:               nil,
-		BMAddress:            nil,
-		BMUsername:           nil,
-		SerialNumber:         nil,
-		AssetTag:             nil,
-		ConfigurationStatus:  "",
-		ConfigurationApplied: "",
-		ConfigurationTarget:  "",
-		Task:                 nil,
-		AdministrativeState:  "locked",
-		OperationalStatus:    "disabled",
-		AvailabilityStatus:   "online",
-		InventoryState:       nil,
-	}
+  clockSynchronization = "ntp"
+  invState             = "inventoried"
+  task                 = "Unlocking"
+  standbyController    = "Controller-Standby"
+  activeController     = "Controller-Active"
+  monitorFunction      = "monitor"
+  vboxLocation         = "vbox"
+  icewallLocation      = "The Ice Wall"
+  ottawaLocation       = "Ottawa, Canada"
+  HostHerp             = hosts.Host{
+    ID:           "d99637e9-5451-45c6-98f4-f18968e43e91",
+    Hostname:     "controller-0",
+    Personality:  "controller",
+    SubFunctions: "controller,worker",
+    Capabilities: hosts.Capabilities{
+      StorFunction: &monitorFunction,
+      Personality:  &activeController,
+    },
+    Location:             hosts.Location{Name: &vboxLocation},
+    InstallOutput:        "text",
+    Console:              "tty0",
+    BootMAC:              "08:08:08:08:08:08",
+    BootIP:               "1.2.3.4",
+    RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BMType:               nil,
+    BMAddress:            nil,
+    BMUsername:           nil,
+    SerialNumber:         nil,
+    AssetTag:             nil,
+    ConfigurationStatus:  "Config out-of-date",
+    ConfigurationApplied: "53296bf3-d205-4675-8c57-411c875c164e",
+    ConfigurationTarget:  "2da20c19-2157-4231-b9b3-194175e7dad0",
+    Task:                 nil,
+    AdministrativeState:  "unlocked",
+    OperationalStatus:    "enabled",
+    AvailabilityStatus:   "online",
+    InventoryState:       &invState,
+    ClockSynchronization: &clockSynchronization,
+    MaxCPUFrequency:      "1800",
+  }
+  HostDerp = hosts.Host{
+    ID:           "f73dda8e-be3c-4704-ad1e-ed99e44b846e",
+    Hostname:     "controller-1",
+    Personality:  "controller",
+    SubFunctions: "controller,worker",
+    Capabilities: hosts.Capabilities{
+      StorFunction: &monitorFunction,
+      Personality:  &standbyController,
+    },
+    Location:             hosts.Location{Name: &icewallLocation},
+    InstallOutput:        "graphic",
+    Console:              "tty0",
+    BootMAC:              "01:02:03:04:05:06",
+    BootIP:               "4.3.2.1",
+    RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BMType:               nil,
+    BMAddress:            nil,
+    BMUsername:           nil,
+    SerialNumber:         nil,
+    AssetTag:             nil,
+    ConfigurationStatus:  "Config out-of-date",
+    ConfigurationApplied: "2491d46f-d3ad-4460-981f-f86dc5a8bf6c",
+    ConfigurationTarget:  "dd798e27-362e-49e7-9dc3-4e8ef7d0aa59",
+    Task:                 &task,
+    AdministrativeState:  "locked",
+    OperationalStatus:    "disabled",
+    AvailabilityStatus:   "online",
+    InventoryState:       nil,
+    MaxCPUFrequency:      "2400",
+  }
+  HostMerp = hosts.Host{
+    ID:           "66b62c51-974b-4bcc-b273-e8365833157e",
+    Hostname:     "compute-0",
+    Personality:  "compute",
+    SubFunctions: "worker",
+    Capabilities: hosts.Capabilities{
+      StorFunction: &monitorFunction,
+      Personality:  nil,
+    },
+    Location:             hosts.Location{Name: &ottawaLocation},
+    InstallOutput:        "text",
+    Console:              "tty0",
+    BootMAC:              "fe:00:27:af:22:96",
+    BootIP:               "2.4.8.16",
+    RootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BootDevice:           "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0",
+    BMType:               nil,
+    BMAddress:            nil,
+    BMUsername:           nil,
+    SerialNumber:         nil,
+    AssetTag:             nil,
+    ConfigurationStatus:  "",
+    ConfigurationApplied: "",
+    ConfigurationTarget:  "",
+    Task:                 nil,
+    AdministrativeState:  "locked",
+    OperationalStatus:    "disabled",
+    AvailabilityStatus:   "online",
+    InventoryState:       nil,
+  }
 )
 
 const HostsListBody = `
@@ -181,7 +183,8 @@ const HostsListBody = `
       "updated_at": "2019-08-07T15:01:23.348321+00:00",
       "uptime": 3490,
       "uuid": "d99637e9-5451-45c6-98f4-f18968e43e91",
-      "vim_progress_status": null
+      "vim_progress_status": null,
+      "max_cpu_frequency": "1800"
     },
     {
       "action": "none",
@@ -245,7 +248,8 @@ const HostsListBody = `
       "updated_at": "2019-08-08T15:31:58.699163+00:00",
       "uptime": 149,
       "uuid": "f73dda8e-be3c-4704-ad1e-ed99e44b846e",
-      "vim_progress_status": null
+      "vim_progress_status": null,
+      "max_cpu_frequency": "2400"
     },
     {
       "action": "none",
@@ -378,53 +382,54 @@ const SingleHostBody = `
       "updated_at": "2019-08-08T15:31:58.699163+00:00",
       "uptime": 149,
       "uuid": "f73dda8e-be3c-4704-ad1e-ed99e44b846e",
-      "vim_progress_status": null
+      "vim_progress_status": null,
+      "max_cpu_frequency": "2400"
 }
 `
 
 func HandleHostListSuccessfully(t *testing.T) {
-	th.Mux.HandleFunc("/ihosts/", func(w http.ResponseWriter, r *http.Request) {
-		th.TestMethod(t, r, "GET")
-		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, HostsListBody)
-	})
+  th.Mux.HandleFunc("/ihosts/", func(w http.ResponseWriter, r *http.Request) {
+    th.TestMethod(t, r, "GET")
+    th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+    w.Header().Add("Content-Type", "application/json")
+    fmt.Fprintf(w, HostsListBody)
+  })
 }
 
 func HandleHostGetSuccessfully(t *testing.T) {
-	th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
-		th.TestMethod(t, r, "GET")
-		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, SingleHostBody)
-	})
+  th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
+    th.TestMethod(t, r, "GET")
+    th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+    w.Header().Add("Content-Type", "application/json")
+    fmt.Fprintf(w, SingleHostBody)
+  })
 }
 
 func HandleHostUpdateSuccessfully(t *testing.T) {
-	th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
-		th.TestMethod(t, r, "PATCH")
-		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
-		th.TestHeader(t, r, "Accept", "application/json")
-		th.TestHeader(t, r, "Content-Type", "application/json")
-		th.TestJSONRequest(t, r, `[ { "op": "replace", "path": "/hostname", "value": "new-name" } ]`)
-		fmt.Fprintf(w, SingleHostBody)
-	})
+  th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
+    th.TestMethod(t, r, "PATCH")
+    th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+    th.TestHeader(t, r, "Accept", "application/json")
+    th.TestHeader(t, r, "Content-Type", "application/json")
+    th.TestJSONRequest(t, r, `[ { "op": "replace", "path": "/hostname", "value": "new-name" } ]`)
+    fmt.Fprintf(w, SingleHostBody)
+  })
 }
 
 func HandleHostDeletionSuccessfully(t *testing.T) {
-	th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
-		th.TestMethod(t, r, "DELETE")
-		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+  th.Mux.HandleFunc("/ihosts/f757b5c7-89ab-4d93-bfd7-a97780ec2c1e", func(w http.ResponseWriter, r *http.Request) {
+    th.TestMethod(t, r, "DELETE")
+    th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
 
-		w.WriteHeader(http.StatusNoContent)
-	})
+    w.WriteHeader(http.StatusNoContent)
+  })
 }
 
 func HandleHostCreationSuccessfully(t *testing.T, response string) {
-	th.Mux.HandleFunc("/ihosts", func(w http.ResponseWriter, r *http.Request) {
-		th.TestMethod(t, r, "POST")
-		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
-		th.TestJSONRequest(t, r, `{
+  th.Mux.HandleFunc("/ihosts", func(w http.ResponseWriter, r *http.Request) {
+    th.TestMethod(t, r, "POST")
+    th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+    th.TestJSONRequest(t, r, `{
           "console": "tty0",
           "hostname": "controller-1",
           "install_output": "graphic",
@@ -432,11 +437,12 @@ func HandleHostCreationSuccessfully(t *testing.T, response string) {
             "locn": "The Ice Wall"
           },
           "personality": "controller",
-          "subfunctions": "controller,worker"
+          "subfunctions": "controller,worker",
+          "max_cpu_frequency": "2400"
         }`)
 
-		w.WriteHeader(http.StatusAccepted)
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, response)
-	})
+    w.WriteHeader(http.StatusAccepted)
+    w.Header().Add("Content-Type", "application/json")
+    fmt.Fprintf(w, response)
+  })
 }

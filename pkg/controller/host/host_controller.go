@@ -305,6 +305,11 @@ func (r *ReconcileHost) UpdateRequired(instance *starlingxv1.Host, profile *star
 		opts.InstallOutput = profile.InstallOutput
 	}
 
+	if profile.MaxCPUFrequency != nil && *profile.MaxCPUFrequency != h.MaxCPUFrequency {
+		result = true
+		opts.MaxCPUFrequency = profile.MaxCPUFrequency
+	}
+
 	if profile.RootDevice != nil && *profile.RootDevice != h.RootDevice {
 		result = true
 		opts.RootDevice = profile.RootDevice

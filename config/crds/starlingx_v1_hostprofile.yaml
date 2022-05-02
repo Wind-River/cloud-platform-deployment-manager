@@ -588,6 +588,11 @@ spec:
               description: Location defines the physical location of the host in the
                 data centre.
               type: string
+            maxCPUFrequency:
+              description: MaxCPUFrequency defines the maximum limit of the CPU frequency
+                set on the host. + optional
+              pattern: ^[1-9][0-9]*$
+              type: string
             memory:
               description: Memory defines the memory allocations for each function
                 across all NUMA sockets/nodes.

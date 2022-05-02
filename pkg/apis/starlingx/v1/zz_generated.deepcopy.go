@@ -1477,6 +1477,11 @@ func (in *ProfileBaseAttributes) DeepCopyInto(out *ProfileBaseAttributes) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.MaxCPUFrequency != nil {
+		in, out := &in.MaxCPUFrequency, &out.MaxCPUFrequency
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

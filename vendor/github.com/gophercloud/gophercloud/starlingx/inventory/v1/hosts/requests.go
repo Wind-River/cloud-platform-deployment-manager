@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package hosts
 
@@ -30,6 +30,7 @@ type HostOpts struct {
 	BMPassword           *string       `json:"-" mapstructure:"bm_password"`
 	ClockSynchronization *string       `json:"clock_synchronization,omitempty" mapstructure:"clock_synchronization"`
 	Action               *string       `json:"action,omitempty" mapstructure:"action"`
+	MaxCPUFrequency      *string       `json:"max_cpu_frequency,omitempty" mapstructure:"max_cpu_frequency"`
 }
 
 const (
