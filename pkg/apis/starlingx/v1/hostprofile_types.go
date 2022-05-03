@@ -754,7 +754,7 @@ type ProfileBaseAttributes struct {
 
 	// MaxCPUFrequency defines the maximum limit of the CPU frequency set on the host.
 	// +kubebuilder:validation:Pattern=^[1-9][0-9]*$
-	// + optional
+	// +optional
 	MaxCPUFrequency *string `json:"maxCPUFrequency,omitempty"`
 }
 
