@@ -1,156 +1,162 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
   labels:
-    controller-tools.k8s.io: "1.0"
+    controller-tools.k8s.io: '1.0'
   name: platformnetworks.starlingx.windriver.com
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .spec.type
-    description: The platform network type.
-    name: type
-    type: string
-  - JSONPath: .spec.subnet
-    description: The platform network address subnet.
-    name: subnet
-    type: string
-  - JSONPath: .spec.prefix
-    description: The platform network address prefix.
-    name: prefix
-    type: string
-  - JSONPath: .status.inSync
-    description: The current synchronization state.
-    name: insync
-    type: boolean
-  - JSONPath: .status.reconciled
-    description: The current reconciliation state.
-    name: reconciled
-    type: boolean
   group: starlingx.windriver.com
   names:
     kind: PlatformNetwork
     plural: platformnetworks
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          properties:
-            allocation:
-              description: Allocation defines the allocation scheme details for the
-                network
-              properties:
-                order:
-                  description: Order defines whether host address are allocation randomly
-                    or sequential from the available pool or addresses.
-                  enum:
-                  - sequential
-                  - random
-                  type: string
-                ranges:
-                  description: Ranges defines the pools from which host addresses
-                    are allocated.   If omitted addresses the entire network address
-                    space is considered available.
-                  items:
-                    properties:
-                      end:
-                        description: End defines the end of the address range (inclusively)
-                        type: string
-                      start:
-                        description: Start defines the beginning of the address range
-                          (inclusively)
-                        type: string
-                    required:
-                    - start
-                    - end
-                    type: object
-                  type: array
-                type:
-                  description: Type defines whether network addresses are allocated
-                    dynamically or statically.
-                  enum:
-                  - static
-                  - dynamic
-                  type: string
-              required:
-              - type
-              type: object
-            gateway:
-              description: Gateway defines the nexthop gateway IP address if applicable
-              type: string
-            prefix:
-              format: int64
-              maximum: 128
-              minimum: 1
-              type: integer
-            subnet:
-              description: Subnet defines the IPv4 or IPv6 network address for the
-                network
-              type: string
-            type:
-              description: Type defines the intended usage of the network
-              enum:
-              - mgmt
-              - pxeboot
-              - infra
-              - oam
-              - multicast
-              - system-controller
-              - cluster-host
-              - cluster-pod
-              - cluster-service
-              - storage
-              - other
-              type: string
-          required:
-          - type
-          - subnet
-          - prefix
-          - allocation
-          type: object
-        status:
-          properties:
-            id:
-              description: ID defines the system assigned unique identifier.  This
-                will only exist once this resource has been provisioned into the system.
-              type: string
-            inSync:
-              description: Defines whether the resource has been provisioned on the
-                target system.
-              type: boolean
-            poolUUID:
-              description: PoolUUID defines the system assigned unique identifier
-                that is represents the networks underlying address pool resource.  This
-                will only exist once this resource has been provisioned into the system.
-              type: string
-            reconciled:
-              description: Reconciled defines whether the network has been successfully
-                reconciled at least once.  If further changes are made they will be
-                ignored by the reconciler.
-              type: boolean
-          required:
-          - reconciled
-          - inSync
-          type: object
-  version: v1
+  versions:
+  - additionalPrinterColumns:
+    - description: The platform network type.
+      jsonPath: .spec.type
+      name: type
+      type: string
+    - description: The platform network address subnet.
+      jsonPath: .spec.subnet
+      name: subnet
+      type: string
+    - description: The platform network address prefix.
+      jsonPath: .spec.prefix
+      name: prefix
+      type: string
+    - description: The current synchronization state.
+      jsonPath: .status.inSync
+      name: insync
+      type: boolean
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
+    name: v1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              allocation:
+                description: Allocation defines the allocation scheme details for
+                  the network
+                properties:
+                  order:
+                    description: Order defines whether host address are allocation
+                      randomly or sequential from the available pool or addresses.
+                    enum:
+                    - sequential
+                    - random
+                    type: string
+                  ranges:
+                    description: Ranges defines the pools from which host addresses
+                      are allocated.   If omitted addresses the entire network address
+                      space is considered available.
+                    items:
+                      properties:
+                        end:
+                          description: End defines the end of the address range (inclusively)
+                          type: string
+                        start:
+                          description: Start defines the beginning of the address
+                            range (inclusively)
+                          type: string
+                      required:
+                      - start
+                      - end
+                      type: object
+                    type: array
+                  type:
+                    description: Type defines whether network addresses are allocated
+                      dynamically or statically.
+                    enum:
+                    - static
+                    - dynamic
+                    type: string
+                required:
+                - type
+                type: object
+              gateway:
+                description: Gateway defines the nexthop gateway IP address if applicable
+                type: string
+              prefix:
+                format: int64
+                maximum: 128
+                minimum: 1
+                type: integer
+              subnet:
+                description: Subnet defines the IPv4 or IPv6 network address for the
+                  network
+                type: string
+              type:
+                description: Type defines the intended usage of the network
+                enum:
+                - mgmt
+                - pxeboot
+                - infra
+                - oam
+                - multicast
+                - system-controller
+                - cluster-host
+                - cluster-pod
+                - cluster-service
+                - storage
+                - other
+                type: string
+            required:
+            - type
+            - subnet
+            - prefix
+            - allocation
+            type: object
+          status:
+            properties:
+              id:
+                description: ID defines the system assigned unique identifier.  This
+                  will only exist once this resource has been provisioned into the
+                  system.
+                type: string
+              inSync:
+                description: Defines whether the resource has been provisioned on
+                  the target system.
+                type: boolean
+              poolUUID:
+                description: PoolUUID defines the system assigned unique identifier
+                  that is represents the networks underlying address pool resource.  This
+                  will only exist once this resource has been provisioned into the
+                  system.
+                type: string
+              reconciled:
+                description: Reconciled defines whether the network has been successfully
+                  reconciled at least once.  If further changes are made they will
+                  be ignored by the reconciler.
+                type: boolean
+            required:
+            - reconciled
+            - inSync
+            type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
-    kind: ""
-    plural: ""
+    kind: ''
+    plural: ''
   conditions: []
   storedVersions: []
