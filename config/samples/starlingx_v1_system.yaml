@@ -1,0 +1,6 @@
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  name: system-sample
+spec:
+  # TODO(user): Add fields here

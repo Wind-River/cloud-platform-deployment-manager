@@ -1,35 +1,27 @@
 # Build the manager binary
-FROM golang:1.12.9 as dlvbuilder
+FROM golang:1.17 as builder
 
-# Build delve debugger
-RUN apt-get update && apt-get install -y git
-RUN go get github.com/go-delve/delve/cmd/dlv
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-FROM dlvbuilder as builder
-ARG GOBUILD_GCFLAGS=""
+# Copy the go source
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
 
-# Copy in the go src
-WORKDIR /go/src/github.com/wind-river/cloud-platform-deployment-manager
-COPY vendor/  vendor/
-COPY scripts/ scripts/
-COPY cmd/     cmd/
-COPY pkg/     pkg/
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
-# Build manager
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags "${GOBUILD_GCFLAGS}" -a -o manager github.com/wind-river/cloud-platform-deployment-manager/cmd/manager
-
-# Copy the controller-manager into a thin image
-FROM scratch as production
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /go/src/github.com/wind-river/cloud-platform-deployment-manager/manager .
-CMD "/manager"
+COPY --from=builder /workspace/manager .
+USER 65532:65532
 
-# Copy the delve debugger into a debug image
-FROM ubuntu:latest as debug
-WORKDIR /
-RUN apt-get update && apt-get install -y tcpdump net-tools iputils-ping iproute2
-COPY --from=dlvbuilder /go/bin/dlv /
-COPY --from=builder /go/src/github.com/wind-river/cloud-platform-deployment-manager/manager .
-COPY --from=builder /go/src/github.com/wind-river/cloud-platform-deployment-manager/scripts/dlv-wrapper.sh /
-
-CMD ["/dlv-wrapper.sh", "/manager"]
+ENTRYPOINT ["/manager"]

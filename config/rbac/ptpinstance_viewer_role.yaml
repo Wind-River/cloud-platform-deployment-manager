@@ -1,0 +1,20 @@
+# permissions for end users to view ptpinstances.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ptpinstance-viewer-role
+rules:
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - ptpinstances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - ptpinstances/status
+  verbs:
+  - get

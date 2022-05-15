@@ -5,15 +5,16 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/spf13/cobra"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/build"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/manager"
 	neturl "net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/spf13/cobra"
+	"github.com/wind-river/cloud-platform-deployment-manager/build"
+	"github.com/wind-river/cloud-platform-deployment-manager/manager"
 )
 
 const (

@@ -1,0 +1,92 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: ptpinterfaces.starlingx.windriver.com
+spec:
+  group: starlingx.windriver.com
+  names:
+    kind: PtpInterface
+    listKind: PtpInterfaceList
+    plural: ptpinterfaces
+    singular: ptpinterface
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The current synchronization state.
+      jsonPath: .status.inSync
+      name: insync
+      type: boolean
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
+    name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PtpInterfaceSpec defines the desired state of PtpInterface
+            properties:
+              parameters:
+                description: InterfaceParameters contains a list of parameters assigned
+                  to the ptp interface
+                items:
+                  type: string
+                type: array
+              ptpinstance:
+                description: ptpinstance defines the ptp instance assigned to the
+                  ptp interface
+                maxLength: 255
+                pattern: ^[a-zA-Z0-9\-_]+$
+                type: string
+            required:
+            - ptpinstance
+            type: object
+          status:
+            description: PtpInterfaceStatus defines the observed state of PtpInterface
+            properties:
+              id:
+                description: ID defines the system assigned unique identifier.  This
+                  will only exist once this resource has been provisioned into the
+                  system.
+                type: string
+              inSync:
+                description: Defines whether the resource has been provisioned on
+                  the target system.
+                type: boolean
+              reconciled:
+                description: Reconciled defines whether the host has been successfully
+                  reconciled at least once.  If further changes are made they will
+                  be ignored by the reconciler.
+                type: boolean
+            required:
+            - inSync
+            - reconciled
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

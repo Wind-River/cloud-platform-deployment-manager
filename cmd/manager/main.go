@@ -6,18 +6,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/apis"
-	config2 "github.com/wind-river/cloud-platform-deployment-manager/pkg/config"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/controller"
-	"github.com/wind-river/cloud-platform-deployment-manager/pkg/webhook"
+	"os"
+
+	"github.com/wind-river/cloud-platform-deployment-manager/api"
+	config2 "github.com/wind-river/cloud-platform-deployment-manager/common"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
-	"k8s.io/klog/klogr"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 func main() {
@@ -45,7 +43,8 @@ func main() {
 		}
 	})
 
-	logf.SetLogger(klogr.New())
+	// FIXME: cannot use klogger{...} (type klogger) as type logr.Logger in return argument
+	//	logf.SetLogger(klogr.New())
 	log := logf.Log.WithName("entrypoint")
 
 	// Get a config to talk to the apiserver
@@ -75,20 +74,20 @@ func main() {
 
 	// Setup Scheme for all resources
 	log.Info("setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := api.AddToSchemeApi(mgr.GetScheme()); err != nil {
 		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
 	}
 
 	log.Info("setting up webhooks")
-	if err := webhook.AddToManager(mgr); err != nil {
+	if err := api.AddToManagerWebhook(mgr); err != nil {
 		log.Error(err, "unable to register webhooks to the manager")
 		os.Exit(1)
 	}
 
 	// Setup all Controllers
 	log.Info("setting up controller")
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := api.AddToManagerControllers(mgr); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
 	}

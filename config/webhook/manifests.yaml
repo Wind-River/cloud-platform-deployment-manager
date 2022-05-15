@@ -1,0 +1,254 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-host
+  failurePolicy: Fail
+  name: mhost.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - hosts
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-hostprofile
+  failurePolicy: Fail
+  name: mhostprofile.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - hostprofiles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-platformnetwork
+  failurePolicy: Fail
+  name: mplatformnetwork.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - platformnetworks
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-ptpinstance
+  failurePolicy: Fail
+  name: mptpinstance.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ptpinstances
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-ptpinterface
+  failurePolicy: Fail
+  name: mptpinterface.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ptpinterfaces
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-starlingx-windriver-com-v1-system
+  failurePolicy: Fail
+  name: msystem.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - systems
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-host
+  failurePolicy: Fail
+  name: vhost.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - hosts
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-hostprofile
+  failurePolicy: Fail
+  name: vhostprofile.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - hostprofiles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-platformnetwork
+  failurePolicy: Fail
+  name: vplatformnetwork.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - platformnetworks
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-ptpinstance
+  failurePolicy: Fail
+  name: vptpinstance.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ptpinstances
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-ptpinterface
+  failurePolicy: Fail
+  name: vptpinterface.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ptpinterfaces
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-system
+  failurePolicy: Fail
+  name: vsystem.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - systems
+  sideEffects: None
