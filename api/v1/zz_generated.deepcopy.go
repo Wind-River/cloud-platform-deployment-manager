@@ -260,19 +260,19 @@ func (in *CommonInterfaceInfo) DeepCopyInto(out *CommonInterfaceInfo) {
 	}
 	if in.PlatformNetworks != nil {
 		in, out := &in.PlatformNetworks, &out.PlatformNetworks
-		*out = new([]string)
+		*out = new(StringList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]string, len(*in))
+			*out = make(StringList, len(*in))
 			copy(*out, *in)
 		}
 	}
 	if in.DataNetworks != nil {
 		in, out := &in.DataNetworks, &out.DataNetworks
-		*out = new([]string)
+		*out = new(StringList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]string, len(*in))
+			*out = make(StringList, len(*in))
 			copy(*out, *in)
 		}
 	}
@@ -283,10 +283,10 @@ func (in *CommonInterfaceInfo) DeepCopyInto(out *CommonInterfaceInfo) {
 	}
 	if in.PtpInterfaces != nil {
 		in, out := &in.PtpInterfaces, &out.PtpInterfaces
-		*out = new([]string)
+		*out = new(StringList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]string, len(*in))
+			*out = make(StringList, len(*in))
 			copy(*out, *in)
 		}
 	}
@@ -1479,10 +1479,10 @@ func (in *ProfileStorageInfo) DeepCopyInto(out *ProfileStorageInfo) {
 	}
 	if in.OSDs != nil {
 		in, out := &in.OSDs, &out.OSDs
-		*out = new([]OSDInfo)
+		*out = new(OSDList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]OSDInfo, len(*in))
+			*out = make(OSDList, len(*in))
 			for i := range *in {
 				(*in)[i].DeepCopyInto(&(*out)[i])
 			}
@@ -1490,10 +1490,10 @@ func (in *ProfileStorageInfo) DeepCopyInto(out *ProfileStorageInfo) {
 	}
 	if in.VolumeGroups != nil {
 		in, out := &in.VolumeGroups, &out.VolumeGroups
-		*out = new([]VolumeGroupInfo)
+		*out = new(VolumeGroupList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]VolumeGroupInfo, len(*in))
+			*out = make(VolumeGroupList, len(*in))
 			for i := range *in {
 				(*in)[i].DeepCopyInto(&(*out)[i])
 			}
@@ -1501,10 +1501,10 @@ func (in *ProfileStorageInfo) DeepCopyInto(out *ProfileStorageInfo) {
 	}
 	if in.FileSystems != nil {
 		in, out := &in.FileSystems, &out.FileSystems
-		*out = new([]FileSystemInfo)
+		*out = new(FileSystemList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]FileSystemInfo, len(*in))
+			*out = make(FileSystemList, len(*in))
 			copy(*out, *in)
 		}
 	}
@@ -1969,19 +1969,19 @@ func (in *SystemSpec) DeepCopyInto(out *SystemSpec) {
 	}
 	if in.DNSServers != nil {
 		in, out := &in.DNSServers, &out.DNSServers
-		*out = new([]string)
+		*out = new(StringList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]string, len(*in))
+			*out = make(StringList, len(*in))
 			copy(*out, *in)
 		}
 	}
 	if in.NTPServers != nil {
 		in, out := &in.NTPServers, &out.NTPServers
-		*out = new([]string)
+		*out = new(StringList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]string, len(*in))
+			*out = make(StringList, len(*in))
 			copy(*out, *in)
 		}
 	}
@@ -1992,10 +1992,10 @@ func (in *SystemSpec) DeepCopyInto(out *SystemSpec) {
 	}
 	if in.Certificates != nil {
 		in, out := &in.Certificates, &out.Certificates
-		*out = new([]CertificateInfo)
+		*out = new(CertificateList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]CertificateInfo, len(*in))
+			*out = make(CertificateList, len(*in))
 			copy(*out, *in)
 		}
 	}
@@ -2006,10 +2006,10 @@ func (in *SystemSpec) DeepCopyInto(out *SystemSpec) {
 	}
 	if in.ServiceParameters != nil {
 		in, out := &in.ServiceParameters, &out.ServiceParameters
-		*out = new([]ServiceParameterInfo)
+		*out = new(ServiceParameterList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]ServiceParameterInfo, len(*in))
+			*out = make(ServiceParameterList, len(*in))
 			for i := range *in {
 				(*in)[i].DeepCopyInto(&(*out)[i])
 			}
@@ -2062,10 +2062,10 @@ func (in *SystemStorageInfo) DeepCopyInto(out *SystemStorageInfo) {
 	*out = *in
 	if in.Backends != nil {
 		in, out := &in.Backends, &out.Backends
-		*out = new([]StorageBackend)
+		*out = new(StorageBackendList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]StorageBackend, len(*in))
+			*out = make(StorageBackendList, len(*in))
 			for i := range *in {
 				(*in)[i].DeepCopyInto(&(*out)[i])
 			}
@@ -2078,10 +2078,10 @@ func (in *SystemStorageInfo) DeepCopyInto(out *SystemStorageInfo) {
 	}
 	if in.FileSystems != nil {
 		in, out := &in.FileSystems, &out.FileSystems
-		*out = new([]ControllerFileSystemInfo)
+		*out = new(ControllerFileSystemList)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make([]ControllerFileSystemInfo, len(*in))
+			*out = make(ControllerFileSystemList, len(*in))
 			copy(*out, *in)
 		}
 	}
