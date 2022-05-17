@@ -17,7 +17,7 @@
 // referenced.
 // +kubebuilder:object:generate=true
 // +deepequal-gen=package
-// +k8s:conversion-gen=github.com/wind-river/cloud-platform-deployment-manager/pkg/apis/starlingx
+// +k8s:conversion-gen=github.com/wind-river/cloud-platform-deployment-manager/api
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=starlingx.windriver.com
 package v1
