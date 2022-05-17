@@ -1,6 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2019-2022 Wind River Systems, Inc.
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
+BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
+
+DEPLOY_LDFLAGS := -X cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
 
@@ -16,6 +24,16 @@ endif
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+ifeq (${DEBUG}, yes)
+	DOCKER_TARGET = debug
+	GOBUILD_GCFLAGS = all=-N -l
+	IMG ?= ${DEFAULT_IMG}:debug
+else
+	DOCKER_TARGET = production
+	GOBUILD_GCFLAGS = ""
+	IMG ?= ${DEFAULT_IMG}:latest
+endif
 
 .PHONY: all
 all: build
@@ -63,7 +81,11 @@ test: manifests fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
+
+.PHONY: tools
+tools: fmt vet ## Build deploy binary.
+	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy cmd/deploy/main.go
 
 .PHONY: run
 run: manifests fmt vet ## Run a controller from your host.

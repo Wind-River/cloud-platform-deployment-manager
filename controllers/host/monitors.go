@@ -14,7 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/partitions"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	"github.com/wind-river/cloud-platform-deployment-manager/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

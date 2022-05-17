@@ -14,7 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/spf13/cobra"
 	"github.com/wind-river/cloud-platform-deployment-manager/build"
-	"github.com/wind-river/cloud-platform-deployment-manager/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 )
 
 const (

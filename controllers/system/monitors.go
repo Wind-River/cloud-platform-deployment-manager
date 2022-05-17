@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/controllerFilesystems"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	"github.com/wind-river/cloud-platform-deployment-manager/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 )
 
 // DefaultAvailableControllerNodeMonitorInterval represents the default interval

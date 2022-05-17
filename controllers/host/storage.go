@@ -21,7 +21,7 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/common"
 	ctrlcommon "github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
-	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 )
 

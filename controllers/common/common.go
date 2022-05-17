@@ -16,7 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	"github.com/wind-river/cloud-platform-deployment-manager/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"

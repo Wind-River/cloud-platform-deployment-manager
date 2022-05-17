@@ -23,7 +23,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
-	"github.com/wind-river/cloud-platform-deployment-manager/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
