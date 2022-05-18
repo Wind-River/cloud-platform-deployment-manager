@@ -1,5 +1,12 @@
 # Build the manager binary
-FROM golang:1.17 as builder
+FROM golang:1.17 as dlvbuilder
+
+# Build delve debugger
+RUN apt-get update && apt-get install -y git
+RUN go get github.com/go-delve/delve/cmd/dlv
+
+# Build the manager binary
+FROM dlvbuilder as builder
 ARG GOBUILD_GCFLAGS=""
 
 WORKDIR /workspace
@@ -16,15 +23,26 @@ COPY api/ api/
 COPY common/ common/
 COPY platform/ platform/
 COPY controllers/ controllers/
+COPY scripts/ scripts/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -gcflags "${GOBUILD_GCFLAGS}" -a -o manager main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot as production
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
+
+# Copy the delve debugger into a debug image
+FROM ubuntu:latest as debug
+WORKDIR /
+RUN apt-get update && apt-get install -y tcpdump net-tools iputils-ping iproute2
+COPY --from=dlvbuilder /go/bin/dlv /
+COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/scripts/dlv-wrapper.sh /
+
+CMD ["/dlv-wrapper.sh", "/manager"]
