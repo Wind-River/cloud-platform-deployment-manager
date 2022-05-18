@@ -243,8 +243,8 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 func (m *PlatformManager) notifyController(object client.Object) error {
 	key := client.ObjectKeyFromObject(object)
 
-	result := object.DeepCopyObject()
 	// FIXME: DeepCopyObject returns runtime.Object.
+	// result := object.DeepCopyObject()
 	// err := m.GetClient().Get(context.Background(), key, result)
 	err := m.GetClient().Get(context.Background(), key, object)
 	if err != nil {
@@ -254,7 +254,9 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 
 	accessor := meta.NewAccessor()
 
-	annotations, err := accessor.Annotations(result)
+	// FIXME: Need to pass "result" once result above is fixed
+	// annotations, err := accessor.Annotations(result)
+	annotations, err := accessor.Annotations(object)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to get annotations via accessor")
 		return err
@@ -267,7 +269,9 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 	count := getNextCount(annotations[NotificationCountKey])
 	annotations[NotificationCountKey] = count
 
-	err = accessor.SetAnnotations(result, annotations)
+	// FIXME: Need to pass "result" once result above is fixed
+	// err = accessor.SetAnnotations(result, annotations)
+	err = accessor.SetAnnotations(object, annotations)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to set annotations via accessor")
 		return err
