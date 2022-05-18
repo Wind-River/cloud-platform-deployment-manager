@@ -7,6 +7,7 @@
 *.dylib
 bin
 external
+helm/wind-river-cloud-platform-deployment-manager/templates/rbac
 
 # Test binary, build with `go test -c`
 *.test

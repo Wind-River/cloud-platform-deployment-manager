@@ -186,6 +186,11 @@ helm-ver-check:
 
 # Check helm chart validity
 helm-lint: manifests
+	if [ -d "./helm/wind-river-cloud-platform-deployment-manager/templates/rbac"]; then
+		rm -r ./helm/wind-river-cloud-platform-deployment-manager/templates/rbac
+	fi
+	cp -r ./config/rbac ./helm/wind-river-cloud-platform-deployment-manager/templates/
+	rm ./helm/wind-river-cloud-platform-deployment-manager/templates/rbac/kustomization.yaml
 	helm lint helm/wind-river-cloud-platform-deployment-manager
 
 # Create helm chart package
