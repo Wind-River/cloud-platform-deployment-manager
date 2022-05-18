@@ -95,7 +95,7 @@ func (r *Host) validateHost() error {
 			return err
 		}
 	}
-	hostlog.Info(AllowedReason)
+	hostlog.Info(HostAllowedReason)
 	return nil
 }
 

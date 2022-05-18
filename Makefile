@@ -60,15 +60,17 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, DeepEqual, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-generate_test: deepequal-gen
-	$(DEEPEQUAL_GEN) -v 1 -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt
+	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
+
+golangci: ## Run the golangci-lint static analysis
+	golangci-lint run ./api/...
+	golangci-lint run ./controllers/...
 
 .PHONY: vet
 vet: ## Run go vet against code.

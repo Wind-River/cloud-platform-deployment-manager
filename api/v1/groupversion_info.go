@@ -17,6 +17,7 @@ limitations under the License.
 // Package v1 contains API Schema definitions for the starlingx v1 API group
 //+kubebuilder:object:generate=true
 //+groupName=starlingx.windriver.com
+//go:generate ../../bin/deepequal-gen -v 1 -O zz_generated.deepequal -i ./... -h ../../hack/boilerplate.go.txt
 package v1
 
 import (
