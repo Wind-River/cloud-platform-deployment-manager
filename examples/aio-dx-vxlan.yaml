@@ -28,10 +28,10 @@ kind: DataNetwork
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: group0-data0b
+  name: group0-data0
   namespace: deployment
 spec:
-  description: group0 data networks for the shared internal networks.
+  description: group0 data networks for the tenant1 networks.
   mtu: 1500
   type: vlan
 ---
@@ -40,10 +40,10 @@ kind: DataNetwork
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: group0-data0
+  name: group0-data0b
   namespace: deployment
 spec:
-  description: group0 data networks for the tenant1 networks.
+  description: group0 data networks for the shared internal networks.
   mtu: 1500
   type: vlan
 ---
@@ -93,6 +93,22 @@ kind: DataNetwork
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
+  name: group0-vxlan0
+  namespace: deployment
+spec:
+  description: group0 vxlan data networks for the tenant1 networks.
+  mtu: 1400
+  type: vxlan
+  vxlan:
+    endpointMode: static
+    ttl: 10
+    udpPortNumber: 4789
+---
+apiVersion: starlingx.windriver.com/v1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
   name: group0-vxlan0b
   namespace: deployment
 spec:
@@ -102,22 +118,6 @@ spec:
   vxlan:
     endpointMode: dynamic
     multicastGroup: 239.0.1.10
-    ttl: 10
-    udpPortNumber: 4789
----
-apiVersion: starlingx.windriver.com/v1
-kind: DataNetwork
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: group0-vxlan0
-  namespace: deployment
-spec:
-  description: group0 vxlan data networks for the tenant1 networks.
-  mtu: 1400
-  type: vxlan
-  vxlan:
-    endpointMode: static
     ttl: 10
     udpPortNumber: 4789
 ---
