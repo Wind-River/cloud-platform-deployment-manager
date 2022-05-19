@@ -101,9 +101,7 @@ spec:
         {{- if .Values.manager.debugger.enabled }}
         - /manager
         {{- end }}
-        - --metrics-addr=127.0.0.1:8080
-        - --alsologtostderr=true
-        - --v={{ .Values.manager.logLevel }}
+        - --metrics-bind-address=127.0.0.1:8080
         command:
         {{- if .Values.manager.debugger.enabled }}
         - /dlv-wrapper.sh
