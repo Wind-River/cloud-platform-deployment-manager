@@ -826,12 +826,12 @@ spec:
                 type: object
               subfunctions:
                 description: SubFunctionList defines the set of subfunctions to be provisioned on the node at time of initial provisioning.
-                enum:
-                - controller
-                - worker
-                - storage
-                - lowlatency
                 items:
+                  enum:
+                  - controller
+                  - worker
+                  - storage
+                  - lowlatency
                   type: string
                 type: array
             type: object
@@ -1604,12 +1604,12 @@ spec:
                     type: object
                   subfunctions:
                     description: SubFunctionList defines the set of subfunctions to be provisioned on the node at time of initial provisioning.
-                    enum:
-                    - controller
-                    - worker
-                    - storage
-                    - lowlatency
                     items:
+                      enum:
+                      - controller
+                      - worker
+                      - storage
+                      - lowlatency
                       type: string
                     type: array
                 type: object
