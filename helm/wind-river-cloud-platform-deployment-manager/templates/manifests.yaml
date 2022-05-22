@@ -284,12 +284,20 @@ spec:
                         dataNetworks:
                           description: DataNetworks defines the list of data networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         members:
                           description: Members defines the list of interfaces which, together, make up the Bond interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_\.]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: array
                         mode:
                           description: Mode defines the Bond interface aggregation mode.
@@ -311,7 +319,11 @@ spec:
                         platformNetworks:
                           description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         primaryReselect:
                           description: PrimaryReselect defines the reselection policy for the Bond interface. Only applicable for active_standby mode.
@@ -319,7 +331,11 @@ spec:
                         ptpInterfaces:
                           description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave, or none
@@ -358,7 +374,11 @@ spec:
                         dataNetworks:
                           description: DataNetworks defines the list of data networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         lower:
                           description: Lower defines the interface name over which this ethernet interface is to be configured.
@@ -377,7 +397,11 @@ spec:
                         platformNetworks:
                           description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         port:
                           description: Port defines the attributes identifying the underlying port which defines this Ethernet interface.
@@ -393,7 +417,11 @@ spec:
                         ptpInterfaces:
                           description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave, or none
@@ -433,7 +461,11 @@ spec:
                         dataNetworks:
                           description: DataNetworks defines the list of data networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         lower:
                           description: Lower defines the interface name over which this VF interface is to be configured.
@@ -455,12 +487,20 @@ spec:
                         platformNetworks:
                           description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpInterfaces:
                           description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave, or none
@@ -501,7 +541,11 @@ spec:
                         dataNetworks:
                           description: DataNetworks defines the list of data networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         lower:
                           description: Lower defines the interface name over which this VLAN interface is to be configured.
@@ -520,12 +564,20 @@ spec:
                         platformNetworks:
                           description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpInterfaces:
                           description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                           items:
+                            maxLength: 255
+                            pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave, or none
@@ -661,7 +713,11 @@ spec:
               ptpInstances:
                 description: PtpInstances defines the list of ptp instance to be configured against this interface.
                 items:
+                  maxLength: 255
+                  pattern: ^[a-zA-Z0-9\-_]+$
                   type: string
+                maxLength: 255
+                pattern: ^[a-zA-Z0-9\-_]+$
                 type: array
               rootDevice:
                 description: RootDevice defines the absolute device path of the device to be used as the root file system.
@@ -716,6 +772,7 @@ spec:
                           - docker
                           - scratch
                           - kubelet
+                          - log
                           type: string
                         size:
                           minimum: 1
@@ -1062,12 +1119,20 @@ spec:
                             dataNetworks:
                               description: DataNetworks defines the list of data networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             members:
                               description: Members defines the list of interfaces which, together, make up the Bond interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_\.]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: array
                             mode:
                               description: Mode defines the Bond interface aggregation mode.
@@ -1089,7 +1154,11 @@ spec:
                             platformNetworks:
                               description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             primaryReselect:
                               description: PrimaryReselect defines the reselection policy for the Bond interface. Only applicable for active_standby mode.
@@ -1097,7 +1166,11 @@ spec:
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpRole:
                               description: PTPRole defines the ptp role as master, slave, or none
@@ -1136,7 +1209,11 @@ spec:
                             dataNetworks:
                               description: DataNetworks defines the list of data networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             lower:
                               description: Lower defines the interface name over which this ethernet interface is to be configured.
@@ -1155,7 +1232,11 @@ spec:
                             platformNetworks:
                               description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             port:
                               description: Port defines the attributes identifying the underlying port which defines this Ethernet interface.
@@ -1171,7 +1252,11 @@ spec:
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpRole:
                               description: PTPRole defines the ptp role as master, slave, or none
@@ -1211,7 +1296,11 @@ spec:
                             dataNetworks:
                               description: DataNetworks defines the list of data networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             lower:
                               description: Lower defines the interface name over which this VF interface is to be configured.
@@ -1233,12 +1322,20 @@ spec:
                             platformNetworks:
                               description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpRole:
                               description: PTPRole defines the ptp role as master, slave, or none
@@ -1279,7 +1376,11 @@ spec:
                             dataNetworks:
                               description: DataNetworks defines the list of data networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             lower:
                               description: Lower defines the interface name over which this VLAN interface is to be configured.
@@ -1298,12 +1399,20 @@ spec:
                             platformNetworks:
                               description: PlatformNetworks defines the list of platform networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
+                              maxLength: 255
+                              pattern: ^[a-zA-Z0-9\-_]+$
                               type: array
                             ptpRole:
                               description: PTPRole defines the ptp role as master, slave, or none
@@ -1439,7 +1548,11 @@ spec:
                   ptpInstances:
                     description: PtpInstances defines the list of ptp instance to be configured against this interface.
                     items:
+                      maxLength: 255
+                      pattern: ^[a-zA-Z0-9\-_]+$
                       type: string
+                    maxLength: 255
+                    pattern: ^[a-zA-Z0-9\-_]+$
                     type: array
                   rootDevice:
                     description: RootDevice defines the absolute device path of the device to be used as the root file system.
@@ -1494,6 +1607,7 @@ spec:
                               - docker
                               - scratch
                               - kubelet
+                              - log
                               type: string
                             size:
                               minimum: 1
@@ -2221,13 +2335,13 @@ spec:
                           type: integer
                         services:
                           description: Services is a list of services to enable for this backend instance.  Each backend type supports a limited set of services.  Refer to customer documentation for more information.
-                          enum:
-                          - cinder
-                          - glance
-                          - nova
-                          - swift
-                          - rbd-provisioner
                           items:
+                            enum:
+                            - cinder
+                            - glance
+                            - nova
+                            - swift
+                            - rbd-provisioner
                             type: string
                           type: array
                         type:

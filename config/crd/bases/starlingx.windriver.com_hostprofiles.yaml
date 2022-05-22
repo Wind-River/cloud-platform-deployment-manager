@@ -757,6 +757,7 @@ spec:
                           - docker
                           - scratch
                           - kubelet
+                          - log
                           type: string
                         size:
                           minimum: 1
