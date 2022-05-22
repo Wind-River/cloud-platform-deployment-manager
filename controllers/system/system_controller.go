@@ -58,6 +58,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -69,6 +70,7 @@ var _ reconcile.Reconciler = &SystemReconciler{}
 
 // SystemReconciler reconciles a System object
 type SystemReconciler struct {
+	manager.Manager
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
@@ -1386,6 +1388,17 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *SystemReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
+	r.Manager = mgr
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.CloudManager = tMgr
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logSystem}
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(SystemControllerName),
+		Logger:        logSystem}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.System{}).
 		Complete(r)

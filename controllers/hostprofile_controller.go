@@ -170,6 +170,12 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *HostProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(HostProfileControllerName),
+		Logger:        logHostProfile}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.HostProfile{}).
 		Complete(r)

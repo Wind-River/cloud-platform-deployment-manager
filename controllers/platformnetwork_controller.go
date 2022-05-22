@@ -681,6 +681,16 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlatformNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.CloudManager = tMgr
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logPlatformNetwork}
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(PlatformNetworkControllerName),
+		Logger:        logPlatformNetwork}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PlatformNetwork{}).
 		Complete(r)
