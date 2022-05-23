@@ -208,7 +208,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryValidationError
 		err = nil
 
-		h.Error(in, "validation error", "request")
+		h.Error(in, "validation error", "request", request)
 
 	case ErrSystemDependency, ErrResourceStatusDependency:
 		// These errors are transient errors.  Resources must be in stable

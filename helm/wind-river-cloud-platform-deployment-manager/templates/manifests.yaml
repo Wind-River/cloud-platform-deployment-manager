@@ -2333,12 +2333,6 @@ spec:
                         services:
                           description: Services is a list of services to enable for this backend instance.  Each backend type supports a limited set of services.  Refer to customer documentation for more information.
                           items:
-                            enum:
-                            - cinder
-                            - glance
-                            - nova
-                            - swift
-                            - rbd-provisioner
                             type: string
                           type: array
                         type:
