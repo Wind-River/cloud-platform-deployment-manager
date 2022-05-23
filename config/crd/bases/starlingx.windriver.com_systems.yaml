@@ -271,12 +271,6 @@ spec:
                             this backend instance.  Each backend type supports a limited
                             set of services.  Refer to customer documentation for
                             more information.
-                          enum:
-                          - cinder
-                          - glance
-                          - nova
-                          - swift
-                          - rbd-provisioner
                           items:
                             type: string
                           type: array

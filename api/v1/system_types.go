@@ -176,7 +176,6 @@ type StorageBackend struct {
 	// Services is a list of services to enable for this backend instance.  Each
 	// backend type supports a limited set
 	// of services.  Refer to customer documentation for more information.
-	// +kubebuilder:validation:Enum=cinder;glance;nova;swift;rbd-provisioner
 	Services []string `json:"services,omitempty"`
 
 	// ReplicationFactor is the number of storage hosts required in each
