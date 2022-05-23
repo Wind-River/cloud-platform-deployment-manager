@@ -787,7 +787,13 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 
 	// Fill-in the basic attributes
 	spec.Personality = &host.Personality
-	subfunctions := strings.Split(host.SubFunctions, ",")
+	subfunctionStrings := strings.Split(host.SubFunctions, ",")
+	subfunctions := make([]SubFunction, 0)
+	if len(subfunctionStrings) > 0 {
+		for _, subfunctionString := range subfunctionStrings {
+			subfunctions = append(subfunctions, SubFunctionFromString(subfunctionString))
+		}
+	}
 	spec.SubFunctions = subfunctions
 	spec.AdministrativeState = &host.AdministrativeState
 	if host.BootMAC != zeroMAC {

@@ -668,6 +668,13 @@ func (in RouteInfo) IsKeyEqual(x RouteInfo) bool {
 	return false
 }
 
+// +kubebuilder:validation:Enum=controller;worker;storage;lowlatency
+type SubFunction string
+
+func SubFunctionFromString(s string) SubFunction {
+	return SubFunction(s)
+}
+
 // +deepequal-gen:ignore-nil-fields=true
 type ProfileBaseAttributes struct {
 	// Personality defines the role to be assigned to the host
@@ -680,11 +687,10 @@ type ProfileBaseAttributes struct {
 	// +optional
 	AdministrativeState *string `json:"administrativeState,omitempty"`
 
-	// SubFunctionList defines the set of subfunctions to be provisioned on the
+	// SubFunctions defines the set of subfunctions to be provisioned on the
 	// node at time of initial provisioning.
-	// +kubebuilder:validation:Enum=controller;worker;storage;lowlatency
 	// +optional
-	SubFunctions StringList `json:"subfunctions,omitempty"`
+	SubFunctions []SubFunction `json:"subfunctions,omitempty"`
 
 	// Location defines the physical location of the host in the data centre.
 	// +optional
@@ -881,12 +887,6 @@ type HostProfileSpec struct {
 	Routes RouteList `json:"routes,omitempty"`
 }
 
-// HostProfileStatus defines the observed state of HostProfile
-type HostProfileStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-}
-
 // HasWorkerSubfunction is a utility function that returns true if a profile
 // is configured to require the compute subfunction.
 func (in *HostProfileSpec) HasWorkerSubFunction() bool {
@@ -917,8 +917,7 @@ type HostProfile struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HostProfileSpec   `json:"spec,omitempty"`
-	Status HostProfileStatus `json:"status,omitempty"`
+	Spec HostProfileSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true

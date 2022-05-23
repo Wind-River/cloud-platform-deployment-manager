@@ -259,10 +259,14 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 	}
 
 	if profile.SubFunctions != nil {
+		profileSubFunctions := make([]string, 0)
+		for _, single := range profile.SubFunctions {
+			profileSubFunctions = append(profileSubFunctions, string(single))
+		}
 		subfunctions := strings.Split(h.SubFunctions, ",")
-		if utils.ListChanged(profile.SubFunctions, subfunctions) {
+		if utils.ListChanged(profileSubFunctions, subfunctions) {
 			result = true
-			subfunctions := strings.Join(profile.SubFunctions, ",")
+			subfunctions := strings.Join(profileSubFunctions, ",")
 			opts.SubFunctions = &subfunctions
 		}
 	}
