@@ -1589,7 +1589,8 @@ func (r *HostReconciler) IsCephDelayTargetGroup(client *gophercloud.ServiceClien
 //+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts/finalizers,verbs=update
 func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	_ = log.FromContext(ctx)
-	_ = r.Log.WithValues("host", request.NamespacedName)
+	// FIXME: check log object
+	// _ = r.Log.WithValues("host", request.NamespacedName)
 
 	savedLog := logHost
 	logHost = logHost.WithName(request.NamespacedName.String())
@@ -1684,6 +1685,16 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.CloudManager = tMgr
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logHost}
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(HostControllerName),
+		Logger:        logHost}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.Host{}).
 		Complete(r)

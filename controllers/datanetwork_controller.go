@@ -419,6 +419,16 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DataNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.CloudManager = tMgr
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logDataNetwork}
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(DataNetworkControllerName),
+		Logger:        logDataNetwork}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.DataNetwork{}).
 		Complete(r)

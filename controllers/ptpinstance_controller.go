@@ -449,6 +449,16 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PtpInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.CloudManager = tMgr
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logPtpInstance}
+	r.ReconcilerEventLogger = &common.EventLogger{
+		EventRecorder: mgr.GetEventRecorderFor(PtpInstanceControllerName),
+		Logger:        logPtpInstance}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PtpInstance{}).
 		Complete(r)
