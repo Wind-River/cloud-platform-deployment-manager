@@ -892,9 +892,6 @@ spec:
                   type: string
                 type: array
             type: object
-          status:
-            description: HostProfileStatus defines the observed state of HostProfile
-            type: object
         type: object
     served: true
     storage: true
