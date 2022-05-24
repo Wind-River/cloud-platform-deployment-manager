@@ -253,12 +253,6 @@ type VolumeGroupInfo struct {
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
 	Name string `json:"name"`
 
-	// ConcurrentDiskOperations defines the number of concurrent disk operations
-	// permitted.
-	// +kubebuilder:validation:Minimum=1
-	// +optional
-	ConcurrentDiskOperations *int `json:"concurrentDiskOperations,omitempty"`
-
 	// LVMType defines the provisioning type for volumes defines with 'Type'
 	// set to 'lvm'.
 	// +kubebuilder:validation:Enum=thin;thick

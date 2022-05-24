@@ -309,11 +309,6 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 
 			capabilities := volumegroups.CapabilitiesOpts{}
 
-			if vgInfo.ConcurrentDiskOperations != nil {
-				capabilities.ConcurrentDiskOperations = vgInfo.ConcurrentDiskOperations
-				capabilitiesPtr = &capabilities
-			}
-
 			if vgInfo.LVMType != nil {
 				capabilities.LVMType = vgInfo.LVMType
 				capabilitiesPtr = &capabilities

@@ -834,11 +834,6 @@ spec:
                       description: VolumeGroupInfo defines the attributes specific
                         to a single volume group.
                       properties:
-                        concurrentDiskOperations:
-                          description: ConcurrentDiskOperations defines the number
-                            of concurrent disk operations permitted.
-                          minimum: 1
-                          type: integer
                         lvmType:
                           description: LVMType defines the provisioning type for volumes
                             defines with 'Type' set to 'lvm'.

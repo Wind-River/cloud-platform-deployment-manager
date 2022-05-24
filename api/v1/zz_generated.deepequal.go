@@ -2360,16 +2360,6 @@ func (in *VolumeGroupInfo) DeepEqual(other *VolumeGroupInfo) bool {
 	if in.Name != other.Name {
 		return false
 	}
-	if in.ConcurrentDiskOperations != nil {
-		if (in.ConcurrentDiskOperations == nil) != (other.ConcurrentDiskOperations == nil) {
-			return false
-		} else if in.ConcurrentDiskOperations != nil {
-			if *in.ConcurrentDiskOperations != *other.ConcurrentDiskOperations {
-				return false
-			}
-		}
-	}
-
 	if in.LVMType != nil {
 		if (in.LVMType == nil) != (other.LVMType == nil) {
 			return false
