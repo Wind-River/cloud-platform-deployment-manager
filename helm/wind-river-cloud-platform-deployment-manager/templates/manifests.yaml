@@ -2858,7 +2858,7 @@ spec:
         - --upstream=http://127.0.0.1:8080/
         - --logtostderr=true
         - --v={{ .Values.rbacProxy.logLevel }}
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.11.0
+        image: {{ .Values.rbacProxy.image }}
         name: kube-rbac-proxy
         ports:
         - containerPort: {{ .Values.rbacProxy.port }}
