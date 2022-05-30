@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	config2 "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/host"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/system"
@@ -65,6 +66,13 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	// Load the manager config
+	err := config2.ReadConfig()
+	if err != nil {
+		setupLog.Error(err, "unable to read manager configuration")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,

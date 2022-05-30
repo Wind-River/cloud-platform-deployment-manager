@@ -131,7 +131,7 @@ var reconcilerOptionDefaults = map[ReconcilerName]map[OptionName]interface{}{
 }
 
 // configFilepath is the absolute path of the manager config file.
-const configFilepath = "/etc/manager/config.yaml"
+const configFilepath = "/etc/manager/controller_manager_config.yaml"
 
 var cfg *viper.Viper
 
