@@ -1,5 +1,8 @@
 FROM golang:1.17
 
+# Install our required version of Kustomize to generate the examples
+RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
+
 # Install our current version of Helm.  We can probably upgrade to a new version
 # but this one has been tested and verified to work.
 RUN wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz -q -O - | tar zx -C /bin --strip-components=1 linux-amd64/helm
