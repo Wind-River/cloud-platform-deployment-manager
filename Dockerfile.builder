@@ -1,4 +1,4 @@
-FROM golang:1.12.9
+FROM golang:1.17
 
 # Install our current version of Helm.  We can probably upgrade to a new version
 # but this one has been tested and verified to work.
@@ -6,10 +6,7 @@ RUN wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz -q -O - | tar zx -
 
 # Install our required version of Kubebuilder.  We cannot upgrade to a later
 # version without significant effort.
-RUN wget https://github.com/kubernetes-sigs/kubebuilder/releases/download/v1.0.8/kubebuilder_1.0.8_linux_amd64.tar.gz -q -O - | tar zx -C /usr/local/ --transform 's/kubebuilder_1.0.8_linux_amd64/kubebuilder/'
-
-# Install our required version of Kustomize
-RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
+RUN curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH); chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
 
 # Install our current version of golangci-lint.  We can probably upgrade to a
 # new version but this one has been tested and verified to work.

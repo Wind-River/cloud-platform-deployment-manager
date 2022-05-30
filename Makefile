@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2020 Wind River Systems, Inc.
+# Copyright(c) 2019-2022 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -11,17 +11,29 @@ HELM_FORCE ?= 0
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
 
-GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
-GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-
 HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{print $$NF}' | sed 's/^v//')
 HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
 HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
-DEPLOY_LDFLAGS := -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
-DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitHead=${GIT_HEAD}
-DEPLOY_LDFLAGS += -X github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+DEPLOY_LDFLAGS := -X cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.23
+
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
 ifeq (${DEBUG}, yes)
 	DOCKER_TARGET = debug
@@ -33,78 +45,128 @@ else
 	IMG ?= ${DEFAULT_IMG}:latest
 endif
 
-.PHONY: examples
-
-# Build all artifacts
-all: helm-ver-check test manager tools helm-package docker-build examples
+.PHONY: all
+all: helm-ver-check test build tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
 
-# Run tests
-test: generate fmt vet manifests helm-lint
-	# Retry up to 3 times in case of intermittent control-plane failure
-	for idx in $$(seq 1 3) ; do \
-		echo "Trial #$${idx}" ; \
-		go test ./pkg/... ./cmd/... -coverprofile cover.out && break ; \
-		if [ "$$idx" -lt "3" ]; then
-			echo "Retrying after 1 second..."
-			sleep 1
-		fi
-	done
+##@ General
 
-# Build manager binary
-manager: generate fmt vet
-	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager github.com/wind-river/cloud-platform-deployment-manager/cmd/manager
+##@ Development
 
-# Build deploy binary
-tools: generate fmt vet
-	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy
+.PHONY: manifests
+manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+.PHONY: generate
+generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, DeepEqual, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt
+
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
+
+golangci: ## Run the golangci-lint static analysis
+	golangci-lint run ./api/...
+	golangci-lint run ./controllers/...
+
+.PHONY: vet
+vet: ## Run go vet against code.
+	go vet ./...
+
+.PHONY: test
+test: manifests fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+
+##@ Build
+
+.PHONY: build
+build: fmt vet ## Build manager binary.
+	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
+
+.PHONY: tools
+tools: fmt vet ## Build deploy binary.
+	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy cmd/deploy/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: manager
+.PHONY: run
+run: build
 ifeq ($(DEBUG),yes)
 	dlv --listen=:30000 --headless=true --api-version=2 --accept-multiclient exec bin/manager
 else
 	bin/manager
 endif
 
-# Install CRDs into a cluster
-install: manifests
-	kubectl apply -f config/crds
-
-# Generate manifests e.g. CRD, RBAC etc.  The code generate RBAC files have a
-# hardcoded namespace name that needs to be templated.
-manifests:
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	git grep -l "namespace: system" config/rbac | xargs -L1 sed -i 's#namespace: system#namespace: {{ .Values.namespace }}#g'
-
-# Run go fmt against code
-fmt:
-	go fmt ./pkg/... ./cmd/...
-
-# Run the golangci-lint static analysis
-golangci:
-	golangci-lint run ./pkg/...
-
-# Run go vet against code
-vet: golangci
-	go vet ./pkg/... ./cmd/...
-
-# Generate code
-generate:
-ifndef GOPATH
-	$(error GOPATH not defined, please define GOPATH. Run "go help gopath" to learn more about GOPATH)
-endif
-	go generate ./pkg/... ./cmd/...
-
-# Build the docker image
-docker-build: test
+.PHONY: docker-build
+docker-build: test ## Build docker image with the manager.
 	docker build . -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
 
-# Push the docker image
-docker-push: docker-build
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+##@ Deployment
+
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
+.PHONY: install
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+# .PHONY: uninstall
+# uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+# 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+# .PHONY: deploy
+# deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+# 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+# 	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+# .PHONY: undeploy
+# undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+# 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Build Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+DEEPEQUAL_GEN ?= $(LOCALBIN)/deepequal-gen
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v3.8.7
+CONTROLLER_TOOLS_VERSION ?= v0.8.0
+
+KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: deepequal-gen
+deepequal-gen: $(DEEPEQUAL_GEN) ## Download deepequal-gen locally if necessary.
+$(DEEPEQUAL_GEN): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/wind-river/deepequal-gen@latest
 
 # Build the builder image
 builder-build:
@@ -137,6 +199,7 @@ helm-package: helm-ver-check helm-lint
 	fi
 
 # Generate some example deployment configurations
+.PHONY: examples
 examples:
 	kustomize build examples/standard/default > examples/standard.yaml
 	kustomize build examples/standard/vxlan > examples/standard-vxlan.yaml

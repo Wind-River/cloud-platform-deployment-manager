@@ -1,0 +1,24 @@
+# permissions for end users to edit platformnetworks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platformnetwork-editor-role
+rules:
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - platformnetworks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - platformnetworks/status
+  verbs:
+  - get

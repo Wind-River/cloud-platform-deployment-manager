@@ -1,0 +1,6 @@
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  name: ptpinstance-sample
+spec:
+  # TODO(user): Add fields here

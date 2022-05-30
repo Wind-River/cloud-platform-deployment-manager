@@ -17,7 +17,7 @@ imagePullSecrets:
 rbacProxy:
   enabled: true
   port: 8443
-  image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.0
+  image: gcr.io/kubebuilder/kube-rbac-proxy:v0.11.0
   logLevel: 10
 
 manager:

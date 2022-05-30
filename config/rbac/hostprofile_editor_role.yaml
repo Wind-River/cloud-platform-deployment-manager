@@ -1,0 +1,24 @@
+# permissions for end users to edit hostprofiles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hostprofile-editor-role
+rules:
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - hostprofiles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - starlingx.windriver.com
+  resources:
+  - hostprofiles/status
+  verbs:
+  - get

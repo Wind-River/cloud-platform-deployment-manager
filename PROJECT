@@ -1,3 +1,98 @@
-version: "1"
 domain: windriver.com
+layout:
+- go.kubebuilder.io/v3
+projectName: cloud-platform-deployment-manager
 repo: github.com/wind-river/cloud-platform-deployment-manager
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: DataNetwork
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: HostProfile
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: Host
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: PlatformNetwork
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: PtpInstance
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: PtpInterface
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: windriver.com
+  group: starlingx
+  kind: System
+  path: github.com/wind-river/cloud-platform-deployment-manager/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+version: "3"

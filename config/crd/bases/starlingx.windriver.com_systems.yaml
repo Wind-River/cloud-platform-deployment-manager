@@ -1,0 +1,377 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: systems.starlingx.windriver.com
+spec:
+  group: starlingx.windriver.com
+  names:
+    kind: System
+    listKind: SystemList
+    plural: systems
+    singular: system
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The configured system mode.
+      jsonPath: .status.systemMode
+      name: mode
+      type: string
+    - description: The configured system type.
+      jsonPath: .status.systemType
+      name: type
+      type: string
+    - description: The current software version
+      jsonPath: .status.softwareVersion
+      name: version
+      type: string
+    - description: The current synchronization state.
+      jsonPath: .status.inSync
+      name: insync
+      type: boolean
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: "System defines the attributes that represent the system level
+          attributes of a StarlingX system.  This is a composition of the following
+          StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
+          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
+          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
+          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
+          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SystemSpec defines the desired state of System
+            properties:
+              certificates:
+                description: Certificates is a list of references to certificates
+                  that must be installed.
+                items:
+                  description: CertificateInfo defines the attributes required to
+                    define an instance of a certificate to be installed via the system
+                    API.  The structure of the system API is not uniform for all certificate
+                    types therefore some attention is required when defining these
+                    resources.
+                  properties:
+                    secret:
+                      description: Secret is the name of a TLS secret containing the
+                        public certificate and private key.  The secret must be of
+                        type kubernetes.io/tls and must contain specific data attributes.  Specifically,
+                        all secrets must, at a minimum contain the "tls.crt" key since
+                        all certificates will at least require public certificate
+                        PEM data.  The remaining two keys "tls.key" and "ca.crt" are
+                        optional depending on the certificate type. For the "platform",
+                        "openstack", "tpm", and "docker" certificate types both the
+                        "tls.crt" and "tls.key" certificates are needed while for
+                        the "*_ca" version of those same certificate types only the
+                        "tls.crt" attribute is required.  The "ca.crt" attribute is
+                        only required for the "platform" or "tpm" certificate types,
+                        and only if the supplied public certificate is signed by a
+                        non-standard root CA.
+                      type: string
+                    type:
+                      description: Type represents the intended usage of the certificate
+                      enum:
+                      - ssl
+                      - ssl_ca
+                      - openstack
+                      - openstack_ca
+                      - docker_registry
+                      - tpm_mode
+                      type: string
+                  required:
+                  - secret
+                  - type
+                  type: object
+                type: array
+              contact:
+                description: Contact is a method to reach the person responsible for
+                  the system.  For example it could be an email address, phone number,
+                  or physical address.
+                maxLength: 255
+                pattern: ^[a-zA-Z0-9@\-_\. ]+$
+                type: string
+              description:
+                description: Description is a free form string describing the intended
+                  purpose of the system.
+                type: string
+              dnsServers:
+                description: Nameservers is an array of Domain SystemName servers.  Each
+                  server can be specified as either an IPv4 or IPv6 address.
+                items:
+                  type: string
+                type: array
+              latitude:
+                description: Latitude is the latitude geolocation coordinate of the
+                  system's physical location.
+                maxLength: 30
+                pattern: ^[a-zA-Z0-9\-_\. ]+$
+                type: string
+              license:
+                description: License is a reference to a license file that must be
+                  installed.
+                properties:
+                  secret:
+                    description: Secret is the name of a TLS secret containing the
+                      license file contents. It must refer to a Opaque Kubernetes
+                      Secret.
+                    type: string
+                required:
+                - secret
+                type: object
+              location:
+                description: Location is a short description of the system's physical
+                  location.
+                maxLength: 255
+                pattern: ^[a-zA-Z0-9\-_\. ]+$
+                type: string
+              longitude:
+                description: Longitude is the longitude geolocation coordinate of
+                  the system's physical location.
+                maxLength: 30
+                pattern: ^[a-zA-Z0-9\-_\. ]+$
+                type: string
+              ntpServers:
+                description: NTPServers is an array of Network Time Protocol servers.  Each
+                  server can be specified as either an IPv4 or IPv6 address, or a
+                  FQDN hostname.
+                items:
+                  type: string
+                type: array
+              ptp:
+                description: PTP defines the Precision Time Protocol configuration
+                  for the system.
+                properties:
+                  mechanism:
+                    description: Mechanism defines the high level messaging architecture
+                      used to implement the precision time procotol.
+                    enum:
+                    - p2p
+                    - e2e
+                    type: string
+                  mode:
+                    description: Mode defines the precision time protocol mode of
+                      the system.
+                    enum:
+                    - hardware
+                    - software
+                    - legacy
+                    type: string
+                  transport:
+                    description: Transport defines the network transport protocol
+                      used to implement the precision time protocol.
+                    enum:
+                    - l2
+                    - udp
+                    type: string
+                type: object
+              serviceParameters:
+                description: ServiceParameters is a list of service parameters
+                items:
+                  description: ServiceParameterInfo defines the attributes required
+                    to define an instance of a service parameter to be installed via
+                    the system API.
+                  properties:
+                    paramname:
+                      description: ParamName identifies the name for this service
+                        parameter
+                      maxLength: 255
+                      type: string
+                    paramvalue:
+                      description: ParamValue identifies the value for this service
+                        parameter
+                      maxLength: 4096
+                      type: string
+                    personality:
+                      description: Personality identifies the personality for this
+                        service parameter
+                      maxLength: 255
+                      type: string
+                    resource:
+                      description: Resource identifies the resource for this service
+                        parameter
+                      maxLength: 255
+                      type: string
+                    section:
+                      description: Section identifies the section for this service
+                        parameter
+                      maxLength: 128
+                      pattern: ^[a-zA-Z0-9\-_]+$
+                      type: string
+                    service:
+                      description: Service identifies the service for this service
+                        parameter
+                      maxLength: 16
+                      pattern: ^[a-zA-Z0-9\-_]+$
+                      type: string
+                  required:
+                  - paramname
+                  - paramvalue
+                  - section
+                  - service
+                  type: object
+                type: array
+              storage:
+                description: Storage is a set of storage specific attributes to be
+                  configured for the system.
+                properties:
+                  backends:
+                    description: Backends is a set of backend storage methods to be
+                      configured.  Only
+                    items:
+                      properties:
+                        name:
+                          description: SystemName uniquely identifies the storage
+                            backend instance.
+                          maxLength: 255
+                          pattern: ^[a-zA-Z0-9\-_]+$
+                          type: string
+                        network:
+                          description: Network is the network type associated with
+                            this backend. At the momemnt it is used only for ceph
+                            backend.
+                          enum:
+                          - mgmt
+                          - cluster-host
+                          type: string
+                        partitionSize:
+                          description: PartitionSize is the controller disk partition
+                            size to be allocated for the Ceph monitor - in gigabytes.
+                            This attribute is only applicable for Ceph storage backends.
+                          minimum: 20
+                          type: integer
+                        replicationFactor:
+                          description: ReplicationFactor is the number of storage
+                            hosts required in each replication group for storage redundancy.
+                            This attribute is only applicable for Ceph storage backends.
+                          maximum: 3
+                          minimum: 1
+                          type: integer
+                        services:
+                          description: Services is a list of services to enable for
+                            this backend instance.  Each backend type supports a limited
+                            set of services.  Refer to customer documentation for
+                            more information.
+                          items:
+                            type: string
+                          type: array
+                        type:
+                          description: Type specifies the storage backend type.
+                          enum:
+                          - file
+                          - lvm
+                          - ceph
+                          type: string
+                      required:
+                      - name
+                      - type
+                      type: object
+                    type: array
+                  drbd:
+                    description: DRBD defines the set of DRBD configuration attributes
+                      for the system.
+                    properties:
+                      linkUtilization:
+                        description: LinkUtilization defines the maximum link utilisation
+                          percentage during sync activities.
+                        maximum: 100
+                        minimum: 20
+                        type: integer
+                    required:
+                    - linkUtilization
+                    type: object
+                  filesystems:
+                    description: Filesystems defines the set of controller file system
+                      definitions.
+                    items:
+                      description: ControllerFileSystemInfo defines the attributes
+                        of a single controller filesystem resource.
+                      properties:
+                        name:
+                          description: Name defines the system defined name of the
+                            filesystem resource.
+                          type: string
+                        size:
+                          minimum: 1
+                          type: integer
+                      required:
+                      - name
+                      - size
+                      type: object
+                    type: array
+                type: object
+              vswitchType:
+                description: VSwitchType is the desired vswitch implementation to
+                  be configured. This is intentionally left unvalidated to avoid issues
+                  with proprietary vswitch implementation.
+                type: string
+            type: object
+          status:
+            description: SystemStatus defines the observed state of System
+            properties:
+              defaults:
+                description: Defaults defines the configuration attributed collected
+                  before applying any user configuration values.
+                type: string
+              id:
+                description: ID defines the unique identifier assigned by the system.
+                type: string
+              inSync:
+                description: Defines whether the resource has been provisioned on
+                  the target system.
+                type: boolean
+              reconciled:
+                description: Reconciled defines whether the System has been successfully
+                  reconciled at least once.  If further changes are made they will
+                  be ignored by the reconciler.
+                type: boolean
+              softwareVersion:
+                description: SoftwareVersion defines the current software version
+                  reported by the system API.
+                type: string
+              systemMode:
+                description: SystemMode defines the current system mode reported by
+                  the system API.
+                type: string
+              systemType:
+                description: SystemType defines the current system type reported by
+                  the system API.
+                type: string
+            required:
+            - id
+            - inSync
+            - reconciled
+            - softwareVersion
+            - systemMode
+            - systemType
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
