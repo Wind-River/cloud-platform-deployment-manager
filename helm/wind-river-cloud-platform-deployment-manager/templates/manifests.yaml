@@ -2946,7 +2946,7 @@ spec:
         - mountPath: /etc/manager
           name: config
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
       serviceAccountName: {{ .Values.namespace }}
       nodeSelector:
         node-role.kubernetes.io/master: ""

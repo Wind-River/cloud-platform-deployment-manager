@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +37,8 @@ var cl client.Client
 
 // Webhook response reasons
 const SystemAllowedReason string = "allowed to be admitted"
+const SecretRetrieveTryCount = 30
+const SecretRetrieveTryInterval = 2 * time.Second
 
 const (
 	// Backend types
@@ -154,10 +157,20 @@ func validateCertificates(obj *System) error {
 		for _, c := range *obj.Spec.Certificates {
 			secret := &corev1.Secret{}
 			secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.ObjectMeta.Namespace}
+			found := false
 
-			ctx := context.Background()
-			err := cl.Get(ctx, secretName, secret)
-			if err != nil {
+			for count := 0; count < SecretRetrieveTryCount; count++ {
+				err := cl.Get(context.TODO(), secretName, secret)
+				if err != nil {
+					systemlog.Info("unable to retrieve secret, try again...", "secretName", secretName, "count", count)
+				} else {
+					systemlog.Info("find secret", "secretName", secretName)
+					found = true
+					break
+				}
+				time.Sleep(SecretRetrieveTryInterval)
+			}
+			if !found {
 				msg := fmt.Sprintf("unable to retrieve %s secret %s", c.Type, secretName)
 				return errors.New(msg)
 			}
@@ -191,16 +204,12 @@ var _ webhook.Validator = &System{}
 func (r *System) ValidateCreate() error {
 	systemlog.Info("validate create", "name", r.Name)
 
-	r.validatingSystem()
-
 	return r.validatingSystem()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *System) ValidateUpdate(old runtime.Object) error {
 	systemlog.Info("validate update", "name", r.Name)
-
-	r.validatingSystem()
 
 	return r.validatingSystem()
 }
