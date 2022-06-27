@@ -34,7 +34,7 @@ stringData:
   OS_REGION_NAME: RegionOne
 type: Opaque
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: system-registry-local-certificate
@@ -60,7 +60,7 @@ spec:
     provinces:
     - null
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: system-restapi-gui-certificate
@@ -85,7 +85,7 @@ spec:
     provinces:
     - null
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: system-local-ca
