@@ -291,6 +291,17 @@ func (r *PtpInterfaceReconciler) FindExistingPTPInterface(client *gophercloud.Se
 // match the desired state of the resource.
 func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInterface, existing *ptpinterfaces.PTPInterface) error {
 	if ok := interfaceUpdateRequired(instance, existing); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoProvisioningAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
+			}
+		}
 		// As there's not sysinv API to update the name and service type of a
 		// PTP interface, delete the existing and create a new one.
 		logPtpInterface.Info("deleting PTP interface", "status", instance.Status)
@@ -312,6 +323,18 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 			"ptp interface has been updated")
 
 	} else if added, removed, required := intefaceParameterUpdateRequired(instance, existing); required {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoProvisioningAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
+			}
+		}
+
 		// Update PTP parameters associated with PTP interface
 		if len(added) > 0 {
 			new, err := r.ReconcileParamAdded(client, added, existing)
