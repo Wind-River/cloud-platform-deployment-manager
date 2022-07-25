@@ -468,8 +468,8 @@ github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
-github.com/wind-river/gophercloud v0.0.0-20220503140232-192cf245ebfd h1:SqpOmGVa4q5yHaILQKtLJ1W2/uZuL6Rt3moDK4gXodo=
-github.com/wind-river/gophercloud v0.0.0-20220503140232-192cf245ebfd/go.mod h1:FMtdxT0Mwm0oqT7cUYr/C3LBaTZ2vpfVCVykBSTEu7o=
+github.com/wind-river/gophercloud v0.0.0-20220714135506-aac06588b172 h1:xSeAummWb7dffFtdHq+Tqk1VeMdvxzk5N5k1m8M9wDA=
+github.com/wind-river/gophercloud v0.0.0-20220714135506-aac06588b172/go.mod h1:FMtdxT0Mwm0oqT7cUYr/C3LBaTZ2vpfVCVykBSTEu7o=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
