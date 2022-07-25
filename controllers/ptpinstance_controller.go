@@ -266,6 +266,18 @@ func (r *PtpInstanceReconciler) FindExistingPTPInstance(client *gophercloud.Serv
 // match the desired state of the resource.
 func (r *PtpInstanceReconciler) ReconcileUpdated(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInstance, existing *ptpinstances.PTPInstance) error {
 	if ok := instanceUpdateRequired(instance, existing); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoProvisioningAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPtpInstance.Info(common.ProvisioningAllowedAfterReconciled)
+			}
+		}
+
 		// As there's not sysinv API to update the name and service type of a
 		// PTP instance, delete the existing and create a new one.
 		logPtpInstance.Info("deleting PTP instance", "status", instance.Status)
@@ -287,6 +299,18 @@ func (r *PtpInstanceReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 			"ptp instance has been updated")
 
 	} else if added, removed, required := instanceParameterUpdateRequired(instance, existing); required {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoProvisioningAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPtpInstance.Info(common.ProvisioningAllowedAfterReconciled)
+			}
+		}
+
 		// Update PTP parameters associated with PTP instance
 		if len(added) > 0 {
 			new, err := r.ReconcileParamAdded(client, added, existing)
