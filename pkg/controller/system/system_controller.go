@@ -819,7 +819,7 @@ func (r *ReconcileSystem) ReconcileCertificates(client *gophercloud.ServiceClien
 		// The system API reports the serial number prepended with the mode as
 		// a "signature" rather than the actual signature so replicate that here
 		// for the purpose of comparisons.
-		signature := fmt.Sprintf("%s_%d", c.Type, cert.SerialNumber)
+		signature := fmt.Sprintf("%s_%s", c.Type, cert.SerialNumber.String())
 
 		found := false
 		for _, certificate := range info.Certificates {
@@ -1234,7 +1234,7 @@ func (r *ReconcileSystem) GetCertificateSignatures(instance *starlingxv1.System)
 
 		// Determine the "signature" based on the certificate type and the
 		// serial number reported by the system API
-		signature := fmt.Sprintf("%s_%d", c.Type, cert.SerialNumber)
+		signature := fmt.Sprintf("%s_%s", c.Type, cert.SerialNumber.String())
 
 		certificate := starlingxv1.CertificateInfo{
 			Type:      c.Type,

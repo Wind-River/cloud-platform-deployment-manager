@@ -98,7 +98,10 @@ project now uses the GoLangCI-lint tool which is also in use by newer
 Kubebuilder versions.
 
 ```bash
-curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
+# We used this link to download the golangci-lint, but it is not valid any more
+#curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
+
+curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh  | sh -s -- -b $(go env GOPATH)/bin/ v1.13
 ```
 
 #### Docker

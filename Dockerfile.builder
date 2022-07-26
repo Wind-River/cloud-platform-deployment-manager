@@ -13,7 +13,7 @@ RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/
 
 # Install our current version of golangci-lint.  We can probably upgrade to a
 # new version but this one has been tested and verified to work.
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
+RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh  | sh -s -- -b $(go env GOPATH)/bin/ v1.13
 
 # Install the latest version of Docker although we should probably try and
 # align the container version and the host version to ensure compatibility.
