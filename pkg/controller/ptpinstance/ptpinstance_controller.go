@@ -314,7 +314,7 @@ func (r *ReconcilePtpInstance) ReconcileUpdated(client *gophercloud.ServiceClien
 				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
-				logPtpInstance.Info(common.ProvisioningAllowedAfterReconciled)
+				log.Info(common.ProvisioningAllowedAfterReconciled)
 			}
 		}
 
@@ -347,7 +347,7 @@ func (r *ReconcilePtpInstance) ReconcileUpdated(client *gophercloud.ServiceClien
 				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
-				logPtpInstance.Info(common.ProvisioningAllowedAfterReconciled)
+				log.Info(common.ProvisioningAllowedAfterReconciled)
 			}
 		}
 

@@ -341,7 +341,7 @@ func (r *ReconcilePtpInterface) ReconcileUpdated(client *gophercloud.ServiceClie
 				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
-				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
+				log.Info(common.ProvisioningAllowedAfterReconciled)
 			}
 		}
 		// As there's not sysinv API to update the name and service type of a
@@ -373,7 +373,7 @@ func (r *ReconcilePtpInterface) ReconcileUpdated(client *gophercloud.ServiceClie
 				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
-				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
+				log.Info(common.ProvisioningAllowedAfterReconciled)
 			}
 		}
 
