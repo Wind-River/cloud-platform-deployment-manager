@@ -1,13 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
-package controllers
+package host
 
 import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,11 +32,6 @@ var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
 
-const (
-	timeout  = time.Second * 60
-	interval = time.Second * 1
-)
-
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -53,7 +47,7 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("../..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -79,36 +73,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Setup reconciler
-	// DataNetwork
-	err = (&DataNetworkReconciler{
+	// Host
+	err = (&HostReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// HostProfile
-	err = (&HostProfileReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// PlatformNetwork
-	err = (&PlatformNetworkReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// PtpInstance
-	err = (&PtpInstanceReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// PtpInterface
-	err = (&PtpInterfaceReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
 		defer GinkgoRecover()
@@ -120,8 +89,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
-	Eventually(func() bool {
-		err := testEnv.Stop()
-		return err == nil
-	}, timeout, interval).Should(BeTrue())
+	err := testEnv.Stop()
+	Expect(err).NotTo(HaveOccurred())
 })
