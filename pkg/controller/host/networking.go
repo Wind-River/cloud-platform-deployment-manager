@@ -769,7 +769,7 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 		result = true
 	}
 
-	if info.Class == interfaces.IFClassData {
+	if info.Class == interfaces.IFClassData || hasIPv4StaticAddresses(info, profile) || hasIPv6StaticAddresses(info, profile) {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our
 		//  handling of these for data interfaces only.
