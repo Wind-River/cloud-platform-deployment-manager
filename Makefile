@@ -45,6 +45,9 @@ else
 	IMG ?= ${DEFAULT_IMG}:latest
 endif
 
+# Helm manifest for CRDs
+HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
+
 .PHONY: all
 all: helm-ver-check test build tools helm-package docker-build examples
 
@@ -151,7 +154,9 @@ KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/k
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
+ifeq ("$(wildcard $(KUSTOMIZE))","")
 	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+endif
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -184,8 +189,17 @@ helm-ver-check:
 		@/bin/false
 	@fi
 
+.PHONY:
+helm_crds: manifests kustomize ## Generate CRDs for DM helm charts
+	if [[ $$(comm -12 <(git diff-index --name-only HEAD | sort -u) <(find config/crd | sort -u) | wc -l) -ne 0 || ${HELM_FORCE} -ne 0 ]]; then
+		$(KUSTOMIZE) build config/crd > ${HELM_CRDS}
+		sed -i 's#cert-manager.io/inject-ca-from: $$(CERTIFICATE_NAMESPACE)/$$(CERTIFICATE_NAME)#cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert#g' ${HELM_CRDS}
+		sed -i 's#namespace: system#namespace: {{ .Values.namespace }}#g' ${HELM_CRDS}
+		sed -i 's#name: webhook-service#name: {{ .Values.namespace }}-webhook-service#g' ${HELM_CRDS}
+	fi
+
 # Check helm chart validity
-helm-lint: manifests
+helm-lint: manifests helm_crds
 	helm lint helm/wind-river-cloud-platform-deployment-manager
 
 # Create helm chart package
