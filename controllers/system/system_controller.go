@@ -987,9 +987,9 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		return nil, false
 	}
 
-	logSystem.V(2).Info("spec is:", "values", spec)
+	logSystem.Info("spec is:", "values", spec)
 
-	logSystem.V(2).Info("current is:", "values", current)
+	logSystem.Info("current is:", "values", current)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
