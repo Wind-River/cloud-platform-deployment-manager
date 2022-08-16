@@ -56,6 +56,7 @@ spec:
                 - ptp4l
                 - phc2sys
                 - ts2phc
+                - clock
                 type: string
             required:
             - service
