@@ -13,6 +13,7 @@ const (
 	ServicePtp4l   = "ptp4l"
 	ServicePhc2sys = "phc2sys"
 	ServiceTs2phc  = "ts2phc"
+	ServiceClock   = "clock"
 )
 
 
