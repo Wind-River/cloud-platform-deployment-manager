@@ -9,18 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +deepequal-gen:unordered-array=true
-type StringList []string
-
-// ToStringList converts from this type alias to an actual array of strings
-func (in StringList) ToStringList() []string {
-	result := make([]string, 0)
-	for _, n := range in {
-		result = append(result, n)
-	}
-	return result
-}
-
 // BMPasswordInfo defines attributes specific to password based
 // authentication.
 type BMPasswordInfo struct {
@@ -314,6 +302,102 @@ type EthernetPortInfo struct {
 	Name string `json:"name"`
 }
 
+// +kubebuilder:validation:MaxLength=255
+// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+type PlatformNetworkItem string
+
+// PlatformNetworkItemList defines a type to represent a slice of PlatformNetworkItem objects.
+// +deepequal-gen:unordered-array=true
+type PlatformNetworkItemList []PlatformNetworkItem
+
+// PlatformNetworkItemListToStrings is to convert from list type to string array
+func PlatformNetworkItemListToStrings(items PlatformNetworkItemList) []string {
+	if items == nil {
+		return nil
+	}
+	a := make([]string, 0)
+	for _, i := range items {
+		a = append(a, string(i))
+	}
+	return a
+}
+
+// StringsToPlatformNetworkItemList is to convert from string array to list type
+func StringsToPlatformNetworkItemList(items []string) PlatformNetworkItemList {
+	if items == nil {
+		return nil
+	}
+	a := make(PlatformNetworkItemList, 0)
+	for _, i := range items {
+		a = append(a, PlatformNetworkItem(i))
+	}
+	return a
+}
+
+// +kubebuilder:validation:MaxLength=255
+// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+type DataNetworkItem string
+
+// DataNetworkItemList defines a type to represent a slice of DataNetworkItem objects.
+// +deepequal-gen:unordered-array=true
+type DataNetworkItemList []DataNetworkItem
+
+// DataNetworkItemListToStrings is to convert from list type to string array
+func DataNetworkItemListToStrings(items DataNetworkItemList) []string {
+	if items == nil {
+		return nil
+	}
+	a := make([]string, 0)
+	for _, i := range items {
+		a = append(a, string(i))
+	}
+	return a
+}
+
+// StringsToDataNetworkItemList is to convert from string array to list type
+func StringsToDataNetworkItemList(items []string) DataNetworkItemList {
+	if items == nil {
+		return nil
+	}
+	a := make(DataNetworkItemList, 0)
+	for _, i := range items {
+		a = append(a, DataNetworkItem(i))
+	}
+	return a
+}
+
+// +kubebuilder:validation:MaxLength=255
+// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+type PtpInterfaceItem string
+
+// PtpInterfaceItemList defines a type to represent a slice of PtpInterfaceItem objects.
+// +deepequal-gen:unordered-array=true
+type PtpInterfaceItemList []PtpInterfaceItem
+
+// PtpInterfaceItemListToStrings is to convert from list type to string array
+func PtpInterfaceItemListToStrings(items PtpInterfaceItemList) []string {
+	if items == nil {
+		return nil
+	}
+	a := make([]string, 0)
+	for _, i := range items {
+		a = append(a, string(i))
+	}
+	return a
+}
+
+// StringsToPtpInterfaceItemList is to convert from string array to list type
+func StringsToPtpInterfaceItemList(items []string) PtpInterfaceItemList {
+	if items == nil {
+		return nil
+	}
+	a := make(PtpInterfaceItemList, 0)
+	for _, i := range items {
+		a = append(a, PtpInterfaceItem(i))
+	}
+	return a
+}
+
 // CommonInterfaceInfo defines the attributes common to all interface
 // types.  They are defined once, here,
 // and inlined within each of the different interface type structures.
@@ -337,12 +421,12 @@ type CommonInterfaceInfo struct {
 	// PlatformNetworks defines the list of platform networks to be configured
 	// against this interface.
 	// +optional
-	PlatformNetworks *StringList `json:"platformNetworks,omitempty"`
+	PlatformNetworks *PlatformNetworkItemList `json:"platformNetworks,omitempty"`
 
 	// DataNetworks defines the list of data networks to be configured against
 	// this interface.
 	// +optional
-	DataNetworks *StringList `json:"dataNetworks,omitempty"`
+	DataNetworks *DataNetworkItemList `json:"dataNetworks,omitempty"`
 
 	// PTPRole defines the ptp role as master, slave, or none
 	// +kubebuilder:validation:Enum=master;slave;none
@@ -351,7 +435,7 @@ type CommonInterfaceInfo struct {
 	// PtpInterfaces defines the ptp interfaces to be configured against this
 	// interface.
 	// +optional
-	PtpInterfaces *StringList `json:"ptpInterfaces,omitempty"`
+	PtpInterfaces *PtpInterfaceItemList `json:"ptpInterfaces,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single
@@ -419,7 +503,7 @@ type BondInfo struct {
 
 	// Members defines the list of interfaces which, together, make up the Bond
 	// interface.
-	Members StringList `json:"members"`
+	Members []string `json:"members"`
 
 	// Mode defines the Bond interface aggregation mode.
 	// +kubebuilder:validation:Enum={"balanced","active_standby","802.3ad"}
@@ -656,6 +740,26 @@ func SubFunctionFromString(s string) SubFunction {
 	return SubFunction(s)
 }
 
+// +kubebuilder:validation:MaxLength=255
+// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
+type PtpInstanceItem string
+
+// PtpInstanceItemList defines a type to represent a slice of PtpInstanceItem objects.
+// +deepequal-gen:unordered-array=true
+type PtpInstanceItemList []PtpInstanceItem
+
+// StringsToPtpInstanceItemList is to convert from string array to list type
+func StringsToPtpInstanceItemList(items []string) PtpInstanceItemList {
+	if items == nil {
+		return nil
+	}
+	a := make(PtpInstanceItemList, 0)
+	for _, i := range items {
+		a = append(a, PtpInstanceItem(i))
+	}
+	return a
+}
+
 // +deepequal-gen:ignore-nil-fields=true
 type ProfileBaseAttributes struct {
 	// Personality defines the role to be assigned to the host
@@ -727,7 +831,7 @@ type ProfileBaseAttributes struct {
 	// PtpInstances defines the list of ptp instance to be configured
 	// against this interface.
 	// +optional
-	PtpInstances StringList `json:"ptpInstances,omitempty"`
+	PtpInstances PtpInstanceItemList `json:"ptpInstances,omitempty"`
 
 	// RootDevice defines the absolute device path of the device to be used as
 	// the root file system.

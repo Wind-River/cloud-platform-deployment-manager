@@ -154,7 +154,8 @@ func ntpUpdateRequired(spec *starlingxv1.SystemSpec, info *ntp.NTP) (ntpOpts ntp
 		var timeservers string
 
 		if len(*spec.NTPServers) != 0 {
-			timeservers = strings.Join(*spec.NTPServers, ",")
+			n := starlingxv1.NTPServerListToStrings(*spec.NTPServers)
+			timeservers = strings.Join(n, ",")
 		} else {
 			timeservers = NoContent
 		}
@@ -269,7 +270,8 @@ func dnsUpdateRequired(spec *starlingxv1.SystemSpec, info *dns.DNS) (dnsOpts dns
 		var nameservers string
 
 		if len(*spec.DNSServers) != 0 {
-			nameservers = strings.Join(*spec.DNSServers, ",")
+			d := starlingxv1.DNSServerListToStrings(*spec.DNSServers)
+			nameservers = strings.Join(d, ",")
 		} else {
 			nameservers = NoContent
 		}

@@ -430,7 +430,7 @@ func (r *HostReconciler) ReconcilePTPInstances(client *gophercloud.ServiceClient
 	for _, existing := range host.PTPInstances {
 		found := false
 		for _, configured := range profile.PtpInstances {
-			if configured == existing.Name {
+			if string(configured) == existing.Name {
 				found = true
 				break
 			}
@@ -456,14 +456,14 @@ func (r *HostReconciler) ReconcilePTPInstances(client *gophercloud.ServiceClient
 	for _, configured := range profile.PtpInstances {
 		found := false
 		for _, result := range host.PTPInstances {
-			if configured == result.Name {
+			if string(configured) == result.Name {
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			result, err := findPTPInstanceByName(client, configured)
+			result, err := findPTPInstanceByName(client, string(configured))
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to find PTP instance for host: %s", host.ID)
 				return err

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package build
 
@@ -461,22 +461,26 @@ func (in *InterfaceNamingFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
 		return
 	} else if info.PlatformNetworks == nil {
 		return
-	} else if utils.ContainsString(*info.PlatformNetworks, pxebootNetwork) {
+	}
+
+	networks := v1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+
+	if utils.ContainsString(networks, pxebootNetwork) {
 		if info.Name != pxebootIface {
 			in.updates[info.Name] = pxebootIface
 			info.Name = pxebootIface
 		}
-	} else if utils.ContainsString(*info.PlatformNetworks, mgmtNetwork) {
+	} else if utils.ContainsString(networks, mgmtNetwork) {
 		if info.Name != mgmtIface {
 			in.updates[info.Name] = mgmtIface
 			info.Name = mgmtIface
 		}
-	} else if utils.ContainsString(*info.PlatformNetworks, clusterNetwork) {
+	} else if utils.ContainsString(networks, clusterNetwork) {
 		if info.Name != clusterNetwork {
 			in.updates[info.Name] = clusterIface
 			info.Name = clusterIface
 		}
-	} else if utils.ContainsString(*info.PlatformNetworks, oamNetwork) {
+	} else if utils.ContainsString(networks, oamNetwork) {
 		if info.Name != oamNetwork {
 			in.updates[info.Name] = oamIface
 			info.Name = oamIface
@@ -566,7 +570,8 @@ func (in *InterfaceMTUFilter) CheckMTU(info *v1.CommonInterfaceInfo) {
 		return
 	}
 
-	for _, network := range *info.PlatformNetworks {
+	networks := v1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	for _, network := range networks {
 		if max, ok := in.highwatermarks[network]; ok {
 			if value > max {
 				in.highwatermarks[network] = value

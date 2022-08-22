@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package v1
 
@@ -334,18 +334,18 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			}
 		}
 
-		netList := StringList(nets)
+		netList := StringsToPlatformNetworkItemList(nets)
 		data.PlatformNetworks = &netList
 
 		dataNets := host.BuildInterfaceDataNetworkList(iface)
 
-		dataNetList := StringList(dataNets)
+		dataNetList := StringsToDataNetworkItemList(dataNets)
 		data.DataNetworks = &dataNetList
 
 		data.PTPRole = iface.PTPRole
 
 		dataPtpInterfaceList := host.FindPTPInterfaceNameByInterface(iface)
-		dataPtpInterfaces := StringList(dataPtpInterfaceList)
+		dataPtpInterfaces := StringsToPtpInterfaceItemList(dataPtpInterfaceList)
 		data.PtpInterfaces = &dataPtpInterfaces
 
 		switch iface.Type {
@@ -812,7 +812,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	spec.RootDevice = &rootDevice
 	spec.ClockSynchronization = host.ClockSynchronization
 	ptpInstances := host.BuildPTPInstanceList()
-	ptpInstanceList := StringList(ptpInstances)
+	ptpInstanceList := StringsToPtpInstanceItemList(ptpInstances)
 	spec.PtpInstances = ptpInstanceList
 
 	// Assume that the board is powered on unless there is a clear indication
@@ -1053,20 +1053,20 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 
 	if systemInfo.DNS != nil {
 		if systemInfo.DNS.Nameservers != "" {
-			nameservers := StringList(strings.Split(systemInfo.DNS.Nameservers, ","))
+			nameservers := StringsToDNSServerList(strings.Split(systemInfo.DNS.Nameservers, ","))
 			spec.DNSServers = &nameservers
 		} else {
-			empty := StringList(make([]string, 0))
+			empty := StringsToDNSServerList(make([]string, 0))
 			spec.DNSServers = &empty
 		}
 	}
 
 	if systemInfo.NTP != nil {
 		if systemInfo.NTP.NTPServers != "" {
-			nameservers := StringList(strings.Split(systemInfo.NTP.NTPServers, ","))
+			nameservers := StringsToNTPServerList(strings.Split(systemInfo.NTP.NTPServers, ","))
 			spec.NTPServers = &nameservers
 		} else {
-			empty := StringList(make([]string, 0))
+			empty := StringsToNTPServerList(make([]string, 0))
 			spec.NTPServers = &empty
 		}
 	}
