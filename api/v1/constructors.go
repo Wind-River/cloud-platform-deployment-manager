@@ -691,7 +691,7 @@ func parseStorageInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 // NOTE: for now we are only going to generate a single secret for all nodes.
 // If customization is required the user can manually clone what they need.
 func autoGenerateBMSecretName() string {
-	return fmt.Sprintf("bmc-secret")
+	return "bmc-secret"
 }
 
 // parseBoardManagementInfo is a utility which parses the board management data

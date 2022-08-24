@@ -4,7 +4,6 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,11 +13,6 @@ import (
 )
 
 var _ = Describe("HostProfile controller", func() {
-
-	const (
-		timeout  = time.Second * 10
-		interval = time.Millisecond * 250
-	)
 
 	Context("HostProfile with data", func() {
 		It("Should created successfully", func() {

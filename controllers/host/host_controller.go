@@ -378,7 +378,7 @@ func (r *HostReconciler) ReconcileAttributes(client *gophercloud.ServiceClient, 
 		if opts.BMPassword != nil && strings.HasPrefix(client.Endpoint, cloudManager.HTTPPrefix) {
 			if r.HTTPSRequired() {
 				// Do not send password information in the clear.
-				msg := fmt.Sprintf("it is unsafe to configure BM credentials thru a non HTTPS URL")
+				msg := "it is unsafe to configure BM credentials thru a non HTTPS URL"
 				return common.NewSystemDependency(msg)
 			} else {
 				logHost.Info("allowing BMC configuration over HTTP connection")
@@ -1004,7 +1004,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		}
 
 	} else {
-		msg := fmt.Sprintf("waiting for a stable state")
+		msg := "waiting for a stable state"
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1192,7 +1192,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	var current *starlingxv1.HostProfileSpec
 
 	if !host.Stable() {
-		msg := fmt.Sprintf("waiting for a stable state")
+		msg := "waiting for a stable state"
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1330,7 +1330,7 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	}
 
 	if !host.Stable() {
-		msg := fmt.Sprintf("waiting for a stable state before deleting host")
+		msg := "waiting for a stable state before deleting host"
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
