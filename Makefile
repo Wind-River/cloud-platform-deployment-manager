@@ -48,6 +48,9 @@ endif
 # Helm manifest for CRDs
 HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
 
+# DeepCopy auto generated file
+DEEPCOPY_GEN_FILE=./api/v1/zz_generated.deepcopy.go
+
 .PHONY: all
 all: helm-ver-check test build tools helm-package docker-build examples
 
@@ -65,6 +68,22 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, DeepEqual, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	## Replace array to rarray type
+	## This is fix for https://github.com/kubernetes-sigs/controller-tools/issues/586
+	## For example, []PlatformNetworkItem -> PlatformNetworkItemList
+	##
+	sed -i 's#\[\]PlatformNetworkItem#PlatformNetworkItemList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]DataNetworkItem#DataNetworkItemList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]PtpInterfaceItem#PtpInterfaceItemList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]OSDInfo#OSDList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]VolumeGroupInfo#VolumeGroupList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]FileSystemInfo#FileSystemList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]DNSServer#DNSServerList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]NTPServer#NTPServerList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]CertificateInfo#CertificateList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]ServiceParameterInfo#ServiceParameterList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]StorageBackend#StorageBackendList#g' $(DEEPCOPY_GEN_FILE)
+	sed -i 's#\[\]ControllerFileSystemInfo#ControllerFileSystemList#g' $(DEEPCOPY_GEN_FILE)
 	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt
 
 .PHONY: fmt
@@ -80,17 +99,17 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests fmt vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build
 
 .PHONY: build
-build: fmt vet ## Build manager binary.
+build: generate fmt vet ## Build manager binary.
 	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
 
 .PHONY: tools
-tools: fmt vet ## Build deploy binary.
+tools: generate fmt vet ## Build deploy binary.
 	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy cmd/deploy/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config

@@ -256,6 +256,66 @@ type PTPInfo struct {
 	Mechanism *string `json:"mechanism,omitempty"`
 }
 
+type DNSServer string
+
+// DNSServerList defines a type to represent a slice of DNSServer objects.
+// +deepequal-gen:unordered-array=true
+type DNSServerList []DNSServer
+
+// DNSServerListToStrings is to convert from list type to string array
+func DNSServerListToStrings(items DNSServerList) []string {
+	if items == nil {
+		return nil
+	}
+	a := make([]string, 0)
+	for _, i := range items {
+		a = append(a, string(i))
+	}
+	return a
+}
+
+// StringsToDNSServerList is to convert from string array to list type
+func StringsToDNSServerList(items []string) DNSServerList {
+	if items == nil {
+		return nil
+	}
+	a := make(DNSServerList, 0)
+	for _, i := range items {
+		a = append(a, DNSServer(i))
+	}
+	return a
+}
+
+type NTPServer string
+
+// NTPServerList defines a type to represent a slice of NTPServer objects.
+// +deepequal-gen:unordered-array=true
+type NTPServerList []NTPServer
+
+// NTPServerListToStrings is to convert from list type to string array
+func NTPServerListToStrings(items NTPServerList) []string {
+	if items == nil {
+		return nil
+	}
+	a := make([]string, 0)
+	for _, i := range items {
+		a = append(a, string(i))
+	}
+	return a
+}
+
+// StringsToNTPServerList is to convert from string array to list type
+func StringsToNTPServerList(items []string) NTPServerList {
+	if items == nil {
+		return nil
+	}
+	a := make(NTPServerList, 0)
+	for _, i := range items {
+		a = append(a, NTPServer(i))
+	}
+	return a
+}
+
 // SystemSpec defines the desired state of System
 // +deepequal-gen:ignore-nil-fields=true
 type SystemSpec struct {
@@ -296,13 +356,13 @@ type SystemSpec struct {
 	// specified as either an IPv4 or IPv6
 	// address.
 	// +optional
-	DNSServers *StringList `json:"dnsServers,omitempty"`
+	DNSServers *DNSServerList `json:"dnsServers,omitempty"`
 
 	// NTPServers is an array of Network Time Protocol servers.  Each server can
 	// be specified as either an IPv4 or IPv6
 	// address, or a FQDN hostname.
 	// +optional
-	NTPServers *StringList `json:"ntpServers,omitempty"`
+	NTPServers *NTPServerList `json:"ntpServers,omitempty"`
 
 	// PTP defines the Precision Time Protocol configuration for the system.
 	PTP *PTPInfo `json:"ptp,omitempty"`

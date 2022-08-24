@@ -314,7 +314,7 @@ func (r *HostReconciler) ReconcileStalePTPInterfaces(client *gophercloud.Service
 			// Get the lists of current and configured networks on this interface
 			current := host.FindPTPInterfaceNameByInterface(iface)
 
-			configured := *info.PtpInterfaces
+			configured := starlingxv1.PtpInterfaceItemListToStrings(*info.PtpInterfaces)
 
 			// Diff the lists to determine if changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -507,7 +507,7 @@ func (r *HostReconciler) ReconcileStaleInterfaceNetworks(client *gophercloud.Ser
 
 			// Get the lists of current and configured networks on this interface
 			current := host.BuildInterfaceNetworkList(iface)
-			configured := *info.PlatformNetworks
+			configured := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
 
 			// Diff the lists to determine what changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -583,7 +583,7 @@ func (r *HostReconciler) ReconcileStaleInterfaceDataNetworks(client *gophercloud
 
 			// Get the lists of current and configured networks on this interface
 			current := host.BuildInterfaceDataNetworkList(iface)
-			configured := *info.DataNetworks
+			configured := starlingxv1.DataNetworkItemListToStrings(*info.DataNetworks)
 
 			// Diff the lists to determine what changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -667,7 +667,8 @@ func hasIPv4DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.
 		return nil, false
 	}
 
-	for _, networkName := range *info.PlatformNetworks {
+	networks := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	for _, networkName := range networks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
 			if utils.IsIPv4(pool.Network) {
@@ -692,7 +693,8 @@ func hasIPv6DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.
 		return nil, false
 	}
 
-	for _, networkName := range *info.PlatformNetworks {
+	networks := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	for _, networkName := range networks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
 			if utils.IsIPv6(pool.Network) {
@@ -857,7 +859,7 @@ func (r *HostReconciler) ReconcileInterfaceNetworks(client *gophercloud.ServiceC
 
 	// Get the lists of current and configured networks on this interface
 	current := host.BuildInterfaceNetworkList(iface)
-	configured := *info.PlatformNetworks
+	configured := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
 
 	// Diff the lists to determine what changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)
@@ -939,7 +941,7 @@ func (r *HostReconciler) ReconcilePTPInterface(client *gophercloud.ServiceClient
 
 	// Get the current and configured PTP interface on this interface
 	current := host.FindPTPInterfaceNameByInterface(iface)
-	configured := *info.PtpInterfaces
+	configured := starlingxv1.PtpInterfaceItemListToStrings(*info.PtpInterfaces)
 
 	// Diff the lists to determine if changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)
@@ -1006,7 +1008,7 @@ func (r *HostReconciler) ReconcileInterfaceDataNetworks(client *gophercloud.Serv
 
 	// Get the lists of current and configured networks on this interface
 	current := host.BuildInterfaceDataNetworkList(iface)
-	configured := *info.DataNetworks
+	configured := starlingxv1.DataNetworkItemListToStrings(*info.DataNetworks)
 
 	// Diff the lists to determine what changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)
@@ -1293,8 +1295,7 @@ func bondUpdateRequired(bond starlingxv1.BondInfo, iface *interfaces.Interface, 
 		// update.  It requires a different attribute name for both.  This
 		// looks like it is because the system API uses an old copy of ironic
 		// as its bases and the json patch code does not support lists.
-		members := bond.Members.ToStringList()
-		opts.UsesModify = &members
+		opts.UsesModify = &bond.Members
 		result = true
 	}
 
@@ -1354,8 +1355,7 @@ func (r *HostReconciler) ReconcileBondInterfaces(client *gophercloud.ServiceClie
 			opts.AETransmitHash = bondInfo.TransmitHashPolicy
 			opts.AEPrimReselect = bondInfo.PrimaryReselect
 
-			members := bondInfo.Members.ToStringList()
-			opts.Uses = &members
+			opts.Uses = &bondInfo.Members
 
 			logHost.Info("creating bond interface", "opts", opts)
 

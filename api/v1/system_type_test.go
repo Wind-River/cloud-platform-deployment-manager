@@ -21,7 +21,6 @@ var _ = Describe("Datanetwork controller", func() {
 
 	Context("System with data", func() {
 		It("Should created successfully", func() {
-			type StringList []string
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",
@@ -32,9 +31,8 @@ var _ = Describe("Datanetwork controller", func() {
 			contact := string("A sample contact")
 			latitude := string("45.35189954974955")
 			longitude := string("-75.91866628453701")
-			// FIXME: After StringList workaround, fix this part
-			// dnsServers := StringList([]string{"8.8.8.8", "4.4.4.4"})
-			// ntpServers := StringList([]string{"time.ntp.org", "1.2.3.4"})
+			dnsServers := StringsToDNSServerList([]string{"8.8.8.8", "4.4.4.4"})
+			ntpServers := StringsToNTPServerList([]string{"time.ntp.org", "1.2.3.4"})
 			ptpMode := "hardware"
 			created := &System{
 				ObjectMeta: metav1.ObjectMeta{
@@ -47,8 +45,8 @@ var _ = Describe("Datanetwork controller", func() {
 					Latitude:    &latitude,
 					Longitude:   &longitude,
 					Contact:     &contact,
-					// DNSServers:  &dnsServers,
-					// NTPServers:  &ntpServers,
+					DNSServers:  &dnsServers,
+					NTPServers:  &ntpServers,
 					PTP: &PTPInfo{
 						Mode: &ptpMode,
 					},

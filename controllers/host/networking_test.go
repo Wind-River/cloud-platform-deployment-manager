@@ -108,13 +108,13 @@ var _ = Describe("Networking utils", func() {
 								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 									Name: "infra0",
 								},
-								Members: starlingxv1.StringList{"eth1", "eth2"},
+								Members: []string{"eth1", "eth2"},
 							},
 							starlingxv1.BondInfo{
 								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 									Name: "bond0",
 								},
-								Members: starlingxv1.StringList{"member3", "member4"},
+								Members: []string{"member3", "member4"},
 							},
 						},
 						VF: starlingxv1.VFList{

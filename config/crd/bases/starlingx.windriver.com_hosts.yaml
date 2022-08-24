@@ -306,6 +306,8 @@ spec:
                               description: DataNetworks defines the list of data networks
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             members:
@@ -338,6 +340,8 @@ spec:
                               description: PlatformNetworks defines the list of platform
                                 networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             primaryReselect:
@@ -349,6 +353,8 @@ spec:
                               description: PtpInterfaces defines the ptp interfaces
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpRole:
@@ -395,6 +401,8 @@ spec:
                               description: DataNetworks defines the list of data networks
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
@@ -418,6 +426,8 @@ spec:
                               description: PlatformNetworks defines the list of platform
                                 networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             port:
@@ -437,6 +447,8 @@ spec:
                               description: PtpInterfaces defines the ptp interfaces
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpRole:
@@ -487,6 +499,8 @@ spec:
                               description: DataNetworks defines the list of data networks
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
@@ -516,12 +530,16 @@ spec:
                               description: PlatformNetworks defines the list of platform
                                 networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpRole:
@@ -572,6 +590,8 @@ spec:
                               description: DataNetworks defines the list of data networks
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
@@ -595,12 +615,16 @@ spec:
                               description: PlatformNetworks defines the list of platform
                                 networks to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpInterfaces:
                               description: PtpInterfaces defines the ptp interfaces
                                 to be configured against this interface.
                               items:
+                                maxLength: 255
+                                pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpRole:
@@ -767,6 +791,8 @@ spec:
                     description: PtpInstances defines the list of ptp instance to
                       be configured against this interface.
                     items:
+                      maxLength: 255
+                      pattern: ^[a-zA-Z0-9\-_]+$
                       type: string
                     type: array
                   rootDevice:
