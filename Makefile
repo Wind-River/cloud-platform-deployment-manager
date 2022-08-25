@@ -198,7 +198,7 @@ builder-build:
 
 builder-run: builder-build
 	docker run -v /var/run/docker.sock:/var/run/docker.sock \
-		-v ${PWD}:/go/src/github.com/wind-river/cloud-platform-deployment-manager \
+		-v ${PWD}:/go/src \
 		--rm ${BUILDER_IMG}
 
 # Check minimum helm version
