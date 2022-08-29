@@ -84,7 +84,7 @@ generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, Dee
 	sed -i 's#\[\]ServiceParameterInfo#ServiceParameterList#g' $(DEEPCOPY_GEN_FILE)
 	sed -i 's#\[\]StorageBackend#StorageBackendList#g' $(DEEPCOPY_GEN_FILE)
 	sed -i 's#\[\]ControllerFileSystemInfo#ControllerFileSystemList#g' $(DEEPCOPY_GEN_FILE)
-	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt
+	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt  --gen-package-path ./api/v1
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
