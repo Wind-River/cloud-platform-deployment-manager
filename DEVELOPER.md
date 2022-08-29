@@ -88,19 +88,6 @@ sudo cp kustomize_1.0.11_linux_amd64 /usr/local/bin/kustomize
 sudo chmod 755 /usr/local/bin/kustomize
 ```
 
-
-#### GoLangCI
-
-The GoLangCI-lint tool is not a requirement of the Kubebuilder project 
-scaffolding, but the Deployment Manager Makefile has been extended since its
-initial creation.  Rather than relying on "go vet" for static analysis the
-project now uses the GoLangCI-lint tool which is also in use by newer
-Kubebuilder versions.
-
-```bash
-curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
-```
-
 #### Docker
 
 The Docker version that is shipped with most distributions is out of date
