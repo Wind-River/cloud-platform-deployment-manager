@@ -96,7 +96,7 @@ func validateProcessorInfo(obj *HostProfile) error {
 func validatePhysicalVolumeInfo(obj *PhysicalVolumeInfo) error {
 	if obj.Type == physicalvolumes.PVTypePartition {
 		if obj.Size == nil {
-			msg := fmt.Sprintf("partition specifications must include a 'size' attribute")
+			msg := "partition specifications must include a 'size' attribute"
 			return errors.New(msg)
 		}
 	}

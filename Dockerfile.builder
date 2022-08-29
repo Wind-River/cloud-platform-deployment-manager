@@ -11,10 +11,6 @@ RUN wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz -q -O - | tar zx -
 # version without significant effort.
 RUN curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH); chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
 
-# Install our current version of golangci-lint.  We can probably upgrade to a
-# new version but this one has been tested and verified to work.
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
-
 # Install the latest version of Docker although we should probably try and
 # align the container version and the host version to ensure compatibility.
 RUN apt-get update && \

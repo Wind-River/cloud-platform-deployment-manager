@@ -4,7 +4,6 @@ package system
 
 import (
 	"context"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,11 +13,6 @@ import (
 )
 
 var _ = Describe("System controller", func() {
-
-	const (
-		timeout  = time.Second * 10
-		interval = time.Millisecond * 250
-	)
 
 	Context("System with data", func() {
 		It("Should created successfully", func() {

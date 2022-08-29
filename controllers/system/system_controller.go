@@ -685,7 +685,7 @@ func (r *SystemReconciler) PrivateKeyTranmissionAllowed(client *gophercloud.Serv
 	if r.HTTPSRequiredForCertificates() {
 		if !info.Capabilities.HTTPSEnabled {
 			// Do not send private key information in the clear.
-			msg := fmt.Sprintf("it is unsafe to install certificates while HTTPS is disabled")
+			msg := "it is unsafe to install certificates while HTTPS is disabled"
 			return common.NewSystemDependency(msg)
 		}
 
@@ -694,7 +694,7 @@ func (r *SystemReconciler) PrivateKeyTranmissionAllowed(client *gophercloud.Serv
 			// the endpoint hasn't been switched over yet, or the user is trying
 			// to do this through the internal URL so disallow, reset the client,
 			// and try again.
-			msg := fmt.Sprintf("it is unsafe to install certificates thru a non HTTPS URL")
+			msg := "it is unsafe to install certificates thru a non HTTPS URL"
 			return common.NewHTTPSClientRequired(msg)
 		}
 	} else {
