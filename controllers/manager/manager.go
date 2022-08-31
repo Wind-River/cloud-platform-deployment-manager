@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package manager
 
@@ -243,10 +243,8 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 func (m *PlatformManager) notifyController(object client.Object) error {
 	key := client.ObjectKeyFromObject(object)
 
-	// FIXME: DeepCopyObject returns runtime.Object.
-	// result := object.DeepCopyObject()
-	// err := m.GetClient().Get(context.Background(), key, result)
-	err := m.GetClient().Get(context.Background(), key, object)
+	result := object.DeepCopyObject().(client.Object)
+	err := m.GetClient().Get(context.Background(), key, result)
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to query resource %+v", key)
 		return err
@@ -254,9 +252,7 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 
 	accessor := meta.NewAccessor()
 
-	// FIXME: Need to pass "result" once result above is fixed
-	// annotations, err := accessor.Annotations(result)
-	annotations, err := accessor.Annotations(object)
+	annotations, err := accessor.Annotations(result)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to get annotations via accessor")
 		return err
@@ -269,18 +265,13 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 	count := getNextCount(annotations[NotificationCountKey])
 	annotations[NotificationCountKey] = count
 
-	// FIXME: Need to pass "result" once result above is fixed
-	// err = accessor.SetAnnotations(result, annotations)
-	err = accessor.SetAnnotations(object, annotations)
+	err = accessor.SetAnnotations(result, annotations)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to set annotations via accessor")
 		return err
 	}
 
-	// FIXME: DeepCopyObject returns runtime.Object.
-	// but in editor, it links to client.Object which is correct
-	// err = m.GetClient().Update(context.TODO(), result)
-	err = m.GetClient().Update(context.TODO(), object)
+	err = m.GetClient().Update(context.TODO(), result)
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to notify host controller")
 		return err
