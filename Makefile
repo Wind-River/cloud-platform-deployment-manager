@@ -15,9 +15,15 @@ HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{pri
 HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
 HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
-DEPLOY_LDFLAGS := -X cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
-DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitHead=${GIT_HEAD}
-DEPLOY_LDFLAGS += -X cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+# Parameters for deploy tool
+GIT_HEAD := $(shell git rev-list -1 HEAD)
+GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
+APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
+DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
