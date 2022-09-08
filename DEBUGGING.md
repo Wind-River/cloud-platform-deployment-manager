@@ -64,29 +64,35 @@ kubectl -n deployment get events --sort-by='.metadata.creationTimestamp'
 
 ## Increasing the log level
 The DM log level can be increased by specifying the desired log level with the 
-"--v" parameter when running the "manager" binary.  The manager Container can be 
-modified to change the "manager" launch arguments with a custom log level.  The 
-"Args:" section would look like the following if the log level was changed from 
-the default (0) to a new value (2).
+"--zap-log-level" parameter when running the "manager" binary.  The manager Container
+can be modified to change the "manager" launch arguments with a custom log level.
+The "Args:" section would look like the following if the log level was changed from
+the default 'info' to a new value (2). Log level should be one of 'debug', 'info',
+'error', or any integer value > 0 which corresponds to custom debug levels of
+increasing verbosity. Stack trace level can be also modified with the
+"--zap-stack trace-level" parameter. The following shows to change stack trace level
+from the default 'panic' to 'info'. Stack trace level should be one of 'info',
+'error', 'panic'.
 
 ```yaml
 Args:
 /manager
 --metrics-addr=127.0.0.1:8080
---alsologtostderr=true
---v=2
+--zap-log-level=2
+--zap-stacktrace-level=info
 ```
 
 Alternatively, if the log level needs to be set to a non-default value before
 the first instantiation, it can be set as a Helm chart override.  The following
-sample Helm override file demonstrates how to set the log level to 2 in addition
-to other attributes that may already be present in the file.  The Helm chart
-override method can also be used to update an already running system to increase
-or decrease the log level.
+sample Helm override file demonstrates how to set the log level to 2 and
+stack trace level to info in addition to other attributes that may already be
+present in the file.  The Helm chart override method can also be used to update
+an already running system to increase or decrease the log level.
 
 ```yaml
 manager:
   logLevel: 2
+  stacktrace: info
   image:
     repository: wind-river/cloud-platform-deployment-manager
     tag: latest

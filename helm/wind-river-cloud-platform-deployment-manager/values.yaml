@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021 Wind River Systems, Inc.
+# Copyright(c) 2021-2022 Wind River Systems, Inc.
 
 # Default values for Deployment Manager instances
 
@@ -25,7 +25,8 @@ manager:
     enabled: false
     wait: false
     port: 30000
-  logLevel: 0
+  logLevel: info     # one of 'debug', 'info', 'error', or any integer value > 0
+  stacktrace: error  # one of 'info', 'error', 'panic
   image:
     repository: wind-river/cloud-platform-deployment-manager
     tag: latest
