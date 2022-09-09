@@ -498,6 +498,10 @@ spec:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
         - --leader-elect
+        - --zap-time-encoding=rfc3339nano
+        - --zap-encoder=console
+        - --zap-log-level={{ .Values.manager.logLevel }}
+        - --zap-stacktrace-level={{ .Values.manager.stacktrace }}
         command:
         {{- if .Values.manager.debugger.enabled }}
         - /dlv-wrapper.sh
