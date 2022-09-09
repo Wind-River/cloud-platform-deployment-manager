@@ -1419,6 +1419,13 @@ func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, in
 			}
 		}
 
+		// Remove deleted host from CephPrimaryGroup
+		host_uid := string(instance.UID)
+		if utils.ContainsString(CephPrimaryGroup, host_uid) {
+			CephPrimaryGroup = utils.RemoveString(CephPrimaryGroup, host_uid)
+			logHost.Info("host is no longer present as a ceph primary group")
+		}
+
 		return nil
 	}
 
@@ -1515,11 +1522,13 @@ func IsCephPrimaryGroup(host_uid string, rep int) (pg bool, err error) {
 	if len(host_uid) > 0 {
 		for _, c := range CephPrimaryGroup {
 			if c == host_uid {
+				logHost.V(2).Info("Host already in CephPrimaryGroup", "id", host_uid)
 				return true, nil
 			}
 		}
 		if len(CephPrimaryGroup) < rep {
 			CephPrimaryGroup = append(CephPrimaryGroup, host_uid)
+			logHost.V(2).Info("Host added in CephPrimaryGroup", "id", host_uid)
 			return true, nil
 		}
 	}
