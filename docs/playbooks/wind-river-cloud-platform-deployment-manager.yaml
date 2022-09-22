@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021 Wind River Systems, Inc.
+# Copyright(c) 2021-2022 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -163,6 +163,51 @@
           KUBECONFIG: "/etc/kubernetes/admin.conf"
 
       when: helmv2_dm_exists.rc == 0
+
+    # Remove v1 webhook and webhook service
+    - block:
+      - name: Search webhook configurations for v1
+        shell: |
+          kubectl get ValidatingWebhookConfigurations validating-webhook-configuration --no-headers | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        ignore_errors: yes
+        register: validation_webhook
+
+      - name: Query for validating webhook configuration
+        shell: |
+          grep -iq 'validating-webhook-configuration' <<< {{ validation_webhook.stdout_lines }}
+        ignore_errors: yes
+        register: webhook_config_exists
+
+      - name: Delete validating webhook configuration
+        shell: |
+          kubectl delete ValidatingWebhookConfigurations validating-webhook-configuration
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: webhook_config_exists.rc == 0
+
+      - name: Search webhook service for v1
+        shell: |
+          kubectl get svc webhook-server-service -n platform-deployment-manager --no-headers | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: webhook_service
+
+      - name: Query for webhook-server-service
+        shell: |
+          grep -iq 'webhook-server-service' <<< {{ webhook_service.stdout_lines }}
+        ignore_errors: yes
+        register: webhook_service_exists
+
+      - name: Delete webhook-server-service
+        shell: |
+          kubectl delete svc webhook-server-service -n platform-deployment-manager
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: webhook_service_exists.rc == 0
+
+      when: helmv2_dm_exists.rc != 0
 
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}

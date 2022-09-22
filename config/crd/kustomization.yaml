@@ -34,6 +34,15 @@ patchesStrategicMerge:
 - patches/cainjection_in_systems.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
+# Starlingx customization for each CRD
+- patches/stx_in_datanetworks.yaml
+- patches/stx_in_hostprofiles.yaml
+- patches/stx_in_hosts.yaml
+- patches/stx_in_platformnetworks.yaml
+- patches/stx_in_ptpinstances.yaml
+- patches/stx_in_ptpinterfaces.yaml
+- patches/stx_in_systems.yaml
+
 # the following config is for teaching kustomize how to do kustomization for CRDs.
 configurations:
 - kustomizeconfig.yaml
