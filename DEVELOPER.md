@@ -10,7 +10,7 @@ configured for Go development as well as some specific tool/package versions.
 The instructions that follow are intended to install the current minimum
 package requirements to develop and maintain Deployment Manager content.  These
 instructions were developed for installing the required packages onto a Ubuntu
-16.04 workstation therefore some tweaks may be required on different Linux 
+20.04 workstation therefore some tweaks may be required on different Linux 
 distributions. 
 
 #### GoLang
@@ -30,13 +30,13 @@ mkdir downloads
 cd downloads
 ```
 
-The Deployment Manager was developed during the period when Golang version
-1.12.9 was prominent.  A newer version may work fine, but the minimum guaranteed
-version that will work with the tools and Makefiles provided is v1.12.9.
+The Deployment Manager was developed during the period when GoLang version
+1.17.9 was prominent.  A newer version may work fine, but the minimum guaranteed
+version that will work with the tools and Makefile provided is v1.17.9.
  
 ```bash
-wget https://dl.google.com/go/go1.12.9.linux-amd64.tar.gz
-sudo tar -C /usr/local -zxf go1.12.9.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.17.9.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxf go1.17.9.linux-amd64.tar.gz
 export PATH=${PATH}:/usr/local/go/bin
 ```
 
@@ -46,12 +46,12 @@ The recommended installation method of the Deployment Manager is to use a Helm
 chart.  This ensures that the required CRD resources are installed before the
 Deployment Manager pods are created.  It also ensures that recommended default
 values for specific Kubernetes attributes are used.  The minimum required 
-version of Helm is v2.16.10 and can be installed on your workstation using the
+version of Helm is v3.6.2 and can be installed on your workstation using the
 following commands.
  
 ```bash
-wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz
-tar zxf helm-v2.16.10-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v3.6.2-linux-amd64.tar.gz
+tar zxf helm-v3.6.2-linux-amd64.tar.gz
 sudo cp linux-amd64/helm /usr/local/bin/
 ```
 
@@ -61,31 +61,17 @@ The basic structure of the Deployment Manager project is defined by the
 Kubebuilder project.  Kubebuilder is a code generator that implements the more
 repetitive and template type code.  The StarlingX specific business logic is 
 custom developed. At the time of initial development Kubebuilder was at version
-v1.0.8 therefore this specific version of the tool must be installed.  
+v1.0.8.
 
-In the future the Deployment Manager should be upgraded to the latest 
-controller-tools runtime but for now the current version meets the Deployment
-Manager requirements.  Upgrading to the latest controller-tools runtime will 
-require upgrading Kubebuilder to the latest version.  This will not be a trivial
-task as it will involving changes to the underlying directory structure,
-internal API changes, certificate handling changes, etc. 
-  
-```bash
-wget https://github.com/kubernetes-sigs/kubebuilder/releases/download/v1.0.8/kubebuilder_1.0.8_linux_amd64.tar.gz
-tar zxf kubebuilder_1.0.8_linux_amd64.tar.gz
-sudo cp -r kubebuilder_1.0.8_linux_amd64 /usr/local/kubebuilder
-export PATH=$PATH:/usr/local/kubebuilder/bin
-```
-
-The Kubebuilder tool scaffolds a config file directory structure that is only 
-compatible with Kustomize v1.0.11 therefore this specific package version must
-be installed until the Deployment Manager is upgraded to using the latest
-version of Kubebuilder.
+Since deployment manager v2.0.9, all codes were migrated to kubebuilder v3
+base. There is no need to install kubebuilder to compile existing code of deployment
+manager. But kubebuilder is needed to add new type or new webhook.
+To install the latest kubebuilder,
 
 ```bash
-wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64
-sudo cp kustomize_1.0.11_linux_amd64 /usr/local/bin/kustomize
-sudo chmod 755 /usr/local/bin/kustomize
+curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
+chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
+export PATH=$PATH:/usr/local/bin
 ```
 
 #### Docker
@@ -112,13 +98,6 @@ sudo usermod -a -G docker ${USER}
 newgrp docker
 ```
 
-#### Dep
-Dep is a depedency management tool for Go installed to the ${GOPATH}/bin directory.
-
-```bash
-curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-```
-
 ## Environment Test/Verification
 
 If you have setup your environment properly you should be able to clone the
@@ -133,7 +112,15 @@ cd cloud-platform-deployment-manager
 make && DEBUG=yes make docker-build
 ```
 
+With GoLang version 1.17.9, the source directory is not mandatory in ${HOME}/go/src.
+You can create a directory anywhere except under GOPATH, and run the "git clone" step described above.
+
 ## Working with a private fork
+With GoLang version 1.17.9, Go source path is not strictly under
+GOPATH. You can create the working directory anywhere except under GOPATH,
+and clone your private fork in it.
+
+To use the GoLang structure under $GOPATH/src,
 GoLang projects use fully qualified paths for imports and the GoLang tools
 expect to find modules in a matching directory structure within your Go path.
 Working with a direct clone of a Go project is straightforward as you can
@@ -160,6 +147,9 @@ git remote rename origin upstream
 git remote add origin git@github.com:<my_username>/cloud-platform-deployment-manager.git
 ```
 
+Alternatively, you can create the working directory anywhere except under GOPATH,
+and clone your private fork, which will also work fine.
+
 ## Working with a private fork of a vendor package
 In addition to the issues discussed in the preceding section, making changes to
 vendored packages poses an additional problem.  That is, how to update the 
@@ -169,28 +159,53 @@ make a change to one of the vendor packages (e.g., gophercloud) then you will
 fork that repo, clone it locally, edit your local clone, and run the unit 
 tests provided by that repo.  But, before making a pull request to the upstream
 repo (or pushing to the upstream repo if you are the owner) you should integrate 
-your changes into a DM image and run proper integration tests.  The normal 
-method to pull in the latest vendor package is to run "dep ensure" to pull in 
-the latest package version.  For example, the following command will update only
-a single vendored package:
+your changes into a DM image and run proper integration tests.
 
-    dep ensure -update github.com/gophercloud/gophercloud
-    
-By default, this command will go to the actual github.com URL provided and pull
-down the latest commit.  Since you have local changes to your local clone that
-behaviour is undesirable.  Instead, you want your "dep ensure" command to pull
-from the local clone of your fork.  You can redirect the requests automatically
-by adding a few lines to your ${HOME}/.gitconfig file with the following
-command.  It will cause any pull operations directed to https://github.com/wind-river/gophercloud
-to be replaced with the local path to your clone within your GOPATH directory.
+Currently Go environment is module based. We need to modify go.mod to
+direct your private fork. Also, we need to consider private fork directory
+to create DM container (private fork directory needs to be visible during
+container creation).
+
+To include your private fork to compile and to create DM container;
 
 ```bash
-git config --global url."ssh://${USER}@localhost${GOPATH}/src/github.com/gophercloud/gophercloud".insteadOf "https://github.com/wind-river/gophercloud"
+cd [project working directory]/cloud-platform-deployment-manager
+mkdir external
+cd external
+git clone [your private fork]
+```
+To compile DM including your private fork, you need to modify go.mod
+to specify the directory to replace the upstream URL.
+Here is an example for gophercloud;
+
+```bash
+replace github.com/gophercloud/gophercloud => ./external/gophercloud
+// replace github.com/gophercloud/gophercloud => github.com/wind-river/gophercloud v0.0.0-20220714135506-aac06588b172
+```
+
+This change will refer to your private fork instead of upstream.
+
+To generate DM container with your private fork, you need to copy your
+private fork into builder container. To achieve this, you need to
+add the copy in Dockerfile. This modification should have been written before
+"RUN go mod download" because go mod will refer go.mod in your
+private fork.
+
+```bash
+COPY external/ external/
 ```
 
 ***note:*** The Gophercloud repo is a special case because we actually pull from
-a Wind River fork rather than the true upstream repo; therefore, there is an
-extra layer of redirection found in the top-level Gopkg.toml file.
+a Wind River fork rather than the true upstream repo.
+
+## Working with a private fork of a vendor command
+DM use the command called "deepequal-gen" to generate deep equal code
+from type code. "deepequal-gen" will download to bin directory automatically
+during compilation. But if you'd like to modify "deepequal-gen", place
+your private fork of "deepequal-gen", modify it and generate executable
+by go build.
+
+After you have created "deepequal-gen", please place it in bin directory.
 
 ## Publishing
 Building the Deployment Manager image using the "make docker-build" command
@@ -323,27 +338,6 @@ git commit -s
 To pick up the Gophercloud change within the main DM repo you must return to the
 main DM repo directory.
 
-```bash
-popd
-```
-
-Back in the DM repo you must update the project dependencies to pull in your
-local change to the Gophercloud repo.  ***Note:*** Do not run a full "dep ensure" 
-on the full list of vendor packages.  Unless your are undertaking a full
-upgrade of Kubebuilder and the related controller-tools and controller-runtime
-packages you should only update individual packages as needed.
-
-```bash
-dep ensure -update github.com/gophercloud/gophercloud
-dep status | grep gophercloud
-git status
-```
-
-The above commands should update the local copy of the Gophercloud package in
-the "vendor" subdirectory.  You should confirm that the change aligns with what
-you changed in your local clone by confirming the latest commit id reported by
-"dep status" matches what is in your local clone.
-
 When you are confident that your changes to your Gophercloud clone have been
 properly included in your DM repo clone then you can re-build both the 
 production and debug Docker images.  This will run formatting, static analysis, 
@@ -428,18 +422,6 @@ mv ${HOME}/.cache /localdisk/loadbuild/${USER}/.cache and
 ln -s /localdisk/loadbuild/${USER}/.cache ${HOME}/.cache
 ```
 
-#### Hanging processes
-
-If "dep ensure -update" command is hung, use ps -a to check for dep and its
-subprocesses:
-```bash
-dep
-ssh
-git
-```
-Before killing any of these subprocess, ensure you are not running other
-background process that involve git or ssh.
-
 #### ssh keys
 
 Ensure your ssh keys are set up properly. Check that the commands work without
@@ -460,32 +442,8 @@ public key to ~/.ssh/authorized_keys.
 
 #### Versions
 
-Try using Go 1.12 if newer versions aren't working. Check with:
+Try using Go 1.17 if newer versions aren't working. Check with:
 ```bash
 > go version
-go version go1.12.9 linux/amd64
-```
-
-Check that dep version matches:
-```bash
-> dep version
-dep:
- version     : v0.5.4
- build date  : 2019-07-01
- git hash    : 1f7c19e
- go version  : go1.12.6
- go compiler : gc
- platform    : linux/amd64
- features    : ImportDuringSolve=false
-```
-
-#### Additional troubleshooting methods
-Use the -v flag for verbose output, ie
-```bash
-dep ensure -v -update github.com/gophercloud/gophercloud
-```
-
-Or use strace
-```bash
-strace ensure -v -update github.com/gophercloud/gophercloud
+go version go1.17.9 linux/amd64
 ```

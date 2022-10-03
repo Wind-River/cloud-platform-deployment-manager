@@ -43,8 +43,8 @@ spec:
   - registry.central
   duration: 2160h
   ipAddresses:
-  - null
-  - null
+  - ""
+  - ""
   issuerRef:
     kind: ClusterIssuer
     name: system-local-ca
@@ -52,11 +52,11 @@ spec:
   secretName: system-registry-local-certificate
   subject:
     countries:
-    - null
+    - ""
     organizationalUnits:
     - WRCP-System
     provinces:
-    - null
+    - ""
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -66,10 +66,10 @@ metadata:
 spec:
   commonName: null
   dnsNames:
-  - null
+  - ""
   duration: 2160h
   ipAddresses:
-  - null
+  - ""
   issuerRef:
     kind: ClusterIssuer
     name: system-local-ca
@@ -77,11 +77,11 @@ spec:
   secretName: system-restapi-gui-certificate
   subject:
     countries:
-    - null
+    - ""
     organizationalUnits:
     - WRCP-System
     provinces:
-    - null
+    - ""
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -96,10 +96,10 @@ kind: DataNetwork
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: group0-data0b
+  name: group0-data0
   namespace: deployment
 spec:
-  description: group0 data networks for the shared internal networks.
+  description: group0 data networks for the tenant1 networks.
   mtu: 1500
   type: vlan
 ---
@@ -108,10 +108,10 @@ kind: DataNetwork
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: group0-data0
+  name: group0-data0b
   namespace: deployment
 spec:
-  description: group0 data networks for the tenant1 networks.
+  description: group0 data networks for the shared internal networks.
   mtu: 1500
   type: vlan
 ---

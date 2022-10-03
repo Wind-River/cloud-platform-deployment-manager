@@ -45,10 +45,10 @@ fail or not complete.
 The Deployment Manager depends on the System API to execute configuration
 changes on the target system.  Following the initial software installation the
 System API is not functional until the system has been bootstrapped.  The first
-controller can be bootstrapped using Ansible®. This method is described at the 
-following wiki.  
+controller can be bootstrapped using Ansible®. This method is described in
+"Installation guides" section at the following wiki.
  
-https://docs.starlingx.io/deploy_install_guides/index.html
+https://docs.starlingx.io/
 
 Following the bootstrapping of the system by the Ansible deployment method, the
 System API is enabled and the Deployment Manager can continue the system
@@ -96,7 +96,7 @@ documentation on each attribute along with validation rules that conform to the
 OpenAPI v3 schema validation specification.  The full schema definition is
 stored in this repo and can be found in the ```config/crds``` directory.  The
 CRD instances are automatically generated based on annotations added directly
-to the source code found under ```pkg/apis```.
+to the source code found under ```api/v1```.
 
 A full system deployment configuration is composed of several Kubernetes Custom
 Resource (CR) instances.  Each CR conforms to a CRD instance defined under the 
@@ -108,6 +108,8 @@ of several instances of each of the following CRD types.
  + Data Network
  + Host Profile
  + Host
+ + PTP Instances
+ + PTP Interfaces
  
 To streamline the process of defining many Host records it is possible to move
 common host attributes into a HostProfile definition and to re-use that 
@@ -160,19 +162,10 @@ found within the listed files.
  kustomize build examples/aio-dx/https > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx-https.yaml
  ```
 
-***Note***: the output directory can be overridden by setting the ```EXAMPLES```
-environment variable to a suitable destination directory.  For example, running
-the following command generates the examples within a different output
-directory.
-
 ***Note***: the HTTPS examples must be edited to add X.509 certificates and
 keys that are appropriate for your environment.  Follow the instructions
 provided in the ```deploy``` tool section related to HTTPS and BMC.
 
-
-```bash
-$ EXAMPLES=/tmp/examples make examples
-```
 
 ***Note***: The examples provided assume a certain hardware configuration and
 may need to be modified to work in your environment.  For instance, it is
@@ -208,10 +201,6 @@ to the ```bin``` directory of this repo.
 
 ```bash
 $ make tools
-go generate ./pkg/... ./cmd/...
-go fmt ./pkg/... ./cmd/...
-go vet ./pkg/... ./cmd/...
-go build -gcflags """" -o bin/deploy github.com/wind-river/cloud-platform-deployment-manager/cmd/deploy
 ```
 
 ### Using The ```deploy``` Tool

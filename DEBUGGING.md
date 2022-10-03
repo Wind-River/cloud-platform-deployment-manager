@@ -41,7 +41,7 @@ The logs from the currently running Pod can be queried using the following
 command.  The "-f" argument follows the log stream much like the Linux "tail" 
 command.
 ```
-kubectl -n platform-deployment-manager logs platform-deployment-manager-0 manager -f
+kubectl -n platform-deployment-manager logs platform-deployment-manager-[uid] -f
 ```
 
 ## Looking at logs of the previously running Pod
@@ -52,7 +52,7 @@ instantiations are lost unless the platform is configured with a more advance
 data collection mechanism.
  
 ```
-kubectl -n platform-deployment-manager logs platform-deployment-manager-0 manager -p
+kubectl -n platform-deployment-manager logs platform-deployment-manager-[uid] -p
 ```
 
 ## Viewing event history
@@ -150,7 +150,7 @@ The DM consumes a ConfigMap at runtime which can contain individual boolean
 values that control the state of each reconciler.  Any changes to the ConfigMap
 are immediately read into the DM's internal configuration and go into effect the
 next time the DM queries its internal state.   The set of supported values can
-be found in the ```pkg/config/config.go``` file within the DM repo.  The
+be found in the ```common/config.go``` file within the DM repo.  The
 following Helm chart override file provides an example of how to set ConfigMap
 values as an override to disable the Host Memory sub-reconciler.
 
@@ -232,7 +232,7 @@ statefulset to 0 to force its termination.  Reversing the change by setting the
 replica count back to the normal value of 1 should relaunch the DM.
 
 ```bash
-kubectl scale --replicas=0 -n platform-deployment-manager statefulset platform-deployment-manager
+kubectl scale --replicas=0 -n platform-deployment-manager deployment platform-deployment-manager
 ```
 
 ## Restarting the Deployment Manager
@@ -242,7 +242,7 @@ force the DM to re-evaluate the state of all hosts you can elect to restart the
 DM Pod.
 
 ```
-kubectl -n platform-deployment-manager delete pods platform-deployment-manager-0
+kubectl -n platform-deployment-manager delete pods platform-deployment-manager-[uid]
 ```
 
 ## Deleting the Deployment Manager
@@ -252,5 +252,5 @@ to the Deployment Manager.  If the DM was installed using the recommended Helm
 chart install method then it can be removed using a similar operation.
 
 ```bash
-helm delete --purge deployment-manager
+helm uninstall deployment-manager
 ```

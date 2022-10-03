@@ -33,15 +33,15 @@ spec:
   commonName: null # Common Name
   subject:
     countries:
-    - null # Country
+    - "" # Country
     provinces:
-    - null # State/Province
+    - "" # State/Province
     organizationalUnits:
     - WRCP-System
   ipAddresses:
-  -  null # OAM floating IP
+  -  "" # OAM floating IP
   dnsNames:
-  - null # OAM IP or FQDN 
+  - "" # OAM IP or FQDN 
 ---
 # StarlingX Docker Registry Certificate
 apiVersion: cert-manager.io/v1
@@ -58,14 +58,14 @@ spec:
   renewBefore: 360h  # 15d
   subject:
     countries:
-    - null # Country
+    - "" # Country
     provinces:
-    - null # State/Province
+    - "" # State/Province
     organizationalUnits:
     - WRCP-System
   ipAddresses:
-  - null # oam floating IP address
-  - null # oam mgmt IP address
+  - "" # oam floating IP address
+  - "" # oam mgmt IP address
   dnsNames:
   - registry.local
   - registry.central
