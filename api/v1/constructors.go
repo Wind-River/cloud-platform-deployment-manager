@@ -810,7 +810,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	spec.BootDevice = &bootDevice
 	rootDevice := fixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
-	spec.ClockSynchronization = host.ClockSynchronization
+	clock := *host.ClockSynchronization
+	clockCopied := clock[0:] // Copy ClockSynchronization value
+	spec.ClockSynchronization = &clockCopied
 	ptpInstances := host.BuildPTPInstanceList()
 	ptpInstanceList := StringsToPtpInstanceItemList(ptpInstances)
 	spec.PtpInstances = ptpInstanceList
