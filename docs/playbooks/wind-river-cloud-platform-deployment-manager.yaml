@@ -14,7 +14,7 @@
     
     - set_fact:
         deploy_config: "{{ deployment_config }}"
-        wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(1) }}"
+        wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
       when: deployment_config is defined
 
     - block:
@@ -321,7 +321,7 @@
             system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^task/ {print $4}'
           register: get_show_task_status
           until: ("Unlocking" in get_show_task_status.stdout)
-          retries: 800
+          retries: 60
           delay: "{{wait_for_dm_unlock}}"
           ignore_errors: yes
 
@@ -362,7 +362,7 @@
         - name: Retrieve dm logs
           shell: >-
             kubectl -n platform-deployment-manager logs "{{ get_dm_pod_name.stdout }}" |
-            awk '(/ERROR/ && !/validation/ && !/waiting/ && !(seen[$10, $NF]++)) {print}'
+            awk '(/ERROR/ && !/validation/ && !/waiting/ && !/Reconciler error/&& !(seen[$10, $NF]++)) {print}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_logs_pre_unlock
