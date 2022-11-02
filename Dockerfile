@@ -2,8 +2,8 @@
 FROM golang:1.12.9 as dlvbuilder
 
 # Build delve debugger
-RUN apt-get update && apt-get install -y git
-RUN go get github.com/go-delve/delve/cmd/dlv
+RUN apt-get update && apt-get install -y git ca-certificates libgnutls30
+RUN GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@v1.2.0
 
 FROM dlvbuilder as builder
 ARG GOBUILD_GCFLAGS=""
