@@ -543,7 +543,7 @@ spec:
         runAsNonRoot: false
       serviceAccountName: {{ .Values.namespace }}
       nodeSelector:
-        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/control-plane: ""
       terminationGracePeriodSeconds: 10
 {{- with .Values.tolerations }}
       tolerations:
