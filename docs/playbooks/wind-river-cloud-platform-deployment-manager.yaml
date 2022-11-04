@@ -14,7 +14,28 @@
     
     - set_fact:
         deploy_config: "{{ deployment_config }}"
+        wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
       when: deployment_config is defined
+
+    - block:
+      # Information to be used at final DM checks.
+        - name: Get host name
+          shell: |
+            source /etc/platform/openrc; hostname
+          register: get_host_name 
+
+        # In order to determine if the host is a subcloud's node
+        - name: Get distributed_cloud_role
+          shell: >-
+            source /etc/platform/openrc; system show |
+            awk '$2 ~ /^distributed_cloud_role/ {print $4}'
+          register: get_distributed_cloud_role
+
+        - name: Show dc_role and hostname
+          debug:
+            msg:
+            - "hostname: {{get_host_name.stdout}}"
+            - "dc_role: {{ get_distributed_cloud_role.stdout }}"
 
     - block:
       # Copy required files up to the target host if this playbook is being
@@ -284,3 +305,83 @@
       environment:
         KUBECONFIG: "/etc/kubernetes/admin.conf"
       when: get_dm_default_registry_key.stdout == ""
+
+    - block:
+        - wait_for:
+            # Waiting task after apply config to avoid failures getting info
+            timeout: 5
+            msg: Waiting after apply DM config
+
+        # - If unlock task is triggered, is highly probable that the config applied is correct.
+        # - If the task fails (by achieving max retries without calling the unlock), the
+        #   playbook will fail but it will collect some information before exiting.
+        - name: Wait until unlock task triggered
+          shell: |
+            source /etc/platform/openrc;
+            system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^task/ {print $4}'
+          register: get_show_task_status
+          until: ("Unlocking" in get_show_task_status.stdout)
+          retries: 60
+          delay: "{{wait_for_dm_unlock}}"
+          ignore_errors: yes
+
+        - name: Show waiting unlock
+          debug:
+            msg:
+            - "waiting: {{get_show_task_status.stdout}}"
+            - "waiting: {{get_show_task_status.stderr}}"
+
+        # Get a list of unreconciled resources at moment of failing
+        - name: Retrieve kubectl resources reconciled status
+          shell: >-
+            kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
+            awk '$NF ~ /^false/ {print}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_recon_status_pre_unlock
+
+        - name: Show unreconciled resources
+          debug:
+            msg:
+            - "recon: {{get_recon_status_pre_unlock.stdout}}"
+
+        # Get pod name to retrieve the logs
+        - name: Get dm pod name
+          shell: >-
+            kubectl -n platform-deployment-manager get pods |
+            awk '$1 ~ /^platform-deployment-manager/ {print $1}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_dm_pod_name
+
+        # Get errors from pod logs. Searching for error lines into logs which:
+        # - Contain 'ERROR' key word.
+        # - Are not validation or waiting errors (which could be temporal).
+        # - Are not the same "Verb + value". Usually we see same error
+        #   multiple times in logs.
+        - name: Retrieve dm logs
+          shell: >-
+            kubectl -n platform-deployment-manager logs "{{ get_dm_pod_name.stdout }}" |
+            awk '(/ERROR/ && !/validation/ && !/waiting/ && !/Reconciler error/&& !(seen[$10, $NF]++)) {print}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_logs_pre_unlock
+
+        - name: Show logs
+          debug:
+            msg:
+            - "Pod log: {{get_logs_pre_unlock.stdout}}"
+            - "err: {{get_logs_pre_unlock.stderr}}"
+
+        # If the task "Wait until unlock task triggered" failed, we export some
+        # useful information to the fail playbook msg.
+        - name: Output dm logs
+          fail:
+            msg:
+              - "Fail waiting for host unlock to be triggered. It could be due to DM config errors"
+              - "UNRECONCILED resources: {{get_recon_status_pre_unlock.stdout}}"
+              - "{{get_logs_pre_unlock.stdout}}"
+          register: fail_dm_logs
+          when: ("Unlocking" not in get_show_task_status.stdout)
+
+      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout)
