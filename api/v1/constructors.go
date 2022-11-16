@@ -1043,6 +1043,14 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 		spec.Contact = &systemInfo.Contact
 	}
 
+	if systemInfo.Latitude != "" {
+		spec.Latitude = &systemInfo.Latitude
+	}
+
+	if systemInfo.Longitude != "" {
+		spec.Longitude = &systemInfo.Longitude
+	}
+
 	spec.VSwitchType = &systemInfo.Capabilities.VSwitchType
 
 	if systemInfo.DRBD != nil {
