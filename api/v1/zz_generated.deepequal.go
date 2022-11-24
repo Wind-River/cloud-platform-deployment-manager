@@ -1697,11 +1697,11 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
-	if in.MaxCPUFrequency != nil {
-		if (in.MaxCPUFrequency == nil) != (other.MaxCPUFrequency == nil) {
+	if in.MaxCPUMhzConfigured != nil {
+		if (in.MaxCPUMhzConfigured == nil) != (other.MaxCPUMhzConfigured == nil) {
 			return false
-		} else if in.MaxCPUFrequency != nil {
-			if *in.MaxCPUFrequency != *other.MaxCPUFrequency {
+		} else if in.MaxCPUMhzConfigured != nil {
+			if *in.MaxCPUMhzConfigured != *other.MaxCPUMhzConfigured {
 				return false
 			}
 		}
