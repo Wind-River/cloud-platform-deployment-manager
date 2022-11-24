@@ -268,9 +268,9 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 		opts.InstallOutput = profile.InstallOutput
 	}
 
-	if profile.MaxCPUFrequency != nil && *profile.MaxCPUFrequency != h.MaxCPUFrequency {
+	if profile.MaxCPUMhzConfigured != nil && *profile.MaxCPUMhzConfigured != h.MaxCPUMhzConfigured {
 		result = true
-		opts.MaxCPUFrequency = profile.MaxCPUFrequency
+		opts.MaxCPUMhzConfigured = profile.MaxCPUMhzConfigured
 	}
 
 	if profile.RootDevice != nil && *profile.RootDevice != h.RootDevice {
