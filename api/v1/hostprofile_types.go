@@ -846,10 +846,10 @@ type ProfileBaseAttributes struct {
 	// +optional
 	ClockSynchronization *string `json:"clockSynchronization,omitempty"`
 
-	// MaxCPUFrequency defines the maximum limit of the CPU frequency set on the host.
+	// MaxCPUMhzConfigured defines the maximum limit of the CPU mhz configured on the host.
 	// +kubebuilder:validation:Pattern=^[1-9][0-9]*$
 	// +optional
-	MaxCPUFrequency *string `json:"maxCPUFrequency,omitempty"`
+	MaxCPUMhzConfigured *string `json:"maxCPUMhzConfigured,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile
