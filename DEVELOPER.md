@@ -63,7 +63,7 @@ repetitive and template type code.  The StarlingX specific business logic is
 custom developed. At the time of initial development Kubebuilder was at version
 v1.0.8.
 
-Since deployment manager v2.0.9, all codes were migrated to kubebuilder v3
+Since deployment manager v2.0.10, all codes were migrated to kubebuilder v3
 base. There is no need to install kubebuilder to compile existing code of deployment
 manager. But kubebuilder is needed to add new type or new webhook.
 To install the latest kubebuilder,
