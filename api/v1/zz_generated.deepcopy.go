@@ -1499,8 +1499,8 @@ func (in *ProfileBaseAttributes) DeepCopyInto(out *ProfileBaseAttributes) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.MaxCPUFrequency != nil {
-		in, out := &in.MaxCPUFrequency, &out.MaxCPUFrequency
+	if in.MaxCPUMhzConfigured != nil {
+		in, out := &in.MaxCPUMhzConfigured, &out.MaxCPUMhzConfigured
 		*out = new(string)
 		**out = **in
 	}
