@@ -1265,15 +1265,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 	defaults.BoardManagement = &bmInfo
 
-	// To compate the BootMAC's we need to lowercase the values
-	if defaults.BootMAC != nil {
-		lowerDefaultsBootMAC := strings.ToLower(*defaults.BootMAC)
-		defaults.BootMAC = &lowerDefaultsBootMAC
-	}
-	if profile.BootMAC != nil {
-		lowerProfileBootMAC := strings.ToLower(*profile.BootMAC)
-		profile.BootMAC = &lowerProfileBootMAC
-	}
+	FixProfileAttributes(defaults, profile, current)
 
 	// Create a new composite profile that is backed by the host's default
 	// configuration.  This will ensure that if a user deletes an optional
