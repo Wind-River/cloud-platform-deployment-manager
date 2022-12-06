@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
+	"strings"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
@@ -28,6 +30,35 @@ func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileS
 	}
 
 	return a, nil
+}
+
+// FixProfileAttributes makes some adjustments to profile attributes
+func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec) {
+	// To compare the BootMAC's we need to lowercase the values
+	if a.BootMAC != nil {
+		lowerDefaultsBootMAC := strings.ToLower(*a.BootMAC)
+		a.BootMAC = &lowerDefaultsBootMAC
+	}
+	if b.BootMAC != nil {
+		lowerProfileBootMAC := strings.ToLower(*b.BootMAC)
+		b.BootMAC = &lowerProfileBootMAC
+	}
+
+	// To compare the interface Members we need to sort them
+	if b.Interfaces.Bond != nil {
+		for _, bondInfo := range b.Interfaces.Bond {
+			if bondInfo.Members != nil {
+				sort.Strings(bondInfo.Members)
+			}
+		}
+	}
+	if c.Interfaces.Bond != nil {
+		for _, bondInfo := range c.Interfaces.Bond {
+			if bondInfo.Members != nil {
+				sort.Strings(bondInfo.Members)
+			}
+		}
+	}
 }
 
 // GetHostProfile retrieves a HostProfileSpec from the kubernetes API
