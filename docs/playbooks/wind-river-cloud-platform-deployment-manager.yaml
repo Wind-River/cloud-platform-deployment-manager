@@ -288,6 +288,18 @@
           delay: 10
           until: apply_deploy_config.rc == 0
 
+        # Waiting task after apply config to avoid failures getting info
+        - wait_for:
+            timeout: 5
+            msg: Waiting after apply DM config
+
+        # Check the current administrativestate
+        - name: Get current administrativeState
+          shell: |
+            source /etc/platform/openrc;
+            system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^administrative/ {print $4}'
+          register: current_administrativestate
+
       when: deploy_config is defined
 
     # Create default registry key in platform-deployment-manager for future image pulls
@@ -306,12 +318,53 @@
         KUBECONFIG: "/etc/kubernetes/admin.conf"
       when: get_dm_default_registry_key.stdout == ""
 
+    # Pre-verification block: it will search for administrative state applied
+    # in order to avoid waiting for unlock when config administrativeState=locked.
+    # Search first in host resource config. If not present, search into hostprofile.
     - block:
-        - wait_for:
-            # Waiting task after apply config to avoid failures getting info
-            timeout: 5
-            msg: Waiting after apply DM config
+        - name: Search administrativeState into host resource
+          shell: |
+            source /etc/platform/openrc;
+            kubectl get host "{{ get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_host_adminstate
+          ignore_errors: yes
 
+        # If config not found in host -previous task- then search into hostprofile
+        - name: Get hostprofile name for this host
+          shell: |
+            source /etc/platform/openrc;
+            kubectl get host "{{get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.profile}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_hostprofile_name
+          when: get_host_adminstate.stdout == ""
+          ignore_errors: yes
+
+        - name: Search administrativeState into hostprofile resource
+          shell: |
+            source /etc/platform/openrc;
+            kubectl get hostprofile "{{get_hostprofile_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          register: get_hostprofile_adminstate
+          when: (get_hostprofile_name.stdout != "" and get_hostprofile_name.stderr == "")
+
+        - set_fact:
+            administrative_state: "{{get_host_adminstate.stdout + get_hostprofile_adminstate.stdout}}"
+          when: (get_host_name.stderr == "" and get_hostprofile_name.stderr == "")
+
+        - name: Show config administrativeState
+          debug:
+            msg:
+            - "administrative state: {{administrative_state}}"
+
+      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
+             and "unlocked" not in current_administrativestate.stdout)
+
+      # Verification block
+    - block:
         # - If unlock task is triggered, is highly probable that the config applied is correct.
         # - If the task fails (by achieving max retries without calling the unlock), the
         #   playbook will fail but it will collect some information before exiting.
@@ -384,4 +437,6 @@
           register: fail_dm_logs
           when: ("Unlocking" not in get_show_task_status.stdout)
 
-      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout)
+      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
+             and "unlocked" not in current_administrativestate.stdout
+             and "unlocked" in administrative_state)
