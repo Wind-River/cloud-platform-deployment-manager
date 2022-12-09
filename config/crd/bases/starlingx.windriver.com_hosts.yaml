@@ -865,6 +865,10 @@ spec:
                               - scratch
                               - kubelet
                               - log
+                              - root
+                              - var
+                              - image-conversion
+                              - instances
                               type: string
                             size:
                               minimum: 1
