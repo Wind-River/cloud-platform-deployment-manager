@@ -678,6 +678,27 @@ func (r *HostReconciler) ReconcileFileSystems(client *gophercloud.ServiceClient,
 			}
 		}
 
+		// TODO: REMOVE ME: properly support host-fs-add API
+		//
+		// For now, check for non-existent optional filesystems that are not
+		// currently provisioned and send the request anyway so that the
+		// host-fs-modify API can create and resize as needed.
+		if !found {
+			opt_fs_list := [2]string{"instances", "image-conversion"}
+			for _, opt_fs := range opt_fs_list {
+				if fsInfo.Name == opt_fs {
+					found = true
+					opts := hostFilesystems.FileSystemOpts{
+						Name: fsInfo.Name,
+						Size: fsInfo.Size,
+					}
+
+					updates = append(updates, opts)
+					break
+				}
+			}
+		}
+
 		if !found {
 			msg := fmt.Sprintf("unknown host filesystem %q", fsInfo.Name)
 			return starlingxv1.NewMissingSystemResource(msg)
