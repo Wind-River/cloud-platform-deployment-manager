@@ -176,8 +176,6 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.8.0
 GOLANGCI_LINT_VERSION ?= v1.49.0
-DEEPEQUAL_GEN_VERSION ?= v0.0.0-20220826192211-3f2a1e6dcf7a
-ENVTEST_VERSION ?= v0.0.0-20221206203637-3da2de04734a
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 GOLANGCI_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"
@@ -197,12 +195,12 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(ENVTEST_VERSION)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: deepequal-gen
 deepequal-gen: $(DEEPEQUAL_GEN) ## Download deepequal-gen locally if necessary.
 $(DEEPEQUAL_GEN): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install github.com/wind-river/deepequal-gen@$(DEEPEQUAL_GEN_VERSION)
+	GOBIN=$(LOCALBIN) go install github.com/wind-river/deepequal-gen@latest
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
