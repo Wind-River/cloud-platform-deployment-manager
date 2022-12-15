@@ -483,13 +483,6 @@ spec:
         - containerPort: {{ .Values.rbacProxy.port }}
           name: https
           protocol: TCP
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 5m
-            memory: 64Mi
       {{- end }}
       - args:
         {{- if .Values.manager.debugger.enabled }}

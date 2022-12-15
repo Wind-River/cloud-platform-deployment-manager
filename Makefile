@@ -5,7 +5,7 @@
 # needs to be re-built therefore this Makefile will only invoke that command
 # if it determines that any packaged files have changed.  This behaviour
 # can be overridden with this variable.
-HELM_FORCE ?= 1
+HELM_FORCE ?= 0
 
 # Image URL to use all building/pushing image targets
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
