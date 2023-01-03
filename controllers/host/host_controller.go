@@ -68,6 +68,9 @@ var DefaultHostProfile = starlingxv1.HostProfileSpec{
 
 var CephPrimaryGroup []string
 
+// Only the listed file systems are allow to create and delete
+var FileSystemCreationAllowed = []string{"instances", "image-conversion"}
+
 var _ reconcile.Reconciler = &HostReconciler{}
 
 // HostReconciler reconciles a Host object
@@ -756,7 +759,7 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
-	err = r.ReconcileFileSystems(client, instance, profile, host)
+	err = r.ReconcileFileSystemSizes(client, instance, profile, host)
 	if err != nil {
 		return err
 	}
@@ -819,6 +822,50 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 	}
 
 	return nil
+}
+
+// CompareFileSystemTypes determine if there is difference regarding optional
+// file system types between two profile specs.
+func (r *HostReconciler) CompareFileSystemTypes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec) bool {
+	if other == nil {
+		return false
+	}
+
+	if (in.Storage == nil) && (other.Storage == nil) {
+		return true
+	} else if in.Storage != nil {
+		if in.Storage.DeepEqual(other.Storage) {
+			// The full storage profile matches therefore the file systems match.
+			return true
+		}
+
+		configured := []string{}
+		current := []string{}
+
+		if in.Storage.FileSystems != nil {
+			for _, fsInfo := range *in.Storage.FileSystems {
+				configured = append(configured, fsInfo.Name)
+			}
+		}
+
+		if other.Storage != nil {
+			if other.Storage.FileSystems != nil {
+				for _, fs := range *other.Storage.FileSystems {
+					current = append(current, fs.Name)
+				}
+			}
+		}
+
+		// Find difference of file system types to add or remove
+		added, removed, _ := utils.ListDelta(current, configured)
+		_, _, fs_to_add := utils.ListDelta(added, FileSystemCreationAllowed)
+		_, _, fs_to_remove := utils.ListDelta(removed, FileSystemCreationAllowed)
+
+		if len(fs_to_remove) > 0 || len(fs_to_add) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // CompareOSDs determine if there has been a change to the list of OSDs between
@@ -896,7 +943,7 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
-	if utils.IsReconcilerEnabled(utils.FileSystems) {
+	if utils.IsReconcilerEnabled(utils.FileSystemSizes) {
 		if in.Storage != nil && in.Storage.FileSystems != nil {
 			if other.Storage == nil {
 				return false
@@ -978,6 +1025,12 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 			if !in.Routes.DeepEqual(&other.Routes) {
 				return false
 			}
+		}
+	}
+
+	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
+		if !r.CompareFileSystemTypes(in, other) {
+			return false
 		}
 	}
 
