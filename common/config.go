@@ -32,7 +32,8 @@ const (
 	Memory            ReconcilerName = "host.memory"
 	Processor         ReconcilerName = "host.processor"
 	Storage           ReconcilerName = "host.storage"
-	FileSystems       ReconcilerName = "host.storage.filesystems"
+	FileSystemTypes   ReconcilerName = "host.storage.fileSystemTypes"
+	FileSystemSizes   ReconcilerName = "host.storage.fileSystemSizes"
 	StorageMonitor    ReconcilerName = "host.storage.monitor"
 	OSD               ReconcilerName = "host.storage.osd"
 	Partition         ReconcilerName = "host.storage.partition"
@@ -66,7 +67,8 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	Memory:            true,
 	Processor:         true,
 	Storage:           true,
-	FileSystems:       true,
+	FileSystemTypes:   true,
+	FileSystemSizes:   true,
 	StorageMonitor:    true,
 	OSD:               true,
 	Partition:         true,
