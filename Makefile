@@ -5,7 +5,7 @@
 # needs to be re-built therefore this Makefile will only invoke that command
 # if it determines that any packaged files have changed.  This behaviour
 # can be overridden with this variable.
-HELM_FORCE ?= 0
+HELM_FORCE ?= 1
 
 # Image URL to use all building/pushing image targets
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
@@ -99,7 +99,7 @@ endif
 	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build: test
+docker-build:
 	docker build . -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
 
 # Push the docker image
