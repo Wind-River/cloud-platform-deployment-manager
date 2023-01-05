@@ -31,40 +31,40 @@ In the future, the Deployment Manager will evolve to supporting post
 installation operations (i.e., so called Day-2 operations).  End users will be
 able to modify the system configuration by supplying an updated deployment
 configuration rather than needing to interact with existing system interfaces.
- 
- 
+
+
 ## Prerequisites/Requirements
 
 
-The Deployment Manager expects that the target system is in a specific system 
-state prior to beginning reconciling the system state to the desired state.  
-Failure to meet these requirements will cause the full system deployment to 
+The Deployment Manager expects that the target system is in a specific system
+state prior to beginning reconciling the system state to the desired state.
+Failure to meet these requirements will cause the full system deployment to
 fail or not complete.
 
 ### Software Requirements
 The Deployment Manager depends on the System API to execute configuration
 changes on the target system.  Following the initial software installation the
 System API is not functional until the system has been bootstrapped.  The first
-controller can be bootstrapped using Ansible®. This method is described at the 
-following wiki.  
- 
+controller can be bootstrapped using Ansible®. This method is described at the
+following wiki.
+
 https://docs.starlingx.io/deploy_install_guides/index.html
 
 Following the bootstrapping of the system by the Ansible deployment method, the
 System API is enabled and the Deployment Manager can continue the system
 installation by configuring all system, networking and host level resources
 according to the state specified in the deployment configuration model.
- 
+
 ### Hardware Requirements
 
-The Deployment Manager supports two different host provisioning modes.  The 
-provisioning mode of a host is controlled by the ```provisioningMode``` host 
-profile schema attribute which can be one of two values. 
+The Deployment Manager supports two different host provisioning modes.  The
+provisioning mode of a host is controlled by the ```provisioningMode``` host
+profile schema attribute which can be one of two values.
 
 + Dynamic
 + Static
 
-When a host is provisioned using the ***dynamic*** provisioning mode, the 
+When a host is provisioned using the ***dynamic*** provisioning mode, the
 deployment manager waits for the host to appear in system inventory before
 applying any configuration changes to the system for that host.  It is the end
 user's responsibility to power on the target host and to ensure that it network
@@ -73,22 +73,22 @@ to appear in the system inventory host list.  The Deployment Manager will detect
 the new host and if it can correlate it to the ```match``` attributes specified
 in the host resource ```spec``` section then it will proceed to configuring the
 host to the desired state.  If a new host appears that cannot be correlated to
-a host in the supplied deployment configuration then it is ignored by the 
+a host in the supplied deployment configuration then it is ignored by the
 deployment manager until a configuration is supplied that matches that host.
 
 When a host is provisioned using the ***static*** provisioning mode, the
 Deployment Manager actively searches for an existing host record in the system
-inventory database.  If one is not found it inserts a new record into the 
-system database.  If that host is configured with a Board Management Controller 
+inventory database.  If one is not found it inserts a new record into the
+system database.  If that host is configured with a Board Management Controller
 (BMC) then the Deployment Manager will submit a "re-install" action via the
-System API.  This action will cause the system to power-on the host via the BMC 
+System API.  This action will cause the system to power-on the host via the BMC
 and command it to netboot to force a re-installation.  If the host is not
 configured with a BMC then it is the responsibility of the end user to power-on
 the host and to force it to netboot.
 
 
 ## Schema Definitions
- 
+
 The end user must supply a deployment configuration model which conforms to the
 supported system definition schema.  The schema is defined as a set of
 Kubernetes® Custom Resource Definitions (CRD) instances and provides
@@ -99,24 +99,24 @@ CRD instances are automatically generated based on annotations added directly
 to the source code found under ```pkg/apis```.
 
 A full system deployment configuration is composed of several Kubernetes Custom
-Resource (CR) instances.  Each CR conforms to a CRD instance defined under the 
+Resource (CR) instances.  Each CR conforms to a CRD instance defined under the
 ```config/crds``` directory.  For example, a system deployment may be composed
 of several instances of each of the following CRD types.
- 
+
  + System
  + Platform Network
  + Data Network
  + Host Profile
  + Host
- 
+
 To streamline the process of defining many Host records it is possible to move
-common host attributes into a HostProfile definition and to re-use that 
+common host attributes into a HostProfile definition and to re-use that
 definition from many Host resources.  Similarly, it is possible to define
 multiple layers of HostProfile resources so that attributes common to multiple
 HostProfile resources can be group together into a common HostProfile resource
 and re-used by other HostProfile resources.  A Host resource can inherit from
 a HostProfile but still provide overrides for individual attributes that may
-be host specific.  
+be host specific.
 
 When the Deployment Manager prepares to configure a Host resource it first
 resolves the final Host attributes by merging the hierarchy of HostProfile
@@ -127,7 +127,7 @@ attributes and how they are handled during the resolution of the HostProfile
 hierarchy.
 
 ***Warning***: The Schema definition is currently at a Beta release status.
-Non-backward compatible changes may be required prior to the first official GA 
+Non-backward compatible changes may be required prior to the first official GA
 release.
 
 
@@ -361,12 +361,12 @@ Kubernetes cluster provided by the end user (i.e., the Deployment Manager can
 configure StarlingX systems remotely).
 
 ***Warning***:  Remote deployment is currently not supported due to technical
-issues with how the OpenStack endpoint list is configured on the StarlingX 
+issues with how the OpenStack endpoint list is configured on the StarlingX
 system.  Currently, this functionality only works if the IP address of the
 first controller is configured (e.g., DHCP) to be the eventual OAM floating
 IP address.  For all other address configurations a implementation change is
 required to the StarlingX software.
- 
+
 Depending on which operational model is chosen, the system URL
 and endpoint type (e.g., public, internal) must specify the correct access
 method to reach the target system.  For example, the ```system-endpoint```
@@ -444,7 +444,7 @@ when accessing the temporary installation IP address when it is no longer valid.
 For debug purposes, it is possible to log all API requests between the
 Deployment Manager and the StarlinX system API.  To enable this functionality
 the OS_DEBUG attribute must be a string representation of a boolean value.  At
-the time of writing this document those values are "1", "t", "T", "true", 
+the time of writing this document those values are "1", "t", "T", "true",
 "TRUE", and "True".
 
 ```yaml
@@ -473,14 +473,14 @@ To use the built image to install the Deployment Manager onto a StarlingX system
 it must either be tagged and pushed to a private Docker Registry (i.e., using
 docker tag + docker push) or exported to an archive that can be used to load the
 image directly into the StarlingX local private Docker Registry (i.e., using
-docker save + docker load).  For more information on how to manipulate Docker 
+docker save + docker load).  For more information on how to manipulate Docker
 images please refer to Docker documentation.  The following subsections provide
 example commands to publish and use a custom Deployment Manager image.  Actual
 commands may vary based on your local environment.
 
 ### Pushing The Image To A Private Registry
 
-The following commands tag a custom image and pushes it to a private Docker 
+The following commands tag a custom image and pushes it to a private Docker
 registry.  This private image can later be accessed from the StarlingX system
 if the Deployment Manager is configured to pull its image from this private
 Docker registry rather than the default local Docker registry.
@@ -499,7 +499,7 @@ directly into the StarlingX local Docker registry.
 
 ```bash
 export OFFLINE_IMAGE_PATH="/some/path/to/images"
-docker tag wind-river/cloud-platform-deployment-manager:latest wind-river/cloud-platform-deployment-manager:v2.0.8-3
+docker tag wind-river/cloud-platform-deployment-manager:latest wind-river/cloud-platform-deployment-manager:v2.0.8-4
 docker save wind-river/cloud-platform-deployment-manager | gzip >  ${OFFLINE_IMAGE_PATH}/wind-river-cloud-platform-deployment-manager-images.tgz
 ```
 
@@ -524,12 +524,12 @@ A pre-built copy of the Deployment Manager Helm chart can be downloaded from
 this repo at the following location.  Alternatively, it can be accessed
 directly from the cloned repo in the ```docs/charts``` directory.
 
-https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.8-3.tgz
+https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.8-4.tgz
 
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.8-3.tgz
+helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.8-4.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -538,7 +538,7 @@ further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.8-3.tgz
+helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.8-4.tgz
 ```
 
 The default Helm chart assumes that the Deployment Manager image is present in
@@ -554,7 +554,7 @@ image location can be overridden to specify a private URL using the following
 syntax assuming that the private registry is hosted at "your.registry.org".
 
 ```bash
-helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.8-3.tgz
+helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.8-4.tgz
 ```
 
 
@@ -642,7 +642,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.8-3.tgz" -e @ansible-overrides.yaml
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.8-4.tgz" -e @ansible-overrides.yaml
 ```
 
 The system deployment configuration file must be specified using the
