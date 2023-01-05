@@ -15,14 +15,13 @@ import (
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 )
 
-// ReconcileProcessors is responsible for reconciling the CPU configuration of a
-// host resource.
-func (r *HostReconciler) ReconcileProcessors(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
-	updated := false
-
-	if len(profile.Processors) == 0 || !com.IsReconcilerEnabled(com.Processor) {
-		return nil
-	}
+// GetCPUUpdateOpts is to get and combine the array of CPUOpts to update.
+// The processors need to be updated in one shot as there's validation logic that
+// may block the attempt to update every core individually.
+func (r *HostReconciler) GetCPUUpdateOpts(profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) ([]cpus.CPUOpts, bool) {
+	updateRequired := false
+	opts := make([]cpus.CPUOpts, 0)
+	optsByFunction := make(map[string]*[]map[string]int)
 
 	for _, nodeInfo := range profile.Processors {
 		// For each NUMA node configuration
@@ -32,23 +31,50 @@ func (r *HostReconciler) ReconcileProcessors(client *gophercloud.ServiceClient, 
 
 			count := host.CountCPUByFunction(nodeInfo.Node, f.Function)
 			if count != f.Count {
-				opts := []cpus.CPUOpts{{
-					Function: f.Function,
-					Sockets:  []map[string]int{{strconv.Itoa(nodeInfo.Node): f.Count}},
-				}}
+				updateRequired = true
 
-				logHost.Info("updating CPU configuration", "opts", opts)
-
-				_, err := cpus.Update(client, host.ID, opts).Extract()
-				if err != nil {
-					err = perrors.Wrapf(err, "failed to update processors: %s, %s",
-						host.ID, common.FormatStruct(opts))
-					return err
+				if socketListCache, ok := optsByFunction[f.Function]; ok {
+					*socketListCache = append(*socketListCache, map[string]int{strconv.Itoa(nodeInfo.Node): f.Count})
+				} else {
+					optsByFunction[f.Function] = &[]map[string]int{{strconv.Itoa(nodeInfo.Node): f.Count}}
 				}
-
-				updated = true
 			}
 		}
+	}
+
+	if updateRequired {
+		var cpuOpts cpus.CPUOpts
+		for key, value := range optsByFunction {
+			cpuOpts = cpus.CPUOpts{Function: key, Sockets: *value}
+			opts = append(opts, cpuOpts)
+		}
+	}
+
+	return opts, updateRequired
+}
+
+// ReconcileProcessors is responsible for reconciling the CPU configuration of a
+// host resource.
+func (r *HostReconciler) ReconcileProcessors(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+	updated := false
+
+	if len(profile.Processors) == 0 || !com.IsReconcilerEnabled(com.Processor) {
+		return nil
+	}
+
+	opts, updateRequired := r.GetCPUUpdateOpts(profile, host)
+
+	if updateRequired {
+		logHost.Info("updating CPU configuration", "opts", opts)
+
+		_, err := cpus.Update(client, host.ID, opts).Extract()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update processors: %s, %s",
+				host.ID, common.FormatStruct(opts))
+			return err
+		}
+
+		updated = true
 	}
 
 	if updated {
