@@ -578,6 +578,9 @@ spec:
                 description: MaxCPUMhzConfigured defines the maximum limit of the CPU mhz configured on the host.
                 pattern: ^[1-9][0-9]*$
                 type: string
+              appArmor:
+                description: AppArmor defines the security model of the host
+                type: string
               memory:
                 description: Memory defines the memory allocations for each function across all NUMA sockets/nodes.
                 items:
@@ -1380,6 +1383,9 @@ spec:
                   maxCPUMhzConfigured:
                     description: MaxCPUMhzConfigured defines the maximum limit of the CPU mhz configured on the host.
                     pattern: ^[1-9][0-9]*$
+                    type: string
+                  appArmor:
+                    description: AppArmor defines the security model of the host
                     type: string
                   memory:
                     description: Memory defines the memory allocations for each function across all NUMA sockets/nodes.
