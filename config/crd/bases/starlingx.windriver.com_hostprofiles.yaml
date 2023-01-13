@@ -79,6 +79,9 @@ spec:
                 - locked
                 - unlocked
                 type: string
+              appArmor:
+                description: AppArmor defines the security model on the host.
+                type: string
               base:
                 description: "Base defines the name of another HostProfile from which
                   to inherit attributes.  HostProfiles can be structured in a hierarchy
@@ -584,9 +587,6 @@ spec:
                 description: MaxCPUMhzConfigured defines the maximum limit of the
                   CPU mhz configured on the host.
                 pattern: ^[1-9][0-9]*$
-                type: string
-              appArmor:
-                description: AppArmor defines the security model of the host
                 type: string
               memory:
                 description: Memory defines the memory allocations for each function

@@ -801,7 +801,12 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
-	spec.MaxCPUMhzConfigured = &host.MaxCPUMhzConfigured
+	if host.AppArmor != "" {
+		spec.AppArmor = &host.AppArmor
+	}
+	if host.MaxCPUMhzConfigured != "" {
+		spec.MaxCPUMhzConfigured = &host.MaxCPUMhzConfigured
+	}
 	if host.Location.Name != nil && *host.Location.Name != "" {
 		spec.Location = host.Location.Name
 	}
