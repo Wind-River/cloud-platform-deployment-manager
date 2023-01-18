@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package v1
 
@@ -88,7 +88,7 @@ var _ = Describe("Constructor utils for kind", func() {
 						want: "/dev/sdc"},
 				}
 				for _, tt := range tests {
-					got := fixDevicePath(tt.args.path, tt.args.host)
+					got := FixDevicePath(tt.args.path, tt.args.host)
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 				}
 			})
