@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package host
 
@@ -16,6 +16,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -33,7 +34,7 @@ func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileS
 }
 
 // FixProfileAttributes makes some adjustments to profile attributes
-func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec) {
+func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
 	// To compare the BootMAC's we need to lowercase the values
 	if a.BootMAC != nil {
 		lowerDefaultsBootMAC := strings.ToLower(*a.BootMAC)
@@ -59,6 +60,43 @@ func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec) {
 			}
 		}
 	}
+	FixProfileDevicePath(a, hostInfo)
+}
+
+// FixProfileDevicePath is to fix the device path if it is offered as device node
+func FixProfileDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
+	if a.RootDevice != nil {
+		rootDevice := starlingxv1.FixDevicePath(*a.RootDevice, *hostInfo)
+		a.RootDevice = &rootDevice
+	}
+
+	if a.BootDevice != nil {
+		bootDevice := starlingxv1.FixDevicePath(*a.BootDevice, *hostInfo)
+		a.BootDevice = &bootDevice
+	}
+
+	if a.Storage.OSDs != nil {
+		FixOSDDevicePath(a, hostInfo)
+	}
+
+	if a.Storage.VolumeGroups != nil {
+		err := starlingxv1.ParseVolumeGroupInfo(a, *hostInfo)
+		if err != nil {
+			logHost.Error(err, "Failed to parse volume group")
+		}
+	}
+}
+
+// FixOSDDevicePath is to fix device path in the profile's OSD spec
+func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
+
+	result := make([]starlingxv1.OSDInfo, 0)
+	for _, o := range *a.Storage.OSDs {
+		o.Path = starlingxv1.FixDevicePath(o.Path, *hostInfo)
+		result = append(result, o)
+	}
+	list := starlingxv1.OSDList(result)
+	a.Storage.OSDs = &list
 }
 
 // GetHostProfile retrieves a HostProfileSpec from the kubernetes API
