@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package v1
 
@@ -525,7 +525,7 @@ func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGrou
 // parsePartitionInfo is a utility which parses the partition data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
+func ParseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]VolumeGroupInfo, len(host.VolumeGroups))
 
 	for i, vg := range host.VolumeGroups {
@@ -662,7 +662,7 @@ func parseStorageInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	}
 
 	// Fill-in partition attributes
-	err = parseVolumeGroupInfo(profile, host)
+	err = ParseVolumeGroupInfo(profile, host)
 	if err != nil {
 		return err
 	}
@@ -744,11 +744,11 @@ func NewNamespace(name string) (*v1.Namespace, error) {
 	return &namespace, nil
 }
 
-// fixDevicePath is a utility function that take a legacy formatted device
+// FixDevicePath is a utility function that take a legacy formatted device
 // path (e.g., sda or /dev/sda) and convert it to the newer format which is
 // more explicit
 // (e.g., /dev/disk/by-path/pci-0000:00:14.0-usb-0:1:1.0-scsi-0:0:0:0).
-func fixDevicePath(path string, host v1info.HostInfo) string {
+func FixDevicePath(path string, host v1info.HostInfo) string {
 	shortFormNode := regexp.MustCompile(`(?s)^\w+$`)
 	longFormNode := regexp.MustCompile(`(?s)^/dev/\w+$`)
 
@@ -808,9 +808,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		spec.Location = host.Location.Name
 	}
 
-	bootDevice := fixDevicePath(host.BootDevice, host)
+	bootDevice := FixDevicePath(host.BootDevice, host)
 	spec.BootDevice = &bootDevice
-	rootDevice := fixDevicePath(host.RootDevice, host)
+	rootDevice := FixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
 	clock := *host.ClockSynchronization
 	clockCopied := clock[0:] // Copy ClockSynchronization value
@@ -873,7 +873,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		return nil, err
 	}
 
-	// Fill-in Route attributes
+	// Fill-in Storage attributes
 	err = parseStorageInfo(&spec, host)
 	if err != nil {
 		return nil, err
