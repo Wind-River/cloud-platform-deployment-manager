@@ -525,7 +525,7 @@ func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGrou
 // parsePartitionInfo is a utility which parses the partition data as it is
 // presented by the system API and stores the data in the form required by a
 // profile spec.
-func ParseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
+func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]VolumeGroupInfo, len(host.VolumeGroups))
 
 	for i, vg := range host.VolumeGroups {
@@ -662,7 +662,7 @@ func parseStorageInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	}
 
 	// Fill-in partition attributes
-	err = ParseVolumeGroupInfo(profile, host)
+	err = parseVolumeGroupInfo(profile, host)
 	if err != nil {
 		return err
 	}
