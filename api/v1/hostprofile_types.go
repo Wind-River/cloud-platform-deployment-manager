@@ -850,6 +850,10 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:Pattern=^[1-9][0-9]*$
 	// +optional
 	MaxCPUMhzConfigured *string `json:"maxCPUMhzConfigured,omitempty"`
+
+	// AppArmor defines the security model on the host.
+	// +optional
+	AppArmor *string `json:"appArmor,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile

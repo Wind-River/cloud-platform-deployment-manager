@@ -273,6 +273,11 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 		opts.MaxCPUMhzConfigured = profile.MaxCPUMhzConfigured
 	}
 
+	if profile.AppArmor != nil && *profile.AppArmor != h.AppArmor {
+		result = true
+		opts.AppArmor = profile.AppArmor
+	}
+
 	if profile.RootDevice != nil && *profile.RootDevice != h.RootDevice {
 		result = true
 		opts.RootDevice = profile.RootDevice

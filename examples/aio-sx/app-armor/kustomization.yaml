@@ -1,0 +1,6 @@
+bases:
+  - ../default
+
+patches:
+  - app-armor.yaml
+
