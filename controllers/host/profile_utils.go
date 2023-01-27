@@ -80,10 +80,7 @@ func FixProfileDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostI
 	}
 
 	if a.Storage.VolumeGroups != nil {
-		err := starlingxv1.ParseVolumeGroupInfo(a, *hostInfo)
-		if err != nil {
-			logHost.Error(err, "Failed to parse volume group")
-		}
+		FixVolumeGroupPath(a, hostInfo)
 	}
 }
 
@@ -97,6 +94,41 @@ func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo)
 	}
 	list := starlingxv1.OSDList(result)
 	a.Storage.OSDs = &list
+}
+
+// FixVolumeGroupPath is to fix device path in the profile's VolumeGroup spec
+func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
+
+	result := make([]starlingxv1.VolumeGroupInfo, 0)
+	for _, vg := range *a.Storage.VolumeGroups {
+		pvs := FixPhysicalVolumesPath(&vg.PhysicalVolumes, hostInfo)
+		vgInfo := starlingxv1.VolumeGroupInfo{
+			Name:            vg.Name,
+			LVMType:         vg.LVMType,
+			PhysicalVolumes: pvs,
+		}
+
+		result = append(result, vgInfo)
+	}
+	list := starlingxv1.VolumeGroupList(result)
+	a.Storage.VolumeGroups = &list
+}
+
+// FixPhysicalVolumesPath is to fix device path in the profile's physical volume spec
+func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.HostInfo) starlingxv1.PhysicalVolumeList {
+
+	list := make([]starlingxv1.PhysicalVolumeInfo, 0)
+	for _, pv := range *a {
+		pvPath := starlingxv1.FixDevicePath(pv.Path, *hostInfo)
+		pvInfo := starlingxv1.PhysicalVolumeInfo{
+			Type: pv.Type,
+			Path: pvPath,
+			Size: pv.Size,
+		}
+		list = append(list, pvInfo)
+	}
+	result := starlingxv1.PhysicalVolumeList(list)
+	return result
 }
 
 // GetHostProfile retrieves a HostProfileSpec from the kubernetes API
