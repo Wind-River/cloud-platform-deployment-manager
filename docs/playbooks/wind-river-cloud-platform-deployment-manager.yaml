@@ -164,16 +164,92 @@
 
       when: helmv2_dm_exists.rc == 0
 
+    # Remove v1 webhook, webhook service & webhook secret
+    - block:
+      - name: Search webhook configurations for v1
+        shell: |
+          kubectl get ValidatingWebhookConfigurations validating-webhook-configuration --no-headers | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        ignore_errors: yes
+        register: validation_webhook
+
+      - name: Query for validating webhook configuration
+        shell: |
+          grep -iq 'validating-webhook-configuration' <<< {{ validation_webhook.stdout_lines }}
+        ignore_errors: yes
+        register: webhook_config_exists
+
+      - name: Delete validating webhook configuration
+        shell: |
+          kubectl delete ValidatingWebhookConfigurations validating-webhook-configuration
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: webhook_config_exists.rc == 0
+
+      - name: Search webhook service for v1
+        shell: |
+          kubectl get svc webhook-server-service -n platform-deployment-manager --no-headers | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: webhook_service
+
+      - name: Query for webhook-server-service
+        shell: |
+          grep -iq 'webhook-server-service' <<< {{ webhook_service.stdout_lines }}
+        ignore_errors: yes
+        register: webhook_service_exists
+
+      - name: Delete webhook-server-service
+        shell: |
+          kubectl delete svc webhook-server-service -n platform-deployment-manager
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: webhook_service_exists.rc == 0
+
+      - name: Search webhook secret for v1
+        shell: |
+          kubectl get secrets platform-deployment-manager-webhook-server-secret -n platform-deployment-manager --no-headers | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        ignore_errors: yes
+        register: webhook_secret
+
+      - name: Query for webhook-server-secret
+        shell: |
+          grep -iq 'webhook-server-secret' <<< {{ webhook_secret.stdout_lines }}
+        ignore_errors: yes
+        register: webhook_secret_exists
+
+      - name: Delete webhook-server-secret
+        shell: |
+          kubectl delete secrets platform-deployment-manager-webhook-server-secret -n platform-deployment-manager
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: webhook_secret_exists.rc == 0
+
+      when: helmv2_dm_exists.rc != 0
+
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
       when: helmv2_dm_exists.rc != 0
 
     # Restart Deployment Manager if it was reinstalled
-    - name: Restart Deployment Manager if reinstalled
-      command: >-
-        kubectl -n platform-deployment-manager delete pods platform-deployment-manager-0
-      environment:
-        KUBECONFIG: "/etc/kubernetes/admin.conf"
+    - block:
+      - name: Search for the pod of the Deployment Manager
+        shell: |
+          kubectl -n platform-deployment-manager get pods | awk 'NR == 2 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: deployment_manager_pod_name
+      - debug:
+          msg: "{{ deployment_manager_pod_name.stdout }}"
+      - name: Restart Deployment Manager if reinstalled
+        command: >-
+          kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: deployment_manager_pod_name.stdout
       when: helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
 
     - name: Wait for Deployment Manager to be ready
