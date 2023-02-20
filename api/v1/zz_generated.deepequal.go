@@ -1717,6 +1717,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
+	if in.HwSettle != nil {
+		if (in.HwSettle == nil) != (other.HwSettle == nil) {
+			return false
+		} else if in.HwSettle != nil {
+			if *in.HwSettle != *other.HwSettle {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

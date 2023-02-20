@@ -63,6 +63,8 @@ github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/Wind-River/gophercloud v0.0.0-20230119154844-fa8a1286cb56 h1:Y8TGaHv3Bc1dBa+9iyP68I8SimdOHcDYGEz6iW+nwwI=
 github.com/Wind-River/gophercloud v0.0.0-20230119154844-fa8a1286cb56/go.mod h1:FMtdxT0Mwm0oqT7cUYr/C3LBaTZ2vpfVCVykBSTEu7o=
+github.com/Wind-River/gophercloud v0.0.0-20230224150951-d211b6ea1eb4 h1:6s7J0fx4+x43Ja7ge3UaVB/hGLIPZQ+u5Fnw4R3J+Kg=
+github.com/Wind-River/gophercloud v0.0.0-20230224150951-d211b6ea1eb4/go.mod h1:FMtdxT0Mwm0oqT7cUYr/C3LBaTZ2vpfVCVykBSTEu7o=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
@@ -456,6 +458,8 @@ github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An
 github.com/spf13/viper v1.7.0/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5qpdg=
 github.com/spf13/viper v1.8.1 h1:Kq1fyeebqsBfbjZj4EL7gj2IO0mMaiyjYUWcUsl2O44=
 github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH9Ns=
+github.com/sselvara1/gophercloud v0.0.0-20230223101244-77c13c232f8c h1:rOCmZUK/TAwh5XnjlfxORmcm/9KDWZdlIXlvqEYD+1g=
+github.com/sselvara1/gophercloud v0.0.0-20230223101244-77c13c232f8c/go.mod h1:FMtdxT0Mwm0oqT7cUYr/C3LBaTZ2vpfVCVykBSTEu7o=
 github.com/stoewer/go-strcase v1.2.0/go.mod h1:IBiWB2sKIp3wVVQ3Y035++gc+knqhUQag1KpM8ahLw8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

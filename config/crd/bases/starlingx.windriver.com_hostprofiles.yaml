@@ -199,6 +199,11 @@ spec:
                 description: Console defines the installation output device.
                 pattern: ^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$
                 type: string
+              hwSettle:
+                description: HwSettle defines the wait time for SCSI devices to show
+                  up.
+                pattern: ^[1-9][0-9]*$
+                type: string
               installOutput:
                 description: InstallOutput defines the install output method.  The
                   graphical mode is only suitable when the console attribute is set
