@@ -854,6 +854,11 @@ type ProfileBaseAttributes struct {
 	// AppArmor defines the security model on the host.
 	// +optional
 	AppArmor *string `json:"appArmor,omitempty"`
+
+	// HwSettle defines the wait time for SCSI devices to show up.
+	// +kubebuilder:validation:Pattern=^[1-9][0-9]*$
+	// +optional
+	HwSettle *string `json:"hwSettle,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile

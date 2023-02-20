@@ -281,6 +281,11 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 		opts.AppArmor = profile.AppArmor
 	}
 
+	if profile.HwSettle != nil && *profile.HwSettle != h.HwSettle {
+		result = true
+		opts.HwSettle = profile.HwSettle
+	}
+
 	if profile.RootDevice != nil && *profile.RootDevice != h.RootDevice {
 		result = true
 		opts.RootDevice = profile.RootDevice

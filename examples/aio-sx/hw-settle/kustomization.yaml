@@ -1,0 +1,6 @@
+bases:
+  - ../default
+
+patches:
+  - hw-settle.yaml
+
