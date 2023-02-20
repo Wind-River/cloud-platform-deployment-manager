@@ -805,6 +805,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
+	if host.HwSettle != "" {
+		spec.HwSettle = &host.HwSettle
+	}
 	if host.AppArmor != "" {
 		spec.AppArmor = &host.AppArmor
 	}
