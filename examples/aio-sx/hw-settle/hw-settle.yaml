@@ -1,0 +1,9 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  hwSettle: 0
