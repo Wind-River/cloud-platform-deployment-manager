@@ -19,9 +19,11 @@ HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 GIT_HEAD := $(shell git rev-list -1 HEAD)
 GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_PATCH := ""
 
 APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
 DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitPatch=${GIT_PATCH}
 DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitHead=${GIT_HEAD}
 DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
 
