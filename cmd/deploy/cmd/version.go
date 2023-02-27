@@ -5,17 +5,23 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 // Version info variables are set in the Makefile
 var GitLastTag string
 var GitHead string
 var GitBranch string
+var GitPatch string
 
 func VersionToString() string {
-	return (fmt.Sprintf("%s (%s: %s)", GitLastTag, GitBranch, GitHead))
+	if GitPatch == "" {
+		return (fmt.Sprintf("%s (%s: %s)", GitLastTag, GitBranch, GitHead))
+	} else {
+		return (fmt.Sprintf("%s-%s (%s: %s)", GitLastTag, GitPatch, GitBranch, GitHead))
+	}
 }
 
 func VersionCmdRun(cmd *cobra.Command, args []string) {
