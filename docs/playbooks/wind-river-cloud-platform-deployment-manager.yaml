@@ -238,7 +238,7 @@
     - block:
       - name: Search for the pod of the Deployment Manager
         shell: |
-          kubectl -n platform-deployment-manager get pods | awk 'NR == 2 { print $1 }'
+          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
         environment:
           KUBECONFIG: "/etc/kubernetes/admin.conf"
         register: deployment_manager_pod_name

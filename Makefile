@@ -255,6 +255,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/https-with-cert-manager > examples/standard-https-with-cert-manager.yaml
 	$(KUSTOMIZE) build examples/standard/bond > examples/standard-bond.yaml
 	$(KUSTOMIZE) build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
+	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
 	$(KUSTOMIZE) build examples/storage/default > examples/storage.yaml
 	$(KUSTOMIZE) build examples/aio-sx/default > examples/aio-sx.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
@@ -263,6 +264,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/single-nic > examples/aio-sx-single-nic.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vf-rate-limit > examples/aio-sx-vf-rate-limit.yaml
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
+	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https > examples/aio-dx-https.yaml

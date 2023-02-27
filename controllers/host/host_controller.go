@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package host
 
@@ -271,6 +271,11 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 	if profile.MaxCPUMhzConfigured != nil && *profile.MaxCPUMhzConfigured != h.MaxCPUMhzConfigured {
 		result = true
 		opts.MaxCPUMhzConfigured = profile.MaxCPUMhzConfigured
+	}
+
+	if profile.AppArmor != nil && *profile.AppArmor != h.AppArmor {
+		result = true
+		opts.AppArmor = profile.AppArmor
 	}
 
 	if profile.RootDevice != nil && *profile.RootDevice != h.RootDevice {
@@ -1265,8 +1270,6 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 	defaults.BoardManagement = &bmInfo
 
-	FixProfileAttributes(defaults, profile, current)
-
 	// Create a new composite profile that is backed by the host's default
 	// configuration.  This will ensure that if a user deletes an optional
 	// attribute that we will know how to restore the original value.
@@ -1274,6 +1277,11 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	if err != nil {
 		return err
 	}
+
+	// Fix attributes in profiles to a uniformed format
+	// As the Merge Profiles will overwrite some formate in the default profile
+	// parsed in the constructor, move this process after it.
+	FixProfileAttributes(defaults, profile, current, &hostInfo)
 
 	// TODO(alegacy): Need to move ProvisioningMode out of the profile or
 	//  find a way to populate it into profiles generated from the running

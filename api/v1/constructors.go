@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package v1
 
@@ -744,11 +744,11 @@ func NewNamespace(name string) (*v1.Namespace, error) {
 	return &namespace, nil
 }
 
-// fixDevicePath is a utility function that take a legacy formatted device
+// FixDevicePath is a utility function that take a legacy formatted device
 // path (e.g., sda or /dev/sda) and convert it to the newer format which is
 // more explicit
 // (e.g., /dev/disk/by-path/pci-0000:00:14.0-usb-0:1:1.0-scsi-0:0:0:0).
-func fixDevicePath(path string, host v1info.HostInfo) string {
+func FixDevicePath(path string, host v1info.HostInfo) string {
 	shortFormNode := regexp.MustCompile(`(?s)^\w+$`)
 	longFormNode := regexp.MustCompile(`(?s)^/dev/\w+$`)
 
@@ -801,14 +801,19 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
-	spec.MaxCPUMhzConfigured = &host.MaxCPUMhzConfigured
+	if host.AppArmor != "" {
+		spec.AppArmor = &host.AppArmor
+	}
+	if host.MaxCPUMhzConfigured != "" {
+		spec.MaxCPUMhzConfigured = &host.MaxCPUMhzConfigured
+	}
 	if host.Location.Name != nil && *host.Location.Name != "" {
 		spec.Location = host.Location.Name
 	}
 
-	bootDevice := fixDevicePath(host.BootDevice, host)
+	bootDevice := FixDevicePath(host.BootDevice, host)
 	spec.BootDevice = &bootDevice
-	rootDevice := fixDevicePath(host.RootDevice, host)
+	rootDevice := FixDevicePath(host.RootDevice, host)
 	spec.RootDevice = &rootDevice
 	clock := *host.ClockSynchronization
 	clockCopied := clock[0:] // Copy ClockSynchronization value
@@ -871,7 +876,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 		return nil, err
 	}
 
-	// Fill-in Route attributes
+	// Fill-in Storage attributes
 	err = parseStorageInfo(&spec, host)
 	if err != nil {
 		return nil, err
