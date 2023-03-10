@@ -44,7 +44,7 @@ var _ = Describe("Constructor utils for kind", func() {
 		})
 	})
 
-	Describe("fixDevicePath utility", func() {
+	Describe("FixDevicePath utility", func() {
 		Context("with path data", func() {
 			It("should convert it to the newer format", func() {
 				type args struct {
@@ -61,6 +61,8 @@ var _ = Describe("Constructor utils for kind", func() {
 							DevicePath: "/dev/disk/by-path/pci-0000:00:16.0-usb-0:1:1.0-scsi-0:0:0:0"},
 						{DeviceNode: "/dev/sdb",
 							DevicePath: "/dev/disk/by-path/pci-0000:00:17.0-usb-0:1:1.0-scsi-0:0:0:0"},
+						{DeviceNode: "/dev/mapper/mpatha",
+							DevicePath: "/dev/disk/by-id/pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0"},
 					},
 				}
 				tests := []struct {
@@ -86,6 +88,18 @@ var _ = Describe("Constructor utils for kind", func() {
 					{name: "not-found",
 						args: args{path: "/dev/sdc", host: host1},
 						want: "/dev/sdc"},
+					{name: "imcomplete-mapper-not-found",
+						args: args{path: "mpatha", host: host1},
+						want: "mpatha"},
+					{name: "mapper-form",
+						args: args{path: "/dev/mapper/mpatha", host: host1},
+						want: "/dev/disk/by-id/pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0"},
+					{name: "path-form",
+						args: args{path: "/dev/disk/by-id/pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0", host: host1},
+						want: "/dev/disk/by-id/pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0"},
+					{name: "imcomplete-path-form-not-found",
+						args: args{path: "pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0", host: host1},
+						want: "pci-0000:00:18.0-usb-0:1:1.0-scsi-0:0:0:0"},
 				}
 				for _, tt := range tests {
 					got := FixDevicePath(tt.args.path, tt.args.host)
