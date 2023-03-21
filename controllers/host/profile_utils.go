@@ -89,8 +89,24 @@ func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo)
 
 	result := make([]starlingxv1.OSDInfo, 0)
 	for _, o := range *a.Storage.OSDs {
+		found := false
 		o.Path = starlingxv1.FixDevicePath(o.Path, *hostInfo)
-		result = append(result, o)
+
+		// Check if the element exists with different format(short device node,
+		// full deveice node, device path etc.) in the result list, should
+		// not add duplication the profile.
+		if len(result) > 0 {
+			for _, elem := range result {
+				found = common.CompareStructs(o, elem)
+				if found {
+					break
+				}
+			}
+		}
+
+		if !found {
+			result = append(result, o)
+		}
 	}
 	list := starlingxv1.OSDList(result)
 	a.Storage.OSDs = &list
@@ -119,13 +135,29 @@ func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.
 
 	list := make([]starlingxv1.PhysicalVolumeInfo, 0)
 	for _, pv := range *a {
+		found := false
 		pvPath := starlingxv1.FixDevicePath(pv.Path, *hostInfo)
 		pvInfo := starlingxv1.PhysicalVolumeInfo{
 			Type: pv.Type,
 			Path: pvPath,
 			Size: pv.Size,
 		}
-		list = append(list, pvInfo)
+
+		// Check if the element exists with different format(short device node,
+		// full deveice node, device path etc.) in the result list, should
+		// not add duplication the profile.
+		if len(list) > 0 {
+			for _, elem := range list {
+				found = common.CompareStructs(pvInfo, elem)
+				if found {
+					break
+				}
+			}
+		}
+
+		if !found {
+			list = append(list, pvInfo)
+		}
 	}
 	result := starlingxv1.PhysicalVolumeList(list)
 	return result
