@@ -105,6 +105,12 @@ func FormatStruct(obj interface{}) string {
 	return string(buf)
 }
 
+func CompareStructs(a, b interface{}) bool {
+	bufferA, _ := json.Marshal(a)
+	bufferB, _ := json.Marshal(b)
+	return string(bufferA) == string(bufferB)
+}
+
 // ReconcilerErrorHandler defines the interface type associated to any
 // reconciler error handler.
 type ReconcilerErrorHandler interface {
