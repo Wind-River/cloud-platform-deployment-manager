@@ -6,4 +6,5 @@ metadata:
   name: controller-profile
   namespace: deployment
 spec:
-  hwSettle: 0
+  hwSettle: "0"
+

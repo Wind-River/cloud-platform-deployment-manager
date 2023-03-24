@@ -856,7 +856,7 @@ type ProfileBaseAttributes struct {
 	AppArmor *string `json:"appArmor,omitempty"`
 
 	// HwSettle defines the wait time for SCSI devices to show up.
-	// +kubebuilder:validation:Pattern=^[1-9][0-9]*$
+	// +kubebuilder:validation:Pattern=^[0-9]+$
 	// +optional
 	HwSettle *string `json:"hwSettle,omitempty"`
 }
