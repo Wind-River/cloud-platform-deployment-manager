@@ -428,6 +428,7 @@
         # if unlock was not triggered, get information and make the playbook fail below
         - block:
           # Get a list of unreconciled resources pre unlock
+          # This task is getting the last column as RECONCILED value
           - name: Retrieve kubectl resources in unreconciled status
             shell: >-
               kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
@@ -493,16 +494,18 @@
 
           # After reboot, wait some time for resources to be reconciled.
           # If we have all of them reconciled, playbook won't fail.
+          # This task is getting the last column as RECONCILED status value
           - name: Retrieve kubectl resources reconciled status
             shell: >-
-              kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
-              awk '$NF ~ /^false/ {print}'
+              (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+               kubectl -n deployment get hosts "{{ get_host_name.stdout}}") |
+               awk '$NF ~ /^false/ {print}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: get_unrecon_status_post
             until: (get_unrecon_status_post.stdout == "" and get_unrecon_status_post.stderr == "")
             retries: 80
-            delay: 15
+            delay: 25
             ignore_errors: yes
 
           - name: fail if previous task failed
@@ -563,8 +566,7 @@
               - "{{get_logs_after_unlock.stdout}}"
           register: fail_dm_after_unlock
           when: ("Unlocking" in get_show_task_status.stdout
-                 and get_unrecon_status_post.stdout != ""
-                 or get_unrecon_status_post.stderr == "")
+                 and get_unrecon_status_post.stdout != "")
 
       when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
              and "unlocked" not in current_administrativestate.stdout
