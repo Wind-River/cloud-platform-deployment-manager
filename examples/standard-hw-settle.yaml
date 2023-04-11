@@ -163,7 +163,7 @@ metadata:
   namespace: deployment
 spec:
   base: common-profile
-  hwSettle: 0
+  hwSettle: "0"
   interfaces:
     ethernet:
     - class: platform

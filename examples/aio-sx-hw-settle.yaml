@@ -96,7 +96,7 @@ spec:
   administrativeState: unlocked
   bootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
   console: tty0
-  hwSettle: 0
+  hwSettle: "0"
   installOutput: text
   interfaces:
     ethernet:
