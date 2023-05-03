@@ -429,6 +429,13 @@ type SystemStatus struct {
 	// Defines whether the resource has been provisioned on the target system.
 	InSync bool `json:"inSync"`
 
+	// DeploymentType defines wheter the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=initial;update
+	// +optional
+	// +kubebuilder:default:=initial
+	DeploymentType string `json:"deploymentType"`
+
 	// Reconciled defines whether the System has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
