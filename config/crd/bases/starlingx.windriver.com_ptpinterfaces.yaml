@@ -24,6 +24,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -61,13 +65,13 @@ spec:
           status:
             description: PtpInterfaceStatus defines the observed state of PtpInterface
             properties:
-              deploymentType:
-                default: initial
-                description: DeploymentType defines wheter the resource has been deployed
-                  on the initial setup or during an update.
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been
+                  deployed on the initial setup or during an update.
                 enum:
-                - initial
-                - update
+                - bootstrap
+                - principal
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This

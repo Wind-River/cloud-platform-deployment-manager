@@ -509,7 +509,7 @@ func (in *DataNetworkStatus) DeepEqual(other *DataNetworkStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 
@@ -856,7 +856,7 @@ func (in *HostStatus) DeepEqual(other *HostStatus) bool {
 	if in.Reconciled != other.Reconciled {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 	if (in.Defaults == nil) != (other.Defaults == nil) {
@@ -1429,7 +1429,7 @@ func (in *PlatformNetworkStatus) DeepEqual(other *PlatformNetworkStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 
@@ -1867,7 +1867,7 @@ func (in *PtpInstanceStatus) DeepEqual(other *PtpInstanceStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 
@@ -1952,7 +1952,7 @@ func (in *PtpInterfaceStatus) DeepEqual(other *PtpInterfaceStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 
@@ -2335,7 +2335,7 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
-	if in.DeploymentType != other.DeploymentType {
+	if in.DeploymentScope != other.DeploymentScope {
 		return false
 	}
 	if in.Reconciled != other.Reconciled {
