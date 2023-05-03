@@ -113,6 +113,13 @@ type HostStatus struct {
 	// reconciler.
 	Reconciled bool `json:"reconciled"`
 
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
+
 	// Defaults defines the configuration attributed collected before applying
 	// any user configuration values.
 	Defaults *string `json:"defaults,omitempty"`
@@ -131,6 +138,7 @@ type HostStatus struct {
 // +kubebuilder:printcolumn:name="profile",type="string",JSONPath=".spec.profile",description="The configuration profile of the host."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 type Host struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

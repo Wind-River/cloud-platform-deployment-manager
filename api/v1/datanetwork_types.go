@@ -74,6 +74,13 @@ type DataNetworkStatus struct {
 
 	// Defines whether the resource has been provisioned on the target system.
 	InSync bool `json:"inSync"`
+
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
 }
 
 // +kubebuilder:object:root=true
@@ -88,6 +95,7 @@ type DataNetworkStatus struct {
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".spec.type",description="The data network encapsulation type."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 type DataNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

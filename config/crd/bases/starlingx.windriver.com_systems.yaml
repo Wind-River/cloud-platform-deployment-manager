@@ -36,6 +36,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -331,6 +335,14 @@ spec:
               defaults:
                 description: Defaults defines the configuration attributed collected
                   before applying any user configuration values.
+                type: string
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been
+                  deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.

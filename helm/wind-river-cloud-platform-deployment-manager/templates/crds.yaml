@@ -38,6 +38,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -99,6 +103,13 @@ spec:
           status:
             description: DataNetworkStatus defines the observed state of DataNetwork
             properties:
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
@@ -927,6 +938,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -1692,6 +1707,13 @@ spec:
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
                 type: string
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
@@ -1768,6 +1790,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -1853,6 +1879,13 @@ spec:
           status:
             description: PlatformNetworkStatus defines the observed state of PlatformNetwork
             properties:
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
@@ -1917,6 +1950,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -1952,6 +1989,13 @@ spec:
           status:
             description: PtpInstanceStatus defines the observed state of PtpInstance
             properties:
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
@@ -2013,6 +2057,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -2044,6 +2092,13 @@ spec:
           status:
             description: PtpInterfaceStatus defines the observed state of PtpInterface
             properties:
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
@@ -2117,6 +2172,10 @@ spec:
       jsonPath: .status.reconciled
       name: reconciled
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     name: v1
     schema:
       openAPIV3Schema:
@@ -2340,6 +2399,13 @@ spec:
             properties:
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
+                type: string
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
