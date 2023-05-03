@@ -332,6 +332,14 @@ spec:
                 description: Defaults defines the configuration attributed collected
                   before applying any user configuration values.
                 type: string
+              deploymentType:
+                default: initial
+                description: DeploymentType defines wheter the resource has been deployed
+                  on the initial setup or during an update.
+                enum:
+                - initial
+                - update
+                type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
                 type: string

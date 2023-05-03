@@ -113,6 +113,13 @@ type HostStatus struct {
 	// reconciler.
 	Reconciled bool `json:"reconciled"`
 
+	// DeploymentType defines wheter the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=initial;update
+	// +optional
+	// +kubebuilder:default:=initial
+	DeploymentType string `json:"deploymentType"`
+
 	// Defaults defines the configuration attributed collected before applying
 	// any user configuration values.
 	Defaults *string `json:"defaults,omitempty"`
