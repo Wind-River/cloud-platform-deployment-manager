@@ -34,14 +34,14 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
-    - description: The current reconciliation state.
-      jsonPath: .status.reconciled
-      name: reconciled
-      type: boolean
     - description: The current deploymentScope state.
       jsonPath: .status.deploymentScope
       name: scope
       type: string
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:
@@ -934,14 +934,14 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
-    - description: The current reconciliation state.
-      jsonPath: .status.reconciled
-      name: reconciled
-      type: boolean
     - description: The current deploymentScope state.
       jsonPath: .status.deploymentScope
       name: scope
       type: string
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:
@@ -1946,14 +1946,14 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
-    - description: The current reconciliation state.
-      jsonPath: .status.reconciled
-      name: reconciled
-      type: boolean
     - description: The current deploymentScope state.
       jsonPath: .status.deploymentScope
       name: scope
       type: string
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:
@@ -2053,14 +2053,14 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
-    - description: The current reconciliation state.
-      jsonPath: .status.reconciled
-      name: reconciled
-      type: boolean
     - description: The current deploymentScope state.
       jsonPath: .status.deploymentScope
       name: scope
       type: string
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:
@@ -2168,14 +2168,14 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
-    - description: The current reconciliation state.
-      jsonPath: .status.reconciled
-      name: reconciled
-      type: boolean
     - description: The current deploymentScope state.
       jsonPath: .status.deploymentScope
       name: scope
       type: string
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:

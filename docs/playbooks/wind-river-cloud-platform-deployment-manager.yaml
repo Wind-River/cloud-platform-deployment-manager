@@ -429,6 +429,8 @@
         - block:
           # Get a list of unreconciled resources pre unlock
           # This task is getting the last column as RECONCILED value
+          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
+          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
           - name: Retrieve kubectl resources in unreconciled status
             shell: >-
               kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
@@ -495,6 +497,8 @@
           # After reboot, wait some time for resources to be reconciled.
           # If we have all of them reconciled, playbook won't fail.
           # This task is getting the last column as RECONCILED status value
+          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
+          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
           - name: Retrieve kubectl resources reconciled status
             shell: >-
               (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
