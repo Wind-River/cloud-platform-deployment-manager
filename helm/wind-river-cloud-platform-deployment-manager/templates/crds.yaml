@@ -22,6 +22,7 @@ spec:
     listKind: DataNetworkList
     plural: datanetworks
     singular: datanetwork
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -147,6 +148,7 @@ spec:
     listKind: HostProfileList
     plural: hostprofiles
     singular: hostprofile
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -860,6 +862,7 @@ spec:
     listKind: HostList
     plural: hosts
     singular: host
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -1667,6 +1670,7 @@ spec:
     listKind: PlatformNetworkList
     plural: platformnetworks
     singular: platformnetwork
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -1826,6 +1830,7 @@ spec:
     listKind: PtpInstanceList
     plural: ptpinstances
     singular: ptpinstance
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -1920,6 +1925,7 @@ spec:
     listKind: PtpInterfaceList
     plural: ptpinterfaces
     singular: ptpinterface
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -2011,6 +2017,7 @@ spec:
     listKind: SystemList
     plural: systems
     singular: system
+  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
