@@ -315,6 +315,8 @@ func (r *DataNetworkReconciler) ReconcileResource(client *gophercloud.ServiceCli
 			// Update the resource status to link it to the system object.
 			logDataNetwork.Info("updating data network", "status", instance.Status)
 
+			instance.Status.DeploymentScope = "bootstrap"
+
 			err2 := r.Client.Status().Update(context.TODO(), instance)
 			if err2 != nil {
 				err2 = perrors.Wrapf(err2, "failed to update status: %s",
