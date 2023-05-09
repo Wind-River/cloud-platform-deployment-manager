@@ -1090,6 +1090,7 @@ func (r *SystemReconciler) BuildSystemDefaults(instance *starlingxv1.System, sys
 
 	data := string(buffer)
 	instance.Status.Defaults = &data
+	instance.Status.DeploymentScope = "bootstrap"
 
 	err = r.Client.Status().Update(context.Background(), instance)
 	if err != nil {
