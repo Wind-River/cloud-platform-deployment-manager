@@ -184,7 +184,7 @@ files.
 ### Generating Deployment Configurations From Existing Installations
 
 End users can migrate existing installations to use the Deployment Manager by
-using the ```deploy``` tool to generate a deployment configuration from a
+using the ```deployctl``` tool to generate a deployment configuration from a
 running system.  The tool is designed to access the System API to extract
 resources from the running system and format them as a deployment configuration
 file that conforms to the Kubernetes CRD instances defined by the Deployment
@@ -192,9 +192,9 @@ Manager and can be consumed by the Deployment Manager to configure the same
 system.
 
 
-### Building The ```deploy``` Tool
+### Building The ```deployctl``` Tool
 
-The deploy tool can be built using the following command.  These instructions
+The deployctl tool can be built using the following command.  These instructions
 assume that you have cloned this repo and that your local environment is
 suitable for building Go packages.  The resulting binary program will be written
 to the ```bin``` directory of this repo.
@@ -203,11 +203,11 @@ to the ```bin``` directory of this repo.
 $ make tools
 ```
 
-### Using The ```deploy``` Tool
+### Using The ```deployctl``` Tool
 
 To access the System API the system endpoint credentials must be sourced
 into the shell environment variables.  The following command example assumes that
-the ```deploy``` tool has already been copied up to the target system.
+the ```deployctl``` tool has already been copied up to the target system.
 Alternatively, the tool can be run remotely, but the "openrc" credentials file
 must be downloaded to the local system beforehand and the endpoint URL contained
 within it must be updated to point to the system's public Keystone endpoint.
