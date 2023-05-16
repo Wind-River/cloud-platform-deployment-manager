@@ -15,15 +15,16 @@ HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{pri
 HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
 HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
-# Parameters for deploy tool
+# Parameters for deployctl tool
 GIT_HEAD := $(shell git rev-list -1 HEAD)
 GIT_LAST_TAG := WRCP_22.12-wrs.8    # version needs to be specified here
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
-DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
-DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitHead=${GIT_HEAD}
-DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deployctl/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitPatch=${GIT_PATCH}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitBranch=${GIT_BRANCH}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
@@ -115,8 +116,8 @@ build: generate fmt golangci vet ## Build manager binary.
 	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
 
 .PHONY: tools
-tools: generate fmt vet ## Build deploy binary.
-	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy cmd/deploy/main.go
+tools: generate fmt vet ## Build deployctl binary.
+	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deployctl cmd/deployctl/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
