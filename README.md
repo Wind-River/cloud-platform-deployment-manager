@@ -214,7 +214,7 @@ within it must be updated to point to the system's public Keystone endpoint.
 
 ```bash
 $ source /etc/platform/openrc
-$ ./deploy build -n deployment -s vbox --minimal-config
+$ ./deployctl build -n deployment -s vbox --minimal-config
 ```
 
 The above command will produce output similar to the following example.  By
@@ -222,7 +222,7 @@ default, the generated deployment configuration file is stored in ```deployment-
 unless the output path is customized with the ```-o``` option.
 
 ```bash
-$ ../deploy build -n deployment -s vbox --minimal-config
+$ ../deployctl build -n deployment -s vbox --minimal-config
 building deployment for system "vbox" in namespace "deployment"
 building namespace configuration
 building system configuration
