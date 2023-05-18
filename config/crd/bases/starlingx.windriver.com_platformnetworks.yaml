@@ -167,9 +167,6 @@ spec:
                   reconciled at least once.  If further changes are made they will
                   be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true

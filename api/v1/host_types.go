@@ -106,11 +106,13 @@ type HostStatus struct {
 	AvailabilityStatus *string `json:"availabilityStatus,omitempty"`
 
 	// InSync defines whether the desired state matches the operational state.
+	// +optional
 	InSync bool `json:"inSync"`
 
 	// Reconciled defines whether the host has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
 	// DeploymentScope defines whether the resource has been deployed

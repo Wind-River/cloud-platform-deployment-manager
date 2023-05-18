@@ -414,19 +414,24 @@ func (in ServiceParameterInfo) IsKeyEqual(x ServiceParameterInfo) bool {
 // SystemStatus defines the observed state of System
 type SystemStatus struct {
 	// ID defines the unique identifier assigned by the system.
+	// +optional
 	ID string `json:"id"`
 
 	// SystemType defines the current system type reported by the system API.
+	// +optional
 	SystemType string `json:"systemType"`
 
 	// SystemMode defines the current system mode reported by the system API.
+	// +optional
 	SystemMode string `json:"systemMode"`
 
 	// SoftwareVersion defines the current software version reported by the
 	// system API.
+	// +optional
 	SoftwareVersion string `json:"softwareVersion"`
 
 	// Defines whether the resource has been provisioned on the target system.
+	// +optional
 	InSync bool `json:"inSync"`
 
 	// DeploymentScope defines whether the resource has been deployed
@@ -439,6 +444,7 @@ type SystemStatus struct {
 	// Reconciled defines whether the System has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
 	// Defaults defines the configuration attributed collected before applying
