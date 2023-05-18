@@ -28,9 +28,11 @@ type PtpInstanceStatus struct {
 	// Reconciled defines whether the host has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
 	// Defines whether the resource has been provisioned on the target system.
+	// +optional
 	InSync bool `json:"inSync"`
 
 	// DeploymentScope defines whether the resource has been deployed

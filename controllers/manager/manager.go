@@ -38,6 +38,11 @@ const (
 	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
 )
 
+const (
+	ScopeBootstrap = "bootstrap"
+	ScopePrincipal = "principal"
+)
+
 // CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
 type CloudManager interface {

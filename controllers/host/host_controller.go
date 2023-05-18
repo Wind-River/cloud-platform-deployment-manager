@@ -5,6 +5,7 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -1539,8 +1540,6 @@ func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, in
 	if r.statusUpdateRequired(instance, host, inSync) {
 		logHost.V(2).Info("updating host status", "status", instance.Status)
 
-		instance.Status.DeploymentScope = "bootstrap"
-
 		err2 := r.Client.Status().Update(context.TODO(), instance)
 		if err2 != nil {
 			err2 = perrors.Wrapf(err2, "failed to update status: %s",
@@ -1648,6 +1647,90 @@ func (r *HostReconciler) IsCephDelayTargetGroup(client *gophercloud.ServiceClien
 	}
 }
 
+// Obtain deploymentScope value from configuration
+// Taking this value from annotation in instacne
+// (It seems Client.Get does not update Status value from configuration)
+// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
+// "principal" if "principal" in configuration
+func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope string, err error) {
+	// Set default value for deployment scope
+	deploymentScope := cloudManager.ScopeBootstrap
+	// Set DeploymentScope from configuration
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	if annotation != nil {
+		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
+		if ok {
+			status_config := &starlingxv1.Host{}
+			err := json.Unmarshal([]byte(config), &status_config)
+			if err == nil {
+				if status_config.Status.DeploymentScope != "" {
+					switch scope := status_config.Status.DeploymentScope; scope {
+					case cloudManager.ScopeBootstrap:
+						deploymentScope = scope
+					case cloudManager.ScopePrincipal:
+						deploymentScope = scope
+					default:
+						err = fmt.Errorf("Unsupported DeploymentScope: %s",
+							status_config.Status.DeploymentScope)
+						return deploymentScope, err
+					}
+				}
+			} else {
+				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
+				return deploymentScope, err
+			}
+		}
+	}
+	return deploymentScope, nil
+}
+
+// Update deploymentScope and ReconcileAfterInSync in instance
+// ReconcileAfterInSync value will be:
+// "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "false" if deploymentScope is "bootstrap"
+// Then reflrect these values to cluster object
+func (r *HostReconciler) UpdateScopeConfig(instance *starlingxv1.Host) (err error) {
+	deploymentScope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		return err
+	}
+	logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+	// Put ReconcileAfterInSync values depends on scope
+	// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+	// "false" if scope is "bootstrap" or None
+	afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+	if deploymentScope == cloudManager.ScopePrincipal {
+		if !ok || afterInSync != "true" {
+			logHost.V(2).Info("Add annotation: ReconcileAfterInSync=true")
+			instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+		}
+	} else {
+		if ok && afterInSync == "true" {
+			logHost.V(2).Info("Delete annotation: ReconcileAfterInSync")
+			delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+		}
+	}
+
+	// Update annotation
+	err = r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
+		return err
+	}
+
+	// Update status
+	instance.Status.DeploymentScope = deploymentScope
+	err = r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update status: %s",
+			common.FormatStruct(instance.Status))
+		return err
+	}
+
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a Host object and makes changes
 // based on the state read and what is in the Host.Spec
 //+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts,verbs=get;list;watch;create;update;patch;delete
@@ -1677,6 +1760,15 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Update scope from configuration
+	logHost.V(2).Info("before UpdateScopeConfig", "instance", instance)
+	err = r.UpdateScopeConfig(instance)
+	if err != nil {
+		logHost.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logHost.V(2).Info("after UpdateScopeConfig", "instance", instance)
 
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
