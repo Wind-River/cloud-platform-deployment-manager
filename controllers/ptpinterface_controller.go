@@ -5,6 +5,8 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -390,8 +392,6 @@ func (r *PtpInterfaceReconciler) ReconcileResource(client *gophercloud.ServiceCl
 			// update the resource status to link it to the system object.
 			logPtpInterface.Info("updating PTP interface", "status", instance.Status)
 
-			instance.Status.DeploymentScope = "bootstrap"
-
 			err2 := r.Client.Status().Update(context.TODO(), instance)
 			if err2 != nil {
 				err2 = perrors.Wrapf(err2, "failed to update status: %s",
@@ -410,6 +410,88 @@ func (r *PtpInterfaceReconciler) StopAfterInSync() bool {
 	// If the option is not found or the option was specified in a form other
 	// than a bool then assume the safest default value possible.
 	return utils.GetReconcilerOptionBool(utils.PTPInterface, utils.StopAfterInSync, true)
+}
+
+// Obtain deploymentScope value from configuration
+// Taking this value from annotation in instacne
+// (It seems Client.Get does not update Status value from configuration)
+// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
+// "principal" if "principal" in configuration
+func (r *PtpInterfaceReconciler) GetScopeConfig(instance *starlingxv1.PtpInterface) (scope string, err error) {
+	// Set default value for deployment scope
+	deploymentScope := cloudManager.ScopeBootstrap
+	// Set DeploymentScope from configuration
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	if annotation != nil {
+		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
+		if ok {
+			status_config := &starlingxv1.Host{}
+			err := json.Unmarshal([]byte(config), &status_config)
+			if err == nil {
+				if status_config.Status.DeploymentScope != "" {
+					switch scope := status_config.Status.DeploymentScope; scope {
+					case cloudManager.ScopeBootstrap:
+						deploymentScope = scope
+					case cloudManager.ScopePrincipal:
+						deploymentScope = scope
+					default:
+						err = fmt.Errorf("Unsupported DeploymentScope: %s",
+							status_config.Status.DeploymentScope)
+						return deploymentScope, err
+					}
+				}
+			} else {
+				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
+				return deploymentScope, err
+			}
+		}
+	}
+	return deploymentScope, nil
+}
+
+// Update deploymentScope and ReconcileAfterInSync in instance
+// ReconcileAfterInSync value will be:
+// "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "false" if deploymentScope is "bootstrap"
+// Then reflrect these values to cluster object
+func (r *PtpInterfaceReconciler) UpdateScopeConfig(instance *starlingxv1.PtpInterface) (err error) {
+	deploymentScope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		return err
+	}
+	logPtpInterface.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+	// Put ReconcileAfterInSync values depends on scope
+	// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+	// "false" if scope is "bootstrap" or None
+	afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+	if deploymentScope == cloudManager.ScopePrincipal {
+		if !ok || afterInSync != "true" {
+			instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+		}
+	} else {
+		if ok && afterInSync == "true" {
+			delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+		}
+	}
+
+	// Update annotation
+	err = r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
+		return err
+	}
+
+	// Update status
+	instance.Status.DeploymentScope = deploymentScope
+	err = r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update status: %s",
+			common.FormatStruct(instance.Status))
+		return err
+	}
+
+	return nil
 }
 
 // Reconcile reads that state of the cluster for a PTPInterface object and makes
@@ -440,6 +522,15 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Update scope from configuration
+	logPtpInterface.V(2).Info("before UpdateScopeConfig", "instance", instance)
+	err = r.UpdateScopeConfig(instance)
+	if err != nil {
+		logPtpInterface.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logPtpInterface.V(2).Info("after UpdateScopeConfig", "instance", instance)
 
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so

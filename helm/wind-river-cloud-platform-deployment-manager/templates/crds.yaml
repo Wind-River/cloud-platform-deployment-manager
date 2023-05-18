@@ -119,9 +119,6 @@ spec:
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true
@@ -1726,9 +1723,6 @@ spec:
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true
@@ -1897,9 +1891,6 @@ spec:
               reconciled:
                 description: Reconciled defines whether the network has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true
@@ -2004,9 +1995,6 @@ spec:
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true
@@ -2107,9 +2095,6 @@ spec:
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
-            required:
-            - inSync
-            - reconciled
             type: object
         type: object
     served: true
@@ -2424,13 +2409,6 @@ spec:
               systemType:
                 description: SystemType defines the current system type reported by the system API.
                 type: string
-            required:
-            - id
-            - inSync
-            - reconciled
-            - softwareVersion
-            - systemMode
-            - systemType
             type: object
         type: object
     served: true
