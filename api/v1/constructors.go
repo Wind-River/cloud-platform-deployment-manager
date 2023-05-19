@@ -928,6 +928,10 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 	result := make([]CertificateInfo, 0)
 
 	for index, c := range certificates {
+		// Ignore OpenLDAP certificate since it's being installed during the initial unlock.
+		if c.Type == "openldap" {
+			continue
+		}
 		cert := CertificateInfo{
 			Type: c.Type,
 			// Use a fixed naming so that we can document how we auto-generate
