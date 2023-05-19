@@ -10,8 +10,9 @@ configured for Go development as well as some specific tool/package versions.
 The instructions that follow are intended to install the current minimum
 package requirements to develop and maintain Deployment Manager content.  These
 instructions were developed for installing the required packages onto a Ubuntu
-20.04 workstation therefore some tweaks may be required on different Linux 
-distributions. 
+22.04 workstation therefore some tweaks may be required on different Linux 
+distributions. The workstation should have minum 20G disk space, recommend to
+have disk space above 50G.
 
 #### GoLang
 These instructions assume that your Go directory is directly on your home
@@ -70,8 +71,8 @@ To install the latest kubebuilder,
 
 ```bash
 curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
-chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
-export PATH=$PATH:/usr/local/bin
+sudo chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
+sudo export PATH=$PATH:/usr/local/bin
 ```
 
 #### Docker
@@ -97,6 +98,11 @@ consider adding your user id to the local docker group.
 sudo usermod -a -G docker ${USER}
 newgrp docker
 ```
+## Install golangci
+curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
+
+## Install other dependencies
+sudo apt-get install make,gcc
 
 ## Environment Test/Verification
 
