@@ -650,7 +650,9 @@ func (r *HostReconciler) ReconcilePowerState(client *gophercloud.ServiceClient, 
 // order to change certain attributes.
 func (r *HostReconciler) ReconcileInitialState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	desiredState := profile.AdministrativeState
-	if desiredState != nil && *desiredState != host.AdministrativeState {
+
+	if desiredState != nil && *desiredState != host.AdministrativeState &&
+		instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
 		if *desiredState == hosts.AdminLocked {
 			action := hosts.ActionLock
 			opts := hosts.HostOpts{
@@ -690,7 +692,8 @@ const MinimumEnabledControllerNodesForNonController = 2
 // host if the desired state is different than the current state.
 func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	state := profile.AdministrativeState
-	if state == nil || *state == host.AdministrativeState {
+	if state == nil || *state == host.AdministrativeState ||
+		instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 		// No action required.
 		return nil
 	}
