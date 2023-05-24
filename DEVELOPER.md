@@ -71,8 +71,8 @@ To install the latest kubebuilder,
 
 ```bash
 curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
-sudo chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
-sudo export PATH=$PATH:/usr/local/bin
+sudo chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
+export PATH=$PATH:/usr/local/bin
 ```
 
 #### Docker
@@ -102,7 +102,8 @@ newgrp docker
 curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
 
 ## Install other dependencies
-sudo apt-get install make,gcc
+sudo apt-get install make
+sudo apt-get install gcc
 
 ## Environment Test/Verification
 
