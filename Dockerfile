@@ -43,7 +43,6 @@ ENTRYPOINT ["/manager"]
 # Copy the delve debugger into a debug image
 FROM ubuntu:latest as debug
 WORKDIR /
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 RUN apt-get update && apt-get install -y tcpdump net-tools iputils-ping iproute2
 COPY --from=dlvbuilder /go/bin/dlv /
 COPY --from=builder /workspace/manager .
