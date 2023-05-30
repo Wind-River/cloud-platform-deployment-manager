@@ -41,17 +41,9 @@ COPY --from=builder /workspace/manager .
 ENTRYPOINT ["/manager"]
 
 # Copy the delve debugger into a debug image
-FROM ubuntu:latest as debug
+FROM ubuntu:focal as debug
 WORKDIR /
-RUN apt-get update && \
-apt-get -y --no-install-recommends install software-properties-common curl  gpg-agent && \
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg > /tmp/dkey; apt-key add /tmp/dkey && \
-add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable" && \
-apt-get update && \
-apt-get install -y tcpdump net-tools iputils-ping iproute2
+RUN apt-get update && apt-get install -y tcpdump net-tools iputils-ping iproute2
 COPY --from=dlvbuilder /go/bin/dlv /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/scripts/dlv-wrapper.sh /
