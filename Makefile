@@ -131,7 +131,7 @@ endif
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build . -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
+	docker build . --no-cache -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
