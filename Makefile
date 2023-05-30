@@ -211,7 +211,7 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 
 # Build the builder image
 builder-build:
-	docker build . -t ${BUILDER_IMG} -f Dockerfile.builder
+	docker build . --no-cache -t ${BUILDER_IMG} -f Dockerfile.builder
 
 builder-run: builder-build
 	docker run -v /var/run/docker.sock:/var/run/docker.sock \
