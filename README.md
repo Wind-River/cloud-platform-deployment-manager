@@ -164,7 +164,7 @@ found within the listed files.
 
 ***Note***: the HTTPS examples must be edited to add X.509 certificates and
 keys that are appropriate for your environment.  Follow the instructions
-provided in the ```deploy``` tool section related to HTTPS and BMC.
+provided in the ```deployctl``` tool section related to HTTPS and BMC.
 
 
 ***Note***: The examples provided assume a certain hardware configuration and
