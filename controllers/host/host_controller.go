@@ -903,14 +903,14 @@ func (r *HostReconciler) CompareOSDs(in *starlingxv1.HostProfileSpec, other *sta
 // CompareAttributes determines if two profiles are identical for the
 // purpose of reconciling a current host configuration to its desired host
 // profile.
-func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string) bool {
+func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string) bool {
 	// This could be replaced with in.DeepEqual(other) but it is coded this way
 	// (and tested this way) to ensure that if both the "enabled" and "disabled"
 	// comparisons are true then no reconciliation is missed.  The intent is
 	// that CompareEnabledAttributes && CompareDisabledAttributes will always
 	// be equivalent to DeepEqual.
-	return r.CompareEnabledAttributes(in, other, namespace, personality) &&
-		r.CompareDisabledAttributes(in, other, namespace, personality)
+	return r.CompareEnabledAttributes(in, other, instance, personality) &&
+		r.CompareDisabledAttributes(in, other, instance.Namespace, personality)
 }
 
 // CompareEnabledAttributes determines if two profiles are identical for the
@@ -918,12 +918,12 @@ func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, othe
 // is enabled.  The only attributes that we can reconcile while enabled are the
 // storage OSD resources therefore return false if there are any differences
 // in the storage OSD list.
-func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string) bool {
+func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string) bool {
 	if other == nil {
 		return false
 	}
 
-	if in.AdministrativeState != nil {
+	if instance.Status.DeploymentScope != cloudManager.ScopePrincipal && in.AdministrativeState != nil {
 		if (in.AdministrativeState == nil) != (other.AdministrativeState == nil) {
 			return false
 		} else if in.AdministrativeState != nil {
@@ -934,7 +934,7 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 	}
 
 	if utils.IsReconcilerEnabled(utils.OSD) {
-		switch r.OSDProvisioningState(namespace, personality) {
+		switch r.OSDProvisioningState(instance.Namespace, personality) {
 		case RequiredStateEnabled, RequiredStateAny:
 			if !r.CompareOSDs(in, other) {
 				return false
@@ -1039,7 +1039,7 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 // here.
 func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, current *starlingxv1.HostProfileSpec, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	if host.IsUnlockedEnabled() {
-		if !r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) {
+		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
 			err := r.ReconcileEnabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -1049,6 +1049,15 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		}
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) {
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+				err := r.Client.Status().Update(context.TODO(), instance)
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to update status: %s",
+						common.FormatStruct(instance.Status))
+					return err
+				}
+			}
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
@@ -1064,7 +1073,16 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			logHost.Info("no disabled attribute changes required")
 		}
 
-		if !r.CompareEnabledAttributes(profile, current, instance.Namespace, host.Personality) {
+		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+				err := r.Client.Status().Update(context.TODO(), instance)
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to update status: %s",
+						common.FormatStruct(instance.Status))
+					return err
+				}
+			}
 			msg := "waiting for the unlocked state before applying in-service attributes"
 			m := NewUnlockedEnabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
@@ -1117,6 +1135,9 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
+		status.ConfigurationUpdated = false
+		status.HostProfileConfigurationUpdated = false
+		status.StrategyRequired = cloudManager.StrategyNotRequired
 		result = true
 	}
 
@@ -1350,7 +1371,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	//  configuration.
 	profile.ProvisioningMode = nil
 
-	inSync := r.CompareAttributes(profile, current, instance.Namespace, host.Personality)
+	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 	if inSync {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
 		return nil
@@ -1691,8 +1712,13 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
+// and
+// Set ObservedGeneration as the value of Generation
+// If generation is updated (= apply new configuration);
+// - Set ConfigurationUpdated true
+// - Set Reconciled false (since it is going to reconcile with new configuration)
 // Then reflrect these values to cluster object
-func (r *HostReconciler) UpdateScopeConfig(instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err error) {
 	deploymentScope, err := r.GetScopeConfig(instance)
 	if err != nil {
 		return err
@@ -1722,8 +1748,49 @@ func (r *HostReconciler) UpdateScopeConfig(instance *starlingxv1.Host) (err erro
 		return err
 	}
 
-	// Update status
+	// Update scope status
 	instance.Status.DeploymentScope = deploymentScope
+
+	// Set default value for StrategyRequired
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	// Check HostProfile configuration update
+	hostProfile, err := r.GetHostProfile(instance.Namespace, instance.Spec.Profile)
+	if err != err {
+		return err
+	}
+	if hostProfile != nil &&
+		instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
+		if instance.Status.ObservedHostProfileGeneration == 0 &&
+			instance.Status.Reconciled {
+			// Case: DM upgrade in reconceiled node
+			instance.Status.HostProfileConfigurationUpdated = false
+		} else {
+			// Case: Fresh install or Day-2 operation
+			instance.Status.HostProfileConfigurationUpdated = true
+			instance.Status.Reconciled = false
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+		instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
+	}
+
+	// Check HostP configuration update
+	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration == 0 &&
+			instance.Status.Reconciled {
+			// Case: DM upgrade in reconceiled node
+			instance.Status.ConfigurationUpdated = false
+		} else {
+			// Case: Fresh install or Day-2 operation
+			instance.Status.ConfigurationUpdated = true
+			instance.Status.Reconciled = false
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+	}
+
 	err = r.Client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update status: %s",
@@ -1765,13 +1832,13 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	}
 
 	// Update scope from configuration
-	logHost.V(2).Info("before UpdateScopeConfig", "instance", instance)
-	err = r.UpdateScopeConfig(instance)
+	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance)
 	if err != nil {
 		logHost.Error(err, "unable to update scope")
 		return reconcile.Result{}, err
 	}
-	logHost.V(2).Info("after UpdateScopeConfig", "instance", instance)
+	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)

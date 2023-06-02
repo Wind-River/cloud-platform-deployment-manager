@@ -103,6 +103,9 @@ spec:
           status:
             description: DataNetworkStatus defines the observed state of DataNetwork
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -116,9 +119,21 @@ spec:
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true
@@ -1701,6 +1716,9 @@ spec:
               availabilityStatus:
                 description: AvailabilityStatus is the last known availability status of the host.
                 type: string
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
                 type: string
@@ -1711,18 +1729,37 @@ spec:
                 - bootstrap
                 - principal
                 type: string
+              hostProfileConfigurationUpdated:
+                description: Value for host profile configuration is updated or not
+                type: boolean
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: InSync defines whether the desired state matches the operational state.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
+              observedHostProfileGeneration:
+                description: Reflect value of configuration generation of host profile. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               operationalStatus:
                 description: OperationalStatus is the last known operational status of the host.
                 type: string
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true
@@ -1873,6 +1910,9 @@ spec:
           status:
             description: PlatformNetworkStatus defines the observed state of PlatformNetwork
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -1886,12 +1926,24 @@ spec:
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               poolUUID:
                 description: PoolUUID defines the system assigned unique identifier that is represents the networks underlying address pool resource.  This will only exist once this resource has been provisioned into the system.
                 type: string
               reconciled:
                 description: Reconciled defines whether the network has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true
@@ -1980,6 +2032,9 @@ spec:
           status:
             description: PtpInstanceStatus defines the observed state of PtpInstance
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -1993,9 +2048,21 @@ spec:
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true
@@ -2080,6 +2147,9 @@ spec:
           status:
             description: PtpInterfaceStatus defines the observed state of PtpInterface
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -2093,9 +2163,21 @@ spec:
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true
@@ -2382,6 +2464,9 @@ spec:
           status:
             description: SystemStatus defines the observed state of System
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
                 type: string
@@ -2398,11 +2483,23 @@ spec:
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the System has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
                 type: boolean
               softwareVersion:
                 description: SoftwareVersion defines the current software version reported by the system API.
+                type: string
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
                 type: string
               systemMode:
                 description: SystemMode defines the current system mode reported by the system API.
