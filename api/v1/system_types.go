@@ -430,6 +430,17 @@ type SystemStatus struct {
 	// +optional
 	SoftwareVersion string `json:"softwareVersion"`
 
+	// Defaults defines the configuration attributed collected before applying
+	// any user configuration values.
+	// +optional
+	Defaults *string `json:"defaults,omitempty"`
+
+	// Reconciled defines whether the System has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	// +optional
+	Reconciled bool `json:"reconciled"`
+
 	// Defines whether the resource has been provisioned on the target system.
 	// +optional
 	InSync bool `json:"inSync"`
@@ -441,16 +452,20 @@ type SystemStatus struct {
 	// +kubebuilder:default:=bootstrap
 	DeploymentScope string `json:"deploymentScope"`
 
-	// Reconciled defines whether the System has been successfully reconciled
-	// at least once.  If further changes are made they will be ignored by the
-	// reconciler.
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
 	// +optional
-	Reconciled bool `json:"reconciled"`
+	ObservedGeneration int64 `json:"observedGeneration"`
 
-	// Defaults defines the configuration attributed collected before applying
-	// any user configuration values.
+	// Value for configuration is updated or not
 	// +optional
-	Defaults *string `json:"defaults,omitempty"`
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
 }
 
 // +kubebuilder:object:root=true

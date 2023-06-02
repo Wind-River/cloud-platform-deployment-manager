@@ -552,6 +552,11 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 			instance.Status.Reconciled = instance.Status.InSync
 		}
 
+		if instance.Status.Reconciled {
+			instance.Status.ConfigurationUpdated = false
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
 		if r.statusUpdateRequired(instance, oldStatus) {
 			err2 := r.Client.Status().Update(context.TODO(), instance)
 			if err2 != nil {
@@ -637,7 +642,7 @@ func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.Platfor
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflrect these values to cluster object
-func (r *PlatformNetworkReconciler) UpdateScopeConfig(instance *starlingxv1.PlatformNetwork) (err error) {
+func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.PlatformNetwork) (err error) {
 	deploymentScope, err := r.GetScopeConfig(instance)
 	if err != nil {
 		return err
@@ -665,8 +670,30 @@ func (r *PlatformNetworkReconciler) UpdateScopeConfig(instance *starlingxv1.Plat
 		return err
 	}
 
-	// Update status
+	// Update scope status
 	instance.Status.DeploymentScope = deploymentScope
+
+	// Set default value for StrategyRequired
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	// Check configration is updated
+	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration == 0 &&
+			instance.Status.Reconciled {
+			// Case: DM upgrade in reconceiled node
+			instance.Status.ConfigurationUpdated = false
+		} else {
+			// Case: Fresh install or Day-2 operation
+			instance.Status.ConfigurationUpdated = true
+			instance.Status.Reconciled = false
+		}
+		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+		// Reset strategy when new configration is applied
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
 	err = r.Client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update status: %s",
@@ -708,13 +735,13 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	// Update scope from configuration
-	logPlatformNetwork.V(2).Info("before UpdateScopeConfig", "instance", instance)
-	err = r.UpdateScopeConfig(instance)
+	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance)
 	if err != nil {
 		logPlatformNetwork.Error(err, "unable to update scope")
 		return reconcile.Result{}, err
 	}
-	logPlatformNetwork.V(2).Info("after UpdateScopeConfig", "instance", instance)
+	logPlatformNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so

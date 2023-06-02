@@ -43,6 +43,12 @@ const (
 	ScopePrincipal = "principal"
 )
 
+const (
+	StrategyNotRequired    = "not_required"
+	StrategyLockRequired   = "lock_required"
+	StrategyUnlockRequired = "unlock_required"
+)
+
 // CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
 type CloudManager interface {
