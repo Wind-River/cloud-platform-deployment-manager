@@ -332,6 +332,9 @@ spec:
           status:
             description: SystemStatus defines the observed state of System
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               defaults:
                 description: Defaults defines the configuration attributed collected
                   before applying any user configuration values.
@@ -351,6 +354,11 @@ spec:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value
+                  will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the System has been successfully
                   reconciled at least once.  If further changes are made they will
@@ -359,6 +367,14 @@ spec:
               softwareVersion:
                 description: SoftwareVersion defines the current software version
                   reported by the system API.
+                type: string
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
                 type: string
               systemMode:
                 description: SystemMode defines the current system mode reported by

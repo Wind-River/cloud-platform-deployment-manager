@@ -105,15 +105,19 @@ type HostStatus struct {
 	// AvailabilityStatus is the last known availability status of the host.
 	AvailabilityStatus *string `json:"availabilityStatus,omitempty"`
 
-	// InSync defines whether the desired state matches the operational state.
-	// +optional
-	InSync bool `json:"inSync"`
+	// Defaults defines the configuration attributed collected before applying
+	// any user configuration values.
+	Defaults *string `json:"defaults,omitempty"`
 
 	// Reconciled defines whether the host has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
 	// +optional
 	Reconciled bool `json:"reconciled"`
+
+	// InSync defines whether the desired state matches the operational state.
+	// +optional
+	InSync bool `json:"inSync"`
 
 	// DeploymentScope defines whether the resource has been deployed
 	// on the initial setup or during an update.
@@ -122,9 +126,29 @@ type HostStatus struct {
 	// +kubebuilder:default:=bootstrap
 	DeploymentScope string `json:"deploymentScope"`
 
-	// Defaults defines the configuration attributed collected before applying
-	// any user configuration values.
-	Defaults *string `json:"defaults,omitempty"`
+	// Reflect value of configuration generation of host profile.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedHostProfileGeneration int64 `json:"observedHostProfileGeneration"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for host profile configuration is updated or not
+	// +optional
+	HostProfileConfigurationUpdated bool `json:"hostProfileConfigurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
 }
 
 // +kubebuilder:object:root=true

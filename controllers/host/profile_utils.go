@@ -163,8 +163,18 @@ func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.
 	return result
 }
 
-// GetHostProfile retrieves a HostProfileSpec from the kubernetes API
-func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1.HostProfileSpec, error) {
+// GetHostProfileSpec retrieves a HostProfileSpec from the kubernetes API
+func (r *HostReconciler) GetHostProfileSpec(namespace, profile string) (*starlingxv1.HostProfileSpec, error) {
+	instance, err := r.GetHostProfile(namespace, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instance.Spec, nil
+}
+
+// GetHostProfile retrieves a HostProfile from the kubernetes API
+func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1.HostProfile, error) {
 	instance := &starlingxv1.HostProfile{}
 	name := types.NamespacedName{Namespace: namespace, Name: profile}
 
@@ -179,7 +189,7 @@ func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1
 		}
 	}
 
-	return &instance.Spec, nil
+	return instance, nil
 }
 
 // DeleteHostProfile deletes a HostProfile from the kubernetes API
@@ -216,7 +226,7 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 			return nil, common.NewValidationError(msg)
 		}
 
-		parent, err := r.GetHostProfile(namespace, *current.Base)
+		parent, err := r.GetHostProfileSpec(namespace, *current.Base)
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +248,7 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 // will be applied to the host at configuration time.
 func (r *HostReconciler) BuildCompositeProfile(host *starlingxv1.Host) (*starlingxv1.HostProfileSpec, error) {
 	// Start with the explicit profile attached to the host.
-	profile, err := r.GetHostProfile(host.Namespace, host.Spec.Profile)
+	profile, err := r.GetHostProfileSpec(host.Namespace, host.Spec.Profile)
 	if err != nil {
 		return nil, err
 	}
