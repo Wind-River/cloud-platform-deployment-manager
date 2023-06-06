@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2022 Wind River Systems, Inc.
+# Copyright(c) 2021-2023 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -16,7 +16,7 @@
     - set_fact:
         helm_chart_overrides: "{{ deployment_manager_overrides }}"
       when: deployment_manager_overrides is defined
-    
+
     - set_fact:
         deploy_config: "{{ deployment_config }}"
         wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
@@ -27,7 +27,7 @@
         - name: Get host name
           shell: |
             source /etc/platform/openrc; hostname
-          register: get_host_name 
+          register: get_host_name
 
         # In order to determine if the host is a subcloud's node
         - name: Get distributed_cloud_role
@@ -88,7 +88,7 @@
       - set_fact:
           helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
         when: helm_chart_overrides is defined
-      
+
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
@@ -311,6 +311,31 @@
             # we apply the config in the next steps.
             timeout: 10
             msg: Waiting for the Deployment Manager validation webhooks to start
+
+        # Search for both cases:
+        #   deploymentScope: "principal"
+        # and
+        #   deploymentScope:
+        #    "principal"
+        - name: Search for 'principal' scope in deploy_config
+          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:(?:\s*#.*)?\n)*\s*"principal"\s*' {{ deploy_config }}
+          changed_when: false
+          failed_when: false
+          register: scope_principal
+
+        # Check if there is any strategy-related alarm
+        - name: Check if a VIM strategy is in progress
+          shell: |
+            source /etc/platform/openrc; fm alarm-list | grep 900.
+          failed_when: false
+          register: strategy_alarms
+
+        - name: Fail if there is a strategy in progress during a Day-2 operation
+          fail:
+            msg:
+              - "VIM Strategy in progress."
+              - "Wait until all the strategies are cleared before applying the system configuration update."
+          when: ( scope_principal.stdout_lines | length > 0 and strategy_alarms.stdout != "")
 
         - name: Apply Deployment Configuration File
           shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f {{ deploy_config }}
