@@ -1526,7 +1526,7 @@ func CephReplicationFactor(client *gophercloud.ServiceClient) (rep int, err erro
 		return n, err
 	}
 
-	logHost.Info("Ceph replication factor", "num", n)
+	logHost.V(2).Info("Ceph replication factor", "num", n)
 	return n, nil
 }
 
@@ -1563,7 +1563,7 @@ func (r *HostReconciler) GetCephPrimaryGroupReady(client *gophercloud.ServiceCli
 			num += 1
 		}
 	}
-	if num == rep {
+	if num >= rep {
 		cephReady = true
 	}
 	return cephReady, nil
@@ -1579,6 +1579,10 @@ func (r *HostReconciler) IsCephDelayTargetGroup(client *gophercloud.ServiceClien
 	}
 	personality := profile.Personality
 	if *personality != hosts.PersonalityStorage {
+		return false, nil
+	}
+	if instance.Status.Reconciled {
+		// Ignore reconciled strage node
 		return false, nil
 	}
 	rep, err := CephReplicationFactor(client)
@@ -1683,7 +1687,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 				"ceph primary group is ready. Add host.")
 		}
 	} else {
-		logHost.Info("not storage node or in ceph primary group. continue")
+		logHost.V(2).Info("not storage node or in ceph primary group. continue")
 	}
 
 	err = r.ReconcileResource(platformClient, instance)
