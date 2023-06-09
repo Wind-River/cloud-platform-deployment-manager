@@ -475,6 +475,18 @@
         # if unlock was triggered, wait until unlock complete
         # and check resources and logs.
         - block:
+          # check close-open port before starting last verifications
+          - name: Waiting for port to be closed due to unlock task
+            local_action:
+              module: wait_for
+                port={{ ansible_port }}
+                host={{ ansible_host }}
+                delay={{ boot_wait_time }}
+                timeout={{ wait_for_timeout }}
+                state=stopped
+            retries: 20
+            delay: 20
+
           - name: Waiting for port to become open
             local_action:
               module: wait_for
@@ -483,14 +495,51 @@
                 delay={{ boot_wait_time }}
                 timeout={{ wait_for_timeout }}
                 state=started
-            register: waiting_unlock
             retries: 40
             delay: 20
 
           # Waiting task after unlock to catch right status
+          # This simple task usually doesn't fail. However, in some
+          # cases, after unlocking, we may encounter two reboots. In such
+          # situations, this task might fail due to a loss of connection.
+          # If that happens, the following block will wait for the
+          # subsequent reboot.
           - wait_for:
               timeout: 450
               msg: Waiting after unlock due to apply DM config
+            register: waiting_after_reboot
+            failed_when: false
+
+          # Retry block: sometimes system reboots twice
+          - block:
+            - name: Waiting for port to become open on second reboot
+              local_action:
+                module: wait_for
+                  port={{ ansible_port }}
+                  host={{ ansible_host }}
+                  delay={{ boot_wait_time }}
+                  timeout={{ wait_for_timeout }}
+                  state=started
+              retries: 40
+              delay: 20
+
+            # Waiting task after unlock to catch right status
+            - wait_for:
+                timeout: 450
+                msg: Waiting after unlock due to apply DM config
+              register: waiting_after_new_reboot
+              ignore_errors: true
+
+            - name: Fail in case of new loss of connection
+              fail:
+                msg:
+                  - "Unexpected loss of connection. Check subcloud status manually."
+                  - "Then, use subcloud reconfig command to complete deployment"
+              register: new_reboot
+              when: waiting_after_new_reboot.failed
+
+            when: (waiting_after_reboot.rc != 0)
+
 
           # After reboot, wait some time for resources to be reconciled.
           # If we have all of them reconciled, playbook won't fail.
