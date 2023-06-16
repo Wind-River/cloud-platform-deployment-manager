@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package manager
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"sync"
 
@@ -64,6 +65,18 @@ type CloudManager interface {
 	GetSystemType(namespace string) SystemType
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object client.Object)
+
+	// Strategy related methods
+	SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string)
+	GetStrategyRequiredList() map[string]*ResourceInfo
+	ListStrategyRequired() string
+	UpdateConfigVersion()
+	GetConfigVersion() int
+	GetMonitorVersion() int
+	SetMonitorVersion(i int)
+	StrageySent()
+	GetStrageySent() bool
+	ClearStragey()
 }
 
 type SystemType string
@@ -88,18 +101,61 @@ type SystemNamespace struct {
 	systemType SystemType
 }
 
+// Strategy related consts and defines
+const (
+	ResourceSystem          = "system"
+	ResourceHost            = "host"
+	ResourcePlatformnetwork = "platformnetwork"
+	ResourceDatanetwork     = "datanetwork"
+	ResourcePtpinstance     = "ptpinstance"
+	ResourcePtpinterface    = "ptpinterface"
+)
+
+const (
+	PersonalityController       = "controller"
+	PersonalityWorker           = "worker"
+	PersonalityStorage          = "storage"
+	PersonalityControllerWorker = "controller-worker"
+)
+
+type ResourceInfo struct {
+	ResourceType     string
+	Personality      string
+	Name             string
+	Reconciled       bool
+	StrategyRequired string
+}
+
+type StrategyStatus struct {
+	ResourceInfo   map[string]*ResourceInfo
+	ConfigVersion  int
+	MonitorVersion int
+	StrategySent   bool
+}
+
 type PlatformManager struct {
 	manager.Manager
-	lock     sync.Mutex
-	systems  map[string]*SystemNamespace
-	monitors map[string]*Monitor
+	lock           sync.Mutex
+	systems        map[string]*SystemNamespace
+	monitors       map[string]*Monitor
+	strategyStatus *StrategyStatus
+}
+
+func NewStrategyStatus() *StrategyStatus {
+	return &StrategyStatus{
+		ResourceInfo:   make(map[string]*ResourceInfo),
+		ConfigVersion:  0,
+		MonitorVersion: 0,
+		StrategySent:   false,
+	}
 }
 
 func NewPlatformManager(manager manager.Manager) CloudManager {
 	return &PlatformManager{
-		Manager:  manager,
-		systems:  make(map[string]*SystemNamespace),
-		monitors: make(map[string]*Monitor),
+		Manager:        manager,
+		systems:        make(map[string]*SystemNamespace),
+		monitors:       make(map[string]*Monitor),
+		strategyStatus: NewStrategyStatus(),
 	}
 }
 
@@ -429,6 +485,116 @@ func (m *PlatformManager) CancelMonitor(object client.Object) {
 		monitor.Stop()
 		delete(m.monitors, key)
 	}
+}
+
+// SetResourceInfo to store strategy required values of each resources
+func (m *PlatformManager) SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	// If this is the sirst resource information, start strategy monitor
+	if len(m.strategyStatus.ResourceInfo) == 0 {
+		go StrategyRequiredMonitor(instance)
+	}
+
+	info, ok := m.strategyStatus.ResourceInfo[resourcename]
+	if ok {
+		info.ResourceType = resourcetype
+		info.Personality = personality
+		info.Reconciled = reconciled
+		info.StrategyRequired = required
+		log.Info("Resource Info is updated", "Personality", personality, "Resource Name", resourcename, "Reconciled", reconciled, "Strategy Required", required)
+	} else {
+		info = &ResourceInfo{
+			ResourceType:     resourcetype,
+			Personality:      personality,
+			Name:             resourcename,
+			Reconciled:       reconciled,
+			StrategyRequired: required,
+		}
+		m.strategyStatus.ResourceInfo[resourcename] = info
+		log.Info("Resource Info is added", "Personality", personality, "Resource Name", resourcename, "Reconciled", reconciled, "Strategy Required", required)
+	}
+}
+
+// GetStrategyRequiredList returns the current storategy required list
+func (m *PlatformManager) GetStrategyRequiredList() map[string]*ResourceInfo {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.ResourceInfo
+}
+
+// ListStrategyRequired returns the current StrategyStatus in json format string
+func (m *PlatformManager) ListStrategyRequired() string {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	data, err := json.Marshal(m.strategyStatus)
+	if err != nil {
+		return "erro in marshal"
+	}
+	jdata := string(data)
+
+	return jdata
+}
+
+// UpdateConfigVersion to increase configration version
+func (m *PlatformManager) UpdateConfigVersion() {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	current_version := m.strategyStatus.ConfigVersion
+	m.strategyStatus.ConfigVersion++
+	log.Info("Config version is updated", "from", current_version, "to", m.strategyStatus.ConfigVersion)
+}
+
+// GetConfigVersion to return the current configration version
+func (m *PlatformManager) GetConfigVersion() int {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.ConfigVersion
+}
+
+// GetMonitorVersion to return monitor version
+func (m *PlatformManager) GetMonitorVersion() int {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.MonitorVersion
+}
+
+// GetMonitorVersion to set monitor version
+func (m *PlatformManager) SetMonitorVersion(i int) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	m.strategyStatus.MonitorVersion = i
+}
+
+// StrageySent to update strategy sent with true
+func (m *PlatformManager) StrageySent() {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	m.strategyStatus.StrategySent = true
+}
+
+// GetStrageySent to return the current strategy sent value
+func (m *PlatformManager) GetStrageySent() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.StrategySent
+}
+
+// ClearStragey to clear strategy status
+func (m *PlatformManager) ClearStragey() {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	m.strategyStatus = NewStrategyStatus()
 }
 
 var instance CloudManager

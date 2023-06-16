@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package controllers
 
@@ -555,6 +555,9 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 		if instance.Status.Reconciled {
 			instance.Status.ConfigurationUpdated = false
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
 		}
 
 		if r.statusUpdateRequired(instance, oldStatus) {
@@ -688,6 +691,11 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
 			instance.Status.Reconciled = false
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				// Update storategy required status for strategy monitor
+				r.CloudManager.UpdateConfigVersion()
+				r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
 		}
 		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 		// Reset strategy when new configration is applied

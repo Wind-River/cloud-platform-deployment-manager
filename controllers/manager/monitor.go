@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package manager
 
@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/swpatch"
 	"github.com/pkg/errors"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -220,4 +221,105 @@ func (m *Monitor) handleClientError(err error) (stop bool) {
 	// otherwise we should keep going since there is no other way to ensure that
 	// the reconciler will continue.
 	return m.notify() == nil
+}
+
+// DefaultNewStrategyRequiredMonitorInterval represents the default interval between
+// polling attempts to check
+const DefaultNewStrategyRequiredMonitorInterval = 15 * time.Second
+
+// StrategyRequiredMonitor is a monitor to analyze the strategy needs
+func StrategyRequiredMonitor(management CloudManager) {
+	log.Info("StrategyRequiredMonitor starts")
+	for {
+		time.Sleep(DefaultNewStrategyRequiredMonitorInterval)
+		finished := ManageStrategy(management)
+		if finished {
+			//Clear storategy
+			management.ClearStragey()
+			break
+		}
+	}
+	log.Info("StrategyRequiredMonitor ends")
+}
+
+// Run function for StrategyRequiredMonitor
+// responsible for monitor resource information and send
+// strategy if needed
+func ManageStrategy(management CloudManager) bool {
+
+	log.V(2).Info("ManageStrategy Run start")
+	monitor_list := management.ListStrategyRequired()
+	log.V(2).Info("Current Strategy Required List", "StrategyStatus", monitor_list)
+
+	// Check version
+	// If monitor version is not equal to config version,
+	// wait until configuration is updated
+	config_version := management.GetConfigVersion()
+	monitor_version := management.GetMonitorVersion()
+	if monitor_version != config_version {
+		management.SetMonitorVersion(config_version)
+		log.Info("ManageStrategy monitor version different. Wait until matched")
+		return false
+	}
+
+	resource := management.GetStrategyRequiredList()
+
+	// If strategy is sent, wait until all resources are reconciled
+	if management.GetStrageySent() {
+		for _, r := range resource {
+			if !r.Reconciled {
+				log.Info("Reconciling after strategy sent", "name", r.Name)
+				return false
+			}
+		}
+		return true
+	}
+
+	// If strategy is not sent yet, check necessity
+	var request swpatch.SwPatchOpts
+	request_needed := false
+	for _, r := range resource {
+		if r.StrategyRequired == StrategyNotRequired && !r.Reconciled {
+			// Resource is under reconcile, wait until reconciled.
+			log.Info("Waiting reconciled", "name", r.Name)
+			return false
+		}
+
+		switch r.ResourceType {
+		case ResourceSystem:
+			if r.StrategyRequired != StrategyNotRequired {
+				request.ControllerApplyType = r.StrategyRequired
+				request_needed = true
+			}
+		case ResourceHost:
+			switch r.Personality {
+			case PersonalityController:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in controller")
+					request.ControllerApplyType = r.StrategyRequired
+					request_needed = true
+				}
+			case PersonalityWorker:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in worker")
+					request.WorkerApplyType = r.StrategyRequired
+					request_needed = true
+				}
+			case PersonalityStorage:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in storage")
+					request.StorageApplyType = r.StrategyRequired
+					request_needed = true
+				}
+			case PersonalityControllerWorker:
+				log.V(2).Info("ControllerWorker!")
+			}
+		}
+	}
+	if request_needed {
+		log.Info("Send stragety request", "SwPatchOpts", request)
+		management.StrageySent()
+		return false
+	}
+	return true
 }
