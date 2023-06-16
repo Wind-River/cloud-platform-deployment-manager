@@ -1051,6 +1051,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality) {
 			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 				instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
 					err = perrors.Wrapf(err, "failed to update status: %s",
@@ -1076,6 +1077,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
 			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
 					err = perrors.Wrapf(err, "failed to update status: %s",
@@ -1138,6 +1140,9 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 		status.ConfigurationUpdated = false
 		status.HostProfileConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, status.Reconciled, status.StrategyRequired)
+		}
 		result = true
 	}
 
@@ -1780,7 +1785,7 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 		instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
 	}
 
-	// Check HostP configuration update
+	// Check Host configuration update
 	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
 		if instance.Status.ObservedGeneration == 0 &&
 			instance.Status.Reconciled {
@@ -1791,6 +1796,11 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 			instance.Status.ConfigurationUpdated = true
 			instance.Status.Reconciled = false
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				// Update storategy required status for strategy monitor
+				r.CloudManager.UpdateConfigVersion()
+				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
 		}
 		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 	}
