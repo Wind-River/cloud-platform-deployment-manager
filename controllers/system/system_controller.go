@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package system
 
@@ -983,8 +983,6 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		// allow reconciliation to proceed.  This will ensure that attributes
 		// that are not readily comparable with the DeepEqual (i.e., licenses
 		// and certificates) will get handled properly when needed.
-		// TODO(alegacy):  This will need to be improved when we need to
-		// support day-2 operations.
 		return nil, true
 	}
 
@@ -995,12 +993,27 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 
 	if spec.DeepEqual(current) {
 		logSystem.V(2).Info("no changes between spec and current configuration")
+		instance.Status.Delta = ""
 		return nil, false
 	}
 
 	logSystem.Info("spec is:", "values", spec)
 
 	logSystem.Info("current is:", "values", current)
+
+	deltaString, err := common.GetDeltaString(current, spec, common.SystemProperties)
+	if err != nil {
+		logSystem.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
+	}
+
+	if deltaString != "" {
+		logSystem.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		instance.Status.Delta = deltaString
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logSystem.Info(fmt.Sprintf("failed to update status:  %s\n", err))
+		}
+	}
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a

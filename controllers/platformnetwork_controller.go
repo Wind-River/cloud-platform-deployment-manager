@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package controllers
 
@@ -84,21 +84,25 @@ func compareRangeArrays(x, y [][]string) bool {
 
 // poolUpdateRequired determines whether a system address pool resource must
 // be updated to align with the stored value.  Only the updated fields are
-//// include in the request options to minimum churn and to ease debugging.
-func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool) {
+// include in the request options to minimum churn and to ease debugging.
+func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool, r *PlatformNetworkReconciler) (opts addresspools.AddressPoolOpts, result bool) {
+	var delta strings.Builder
 	if instance.Name != p.Name {
 		opts.Name = &instance.Name
+		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
 	}
 
 	spec := instance.Spec
 	if !strings.EqualFold(spec.Subnet, p.Network) {
 		opts.Network = &spec.Subnet
+		delta.WriteString(fmt.Sprintf("\t+Network: %s\n", *opts.Network))
 		result = true
 	}
 
 	if spec.Prefix != p.Prefix {
 		opts.Prefix = &spec.Prefix
+		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
 		result = true
 	}
 
@@ -108,12 +112,14 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 		//  so causes an exception when a related route is added.
 		if spec.Gateway != nil && (p.Gateway == nil || !strings.EqualFold(*spec.Gateway, *p.Gateway)) {
 			opts.Gateway = spec.Gateway
+			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.Gateway))
 			result = true
 		}
 	}
 
 	if spec.Allocation.Order != nil && *spec.Allocation.Order != p.Order {
 		opts.Order = spec.Allocation.Order
+		delta.WriteString(fmt.Sprintf("\t+Order: %s\n", *opts.Order))
 		result = true
 	}
 
@@ -121,8 +127,20 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 		ranges := makeRangeArray(spec.Allocation.Ranges)
 		if !compareRangeArrays(ranges, p.Ranges) {
 			opts.Ranges = &ranges
+			delta.WriteString(fmt.Sprintf("\t+Ranges: %s\n", *opts.Ranges))
 			result = true
 		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPlatformNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPlatformNetwork.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 	}
 
 	return opts, result
@@ -181,7 +199,7 @@ func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
 func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
-	if opts, ok := poolUpdateRequired(instance, pool); ok {
+	if opts, ok := poolUpdateRequired(instance, pool, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.

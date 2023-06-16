@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package controllers
 
@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -45,25 +46,30 @@ type DataNetworkReconciler struct {
 // dataNetworkUpdateRequired is a utility function which determines whether an
 // update is needed to a data network system resource in order to reconcile
 // with the latest stored configuration.
-func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetworks.DataNetwork) (opts datanetworks.DataNetworkOpts, result bool) {
+func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetworks.DataNetwork, r *DataNetworkReconciler) (opts datanetworks.DataNetworkOpts, result bool) {
+	var delta strings.Builder
 	if instance.Name != n.Name {
 		opts.Name = &instance.Name
+		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
 	}
 
 	spec := instance.Spec
 	if spec.Type != n.Type {
 		opts.Type = &spec.Type
+		delta.WriteString(fmt.Sprintf("\t+Type: %s\n", *opts.Type))
 		result = true
 	}
 
 	if spec.MTU != nil && *spec.MTU != n.MTU {
 		opts.MTU = spec.MTU
+		delta.WriteString(fmt.Sprintf("\t+MTU: %d\n", *opts.MTU))
 		result = true
 	}
 
 	if spec.Description != nil && *spec.Description != n.Description {
 		opts.Description = spec.Description
+		delta.WriteString(fmt.Sprintf("\t+Description: %s\n", *opts.Description))
 		result = true
 	}
 
@@ -72,6 +78,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.EndpointMode != nil && n.Mode != nil {
 			if *vxlan.EndpointMode != *n.Mode {
 				opts.Mode = vxlan.EndpointMode
+				delta.WriteString(fmt.Sprintf("\t+Mode: %s\n", *opts.Mode))
 				result = true
 			}
 		}
@@ -79,6 +86,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.UDPPortNumber != nil && n.UDPPortNumber != nil {
 			if *vxlan.UDPPortNumber != *n.UDPPortNumber {
 				opts.PortNumber = vxlan.UDPPortNumber
+				delta.WriteString(fmt.Sprintf("\t+PortNumber: %d\n", *opts.PortNumber))
 				result = true
 			}
 		}
@@ -86,6 +94,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.TTL != nil && n.TTL != nil {
 			if *vxlan.TTL != *n.TTL {
 				opts.TTL = vxlan.TTL
+				delta.WriteString(fmt.Sprintf("\t+TTL: %d\n", *opts.TTL))
 				result = true
 			}
 		}
@@ -93,9 +102,20 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.MulticastGroup != nil && n.MulticastGroup != nil {
 			if *vxlan.MulticastGroup != *n.MulticastGroup {
 				opts.MulticastGroup = vxlan.MulticastGroup
+				delta.WriteString(fmt.Sprintf("\t+MulticastGroup: %s\n", *opts.MulticastGroup))
 				result = true
 			}
 		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logDataNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logDataNetwork.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 	}
 
 	return opts, result
@@ -151,7 +171,7 @@ func (r *DataNetworkReconciler) ReconcileNew(client *gophercloud.ServiceClient, 
 // match the desired state of the resource.
 func (r *DataNetworkReconciler) ReconcileUpdated(client *gophercloud.ServiceClient, instance *starlingxv1.DataNetwork, network *datanetworks.DataNetwork) error {
 	// Update existing network
-	if opts, ok := dataNetworkUpdateRequired(instance, network); ok {
+	if opts, ok := dataNetworkUpdateRequired(instance, network, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package common
 
@@ -9,10 +9,12 @@ import (
 	"net"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -89,7 +91,56 @@ var (
 	// RetryNever is used when the reconciler will be triggered by a separate
 	// mechanism and no retry is necessary.
 	RetryNever = reconcile.Result{Requeue: false}
+
+	// Properties contained on System resource
+	SystemProperties = map[string]interface{}{
+		"certificates":      nil,
+		"contact":           nil,
+		"description":       nil,
+		"dnsServers":        nil,
+		"latitude":          nil,
+		"license":           nil,
+		"location":          nil,
+		"longitude":         nil,
+		"ntpServers":        nil,
+		"ptp":               []string{"mode", "transport", "mechanism"},
+		"serviceParameters": nil,
+		"storage":           []string{"filesystems", "drbd", "backends"},
+		"vswitchType":       nil,
+	}
+
+	// Properties contained on Host resource
+	HostProperties = map[string]interface{}{
+		"addresses":            []string{"address", "interface", "prefix"},
+		"administrativeState":  nil,
+		"appArmor":             nil,
+		"base":                 nil,
+		"boardManagement":      []string{"address", "credentials"},
+		"bootDevice":           nil,
+		"bootMAC":              nil,
+		"clockSynchronization": nil,
+		"console":              nil,
+		"hwSettle":             nil,
+		"installOutput":        nil,
+		"interfaces":           []string{"bond", "ethernet", "vf", "vlan"},
+		"labels":               nil,
+		"location":             nil,
+		"maxCPUMHzConfigured":  nil,
+		"memory":               nil,
+		"personality":          nil,
+		"powerOn":              nil,
+		"processors":           nil,
+		"provisioningMode":     nil,
+		"ptpInstances":         nil,
+		"rootDevice":           nil,
+		"routes":               []string{"gateway", "interface", "metric", "prefix", "subnet"},
+		"storage":              []string{"filesystems", "monitor", "osds", "volumeGroups"},
+		"subfunctions":         nil,
+	}
 )
+
+// Constant for processLines and searchParameters when gathering the Delta config
+const ParentFound = "parent_found"
 
 // Common event record reasons
 const (
@@ -319,4 +370,165 @@ func (in *EventLogger) WarningEvent(object runtime.Object, reason string, messag
 	// logLevel is set to the debug level (1) because WarningEvent should be
 	// accompanied by a reconciler error which has its own log generated.
 	in.event(object, v1.EventTypeWarning, 1, reason, messageFmt, args...)
+}
+
+func GetDeltaString(spec interface{}, current interface{}, parameters map[string]interface{}) (string, error) {
+
+	specBytes, err := json.Marshal(spec)
+	if err != nil {
+		return "", err
+	}
+
+	currentBytes, err := json.Marshal(current)
+	if err != nil {
+		return "", err
+	}
+
+	var specData map[string]interface{}
+	var currentData map[string]interface{}
+
+	err = json.Unmarshal([]byte(specBytes), &specData)
+	if err != nil {
+		return "", err
+	}
+
+	err = json.Unmarshal([]byte(currentBytes), &currentData)
+	if err != nil {
+		return "", err
+	}
+
+	diff := cmp.Diff(specData, currentData)
+	deltaString := collectDiffValues(diff, parameters)
+	deltaString = strings.TrimSuffix(deltaString, "\n")
+	return deltaString, nil
+}
+
+/* CollectDiffValues collects and returns the diff values from the given diff string.
+ The function returns lines starting with '+' or '-' that represent the differences,
+ and will provide the parent hierarchy for that line based on the given parameters.
+
+ Output example:
+
+storage:
+	"filesystems":
+-		"size":		5,
++		"size":		10,
+
+*/
+func collectDiffValues(diff string, parameters map[string]interface{}) string {
+	var diffLines []string
+	lines := strings.Split(diff, "\n")
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		line = strings.Join(strings.Fields(trimmedLine), "\t\t")
+		processedLine := removeDataTypes(line)
+		diffLines = append(diffLines, processedLine)
+	}
+
+	delta := processLines(diffLines, parameters)
+	return delta.String()
+}
+
+/*
+removeDataTypes removes data types and specific interfaces from the given string.
+The modified string with data types and specific interfaces removed.
+Example:
+
+  input: "float64(1500)"
+  output: "1500"
+*/
+func removeDataTypes(line string) string {
+	// Define the regular expression to match and capture data types
+	re := regexp.MustCompile(`\b(string|float64|bool|int|)\(([^)]*)\)`)
+	noDataTypes := re.ReplaceAllString(line, "$2")
+
+	// Define the regular expression to match and remove specific interfaces
+	re = regexp.MustCompile(`(map\[string\]interface\{\}|\[\]interface\{\})`)
+	noInterfaces := re.ReplaceAllString(noDataTypes, "$2")
+	return noInterfaces
+}
+
+// processLines processes the diff lines and generates the delta configuration.
+func processLines(lines []string, parameters map[string]interface{}) strings.Builder {
+	var delta strings.Builder
+	lastParent := "-"
+	for i, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		// Check if the line starts with a "+" or "-" indicating an added or removed configuration.
+		if strings.HasPrefix(trimmedLine, "+") || strings.HasPrefix(trimmedLine, "-") {
+			// Search for the parent and sub-parameters of the line in the given properties.
+			parent := searchParameters(lines, i, parameters)
+			if parent == ParentFound {
+				// If the line represents a parameter itself, add it directly to the delta.
+				trimmedLine := strings.TrimSpace(trimmedLine)
+				line = strings.Join(strings.Fields(trimmedLine), "  ")
+				delta.WriteString(line)
+				delta.WriteString("\n")
+				continue
+			}
+			// If the parent has changed, add a newline and the parent to the delta.
+			if parent != lastParent {
+				delta.WriteString("\n")
+				delta.WriteString(parent)
+				lastParent = parent
+			}
+			// Add the line to the delta.
+			delta.WriteString(trimmedLine)
+			delta.WriteString("\n")
+		}
+	}
+
+	return delta
+}
+
+// searchParameters searches for the parent and sub-parameters of a given line in the given resource properties.
+// It iterates over the lines starting from the given line number and goes upwards to find the relevant information.
+// Parameters:
+//   - lines: A slice of strings representing the lines of the diff.
+//   - lineNumber: The index of the line being processed.
+//   - parameters: A map of resource properties with their corresponding values.
+// Returns:
+//   - A string representing the hierarchy of the parent and sub-parameters, or "param_found" if the line represents a parameter itself.
+//     The hierarchy is constructed in the format: "parent:\n\t"sub-parameter":\n".
+func searchParameters(lines []string, lineNumber int, parameters map[string]interface{}) string {
+	var result string
+
+	for i := lineNumber; i >= 0; i-- {
+		line := lines[i]
+
+		// Check if the line matches any parameter or sub-parameter in the system properties.
+		for param, subParams := range parameters {
+			if subParams != nil {
+				subParamsList, ok := subParams.([]string)
+				if ok {
+					for _, subParam := range subParamsList {
+						// If a sub-parameter is found in the line, construct the corresponding hierarchy.
+						if strings.Contains(line, subParam) {
+							if i == lineNumber {
+								// If the line represents the sub-parameter itself, return the parent parameter.
+								return fmt.Sprintf("%s:\n", param)
+							}
+							// Append the sub-parameter to the hierarchy.
+							result += fmt.Sprintf("%s:\n\t\"%s\":\n", param, subParam)
+							return result
+						}
+					}
+				}
+			}
+		}
+
+		// Check if the line matches any parameter in the system properties.
+		for param := range parameters {
+			if strings.Contains(line, param) {
+				if i == lineNumber {
+					// If the line represents the parameter itself, indicate it with "param_found".
+					return ParentFound
+				}
+				// Return the parent parameter.
+				return fmt.Sprintf("%s:\n", param)
+			}
+		}
+	}
+
+	return result
 }
