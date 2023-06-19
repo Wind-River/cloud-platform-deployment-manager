@@ -1379,6 +1379,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 	if inSync {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
+		instance.Status.Delta = ""
 		return nil
 	}
 
@@ -1387,6 +1388,21 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	logHost.Info("final profile is:", "values", profile)
 
 	logHost.Info("current config is:", "values", current)
+
+	deltaString, err := common.GetDeltaString(profile, current, common.HostProperties)
+	if err != nil {
+		logHost.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
+	}
+
+	if deltaString != "" {
+		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		instance.Status.Delta = deltaString
+
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logHost.Info(fmt.Sprintf("failed to update status: %s", err))
+		}
+	}
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
@@ -1416,7 +1432,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	return nil
 }
 
-// ReconcileExistingHost is responsible for dealing with the provisioning of an
+// ReconcileDeletedHost is responsible for dealing with the provisioning of an
 // existing host.
 func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, host *hosts.Host) (err error) {
 	if host.Capabilities.Personality != nil {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -54,16 +55,40 @@ func interfaceUpdateRequired(instance *starlingxv1.PtpInterface, i *ptpinterface
 	return result
 }
 
-func intefaceParameterUpdateRequired(instance *starlingxv1.PtpInterface, i *ptpinterfaces.PTPInterface) (added []string, removed []string, result bool) {
+func intefaceParameterUpdateRequired(instance *starlingxv1.PtpInterface, i *ptpinterfaces.PTPInterface, r *PtpInterfaceReconciler) (added []string, removed []string, result bool) {
 	configured := instance.Spec.InterfaceParameters
 	current := i.Parameters
 	result = false
 
 	// Diff the lists to determine if changes need to be applied
 	added, removed, _ = utils.ListDelta(current, configured)
+	var delta strings.Builder
 
 	if len(added) > 0 || len(removed) > 0 {
 		result = true
+
+		for _, a := range added {
+			delta.WriteString("\t+ ")
+			delta.WriteString(a)
+			delta.WriteString("\n")
+		}
+
+		for _, r := range removed {
+			delta.WriteString("\t- ")
+			delta.WriteString(r)
+			delta.WriteString("\n")
+		}
+	}
+
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPtpInterface.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPtpInterface.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 	}
 
 	return added, removed, result
@@ -329,7 +354,7 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 			"ptp interface has been updated")
 
-	} else if added, removed, required := intefaceParameterUpdateRequired(instance, existing); required {
+	} else if added, removed, required := intefaceParameterUpdateRequired(instance, existing, r); required {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.
