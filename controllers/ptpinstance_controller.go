@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -55,16 +56,40 @@ func instanceUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.P
 	return result
 }
 
-func instanceParameterUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.PTPInstance) (added []string, removed []string, result bool) {
+func instanceParameterUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.PTPInstance, r *PtpInstanceReconciler) (added []string, removed []string, result bool) {
 	configured := instance.Spec.InstanceParameters
 	current := i.Parameters
 	result = false
 
 	// Diff the lists to determine if changes need to be applied
 	added, removed, _ = utils.ListDelta(current, configured)
+	var delta strings.Builder
 
 	if len(added) > 0 || len(removed) > 0 {
 		result = true
+
+		for _, a := range added {
+			delta.WriteString("\t+ ")
+			delta.WriteString(a)
+			delta.WriteString("\n")
+		}
+
+		for _, r := range removed {
+			delta.WriteString("\t- ")
+			delta.WriteString(r)
+			delta.WriteString("\n")
+		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPtpInstance.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+	instance.Status.Delta = deltaString
+
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPtpInstance.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 	}
 
 	return added, removed, result
@@ -305,7 +330,7 @@ func (r *PtpInstanceReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 			"ptp instance has been updated")
 
-	} else if added, removed, required := instanceParameterUpdateRequired(instance, existing); required {
+	} else if added, removed, required := instanceParameterUpdateRequired(instance, existing, r); required {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.

@@ -149,6 +149,10 @@ type HostStatus struct {
 	// +optional
 	// +kubebuilder:default:=not_required
 	StrategyRequired string `json:"strategyRequired"`
+
+	// Delta between final profile vs current configuration
+	// +optional
+	Delta string `json:"delta"`
 }
 
 // +kubebuilder:object:root=true
