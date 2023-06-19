@@ -508,7 +508,7 @@
               timeout: 450
               msg: Waiting after unlock due to apply DM config
             register: waiting_after_reboot
-            failed_when: false
+            ignore_errors: true
 
           # Retry block: sometimes system reboots twice
           - block:
@@ -538,7 +538,7 @@
               register: new_reboot
               when: waiting_after_new_reboot.failed
 
-            when: (waiting_after_reboot.rc != 0)
+            when: waiting_after_reboot.failed
 
 
           # After reboot, wait some time for resources to be reconciled.
