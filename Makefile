@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2022 Wind River Systems, Inc.
+# Copyright(c) 2019-2023 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -260,6 +260,8 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
 	$(KUSTOMIZE) build examples/standard/hw-settle > examples/standard-hw-settle.yaml
 	$(KUSTOMIZE) build examples/storage/default > examples/storage.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/bootstrap > examples/storage-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/principal > examples/storage-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-sx/default > examples/aio-sx.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-sx/https > examples/aio-sx-https.yaml
@@ -269,7 +271,11 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
 	$(KUSTOMIZE) build examples/aio-sx/hw-settle > examples/aio-sx-hw-settle.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/bootstrap > examples/aio-sx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https > examples/aio-dx-https.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https-with-cert-manager > examples/aio-dx-https-with-cert-manager.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/bootstrap > examples/aio-dx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/principal > examples/aio-dx-day2-principal.yaml

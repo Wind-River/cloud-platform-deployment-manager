@@ -1,0 +1,22 @@
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-1
+  namespace: deployment
+spec:
+  overrides:
+    interfaces:
+      ethernet:
+      - class: none
+        mtu: 1500
+        name: lo
+        platformNetworks: []
+        port:
+          name: lo
+    bootMAC: CONTROLLER1MAC
+    location: vbox
+  profile: controller-profile
+status:
+  desploymentScope: "bootstrap"
