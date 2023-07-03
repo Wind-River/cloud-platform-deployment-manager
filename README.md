@@ -11,34 +11,30 @@ directly with the System API to perform the initial system installation.
 
 ## Scope
 
-The current scope of the Deployment Manager is to perform the initial system
-installation only (i.e., so called Day-1 operations).  The Deployment Manager
-consumes a ```YAML``` based deployment configuration file that is provided by an
-end user, or automation framework.  It attempts to reconcile the system state to
-match the desired state that is defined in the supplied deployment configuration
-file.  The end goal is that once it has completed reconciling the system state,
+The current scope of the Deployment Manager supports both initial system
+installation (i.e., so called Day-1 operations) and Day-2 operations
+(configuration update, hardware replacement and cluster expansion).
+
+On a Day-1 situation, the Deployment Manager consumes a ```YAML``` based
+deployment configuration file that is provided by an end user, or automation
+framework.  It attempts to reconcile the system state to match the desired
+state that is defined in the supplied deployment configuration file.
+
+On a Day-2 operation, the end user is able to update the YAML config file to
+reflect the new desired state of the cluster and re-apply the updated
+configuration.
+
+The end goal is that once it has completed reconciling the system state,
 each host has been transitioned to the ```unlocked/enabled``` state.  When each
 host has reached the desired state, the system should be ready to deploy an
 application workload.
 
-Once the system has reached the desired system state the deployment
-manager no longer accepts further changes to the configuration.  To modify the
-system further the end user must continue to interact with the system via one of
-the accepted user interface methods (i.e., the system CLI, GUI, or the
-system REST API).
-
-In the future, the Deployment Manager will evolve to supporting post
-installation operations (i.e., so called Day-2 operations).  End users will be
-able to modify the system configuration by supplying an updated deployment
-configuration rather than needing to interact with existing system interfaces.
- 
- 
 ## Prerequisites/Requirements
 
 
-The Deployment Manager expects that the target system is in a specific system 
-state prior to beginning reconciling the system state to the desired state.  
-Failure to meet these requirements will cause the full system deployment to 
+The Deployment Manager expects that the target system is in a specific system
+state prior to beginning reconciling the system state to the desired state.
+Failure to meet these requirements will cause the full system deployment to
 fail or not complete.
 
 ### Software Requirements
@@ -47,14 +43,14 @@ changes on the target system.  Following the initial software installation the
 System API is not functional until the system has been bootstrapped.  The first
 controller can be bootstrapped using Ansible®. This method is described in
 "Installation guides" section at the following wiki.
- 
+
 https://docs.starlingx.io/
 
 Following the bootstrapping of the system by the Ansible deployment method, the
 System API is enabled and the Deployment Manager can continue the system
 installation by configuring all system, networking and host level resources
 according to the state specified in the deployment configuration model.
- 
+
 ### Hardware Requirements
 
 The Deployment Manager supports two different host provisioning modes.  The 
@@ -64,7 +60,7 @@ profile schema attribute which can be one of two values.
 + Dynamic
 + Static
 
-When a host is provisioned using the ***dynamic*** provisioning mode, the 
+When a host is provisioned using the ***dynamic*** provisioning mode, the
 deployment manager waits for the host to appear in system inventory before
 applying any configuration changes to the system for that host.  It is the end
 user's responsibility to power on the target host and to ensure that it network
@@ -73,22 +69,22 @@ to appear in the system inventory host list.  The Deployment Manager will detect
 the new host and if it can correlate it to the ```match``` attributes specified
 in the host resource ```spec``` section then it will proceed to configuring the
 host to the desired state.  If a new host appears that cannot be correlated to
-a host in the supplied deployment configuration then it is ignored by the 
+a host in the supplied deployment configuration then it is ignored by the
 deployment manager until a configuration is supplied that matches that host.
 
 When a host is provisioned using the ***static*** provisioning mode, the
 Deployment Manager actively searches for an existing host record in the system
-inventory database.  If one is not found it inserts a new record into the 
-system database.  If that host is configured with a Board Management Controller 
+inventory database.  If one is not found it inserts a new record into the
+system database.  If that host is configured with a Board Management Controller
 (BMC) then the Deployment Manager will submit a "re-install" action via the
-System API.  This action will cause the system to power-on the host via the BMC 
+System API.  This action will cause the system to power-on the host via the BMC
 and command it to netboot to force a re-installation.  If the host is not
 configured with a BMC then it is the responsibility of the end user to power-on
 the host and to force it to netboot.
 
 
 ## Schema Definitions
- 
+
 The end user must supply a deployment configuration model which conforms to the
 supported system definition schema.  The schema is defined as a set of
 Kubernetes® Custom Resource Definitions (CRD) instances and provides
@@ -99,10 +95,10 @@ CRD instances are automatically generated based on annotations added directly
 to the source code found under ```api/v1```.
 
 A full system deployment configuration is composed of several Kubernetes Custom
-Resource (CR) instances.  Each CR conforms to a CRD instance defined under the 
+Resource (CR) instances.  Each CR conforms to a CRD instance defined under the
 ```config/crds``` directory.  For example, a system deployment may be composed
 of several instances of each of the following CRD types.
- 
+
  + System
  + Platform Network
  + Data Network
@@ -110,15 +106,15 @@ of several instances of each of the following CRD types.
  + Host
  + PTP Instances
  + PTP Interfaces
- 
+
 To streamline the process of defining many Host records it is possible to move
-common host attributes into a HostProfile definition and to re-use that 
+common host attributes into a HostProfile definition and to re-use that
 definition from many Host resources.  Similarly, it is possible to define
 multiple layers of HostProfile resources so that attributes common to multiple
 HostProfile resources can be group together into a common HostProfile resource
 and re-used by other HostProfile resources.  A Host resource can inherit from
 a HostProfile but still provide overrides for individual attributes that may
-be host specific.  
+be host specific.
 
 When the Deployment Manager prepares to configure a Host resource it first
 resolves the final Host attributes by merging the hierarchy of HostProfile
@@ -129,7 +125,7 @@ attributes and how they are handled during the resolution of the HostProfile
 hierarchy.
 
 ***Warning***: The Schema definition is currently at a Beta release status.
-Non-backward compatible changes may be required prior to the first official GA 
+Non-backward compatible changes may be required prior to the first official GA
 release.
 
 
@@ -256,6 +252,199 @@ simplifying profile configurations
 done.
 ```
 
+## Post Installation Updates - Day-2 Operations
+
+The Deployment Manager in Wind River Cloud Platform has expanded its scope
+beyond Day-1 operations to include Day-2 operations. While initially focused on
+system installation, the Deployment Manager now supports ongoing configuration
+changes, cluster expansion, and hardware replacements.
+
+To begin, the Deployment Manager still relies on a YAML-based deployment
+configuration file provided by the user or an automation framework. This
+configuration file defines the desired state of the system. The Deployment
+Manager's objective remains reconciling the system state with the specified
+configuration, but now it extends beyond the initial installation.
+
+Once the Deployment Manager completes the reconciliation process, it ensures
+that each host is transitioned to the "unlocked/enabled" state. This guarantees
+that the system is ready to deploy application workloads, as in the previous
+version. However, the new functionality allows for more granular control over
+the system, enabling users to make configuration changes, expand the cluster by
+adding new hosts, and perform hardware replacements.
+
+With these Day-2 operations, users can update various configuration parameters,
+such as system entity configuration, host entity configuration, and more.
+Additionally, the Deployment Manager provides enhanced reconciliation and sync
+status reporting, giving users visibility into the delta between the target and
+actual configuration.
+
+Cluster expansion is now supported, enabling users to add new worker or storage
+hosts to increase the system's capacity. Furthermore, hardware replacements,
+both for nodes and devices, can be seamlessly handled through the Deployment
+Manager.
+
+### Scope Parameter
+
+To distinguish between the initial deployment and a Day-2 update, a new status
+field has been added to each resource in the Deployment Manager. This addition
+aims to provide clearer visibility and differentiate between the two phases of
+the system lifecycle.
+
+To specify the status field in the YAML file, the following format must be used:
+
+```yaml
+status:
+  deploymentScope: "principal"
+```
+
+The `deploymentScope` field indicates the scope of the deployment for the
+resource. It can take on two possible values:
+
+- `"bootstrap"` (default value): This indicates the initial deployment scope.
+It is utilized during the system's initial installation or Day-1 operations.
+
+- `"principal"`: This value is employed when applying a configuration for Day-2
+operations. It signifies that the configuration update is intended for ongoing
+management and changes to the system.
+
+By setting the `deploymentScope` field to `"bootstrap"`, the Deployment Manager
+acknowledges that the configuration is meant for the initial deployment.
+Conversely, when set to `"principal"`, it indicates that the configuration
+should be applied as part of Day-2 operations.
+
+This differentiation in the `deploymentScope` value allows for better control
+and provides the possibility to apply specific configurations based on the
+desired deployment phase.
+
+It is possible to check the deploymentScope value for each resource by running:
+
+```bash
+~(keystone_admin)]$ kubectl -n deployment get system
+NAME     MODE     TYPE       VERSION   INSYNC   SCOPE         RECONCILED
+system   duplex   standard   22.12     false    principal     true
+```
+
+### Applying Day-2 Configuration Updates
+
+To update a value in the configuration file and apply it as part of Day-2
+operations, these steps must be followed:
+
+1. Open the YAML deployment configuration file and ensure that the
+`deploymentScope` field is set to `"principal"`. This indicates that the
+changes or modifications in the file are intended for Day-2 operations.
+
+2. Make the changes or modifications for the desired resources and save the
+file.
+
+3. It is recommended to apply the new configuration using the ansible-playbook
+command, which is also used during the Deployment Manager installation process.
+Please refer to
+[Using Ansible To Install The Deployment Manager](#using-ansible-to-install-the-deployment-manager)
+Arternativaly, the new configuration can be applied running the kubectl command:
+```bash
+$ kubectl apply -f my-deployment.yaml
+```
+
+After applying the new configuration, the update process can require a reboot
+of the hosts. In case it is needed, the reboot will be executed automatically
+by DM using the VIM (Virtual Infrastructure Manager) Client.
+
+4. In order to complete the Day-2 operation, when the configuration is
+updated and the resources are reconciled and in sync again, it is
+necessary to edit the YAML deployment configuration file and set the
+`deploymentScope` field to `"bootstrap"`. Apply it using:
+```bash
+$ kubectl apply -f my-deployment.yaml
+```
+By doing this, DM will only update the resources Scope status to 'bootstrap'
+again.
+
+### Delta status
+
+When a new configuration is applied, DM will detect the differences between the
+current configuration and the new expected one. This information is stored on a
+Status field called `Delta` for each resource.
+
+In order to get the `Delta` values for the resource, it is possible to run the
+following kubectl command:
+
+```bash
+kubectl get <resource> -n deployment --output=custom-columns=DELTA:.status.delta
+```
+
+Example:
+```bash
+sysadmin@controller-0:~/config/dm-config$ kubectl get host -n deployment --output=custom-columns=DELTA:.status.delta
+DELTA
+interfaces:
+      "ethernet":
+-           "class":                    "none",
++           "class":                    "platform",
+-           "name":                     "enp0s3",
++           "name":                     "oam0",
+-           "platformNetworks":         {},
++           "platformNetworks":         {"oam"},
+-           "class":                    "none",
++           "class":                    "data",
+-           "dataNetworks":             {},
++           "dataNetworks":             {"group0-data0"},
+-           "name":                     "enp0s9",
++           "name":                     "data0",
+-           "class":                    "none",
++           "class":                    "data",
+-           "dataNetworks":             {},
++           "dataNetworks":             {"group0-data1"},
+-           "name":                     "enp0s10",
++           "name":                     "data1",
+
+labels:
++           "disable-nohz-full":          "enabled",
++           "elastic-client":             "enabled",
+
+
+storage:
+      "filesystems":
++           {"name":                      "instances",         "size":         11},
+
+storage:
+      "osds":
++           {
++           "cluster":                    "ceph_cluster",
++           "function":                   "osd",
++           "path":                       "/dev/disk/by-path/pci-0000:00:0d.0-ata-2.0",
++           },
++           },
+
+```
+
+If there is more than one instance for the resource, the command should be:
+
+```bash
+[sysadmin@controller-0 ~(keystone_admin)]$ kubectl get <RESOURCE> -n deployment -o go-template='{{range .items}}{{printf "NAME: %s\nDELTA: %s\n" .metadata.name .status.delta}}{{end}}'
+```
+
+Example:
+
+```bash
+[sysadmin@controller-0 ~(keystone_admin)]$ kubectl get datanetworks -n deployment -o go-template='{{range .items}}{{printf "NAME: %s\nDELTA: %s\n" .metadata.name .status.delta}}{{end}}'
+
+NAME: group0-data0
+DELTA:
+
+NAME: group0-data1
+DELTA:
+
+NAME: group0-data2
+DELTA:
+MTU: 1300
+Description: description2
+
+NAME: group0-data3
+DELTA:
+MTU: 1400
+Description: description-test
+```
+
 ### Adjusting Generated Configuration Models With Private Information
 
 On systems configured with HTTPS and/or BMC information, the generated
@@ -350,12 +539,12 @@ Kubernetes cluster provided by the end user (i.e., the Deployment Manager can
 configure StarlingX systems remotely).
 
 ***Warning***:  Remote deployment is currently not supported due to technical
-issues with how the OpenStack endpoint list is configured on the StarlingX 
+issues with how the OpenStack endpoint list is configured on the StarlingX
 system.  Currently, this functionality only works if the IP address of the
 first controller is configured (e.g., DHCP) to be the eventual OAM floating
 IP address.  For all other address configurations a implementation change is
 required to the StarlingX software.
- 
+
 Depending on which operational model is chosen, the system URL
 and endpoint type (e.g., public, internal) must specify the correct access
 method to reach the target system.  For example, the ```system-endpoint```

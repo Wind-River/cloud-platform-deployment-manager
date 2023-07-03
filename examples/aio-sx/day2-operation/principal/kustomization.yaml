@@ -1,0 +1,5 @@
+bases:
+  - ../../default
+
+patches:
+  - aio-sx-day2-principal.yaml
