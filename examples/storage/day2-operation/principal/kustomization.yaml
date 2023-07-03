@@ -1,0 +1,5 @@
+bases:
+  - ../../default
+
+patches:
+  - storage-day2-principal.yaml
