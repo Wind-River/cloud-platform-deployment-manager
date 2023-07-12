@@ -477,11 +477,11 @@ type SystemStatus struct {
 // of a StarlingX system.  This is a composition of the following StarlingX
 // API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status

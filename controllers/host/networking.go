@@ -206,9 +206,10 @@ func findConfiguredRoute(route routes.Route, profile *starlingxv1.HostProfileSpe
 // ReconcileStaleRoutes examines the current set of routes and deletes any
 // routes that are stale or need to be re-provisioned.  A route needs to be
 // deleted if:
-//   A) The system route does not have an equivalent configured entry
-//   B) The configured route has moved to a different underlying interface
-//   C) The underlying interface needs to be deleted and re-added.
+//
+//	A) The system route does not have an equivalent configured entry
+//	B) The configured route has moved to a different underlying interface
+//	C) The underlying interface needs to be deleted and re-added.
 func (r *HostReconciler) ReconcileStaleRoutes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -349,9 +350,10 @@ func (r *HostReconciler) ReconcileStalePTPInterfaces(client *gophercloud.Service
 // ReconcileStaleAddresses examines the current set of addresses and deletes
 // any addresses that are stale or need to be re-provisioned.  An address needs
 // to be deleted if:
-//   A) The system address does not have an equivalent configured entry
-//   B) The configured address has moved to a different underlying interface
-//   C) The underlying interface needs to be deleted and re-added.
+//
+//	A) The system address does not have an equivalent configured entry
+//	B) The configured address has moved to a different underlying interface
+//	C) The underlying interface needs to be deleted and re-added.
 func (r *HostReconciler) ReconcileStaleAddresses(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -426,12 +428,13 @@ func (r *HostReconciler) ReconcileStaleAddresses(client *gophercloud.ServiceClie
 // ReconcileStaleInterfaces will examine the current set of system interfaces
 // and determine if any of them need to be deleted.  An interface needs to be
 // deleted if:
-//   A) it no longer exists in the list of interfaces to be configured
-//   B) it still exists as a VLAN, but has a different vlan-id value or lower
-//      interface
-//   C) it still exists as a Bond, but has no members in common with the system
-//      interface.
-//   D) it still exists as a VF, but has a different lower interface.
+//
+//	A) it no longer exists in the list of interfaces to be configured
+//	B) it still exists as a VLAN, but has a different vlan-id value or lower
+//	   interface
+//	C) it still exists as a Bond, but has no members in common with the system
+//	   interface.
+//	D) it still exists as a VF, but has a different lower interface.
 func (r *HostReconciler) ReconcileStaleInterfaces(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
@@ -658,10 +661,11 @@ func hasIPv6StaticAddresses(info starlingxv1.CommonInterfaceInfo, profile *starl
 // interface has any configured networks that are dynamic which would
 // necessitate enabling dynamic addressing on an interface.
 // TODO(alegacy): this is currently only intended to be used data interfaces
-//  because it assumes that the presence of a pool is enough to determine if
-//  it is dynamic rather than looking for a network to determine if that network
-//  is dynamic or not (which is currently not possible for networks used for
-//  data interfaces).
+//
+//	because it assumes that the presence of a pool is enough to determine if
+//	it is dynamic rather than looking for a network to determine if that network
+//	is dynamic or not (which is currently not possible for networks used for
+//	data interfaces).
 func hasIPv4DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
 	if info.PlatformNetworks == nil {
 		return nil, false
@@ -684,10 +688,11 @@ func hasIPv4DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.
 // interface has any configured networks that are dynamic which would
 // necessitate enabling dynamic addressing on an interface.
 // TODO(alegacy): this is currently only intended to be used data interfaces
-//  because it assumes that the presence of a pool is enough to determine if
-//  it is dynamic rather than looking for a network to determine if that network
-//  is dynamic or not (which is currently not possible for networks used for
-//  data interfaces).
+//
+//	because it assumes that the presence of a pool is enough to determine if
+//	it is dynamic rather than looking for a network to determine if that network
+//	is dynamic or not (which is currently not possible for networks used for
+//	data interfaces).
 func hasIPv6DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.HostInfo) (*string, bool) {
 	if info.PlatformNetworks == nil {
 		return nil, false
