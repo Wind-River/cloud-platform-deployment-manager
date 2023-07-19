@@ -472,9 +472,9 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 }
 
 // Reconcile reads that state of the cluster for a DataNetwork object and makes changes based on the state read
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks/finalizers,verbs=update
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=datanetworks/finalizers,verbs=update
 func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
