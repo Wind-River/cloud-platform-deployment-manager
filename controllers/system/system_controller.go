@@ -1448,9 +1448,9 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 }
 
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
 func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
