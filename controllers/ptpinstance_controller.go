@@ -529,9 +529,9 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 
 // Reconcile reads that state of the cluster for a PTPInstance object and makes
 // changes based on the state read and what is in the PtpInstance.Spec
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/finalizers,verbs=update
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/finalizers,verbs=update
 func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
