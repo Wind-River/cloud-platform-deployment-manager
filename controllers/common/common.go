@@ -403,10 +403,9 @@ func GetDeltaString(spec interface{}, current interface{}, parameters map[string
 	return deltaString, nil
 }
 
-/*
-	CollectDiffValues collects and returns the diff values from the given diff string.
-	The function returns lines starting with '+' or '-' that represent the differences,
-	and will provide the parent hierarchy for that line based on the given parameters.
+/* CollectDiffValues collects and returns the diff values from the given diff string.
+ The function returns lines starting with '+' or '-' that represent the differences,
+ and will provide the parent hierarchy for that line based on the given parameters.
 
 	Output example:
 
