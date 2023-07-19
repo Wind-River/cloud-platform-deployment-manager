@@ -1833,9 +1833,9 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 
 // Reconcile reads that state of the cluster for a Host object and makes changes
 // based on the state read and what is in the Host.Spec
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts/finalizers,verbs=update
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts/finalizers,verbs=update
 func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	_ = log.FromContext(ctx)
 	// FIXME: check log object
