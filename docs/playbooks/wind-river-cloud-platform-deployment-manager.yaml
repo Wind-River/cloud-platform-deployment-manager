@@ -89,6 +89,11 @@
           helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
         when: helm_chart_overrides is defined
 
+      - set_fact:
+          helm_chart_overrides: "/usr/local/share/applications/overrides/wind-river-cloud-platform-deployment-manager-overrides-subcloud.yaml"
+          manager_chart: "/usr/local/share/applications/helm/wind-river-cloud-platform-deployment-manager-*.tgz"
+        when: ("subcloud" in get_distributed_cloud_role.stdout and "not uploaded" in user_uploaded_artifacts)
+
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
