@@ -301,6 +301,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 	for _, iface := range host.Interfaces {
 		data := CommonInterfaceInfo{
+			UUID:  iface.ID,
 			Name:  iface.Name,
 			Class: iface.Class,
 		}

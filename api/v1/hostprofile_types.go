@@ -403,6 +403,10 @@ func StringsToPtpInterfaceItemList(items []string) PtpInterfaceItemList {
 // and inlined within each of the different interface type structures.
 // +deepequal-gen:ignore-nil-fields=true
 type CommonInterfaceInfo struct {
+	// The system assigned unique UUID value for the interface
+	// +optional
+	UUID string `json:"uuid"`
+
 	// Name defines the name of the interface to be configured.
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -150,6 +151,8 @@ const (
 	ResourceWait       = "Wait"
 	ResourceDependency = "Dependency"
 )
+
+var logCommon = log.Log.WithName("commmon")
 
 func FormatStruct(obj interface{}) string {
 	buf, _ := json.Marshal(obj)
@@ -531,4 +534,28 @@ func searchParameters(lines []string, lineNumber int, parameters map[string]inte
 	}
 
 	return result
+}
+
+// Sync interface name for ethernet
+// When N3000 interface is used, it is possible to change name after unlocked.
+// This function is to copy interface name from current to profile if uuid is the same
+// to avoid configuration difference because of names.
+func SyncIFNameByUuid(profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec) {
+
+	if_current := current.Interfaces.Ethernet
+	if_profile := profile.Interfaces.Ethernet
+	for idx_current := range if_current {
+		info_current := if_current[idx_current].CommonInterfaceInfo
+		port_current := if_current[idx_current].Port.Name
+		for idx_profile := range if_profile {
+			info_profile := if_profile[idx_profile].CommonInterfaceInfo
+			if info_profile.UUID == info_current.UUID &&
+				info_profile.Name != info_current.Name {
+				logCommon.Info("Ethernet name sync", "profile", info_profile.Name,
+					"current", info_current.Name, "uuid", info_profile.UUID)
+				if_profile[idx_profile].CommonInterfaceInfo.Name = info_current.Name
+				if_profile[idx_profile].Port.Name = port_current
+			}
+		}
+	}
 }
