@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -77,7 +76,7 @@ func InstallCertificate(filename string, data []byte) error {
 	}
 
 	path := fmt.Sprintf("%s/%s", CertificateDirectory, filename)
-	err = ioutil.WriteFile(path, data, 0600)
+	err = os.WriteFile(path, data, 0600)
 	if err != nil {
 		return err
 	}
