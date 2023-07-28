@@ -406,17 +406,19 @@ func GetDeltaString(spec interface{}, current interface{}, parameters map[string
 	return deltaString, nil
 }
 
-/* CollectDiffValues collects and returns the diff values from the given diff string.
- The function returns lines starting with '+' or '-' that represent the differences,
- and will provide the parent hierarchy for that line based on the given parameters.
+/*
+	CollectDiffValues collects and returns the diff values from the given diff string.
+	The function returns lines starting with '+' or '-' that represent the differences,
+	and will provide the parent hierarchy for that line based on the given parameters.
 
- Output example:
+	Output example:
 
 storage:
+
 	"filesystems":
+
 -		"size":		5,
 +		"size":		10,
-
 */
 func collectDiffValues(diff string, parameters map[string]interface{}) string {
 	var diffLines []string
@@ -437,8 +439,8 @@ removeDataTypes removes data types and specific interfaces from the given string
 The modified string with data types and specific interfaces removed.
 Example:
 
-  input: "float64(1500)"
-  output: "1500"
+	input: "float64(1500)"
+	output: "1500"
 */
 func removeDataTypes(line string) string {
 	// Define the regular expression to match and capture data types
@@ -490,6 +492,7 @@ func processLines(lines []string, parameters map[string]interface{}) strings.Bui
 //   - lines: A slice of strings representing the lines of the diff.
 //   - lineNumber: The index of the line being processed.
 //   - parameters: A map of resource properties with their corresponding values.
+//
 // Returns:
 //   - A string representing the hierarchy of the parent and sub-parameters, or "param_found" if the line represents a parameter itself.
 //     The hierarchy is constructed in the format: "parent:\n\t"sub-parameter":\n".

@@ -186,7 +186,8 @@ type OSDList []OSDInfo
 // GetClusterName returns the configured cluster name or the default if it
 // wasn't specified.
 // TODO(alegacy): this could be done with a defaulting webhook but it seems like
-//  overkill for so few cases where a default is necessary.
+//
+//	overkill for so few cases where a default is necessary.
 func (in *OSDInfo) GetClusterName() string {
 	if in.ClusterName == nil {
 		return clusters.CephClusterName
@@ -1007,7 +1008,7 @@ func (in *HostProfileSpec) HasWorkerSubFunction() bool {
 // system API attributes and is the most complex part of the schema definition.
 // Refer the full list of API documentation here:
 //
-//   https://docs.starlingx.io/api-ref/stx-config/index.html
+//	https://docs.starlingx.io/api-ref/stx-config/index.html
 //
 // +deepequal-gen=false
 // +kubebuilder:printcolumn:name="base",type="string",JSONPath=".spec.base",description="The parent host profile."

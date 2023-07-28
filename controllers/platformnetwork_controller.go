@@ -708,8 +708,8 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 		} else {
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
-			instance.Status.Reconciled = false
 			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				instance.Status.Reconciled = false
 				// Update storategy required status for strategy monitor
 				r.CloudManager.UpdateConfigVersion()
 				r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
@@ -731,9 +731,9 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 }
 
 // Reconcile reads that state of the cluster for a PlatformNetwork object and makes changes based on the state read
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
 func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 

@@ -1425,8 +1425,8 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 		} else {
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
-			instance.Status.Reconciled = false
 			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				instance.Status.Reconciled = false
 				// Update storategy required status for strategy monitor
 				r.CloudManager.UpdateConfigVersion()
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
@@ -1448,9 +1448,9 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 }
 
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
 func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
@@ -1495,7 +1495,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
 	if platformClient == nil {
 		// Create the platform client
-		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace)
+		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
 		if err != nil {
 			return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 		}
@@ -1510,6 +1510,15 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 			}
 		}
+	}
+
+	// If strategy is applied, start strategy monitor
+	if instance.Status.StrategyApplied {
+		logSystem.Info("Strategy applied, start strategy monitor")
+		r.CloudManager.StrageySent()
+		r.CloudManager.StartStrategyMonitor()
+	} else {
+		logSystem.V(2).Info("Strategy not applied")
 	}
 
 	err = r.ReconcileResource(platformClient, instance)
