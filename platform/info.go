@@ -776,8 +776,8 @@ func (in *HostInfo) BuildInterfaceNetworkList(iface interfaces.Interface) []stri
 }
 
 // BuildInterfaceDataNetworkList is a utility function takes a builds a list
-//// of network names based on the specific interface ID and the host's list of
-//// interface-to-datanetwork associations.
+// // of network names based on the specific interface ID and the host's list of
+// // interface-to-datanetwork associations.
 func (in *HostInfo) BuildInterfaceDataNetworkList(iface interfaces.Interface) []string {
 	result := make([]string, 0)
 

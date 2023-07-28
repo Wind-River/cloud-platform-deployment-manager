@@ -50,13 +50,29 @@ const (
 	StrategyUnlockRequired = "unlock_required"
 )
 
+const (
+	StrategyInitial      = "initial"
+	StrategyBuilding     = "building"
+	StrategyBuildFailed  = "build-failed"
+	StrategyBuildTimeout = "build-timeout"
+	StrategyReadyToApply = "ready-to-apply"
+	StrategyApplying     = "applying"
+	StrategyApplyFailed  = "apply-failed"
+	StrategyApplyTimeout = "apply-timeout"
+	StrategyApplied      = "applied"
+	StrategyAborting     = "aborting"
+	StrategyAbortFailed  = "abort-failed"
+	StrategyAbortTimeout = "abort-timeout"
+	StrategyAborted      = "aborted"
+)
+
 // CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
 type CloudManager interface {
 	ResetPlatformClient(namespace string) error
 	GetPlatformClient(namespace string) *gophercloud.ServiceClient
 	GetKubernetesClient() client.Client
-	BuildPlatformClient(namespace string) (*gophercloud.ServiceClient, error)
+	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
 	SetSystemReady(namespace string, value bool)
@@ -77,6 +93,12 @@ type CloudManager interface {
 	StrageySent()
 	GetStrageySent() bool
 	ClearStragey()
+	GetStrageyNamespace() string
+	GetVimClient() *gophercloud.ServiceClient
+	SetStrategyAppliedSent(namespace string, applied bool) error
+	StartStrategyMonitor()
+	SetStrategyRetryCount(c int) error
+	GetStrategyRetryCount() (int, error)
 }
 
 type SystemType string
@@ -131,6 +153,8 @@ type StrategyStatus struct {
 	ConfigVersion  int
 	MonitorVersion int
 	StrategySent   bool
+	Namespace      string
+	MonitorStarted bool
 }
 
 type PlatformManager struct {
@@ -139,6 +163,7 @@ type PlatformManager struct {
 	systems        map[string]*SystemNamespace
 	monitors       map[string]*Monitor
 	strategyStatus *StrategyStatus
+	vimClient      *gophercloud.ServiceClient
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -147,6 +172,7 @@ func NewStrategyStatus() *StrategyStatus {
 		ConfigVersion:  0,
 		MonitorVersion: 0,
 		StrategySent:   false,
+		MonitorStarted: false,
 	}
 }
 
@@ -236,6 +262,33 @@ func (m *PlatformManager) NotifySystemController(namespace string) error {
 		}
 
 		log.Info("system controller has been notified", "name", obj.Name)
+	}
+
+	return nil
+}
+
+func (m *PlatformManager) SetStrategyAppliedSent(namespace string, applied bool) error {
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return err
+	}
+
+	// There should only be a single system, but for the sake of completeness
+	// update any instance returned by the API.
+	for _, obj := range systems.Items {
+		obj.Status.StrategyApplied = applied
+
+		err = m.GetClient().Status().Update(context.TODO(), &obj)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update system with strategy applied")
+			return err
+		}
+
+		log.Info("Update strategy applied in System", "strategyApplied", obj.Status.StrategyApplied)
 	}
 
 	return nil
@@ -487,14 +540,22 @@ func (m *PlatformManager) CancelMonitor(object client.Object) {
 	}
 }
 
+func (m *PlatformManager) StartStrategyMonitor() {
+	if !m.strategyStatus.MonitorStarted {
+		log.Info("Start strategy monitor")
+		go StrategyRequiredMonitor(instance)
+		m.strategyStatus.MonitorStarted = true
+	}
+}
+
 // SetResourceInfo to store strategy required values of each resources
 func (m *PlatformManager) SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string) {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
-	// If this is the sirst resource information, start strategy monitor
+	// If this is the first resource information, start strategy monitor
 	if len(m.strategyStatus.ResourceInfo) == 0 {
-		go StrategyRequiredMonitor(instance)
+		m.StartStrategyMonitor()
 	}
 
 	info, ok := m.strategyStatus.ResourceInfo[resourcename]
@@ -589,12 +650,95 @@ func (m *PlatformManager) GetStrageySent() bool {
 	return m.strategyStatus.StrategySent
 }
 
+// GetStrategyRetryCount to return strategy retry count value
+func (m *PlatformManager) GetStrategyRetryCount() (int, error) {
+	count := 0
+
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = m.strategyStatus.Namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return count, err
+	}
+
+	// There should only be a single system, but for the sake of completeness.
+	// Obtain current retry value from system resource
+	for _, obj := range systems.Items {
+		count = obj.Status.StrategyRetryCount
+	}
+	return count, nil
+}
+
+// SetStrategyRetryCount to set strategy retry count value
+func (m *PlatformManager) SetStrategyRetryCount(c int) error {
+	// Update the same value in System resources in case of
+	// DM container failure
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = m.strategyStatus.Namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return err
+	}
+
+	// There should only be a single system, but for the sake of completeness
+	// update any instance returned by the API.
+	for _, obj := range systems.Items {
+		obj.Status.StrategyRetryCount = c
+
+		err := m.GetClient().Status().Update(context.TODO(), &obj)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update system with strategy retry count")
+			return err
+		}
+
+		log.Info("Update strategy retry count in System", "strategyApplied", obj.Status.StrategyRetryCount)
+	}
+	return nil
+}
+
 // ClearStragey to clear strategy status
 func (m *PlatformManager) ClearStragey() {
+	// Clear applied status in System instance
+	err := m.SetStrategyAppliedSent(m.strategyStatus.Namespace, false)
+	if err != nil {
+		log.Error(err, "Set strategy applied sent false error")
+	}
+	m.strategyStatus = NewStrategyStatus()
+
+	// Reset strategy retry count
+	err = m.SetStrategyRetryCount(0)
+	if err != nil {
+		log.Error(err, "Set strategy retry count clear failure")
+	}
+}
+
+// GetStrageyNamespace returns namespace for gopher client
+func (m *PlatformManager) GetStrageyNamespace() string {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
-	m.strategyStatus = NewStrategyStatus()
+	return m.strategyStatus.Namespace
+}
+
+func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
+	if m.vimClient == nil {
+		namespace := m.GetStrageyNamespace()
+		if namespace == "" {
+			log.Info("No Namespace. Waiting for platform client creation")
+		} else {
+			c, err := m.BuildPlatformClient(namespace, VimEndpointName, VimEndpointType)
+			if err != nil {
+				log.Error(err, "Create client failed")
+			} else {
+				m.vimClient = c
+			}
+		}
+	}
+	return m.vimClient
 }
 
 var instance CloudManager
