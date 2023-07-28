@@ -368,6 +368,9 @@ spec:
                           - layer2
                           - layer2+3
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                       required:
                       - class
                       - members
@@ -442,6 +445,9 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
                           maximum: 128
@@ -515,6 +521,9 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV virtual functions for this VF interface.
                           maximum: 256
@@ -585,6 +594,9 @@ spec:
                           - master
                           - slave
                           - none
+                          type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
                           type: string
                         vid:
                           description: VID defines the VLAN ID value to be assigned to this VLAN interface.
@@ -1182,6 +1194,9 @@ spec:
                               - layer2
                               - layer2+3
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                           required:
                           - class
                           - members
@@ -1256,6 +1271,9 @@ spec:
                               - slave
                               - none
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                             vfCount:
                               description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
                               maximum: 128
@@ -1329,6 +1347,9 @@ spec:
                               - slave
                               - none
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                             vfCount:
                               description: VFCount defines the number of SRIOV virtual functions for this VF interface.
                               maximum: 256
@@ -1399,6 +1420,9 @@ spec:
                               - master
                               - slave
                               - none
+                              type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
                               type: string
                             vid:
                               description: VID defines the VLAN ID value to be assigned to this VLAN interface.

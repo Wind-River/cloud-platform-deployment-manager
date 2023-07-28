@@ -1146,6 +1146,11 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 		result = true
 	}
 
+	if status.Defaults == nil {
+		logHost.Info("defaults is nil. Update status")
+		result = true
+	}
+
 	return result
 }
 
@@ -1375,6 +1380,12 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	//  find a way to populate it into profiles generated from the running
 	//  configuration.
 	profile.ProvisioningMode = nil
+
+	// N3000 interface name change apply
+	if host.IsUnlockedEnabled() {
+		logHost.Info("Sync interface name")
+		common.SyncIFNameByUuid(profile, current)
+	}
 
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 	if inSync {

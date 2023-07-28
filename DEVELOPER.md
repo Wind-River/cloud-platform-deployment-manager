@@ -32,12 +32,12 @@ cd downloads
 ```
 
 The Deployment Manager was developed during the period when GoLang version
-1.17.9 was prominent.  A newer version may work fine, but the minimum guaranteed
-version that will work with the tools and Makefile provided is v1.17.9.
+1.19.6 was prominent.  A newer version may work fine, but the minimum guaranteed
+version that will work with the tools and Makefile provided is v1.19.6.
  
 ```bash
-wget https://dl.google.com/go/go1.17.9.linux-amd64.tar.gz
-sudo tar -C /usr/local -zxf go1.17.9.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.19.6.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxf go1.19.6.linux-amd64.tar.gz
 export PATH=${PATH}:/usr/local/go/bin
 ```
 
@@ -119,11 +119,11 @@ cd cloud-platform-deployment-manager
 make && DEBUG=yes make docker-build
 ```
 
-With GoLang version 1.17.9, the source directory is not mandatory in ${HOME}/go/src.
+With GoLang version 1.19.6, the source directory is not mandatory in ${HOME}/go/src.
 You can create a directory anywhere except under GOPATH, and run the "git clone" step described above.
 
 ## Working with a private fork
-With GoLang version 1.17.9, Go source path is not strictly under
+With GoLang version 1.19.6, Go source path is not strictly under
 GOPATH. You can create the working directory anywhere except under GOPATH,
 and clone your private fork in it.
 
@@ -449,8 +449,8 @@ public key to ~/.ssh/authorized_keys.
 
 #### Versions
 
-Try using Go 1.17 if newer versions aren't working. Check with:
+Try using Go 1.19 if newer versions aren't working. Check with:
 ```bash
 > go version
-go version go1.17.9 linux/amd64
+go version go1.19.6 linux/amd64
 ```
