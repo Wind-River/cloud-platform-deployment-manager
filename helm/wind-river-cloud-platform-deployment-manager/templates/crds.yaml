@@ -2535,6 +2535,10 @@ spec:
               softwareVersion:
                 description: SoftwareVersion defines the current software version reported by the system API.
                 type: string
+              strategyApplied:
+                default: false
+                description: Strategy monitor status information for Day 2 operation
+                type: boolean
               strategyRequired:
                 default: not_required
                 description: Value for configuration is updated or not
@@ -2543,6 +2547,9 @@ spec:
                 - lock_required
                 - unlock_required
                 type: string
+              strategyRetryCount:
+                description: Strategy monitor retry count for Day 2 operation
+                type: integer
               systemMode:
                 description: SystemMode defines the current system mode reported by the system API.
                 type: string
