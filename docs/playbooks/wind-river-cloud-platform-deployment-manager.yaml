@@ -9,6 +9,9 @@
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
     - set_fact:
+        user_uploaded_artifacts: "{{ user_uploaded_artifacts | default(true) }}"
+
+    - set_fact:
         ansible_port: "{{ ansible_port | default(22) }}"
         wait_for_timeout: " {{ wait_for_timeout | default(900) }}"
         boot_wait_time: " {{ boot_wait_time | default(200) }}"
@@ -89,6 +92,32 @@
           helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
         when: helm_chart_overrides is defined
 
+      - block:
+
+        ## user not uploaded the artifacts
+        ## check in subcloud /usr/local/share/applications/
+
+        - set_fact:
+            helm_chart_overrides: "/usr/local/share/applications/overrides/wind-river-cloud-platform-deployment-manager-overrides-subcloud.yaml"
+            manager_chart: "/usr/local/share/applications/helm/wind-river-cloud-platform-deployment-manager-*.tgz"
+          
+        - name: Check if helm-chart file exists in subcloud
+          shell: ls {{ manager_chart }}
+          ignore_errors: yes
+          register: helm_chart_file
+         
+        - name: Check if helm-overrides file exists in subcloud
+          stat:
+            path: "{{ helm_chart_overrides }}"
+          register: helm_chart_overrides_file
+          
+        - name: Fail helm-chart and overrides not exists in subcloud
+          fail: 
+            msg: "Helm-chart and overrides not exists in subcloud"
+          when: (helm_chart_file.stdout | length == 0 or helm_chart_overrides_file.stat.exists == False)
+
+        when: ("subcloud" in get_distributed_cloud_role.stdout and user_uploaded_artifacts is false)
+      
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
