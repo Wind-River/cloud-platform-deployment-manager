@@ -131,7 +131,10 @@ endif
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build . --no-cache -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
+# Build docker image with the manager.
+# TODO(yuxing): remove the "--security-opt seccomp=unconfined" if the build OS and a newer version of the
+# docker can accept that. It is only a workaround from https://github.com/containers/skopeo/issues/1501.
+	docker build . --no-cache --security-opt seccomp=unconfined -t ${IMG} --target ${DOCKER_TARGET} --build-arg "GOBUILD_GCFLAGS=${GOBUILD_GCFLAGS}"
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -210,8 +213,10 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 	curl -sSfL $(GOLANGCI_INSTALL_SCRIPT) | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
 
 # Build the builder image
+# TODO(yuxing): remove the "--security-opt seccomp=unconfined" if the build OS and a newer version of the
+# docker can accept that. It is only a workaround from https://github.com/containers/skopeo/issues/1501.
 builder-build:
-	docker build . --no-cache -t ${BUILDER_IMG} -f Dockerfile.builder
+	docker build . --no-cache --security-opt seccomp=unconfined -t ${BUILDER_IMG} -f Dockerfile.builder
 
 builder-run: builder-build
 	docker run -v /var/run/docker.sock:/var/run/docker.sock \
