@@ -250,7 +250,7 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 		opts.Personality = profile.Personality
 	}
 
-	if profile.SubFunctions != nil {
+	if profile.SubFunctions != nil && profile.Kernel == nil {
 		profileSubFunctions := make([]string, 0)
 		for _, single := range profile.SubFunctions {
 			profileSubFunctions = append(profileSubFunctions, string(single))
@@ -796,6 +796,11 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 		}
 
 		err = r.ReconcileMemory(client, instance, profile, host)
+		if err != nil {
+			return err
+		}
+
+		err = r.ReconcileKernel(client, instance, profile, host)
 		if err != nil {
 			return err
 		}

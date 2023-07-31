@@ -7,18 +7,19 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.0
+	github.com/google/go-cmp v0.5.9
 	github.com/gophercloud/gophercloud v0.0.0-20230605171524-742ad279b1e1
 	github.com/imdario/mergo v0.3.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
+	github.com/samber/lo v1.38.1
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5
-	k8s.io/klog v1.0.0
 	sigs.k8s.io/controller-runtime v0.11.2
 )
 
@@ -39,7 +40,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -66,6 +66,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
+	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
@@ -91,4 +92,4 @@ require (
 )
 
 // replace github.com/gophercloud/gophercloud => ./external/gophercloud
-replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20230731150227-137664ed2caf
+replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20230804151513-effbe8155d7e

@@ -864,6 +864,11 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:Pattern=^[0-9]+$
 	// +optional
 	HwSettle *string `json:"hwSettle,omitempty"`
+
+	// Kernel defines the kernel of the host
+	// +kubebuilder:validation:Enum=standard;lowlatency
+	// +optional
+	Kernel *string `json:"kernel,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile

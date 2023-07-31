@@ -605,6 +605,12 @@ spec:
                       type: object
                     type: array
                 type: object
+              kernel:
+                description: Kernel defines the kernel of the host
+                enum:
+                - standard
+                - lowlatency
+                type: string
               labels:
                 additionalProperties:
                   type: string
@@ -1425,6 +1431,12 @@ spec:
                           type: object
                         type: array
                     type: object
+                  kernel:
+                    description: Kernel defines the kernel of the host
+                    enum:
+                    - standard
+                    - lowlatency
+                    type: string
                   labels:
                     additionalProperties:
                       type: string
