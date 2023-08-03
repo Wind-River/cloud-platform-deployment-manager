@@ -1,4 +1,4 @@
-FROM golang:1.19
+FROM golang:1.19-bullseye
 
 # Install our required version of Kustomize to generate the examples
 RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
