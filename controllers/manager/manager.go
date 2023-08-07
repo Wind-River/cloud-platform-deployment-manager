@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -99,6 +100,12 @@ type CloudManager interface {
 	StartStrategyMonitor()
 	SetStrategyRetryCount(c int) error
 	GetStrategyRetryCount() (int, error)
+
+	// gophercloud
+	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcActionStrategy(c *gophercloud.ServiceClient, opts systemconfigupdate.StrategyActionOpts) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcCreate(c *gophercloud.ServiceClient, opts systemconfigupdate.SystemConfigUpdateOpts) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcDelete(c *gophercloud.ServiceClient) (r systemconfigupdate.DeleteResult)
 }
 
 type SystemType string
@@ -724,6 +731,7 @@ func (m *PlatformManager) GetStrageyNamespace() string {
 	return m.strategyStatus.Namespace
 }
 
+// GetVimClient returns vim client for system update
 func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
 	if m.vimClient == nil {
 		namespace := m.GetStrageyNamespace()
@@ -739,6 +747,26 @@ func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
 		}
 	}
 	return m.vimClient
+}
+
+// GcCreate is wrapper function for systemconfigupdate Create
+func (m *PlatformManager) GcCreate(c *gophercloud.ServiceClient, opts systemconfigupdate.SystemConfigUpdateOpts) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.Create(c, opts)
+}
+
+// GcDelete is wrapper function for systemconfigupdate Delete
+func (m *PlatformManager) GcDelete(c *gophercloud.ServiceClient) (r systemconfigupdate.DeleteResult) {
+	return systemconfigupdate.Delete(c)
+}
+
+// GcActionStrategy is wrapper function for systemconfigupdate ActionStrategy
+func (m *PlatformManager) GcActionStrategy(c *gophercloud.ServiceClient, opts systemconfigupdate.StrategyActionOpts) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.ActionStrategy(c, opts)
+}
+
+// GcShow is wrapper function for systemconfigupdate Show
+func (m *PlatformManager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.Show(c)
 }
 
 var instance CloudManager
