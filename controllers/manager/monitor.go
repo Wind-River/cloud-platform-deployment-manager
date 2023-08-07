@@ -226,9 +226,7 @@ func (m *Monitor) handleClientError(err error) (stop bool) {
 // DefaultNewStrategyRequiredMonitorInterval represents the default interval between
 // polling attempts to check
 const DefaultNewStrategyRequiredMonitorInterval = 15 * time.Second
-
-// const DefaultMaxStrategyRetryCount = 360
-const DefaultMaxStrategyRetryCount = 4
+const DefaultMaxStrategyRetryCount = 120
 
 // StrategyRequiredMonitor is a monitor to analyze the strategy needs
 func StrategyRequiredMonitor(management CloudManager) {
@@ -245,14 +243,14 @@ func StrategyRequiredMonitor(management CloudManager) {
 	log.Info("StrategyRequiredMonitor ends")
 }
 
-func deleteStrategy(c *gophercloud.ServiceClient) {
+func deleteStrategy(management CloudManager, c *gophercloud.ServiceClient) {
 	log.Info("Deleting strategy")
 	// Delete strategy
-	r := systemconfigupdate.Delete(c)
+	r := management.GcDelete(c)
 	log.Info("Strategy deleted", "result", r)
 }
 
-func monitorStrategyState(management CloudManager, c *gophercloud.ServiceClient) bool {
+func monitorStrategyState(management CloudManager) bool {
 	client := management.GetVimClient()
 	if client == nil {
 		log.Info("Vim client is not ready. Wait")
@@ -260,7 +258,7 @@ func monitorStrategyState(management CloudManager, c *gophercloud.ServiceClient)
 	}
 
 	// Obtain current strategy status
-	s, err := systemconfigupdate.Show(client)
+	s, err := management.GcShow(client)
 	if err != nil {
 		log.Error(err, "Obtain strategy status failed")
 		return false
@@ -276,7 +274,7 @@ func monitorStrategyState(management CloudManager, c *gophercloud.ServiceClient)
 			Action: &a,
 		}
 		log.Info("Sending stragety action", "StrategyActionOpts", action)
-		_, err = systemconfigupdate.ActionStrategy(client, action)
+		_, err = management.GcActionStrategy(client, action)
 		if err != nil {
 			log.Error(err, "Strategy apply failed.")
 			c, err := management.GetStrategyRetryCount()
@@ -287,6 +285,7 @@ func monitorStrategyState(management CloudManager, c *gophercloud.ServiceClient)
 			// Check max retry count
 			if c > DefaultMaxStrategyRetryCount {
 				log.Error(err, "Retry exceeds to apply strategy")
+				deleteStrategy(management, client)
 				return true
 			}
 			// Update retry count
@@ -308,26 +307,26 @@ func monitorStrategyState(management CloudManager, c *gophercloud.ServiceClient)
 			}
 		}
 	case StrategyBuildFailed:
-		log.Info("Strategy build failed", "reason", s.BuildPhase.Reason)
-		deleteStrategy(client)
+		log.Error(err, "Strategy build failed", "reason", s.BuildPhase.Reason)
+		deleteStrategy(management, client)
 		return true
 
 	case StrategyApplyFailed:
-		log.Info("Strategy apply failed", "reason", s.ApplyPhase.Reason)
-		deleteStrategy(client)
+		log.Error(err, "Strategy apply failed", "reason", s.ApplyPhase.Reason)
+		deleteStrategy(management, client)
 		return true
 
 	case StrategyApplying:
 		log.Info("Strategy applying", "percentage", s.ApplyPhase.CompletionPercentage, "stage", s.ApplyPhase.CurrentStage)
 
 	case StrategyBuildTimeout, StrategyApplyTimeout, StrategyAbortFailed, StrategyAbortTimeout, StrategyAborted:
-		log.Info("Error occuured in strategy", "state", s.State)
-		deleteStrategy(client)
+		log.Error(err, "Error occuured in strategy", "state", s.State)
+		deleteStrategy(management, client)
 		return true
 
 	case StrategyApplied:
-		log.Info("Strategy applied. Finish strategy monitor.")
-		deleteStrategy(client)
+		log.Error(err, "Strategy applied. Finish strategy monitor.")
+		deleteStrategy(management, client)
 		return true
 	}
 	return false
@@ -355,13 +354,7 @@ func ManageStrategy(management CloudManager) bool {
 
 	// Monitor strategy status after strategy is sent
 	if management.GetStrageySent() {
-		client := management.GetVimClient()
-		if client == nil {
-			log.Info("Vim client is not ready. Wait")
-			return false
-		}
-
-		r := monitorStrategyState(management, client)
+		r := monitorStrategyState(management)
 		return r
 	}
 
@@ -424,7 +417,7 @@ func ManageStrategy(management CloudManager) bool {
 			return false
 		} else {
 			log.Info("Sending stragety request", "SystemConfigUpdateOpts", request)
-			_, err := systemconfigupdate.Create(client, request)
+			_, err := management.GcCreate(client, request)
 			if err != nil {
 				log.Error(err, "Strategy creation failed")
 				c, err := management.GetStrategyRetryCount()
