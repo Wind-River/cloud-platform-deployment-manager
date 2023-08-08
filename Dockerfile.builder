@@ -27,6 +27,7 @@ ENV PATH="${PATH}:/usr/local/kubebuilder/bin:/bin"
 
 # Set the workdir into which we will will be working within this container
 WORKDIR /go/src/github.com/wind-river/cloud-platform-deployment-manager
+RUN git config --global --add safe.directory /go/src/github.com/wind-river/cloud-platform-deployment-manager
 
 # Initialize helm within the container otherwise no helm commands will work.
 RUN helm init --stable-repo-url=https://charts.helm.sh/stable --client-only
