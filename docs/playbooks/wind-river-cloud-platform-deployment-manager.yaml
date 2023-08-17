@@ -16,8 +16,8 @@
 
     - set_fact:
         ansible_port: "{{ ansible_port | default(22) }}"
-        wait_for_timeout: " {{ wait_for_timeout | default(900) }}"
-        boot_wait_time: " {{ boot_wait_time | default(200) }}"
+        wait_for_timeout: " {{ wait_for_timeout | default(400) }}"
+        boot_wait_time: " {{ boot_wait_time | default(180) }}"
 
     - set_fact:
         helm_chart_overrides: "{{ deployment_manager_overrides }}"
@@ -468,11 +468,19 @@
       when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
              and "unlocked" not in current_administrativestate.stdout)
 
-      # Verification block
+      # Main verification block.
+      # Behavior:
+      # This block waits until the host unlock is triggered.
+      # - If the unlock is not triggered after a certain time, it might indicate DM failures.
+      #   In this case, it proceeds to the 'get failure information' block to collect details 
+      #   about the potential cause.
+      # - If the unlock process is in progress, it proceeds to the 'unlock verifications' block.
+      #   Here, it waits for the host's port to be closed and then reopened. Following that, it checks
+      #   the status of resources before completing.
     - block:
+
         # - If unlock task is triggered, is highly probable that the config applied is correct.
-        # - If the task fails (by achieving max retries without calling the unlock), the
-        #   playbook will fail but it will collect some information before exiting.
+        # - The task fails by achieving max retries without calling the unlock.
         - name: Wait until unlock task triggered
           shell: |
             source /etc/platform/openrc;
@@ -489,8 +497,10 @@
             - "waiting: {{get_show_task_status.stdout}}"
             - "waiting: {{get_show_task_status.stderr}}"
 
+        # Get failure information Block:
         # if unlock was not triggered, get information and make the playbook fail below
         - block:
+
           # Get a list of unreconciled resources pre unlock
           # This task is getting the last column as RECONCILED value
           # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
@@ -538,31 +548,80 @@
 
           when: ("Unlocking" not in get_show_task_status.stdout)
 
+        # Unlock verifications Block:
         # if unlock was triggered, wait until unlock complete
         # and check resources and logs.
         - block:
-          # check close-open port before starting last verifications
-          - name: Waiting for port to be closed due to unlock task
-            local_action:
-              module: wait_for
-                port={{ ansible_port }}
-                host={{ ansible_host }}
-                delay={{ boot_wait_time }}
-                timeout={{ wait_for_timeout }}
-                state=stopped
-            retries: 20
-            delay: 20
 
-          - name: Waiting for port to become open
-            local_action:
-              module: wait_for
-                port={{ ansible_port }}
-                host={{ ansible_host }}
-                delay={{ boot_wait_time }}
-                timeout={{ wait_for_timeout }}
-                state=started
-            retries: 40
-            delay: 20
+          # check close-open port before starting last checkings
+          - block:
+            - name: Waiting for port to be closed due to unlock task
+              wait_for:
+                port: "{{ ansible_port }}"
+                host: "{{ ansible_host }}"
+                timeout: "{{ wait_for_timeout }}"
+                state: stopped
+
+            - name: Waiting for port to become open
+              local_action:
+                module: wait_for
+                  port={{ ansible_port }}
+                  host={{ ansible_host }}
+                  timeout={{ wait_for_timeout }}
+                  state=started
+              retries: 20
+              delay: 20
+
+            # Rescue block due to port timing issues:
+            # It will check the administrative state and status of resources.
+            # If the state is not "unlocked," log the information from the subcloud.
+            # If the state is "unlocked," continue with the normal flow of the main block.
+            rescue:
+              - name: Waiting for port to become open
+                local_action:
+                  module: wait_for
+                    port={{ ansible_port }}
+                    host={{ ansible_host }}
+                    delay={{ boot_wait_time }}
+                    timeout={{ wait_for_timeout }}
+                    state=started
+                retries: 20
+                delay: 20
+
+              - name: Wait for {{ boot_wait_time }} seconds before checking status
+                wait_for:
+                  timeout: 300
+                register: waiting_after_failures
+                ignore_errors: true
+
+              - name: Get post unlock state
+                shell: >-
+                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}" |
+                  awk 'NR == 1 { for (i=1; i<=NF; i++) { if ($i == "ADMINISTRATIVE") { col = i; break } } } NR > 1 { print $col }'
+                environment:
+                  KUBECONFIG: "/etc/kubernetes/admin.conf"
+                register: get_final_admin_state
+                until: ( administrative_state == get_final_admin_state.stdout)
+                retries: 4
+                delay: 15
+                ignore_errors: yes
+
+              - name: Retrieve kubectl resources reconciled status
+                shell: >-
+                  (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}")
+                environment:
+                  KUBECONFIG: "/etc/kubernetes/admin.conf"
+                register: resources_status
+                ignore_errors: yes
+
+              - name: Showing status after unlock
+                debug:
+                  msg:
+                  - "WARNING. Final status after reboot: {{get_final_admin_state.stdout}}"
+                  - "It's possible that the status after attempting to unlock is not as desired:"
+                  - "{{resources_status.stdout}}"
+                when: ( administrative_state != get_final_admin_state.stdout)
 
           # Waiting task after unlock to catch right status
           # This simple task usually doesn't fail. However, in some
@@ -570,13 +629,14 @@
           # situations, this task might fail due to a loss of connection.
           # If that happens, the following block will wait for the
           # subsequent reboot.
-          - wait_for:
-              timeout: 450
-              msg: Waiting after unlock due to apply DM config
+          - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
+            wait_for:
+              timeout: "{{ boot_wait_time }}"
             register: waiting_after_reboot
             ignore_errors: true
 
           # Retry block: sometimes system reboots twice
+          # It will take some extra time.
           - block:
             - name: Waiting for port to become open on second reboot
               local_action:
@@ -586,13 +646,13 @@
                   delay={{ boot_wait_time }}
                   timeout={{ wait_for_timeout }}
                   state=started
-              retries: 40
+              retries: 20
               delay: 20
 
             # Waiting task after unlock to catch right status
-            - wait_for:
-                timeout: 450
-                msg: Waiting after unlock due to apply DM config
+            - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
+              wait_for:
+                timeout: "{{ boot_wait_time }}"
               register: waiting_after_new_reboot
               ignore_errors: true
 
@@ -605,7 +665,6 @@
               when: waiting_after_new_reboot.failed
 
             when: waiting_after_reboot.failed
-
 
           # After reboot, wait some time for resources to be reconciled.
           # If we have all of them reconciled, playbook won't fail.
