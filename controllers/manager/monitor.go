@@ -235,7 +235,7 @@ func StrategyRequiredMonitor(management CloudManager) {
 		time.Sleep(DefaultNewStrategyRequiredMonitorInterval)
 		finished := ManageStrategy(management)
 		if finished {
-			//Clear storategy
+			//Clear strategy
 			management.ClearStragey()
 			break
 		}
@@ -325,7 +325,7 @@ func monitorStrategyState(management CloudManager) bool {
 		return true
 
 	case StrategyApplied:
-		log.Error(err, "Strategy applied. Finish strategy monitor.")
+		log.Info("Strategy applied. Finish strategy monitor.")
 		deleteStrategy(management, client)
 		return true
 	}

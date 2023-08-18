@@ -16,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -523,7 +525,7 @@ func (m *PlatformManager) StartMonitor(monitor *Monitor, message string) error {
 	key := monitor.GetKey()
 	m.monitors[key] = monitor
 
-	log.V(2).Info("starting monitor", "key", key)
+	log.V(2).Info("starting monitor", "key", key, "message", message)
 
 	// Run the monitor.
 	monitor.Start(m)
@@ -585,7 +587,7 @@ func (m *PlatformManager) SetResourceInfo(resourcetype string, personality strin
 	}
 }
 
-// GetStrategyRequiredList returns the current storategy required list
+// GetStrategyRequiredList returns the current strategy required list
 func (m *PlatformManager) GetStrategyRequiredList() map[string]*ResourceInfo {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
@@ -607,7 +609,7 @@ func (m *PlatformManager) ListStrategyRequired() string {
 	return jdata
 }
 
-// UpdateConfigVersion to increase configration version
+// UpdateConfigVersion to increase configuration version
 func (m *PlatformManager) UpdateConfigVersion() {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
@@ -617,7 +619,7 @@ func (m *PlatformManager) UpdateConfigVersion() {
 	log.Info("Config version is updated", "from", current_version, "to", m.strategyStatus.ConfigVersion)
 }
 
-// GetConfigVersion to return the current configration version
+// GetConfigVersion to return the current configuration version
 func (m *PlatformManager) GetConfigVersion() int {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
@@ -694,9 +696,20 @@ func (m *PlatformManager) SetStrategyRetryCount(c int) error {
 	// There should only be a single system, but for the sake of completeness
 	// update any instance returned by the API.
 	for _, obj := range systems.Items {
-		obj.Status.StrategyRetryCount = c
 
-		err := m.GetClient().Status().Update(context.TODO(), &obj)
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			instance := &v1.System{}
+			err := m.GetClient().Get(context.TODO(), types.NamespacedName{
+				Name:      obj.Name,
+				Namespace: obj.Namespace,
+			}, instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to obtain latest system instance")
+				return err
+			}
+			instance.Status.StrategyRetryCount = c
+			return m.GetClient().Status().Update(context.TODO(), instance)
+		})
 		if err != nil {
 			err = perrors.Wrapf(err, "failed to update system with strategy retry count")
 			return err
