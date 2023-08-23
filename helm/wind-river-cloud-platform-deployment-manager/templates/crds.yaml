@@ -106,6 +106,9 @@ spec:
               configurationUpdated:
                 description: Value for configuration is updated or not
                 type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -1722,6 +1725,9 @@ spec:
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
                 type: string
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -1912,6 +1918,9 @@ spec:
               configurationUpdated:
                 description: Value for configuration is updated or not
                 type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -2034,6 +2043,9 @@ spec:
               configurationUpdated:
                 description: Value for configuration is updated or not
                 type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -2149,6 +2161,9 @@ spec:
               configurationUpdated:
                 description: Value for configuration is updated or not
                 type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
@@ -2468,6 +2483,9 @@ spec:
                 type: boolean
               defaults:
                 description: Defaults defines the configuration attributed collected before applying any user configuration values.
+                type: string
+              delta:
+                description: Delta between final profile vs current configuration
                 type: string
               deploymentScope:
                 default: bootstrap

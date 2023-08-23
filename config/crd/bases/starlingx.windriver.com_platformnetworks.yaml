@@ -142,6 +142,9 @@ spec:
               configurationUpdated:
                 description: Value for configuration is updated or not
                 type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been

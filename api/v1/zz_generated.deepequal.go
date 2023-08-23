@@ -521,6 +521,9 @@ func (in *DataNetworkStatus) DeepEqual(other *DataNetworkStatus) bool {
 	if in.StrategyRequired != other.StrategyRequired {
 		return false
 	}
+	if in.Delta != other.Delta {
+		return false
+	}
 
 	return true
 }
@@ -889,6 +892,9 @@ func (in *HostStatus) DeepEqual(other *HostStatus) bool {
 		return false
 	}
 	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
 		return false
 	}
 
@@ -1466,6 +1472,9 @@ func (in *PlatformNetworkStatus) DeepEqual(other *PlatformNetworkStatus) bool {
 	if in.StrategyRequired != other.StrategyRequired {
 		return false
 	}
+	if in.Delta != other.Delta {
+		return false
+	}
 
 	return true
 }
@@ -1913,6 +1922,9 @@ func (in *PtpInstanceStatus) DeepEqual(other *PtpInstanceStatus) bool {
 	if in.StrategyRequired != other.StrategyRequired {
 		return false
 	}
+	if in.Delta != other.Delta {
+		return false
+	}
 
 	return true
 }
@@ -2005,6 +2017,9 @@ func (in *PtpInterfaceStatus) DeepEqual(other *PtpInterfaceStatus) bool {
 		return false
 	}
 	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
 		return false
 	}
 
@@ -2408,6 +2423,9 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 		return false
 	}
 	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
 		return false
 	}
 
