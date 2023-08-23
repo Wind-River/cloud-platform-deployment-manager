@@ -267,7 +267,17 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Error(in, "validation error", "request", request)
 
-	case ErrSystemDependency, ErrResourceStatusDependency:
+	case ErrSystemDependency, ErrResourceConfigurationDependency:
+		// These errors are transient errors.  Resources must be configured
+		// properly before reconciling changes therefore we need to wait until
+		// they settle before continuing.
+		resetClient = false
+		result = RetryTransientError
+		err = nil
+
+		h.Error(in, "resource configuration error", "request", request)
+
+	case ErrResourceStatusDependency:
 		// These errors are transient errors.  Resources must be in stable
 		// states before reconciling changes therefore we need to wait until
 		// they settle before continuing.
@@ -275,7 +285,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryTransientError
 		err = nil
 
-		h.Error(in, "resource status error", "request", request)
+		h.Info("waiting for dependency status", "request", request)
 
 	case manager.ClientError, ErrUserDataError,
 		starlingxv1.ErrMissingSystemResource, ErrMissingKubernetesResource:
@@ -295,7 +305,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryNever
 		err = nil
 
-		h.Error(in, "waiting for host monitor", "request", request)
+		h.Info("waiting for host monitor to trigger another reconciliation", "request", request)
 
 	default:
 		resetClient = false

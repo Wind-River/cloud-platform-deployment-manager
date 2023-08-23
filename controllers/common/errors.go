@@ -46,6 +46,13 @@ type ErrResourceStatusDependency struct {
 	BaseError
 }
 
+// ErrResourceConfigurationDependency defines an error to be used when reporting
+// that an operation is unable to continue because a resource is not configured
+// correctly.
+type ErrResourceConfigurationDependency struct {
+	BaseError
+}
+
 // ErrUserDataError defines an error to be used when reporting that an operation
 // is unable to continue because the requested configuration is incorrect or
 // incomplete.
@@ -93,7 +100,7 @@ func NewResourceStatusDependency(msg string) error {
 // NewResourceConfigurationDependency defines a constructor for the
 // ErrResourceStatusDependency error type.
 func NewResourceConfigurationDependency(msg string) error {
-	return ErrResourceStatusDependency{BaseError{msg}}
+	return ErrResourceConfigurationDependency{BaseError{msg}}
 }
 
 // NewUserDataError defines a constructor for the ErrUserDataError error type.
