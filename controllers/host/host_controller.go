@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -675,7 +676,7 @@ func (r *HostReconciler) ReconcileInitialState(client *gophercloud.ServiceClient
 
 			// Return a retry result here because we know that it won't be possible to
 			// make any other changes until this change is complete.
-			return common.NewResourceStatusDependency("waiting for host state change")
+			return common.NewResourceStatusDependency("waiting for host state change in intial state")
 		}
 	}
 
@@ -733,7 +734,7 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 
 	// Return a retry result here because we know that it won't be possible to
 	// make any other changes until this change is complete.
-	return common.NewResourceStatusDependency("waiting for host state change")
+	return common.NewResourceStatusDependency("waiting for host state change in final state")
 }
 
 func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
@@ -1076,6 +1077,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 						common.FormatStruct(instance.Status))
 					return err
 				}
+				logHost.V(2).Info("set lock required")
 			}
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
@@ -1095,6 +1097,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
 			if principal {
 				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+				logHost.V(2).Info("set unlock required: day2 operation. There are unlocked attributes")
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
@@ -1109,7 +1112,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		}
 
 	} else {
-		msg := "waiting for a stable state"
+		msg := "waiting for a stable state in unknown state"
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1152,37 +1155,34 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 		result = true
 	}
 
-	logHost.V(2).Info("Current Status", "InSync", status.InSync)
-	logHost.V(2).Info("Current Status", "Reconciled", status.Reconciled)
-	logHost.V(2).Info("Current Status", "ConfigurationUpdated", status.ConfigurationUpdated)
-	logHost.V(2).Info("Current Status", "HostProfileConfigurationUpdated", status.HostProfileConfigurationUpdated)
+	logHost.V(2).Info("Current Status", "status", status)
+	principal := instance.Status.DeploymentScope == cloudManager.ScopePrincipal
 
-	if status.InSync && status.Reconciled &&
-		instance.Status.DeploymentScope == cloudManager.ScopePrincipal &&
-		host.IsUnlockedAvailable() {
+	if status.InSync && status.Reconciled && principal && host.IsUnlockedAvailable() {
 		// Clean up strategy required status after Day-2 operation finished
 		logHost.V(2).Info("Clean up strategy required status after Day-2 operation finished")
 		status.StrategyRequired = cloudManager.StrategyNotRequired
+		logHost.V(2).Info("set not required: Day-2 operation finished")
 		result = true
 	}
 
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		logHost.V(2).Info("Insync=true so that change reconciled=true")
-		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal &&
-			(host.IsLockedDisabled() && (status.ConfigurationUpdated || status.HostProfileConfigurationUpdated)) {
-			logHost.V(2).Info("Set StrategyUnlockRequired as config is applied in locked state")
+		if principal && host.IsLockedDisabled() && (status.ConfigurationUpdated || status.HostProfileConfigurationUpdated) {
 			// Unlock if current is locked in Day-2 operation
 			status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			logHost.V(2).Info("set unlock required: day2 operation currently locked")
 		} else {
-			logHost.V(2).Info("Set StrategyNotRequired as strategy is not lock required")
 			status.StrategyRequired = cloudManager.StrategyNotRequired
+			logHost.V(2).Info("set not required: reconcile finished")
 		}
 		status.Reconciled = true
 		status.ConfigurationUpdated = false
 		status.HostProfileConfigurationUpdated = false
+		logHost.V(2).Info("set profile config updated false: reconcile finished")
 		// Update resource info for Day-2 operation
-		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+		if principal {
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, status.Reconciled, status.StrategyRequired)
 		}
 		result = true
@@ -1332,7 +1332,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	var current *starlingxv1.HostProfileSpec
 
 	if !host.Stable() {
-		msg := "waiting for a stable state"
+		msg := "waiting for a stable state for existing host"
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1795,86 +1795,119 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // If generation is updated (= apply new configuration);
 // - Set ConfigurationUpdated true
 // - Set Reconciled false (since it is going to reconcile with new configuration)
-// Then reflrect these values to cluster object
+// Then reflect these values to cluster object
 func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err error) {
-	deploymentScope, err := r.GetScopeConfig(instance)
-	if err != nil {
-		return err
-	}
-	logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-
-	// Put ReconcileAfterInSync values depends on scope
-	// "true"  if scope is "principal" because it is day 2 operation (update configuration)
-	// "false" if scope is "bootstrap" or None
-	afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-	if deploymentScope == cloudManager.ScopePrincipal {
-		if !ok || afterInSync != "true" {
-			logHost.V(2).Info("Add annotation: ReconcileAfterInSync=true")
-			instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
 		}
-	} else {
-		if ok && afterInSync == "true" {
-			logHost.V(2).Info("Delete annotation: ReconcileAfterInSync")
-			delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+		logHost.V(2).Info("update config before", "instance", instance)
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
 		}
-	}
+		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
-	// Update annotation
-	err = r.Client.Update(context.TODO(), instance)
+		// Put ReconcileAfterInSync values depends on scope
+		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "false" if scope is "bootstrap" or None
+		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+		if deploymentScope == cloudManager.ScopePrincipal {
+			if !ok || afterInSync != "true" {
+				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+			}
+		} else {
+			if ok && afterInSync == "true" {
+				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+			}
+		}
+		logHost.V(2).Info("update config after", "instance", instance)
+		return r.Client.Update(context.TODO(), instance)
+	})
+
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
 		return err
 	}
 
-	// Update scope status
-	instance.Status.DeploymentScope = deploymentScope
-
-	// Set default value for StrategyRequired
-	if instance.Status.StrategyRequired == "" {
-		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-	}
-
-	// Check HostProfile configuration update
-	hostProfile, err := r.GetHostProfile(instance.Namespace, instance.Spec.Profile)
-	if err != err {
-		return err
-	}
-	if hostProfile != nil &&
-		instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
-		if (instance.Status.ObservedHostProfileGeneration == 0 && instance.Status.Reconciled) ||
-			instance.Status.DeploymentScope != cloudManager.ScopePrincipal {
-			// Case: DM upgrade in reconceiled node or update in bootstrap
-			instance.Status.HostProfileConfigurationUpdated = false
-		} else {
-			// Case: Fresh install or Day-2 operation
-			instance.Status.HostProfileConfigurationUpdated = true
-			instance.Status.Reconciled = false
-			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
 		}
-		instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
-	}
+		logHost.V(2).Info("update status before", "instance", instance)
+		// Update scope status
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+		instance.Status.DeploymentScope = deploymentScope
 
-	// Check Host configuration update
-	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
-		if instance.Status.ObservedGeneration == 0 &&
-			instance.Status.Reconciled {
-			// Case: DM upgrade in reconceiled node
-			instance.Status.ConfigurationUpdated = false
-		} else {
-			// Case: Fresh install or Day-2 operation
-			instance.Status.ConfigurationUpdated = true
+		// Set default value for StrategyRequired
+		if instance.Status.StrategyRequired == "" {
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			logHost.V(2).Info("set not required: set initial value")
+		}
+
+		// Check if the HostProfile configuration is updated
+		hostProfile, err := r.GetHostProfile(instance.Namespace, instance.Spec.Profile)
+		if err != err {
+			return err
+		}
+		if hostProfile != nil &&
+			instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
+			if (instance.Status.ObservedHostProfileGeneration == 0 && instance.Status.Reconciled) ||
+				instance.Status.DeploymentScope != cloudManager.ScopePrincipal {
+				// Case: DM upgrade in reconciled node or update in bootstrap
+				instance.Status.HostProfileConfigurationUpdated = false
+				logHost.V(2).Info("set profile config updated false: bootstrap or DM upgrade")
+			} else {
+				// Case: Fresh install or Day-2 operation
+				instance.Status.HostProfileConfigurationUpdated = true
 				instance.Status.Reconciled = false
-				// Update storategy required status for strategy monitor
-				r.CloudManager.UpdateConfigVersion()
-				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+				instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+				logHost.V(2).Info("set profile config updated true: initial or day2 operation starts")
+				logHost.V(2).Info("set not required: initial or day2 operation starts. profile config updated")
 			}
+			instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
+			logHost.V(2).Info("update observed profile config generation", "generation", hostProfile.ObjectMeta.Generation)
 		}
-		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-	}
 
-	err = r.Client.Status().Update(context.TODO(), instance)
+		// Check if the Host configuration is updated
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			if instance.Status.ObservedGeneration == 0 &&
+				instance.Status.Reconciled {
+				// Case: DM upgrade in reconciled node
+				instance.Status.ConfigurationUpdated = false
+				logHost.V(2).Info("set host config updated false: bootstrap or DM upgrade")
+			} else {
+				// Case: Fresh install or Day-2 operation
+				instance.Status.ConfigurationUpdated = true
+				instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+				logHost.V(2).Info("set host config updated true: initial or day2 operation starts")
+				logHost.V(2).Info("set not required: initial or day2 operation starts. host config updated")
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+					instance.Status.Reconciled = false
+					// Update strategy required status for strategy monitor
+					r.CloudManager.UpdateConfigVersion()
+					r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+				}
+			}
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+		}
+
+		logHost.V(2).Info("update status after", "instance", instance)
+		return r.Client.Status().Update(context.TODO(), instance)
+	})
+
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update status: %s",
 			common.FormatStruct(instance.Status))
@@ -1914,6 +1947,9 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
+	// Cancel any existing monitors
+	r.CloudManager.CancelMonitor(instance)
+
 	// Update scope from configuration
 	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
@@ -1922,9 +1958,6 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
-
-	// Cancel any existing monitors
-	r.CloudManager.CancelMonitor(instance)
 
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
