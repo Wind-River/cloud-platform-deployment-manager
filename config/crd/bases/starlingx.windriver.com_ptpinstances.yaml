@@ -68,6 +68,9 @@ spec:
           status:
             description: PtpInstanceStatus defines the observed state of PtpInstance
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               deploymentScope:
                 default: bootstrap
                 description: DeploymentScope defines whether the resource has been
@@ -85,11 +88,24 @@ spec:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value
+                  will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the host has been successfully
                   reconciled at least once.  If further changes are made they will
                   be ignored by the reconciler.
                 type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
             type: object
         type: object
     served: true

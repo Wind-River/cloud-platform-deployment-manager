@@ -83,6 +83,21 @@ type DataNetworkStatus struct {
 	// +optional
 	// +kubebuilder:default:=bootstrap
 	DeploymentScope string `json:"deploymentScope"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
 }
 
 // +kubebuilder:object:root=true

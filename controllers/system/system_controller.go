@@ -514,6 +514,15 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	}
 
 	if !r.ControllerNodesAvailable(required) {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return false, err
+			}
+		}
 		msg := fmt.Sprintf("waiting for %d controller(s) in available state before resizing filesystems", required)
 		m := NewAvailableControllerNodeMonitor(instance, required)
 		return false, r.CloudManager.StartMonitor(m, msg)
@@ -1052,6 +1061,8 @@ func (r *SystemReconciler) statusUpdateRequired(instance *starlingxv1.System, in
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
+		status.ConfigurationUpdated = false
+		status.StrategyRequired = cloudManager.StrategyNotRequired
 		result = true
 	}
 
@@ -1353,7 +1364,7 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflrect these values to cluster object
-func (r *SystemReconciler) UpdateScopeConfig(instance *starlingxv1.System) (err error) {
+func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err error) {
 	deploymentScope, err := r.GetScopeConfig(instance)
 	if err != nil {
 		return err
@@ -1381,8 +1392,30 @@ func (r *SystemReconciler) UpdateScopeConfig(instance *starlingxv1.System) (err 
 		return err
 	}
 
-	// Update status
+	// Update scope status
 	instance.Status.DeploymentScope = deploymentScope
+
+	// Set default value for StrategyRequired
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	// Check configration is updated
+	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration == 0 &&
+			instance.Status.Reconciled {
+			// Case: DM upgrade in reconceiled node
+			instance.Status.ConfigurationUpdated = false
+		} else {
+			// Case: Fresh install or Day-2 operation
+			instance.Status.ConfigurationUpdated = true
+			instance.Status.Reconciled = false
+		}
+		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+		// Reset strategy when new configration is applied
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
 	err = r.Client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update status: %s",
@@ -1421,13 +1454,13 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	// Update scope from configuration
-	logSystem.V(2).Info("before UpdateScopeConfig", "instance", instance)
-	err = r.UpdateScopeConfig(instance)
+	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance)
 	if err != nil {
 		logSystem.Error(err, "unable to update scope")
 		return reconcile.Result{}, err
 	}
-	logSystem.V(2).Info("after UpdateScopeConfig", "instance", instance)
+	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
