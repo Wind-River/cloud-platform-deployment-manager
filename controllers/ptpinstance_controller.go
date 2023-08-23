@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022 Wind River Systems, Inc. */
+/* Copyright(c) 2022-2023 Wind River Systems, Inc. */
 
 package controllers
 
@@ -217,6 +217,9 @@ func (r *PtpInstanceReconciler) statusUpdateRequired(instance *starlingxv1.PtpIn
 		status.Reconciled = true
 		status.ConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			r.CloudManager.SetResourceInfo(cloudManager.ResourcePtpinstance, "", instance.Name, status.Reconciled, status.StrategyRequired)
+		}
 		result = true
 	}
 
@@ -478,6 +481,11 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
 			instance.Status.Reconciled = false
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				// Update storategy required status for strategy monitor
+				r.CloudManager.UpdateConfigVersion()
+				r.CloudManager.SetResourceInfo(cloudManager.ResourcePtpinstance, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
 		}
 		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 		// Reset strategy when new configration is applied

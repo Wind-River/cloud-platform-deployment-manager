@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package system
 
@@ -516,6 +516,7 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	if !r.ControllerNodesAvailable(required) {
 		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 			err := r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to update status: %s",
@@ -1063,6 +1064,9 @@ func (r *SystemReconciler) statusUpdateRequired(instance *starlingxv1.System, in
 		status.Reconciled = true
 		status.ConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, status.Reconciled, status.StrategyRequired)
+		}
 		result = true
 	}
 
@@ -1410,6 +1414,11 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
 			instance.Status.Reconciled = false
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				// Update storategy required status for strategy monitor
+				r.CloudManager.UpdateConfigVersion()
+				r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
 		}
 		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 		// Reset strategy when new configration is applied
