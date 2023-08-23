@@ -390,6 +390,8 @@ func (r *PtpInterfaceReconciler) ReconcileResource(client *gophercloud.ServiceCl
 			// update the resource status to link it to the system object.
 			logPtpInterface.Info("updating PTP interface", "status", instance.Status)
 
+			instance.Status.DeploymentScope = "bootstrap"
+
 			err2 := r.Client.Status().Update(context.TODO(), instance)
 			if err2 != nil {
 				err2 = perrors.Wrapf(err2, "failed to update status: %s",
