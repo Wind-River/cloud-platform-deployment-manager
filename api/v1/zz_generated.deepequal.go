@@ -2428,6 +2428,12 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 	if in.Delta != other.Delta {
 		return false
 	}
+	if in.StrategyApplied != other.StrategyApplied {
+		return false
+	}
+	if in.StrategyRetryCount != other.StrategyRetryCount {
+		return false
+	}
 
 	return true
 }

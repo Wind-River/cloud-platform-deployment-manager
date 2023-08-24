@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package v1
 
@@ -470,6 +470,15 @@ type SystemStatus struct {
 	// Delta between final profile vs current configuration
 	// +optional
 	Delta string `json:"delta"`
+
+	// Strategy monitor status information for Day 2 operation
+	// +optional
+	// +kubebuilder:default:=false
+	StrategyApplied bool `json:"strategyApplied"`
+
+	// Strategy monitor retry count for Day 2 operation
+	// +optional
+	StrategyRetryCount int `json:"strategyRetryCount"`
 }
 
 // +kubebuilder:object:root=true
@@ -477,11 +486,11 @@ type SystemStatus struct {
 // of a StarlingX system.  This is a composition of the following StarlingX
 // API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status

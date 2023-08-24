@@ -505,8 +505,8 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 		} else {
 			// Case: Fresh install or Day-2 operation
 			instance.Status.ConfigurationUpdated = true
-			instance.Status.Reconciled = false
 			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				instance.Status.Reconciled = false
 				// Update storategy required status for strategy monitor
 				r.CloudManager.UpdateConfigVersion()
 				r.CloudManager.SetResourceInfo(cloudManager.ResourcePtpinstance, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
@@ -529,9 +529,9 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 
 // Reconcile reads that state of the cluster for a PTPInstance object and makes
 // changes based on the state read and what is in the PtpInstance.Spec
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=ptpinstances/finalizers,verbs=update
 func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 

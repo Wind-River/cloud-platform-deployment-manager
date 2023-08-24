@@ -111,8 +111,8 @@ type PlatformNetworkStatus struct {
 // attributes of a StarlingX system.  This is a composition of the following
 // StarlingX API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status
