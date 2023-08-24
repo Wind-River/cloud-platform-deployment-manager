@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -1352,7 +1353,7 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 	if annotation != nil {
 		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
 		if ok {
-			status_config := &starlingxv1.Host{}
+			status_config := &starlingxv1.System{}
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
@@ -1380,65 +1381,89 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
-// Then reflrect these values to cluster object
+// Then reflect these values to cluster object
 func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err error) {
-	deploymentScope, err := r.GetScopeConfig(instance)
-	if err != nil {
-		return err
-	}
-	logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-
-	// Put ReconcileAfterInSync values depends on scope
-	// "true"  if scope is "principal" because it is day 2 operation (update configuration)
-	// "false" if scope is "bootstrap" or None
-	afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-	if deploymentScope == cloudManager.ScopePrincipal {
-		if !ok || afterInSync != "true" {
-			instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
 		}
-	} else {
-		if ok && afterInSync == "true" {
-			delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
 		}
-	}
+		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
-	// Update annotation
-	err = r.Client.Update(context.TODO(), instance)
+		// Put ReconcileAfterInSync values depends on scope
+		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "false" if scope is "bootstrap" or None
+		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+		if deploymentScope == cloudManager.ScopePrincipal {
+			if !ok || afterInSync != "true" {
+				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+			}
+		} else {
+			if ok && afterInSync == "true" {
+				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+			}
+		}
+		return r.Client.Update(context.TODO(), instance)
+	})
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
 		return err
 	}
 
-	// Update scope status
-	instance.Status.DeploymentScope = deploymentScope
-
-	// Set default value for StrategyRequired
-	if instance.Status.StrategyRequired == "" {
-		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-	}
-
-	// Check configration is updated
-	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
-		if instance.Status.ObservedGeneration == 0 &&
-			instance.Status.Reconciled {
-			// Case: DM upgrade in reconceiled node
-			instance.Status.ConfigurationUpdated = false
-		} else {
-			// Case: Fresh install or Day-2 operation
-			instance.Status.ConfigurationUpdated = true
-			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-				instance.Status.Reconciled = false
-				// Update storategy required status for strategy monitor
-				r.CloudManager.UpdateConfigVersion()
-				r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
-			}
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
 		}
-		instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-		// Reset strategy when new configration is applied
-		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-	}
 
-	err = r.Client.Status().Update(context.TODO(), instance)
+		// Update scope status
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+		instance.Status.DeploymentScope = deploymentScope
+
+		// Set default value for StrategyRequired
+		if instance.Status.StrategyRequired == "" {
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		// Check if the configuration is updated
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			if instance.Status.ObservedGeneration == 0 &&
+				instance.Status.Reconciled {
+				// Case: DM upgrade in reconciled node
+				instance.Status.ConfigurationUpdated = false
+			} else {
+				// Case: Fresh install or Day-2 operation
+				instance.Status.ConfigurationUpdated = true
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+					instance.Status.Reconciled = false
+					// Update strategy required status for strategy monitor
+					r.CloudManager.UpdateConfigVersion()
+					r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+				}
+			}
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			// Reset strategy when new configuration is applied
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		return r.Client.Status().Update(context.TODO(), instance)
+	})
+
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update status: %s",
 			common.FormatStruct(instance.Status))
@@ -1475,6 +1500,9 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 
+	// Cancel any existing monitors
+	r.CloudManager.CancelMonitor(instance)
+
 	// Update scope from configuration
 	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
@@ -1483,9 +1511,6 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
-
-	// Cancel any existing monitors
-	r.CloudManager.CancelMonitor(instance)
 
 	err = r.installRootCertificates(instance)
 	if err != nil {
