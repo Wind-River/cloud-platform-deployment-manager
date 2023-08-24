@@ -1,7 +1,7 @@
 # Developer Info
 
 This document contains information intended for developers and/or maintainers
-of the Deployment Manager.  
+of the Deployment Manager.
 
 ## Environment Setup
 
@@ -10,7 +10,7 @@ configured for Go development as well as some specific tool/package versions.
 The instructions that follow are intended to install the current minimum
 package requirements to develop and maintain Deployment Manager content.  These
 instructions were developed for installing the required packages onto a Ubuntu
-22.04 workstation therefore some tweaks may be required on different Linux 
+22.04 workstation therefore some tweaks may be required on different Linux
 distributions. The workstation should have minum 20G disk space, recommend to
 have disk space above 50G.
 
@@ -19,7 +19,7 @@ These instructions assume that your Go directory is directly on your home
 directory but it can be setup in any arbitrary directory.  Go packages must be
 installed with a proper Go path.  Go tools will look for the "go/src" directory
 structure in the parent directory tree therefore regardless of where you create
-your Go directory it must be structured to have a "go/src" and "go/bin" 
+your Go directory it must be structured to have a "go/src" and "go/bin"
 directory within it.
 
 ```bash
@@ -34,7 +34,7 @@ cd downloads
 The Deployment Manager was developed during the period when GoLang version
 1.19.6 was prominent.  A newer version may work fine, but the minimum guaranteed
 version that will work with the tools and Makefile provided is v1.19.6.
- 
+
 ```bash
 wget https://dl.google.com/go/go1.19.6.linux-amd64.tar.gz
 sudo tar -C /usr/local -zxf go1.19.6.linux-amd64.tar.gz
@@ -46,10 +46,10 @@ export PATH=${PATH}:/usr/local/go/bin
 The recommended installation method of the Deployment Manager is to use a Helm
 chart.  This ensures that the required CRD resources are installed before the
 Deployment Manager pods are created.  It also ensures that recommended default
-values for specific Kubernetes attributes are used.  The minimum required 
+values for specific Kubernetes attributes are used.  The minimum required
 version of Helm is v3.6.2 and can be installed on your workstation using the
 following commands.
- 
+
 ```bash
 wget https://get.helm.sh/helm-v3.6.2-linux-amd64.tar.gz
 tar zxf helm-v3.6.2-linux-amd64.tar.gz
@@ -58,9 +58,9 @@ sudo cp linux-amd64/helm /usr/local/bin/
 
 #### Kubebuilder
 
-The basic structure of the Deployment Manager project is defined by the 
+The basic structure of the Deployment Manager project is defined by the
 Kubebuilder project.  Kubebuilder is a code generator that implements the more
-repetitive and template type code.  The StarlingX specific business logic is 
+repetitive and template type code.  The StarlingX specific business logic is
 custom developed. At the time of initial development Kubebuilder was at version
 v1.0.8.
 
@@ -92,7 +92,7 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io
 ```
 
 Finally, to avoid having to use "sudo" to run docker commands you should
-consider adding your user id to the local docker group.  
+consider adding your user id to the local docker group.
 
 ```bash
 sudo usermod -a -G docker ${USER}
@@ -144,14 +144,14 @@ To work around this limitation you need clone your fork to the path used by the
 main repo.
 
     ${HOME}/go/src/github.com/wind-river/cloud-platform-deployment-manager
-    
+
 From this directory you can maintain remotes for both the main repo and your
 fork if this is needed by your workflow.  You can setup a remote to your own
 fork if you have already cloned the main repo using the following commands.
 
 ```bash
 git remote rename origin upstream
-git remote add origin git@github.com:<my_username>/cloud-platform-deployment-manager.git
+git remote add origin git@github.com/<my_username>/cloud-platform-deployment-manager.git
 ```
 
 Alternatively, you can create the working directory anywhere except under GOPATH,
@@ -159,13 +159,13 @@ and clone your private fork, which will also work fine.
 
 ## Working with a private fork of a vendor package
 In addition to the issues discussed in the preceding section, making changes to
-vendored packages poses an additional problem.  That is, how to update the 
+vendored packages poses an additional problem.  That is, how to update the
 local vendored package with the latest commit in a local copy of the fork
 instead of pulling the latest upstream commit.  For instance, if you need to
 make a change to one of the vendor packages (e.g., gophercloud) then you will
-fork that repo, clone it locally, edit your local clone, and run the unit 
+fork that repo, clone it locally, edit your local clone, and run the unit
 tests provided by that repo.  But, before making a pull request to the upstream
-repo (or pushing to the upstream repo if you are the owner) you should integrate 
+repo (or pushing to the upstream repo if you are the owner) you should integrate
 your changes into a DM image and run proper integration tests.
 
 Currently Go environment is module based. We need to modify go.mod to
@@ -202,6 +202,16 @@ private fork.
 COPY external/ external/
 ```
 
+### Alternative approach ( no DockerFile changes)
+
+Use ```go list -m -json github.com/<my_username>/gophercloud@<commitid>``` to get the version
+e.g v0.0.0-20230802172722-90eb4a0cc1a4
+
+```bash
+replace github.com/gophercloud/gophercloud => github.com:<my_username>/gophercloud v0.0.0-20230802172722-90eb4a0cc1a4
+// replace github.com/gophercloud/gophercloud => github.com/wind-river/gophercloud v0.0.0-20220714135506-aac06588b172
+```
+
 ***note:*** The Gophercloud repo is a special case because we actually pull from
 a Wind River fork rather than the true upstream repo.
 
@@ -220,7 +230,7 @@ builds the Docker image using the default image name embedded within the
 Makefile.  Unless you are using the image directly on the machine where it was
 built you will likely need to publish this image to a public or private Docker
 registry so that it can be pulled from whatever Kubernetes platform is being
-used as your test platform.   
+used as your test platform.
 
 ### Tag/Push for private developer builds
 The following commands tag and push the image as a privately named image using
@@ -254,7 +264,7 @@ clones of the three Github repos that are directly related to this project.
 These steps assume that the developer cloning the repos is an admin of these
 repos and will be pulling and pushing directly from the repo rather than making
 Pull Requests or working with private forks.  This section also assumes that
-SSH keys are already setup in Github to enable Push without needing to input 
+SSH keys are already setup in Github to enable Push without needing to input
 credentials on each Push operation.
 
 ```bash
@@ -275,7 +285,7 @@ git remote set-url origin git@github.com:Wind-River/gophercloud
 cd ${GOPATH}/src/github.com/wind-river/
 git clone https://github.com/Wind-River/deepequal-gen
 cd deepequal-gen
-git checkout master 
+git checkout master
 git remote set-url origin git@github.com:Wind-River/deepequal-gen
 ```
 
@@ -298,7 +308,7 @@ workflow looks like when making a change.  This workflow assumes that the
 developer making the change is an admin of this repo and will be pulling and
 pushing directly to the repo rather than making a Pull Request or working with a
 private fork.  It also assumes that the developer will be publishing the final
-Docker images directly rather through, a more likely, automated CI/CD pipeline 
+Docker images directly rather through, a more likely, automated CI/CD pipeline
 production process (i.e., Jenkins).
 
 Prior to executing of the following steps the [Complete example setup](#complete-example-setup) must
@@ -346,8 +356,8 @@ To pick up the Gophercloud change within the main DM repo you must return to the
 main DM repo directory.
 
 When you are confident that your changes to your Gophercloud clone have been
-properly included in your DM repo clone then you can re-build both the 
-production and debug Docker images.  This will run formatting, static analysis, 
+properly included in your DM repo clone then you can re-build both the
+production and debug Docker images.  This will run formatting, static analysis,
 and unit tests before building the Docker images and Helm charts (if necessary).
 
 ```bash
@@ -359,7 +369,7 @@ charts (if necessary) need to be tested against an actual StarlingX installation
 either on a real hardware system, or in some type of virtualized test
 environment.   Before you can test against the newly built images you will
 need to publish them to a private Docker registry from where it can be pulled
-from the StarlingX installation when the DM Helm chart is installed. 
+from the StarlingX installation when the DM Helm chart is installed.
 
 The following commands will publish your newly built production and debug images
 to a Docker registry of your choice.

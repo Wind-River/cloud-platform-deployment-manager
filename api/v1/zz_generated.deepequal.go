@@ -1782,6 +1782,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
+	if in.Kernel != nil {
+		if (in.Kernel == nil) != (other.Kernel == nil) {
+			return false
+		} else if in.Kernel != nil {
+			if *in.Kernel != *other.Kernel {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 
