@@ -148,12 +148,6 @@
       set_fact:
         config_permdir: "{{ platform_path + '/config/' + software_version }}"
 
-    - name: Mark the bootstrap as finalized
-      file:
-        path: "{{ config_permdir }}/.bootstrap_finalized"
-        state: touch
-      become: yes
-
     # Check if DM already exists in either helmv2 or helmv3
     - name: Get list of releases in helmv2
       command: >-
@@ -182,6 +176,18 @@
         grep -iq '"name":"deployment-manager"' <<< {{ helmv3_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv3_dm_exists
+
+    - name: Set reconfig fact
+      set_fact:
+        reconfig_flag: "{{ true if helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
+                        else false }}"
+
+    - name: Mark the bootstrap as finalized
+      file:
+        path: "{{ config_permdir }}/.bootstrap_finalized"
+        state: touch
+      become: yes
+      when: not reconfig_flag
 
     # Follow a different reinstallation procedure if DM is installed in helmv2
     - block:
@@ -297,7 +303,7 @@
           KUBECONFIG: "/etc/kubernetes/admin.conf"
         when: deployment_manager_pod_name.stdout
 
-      when: helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
+      when: reconfig_flag
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
