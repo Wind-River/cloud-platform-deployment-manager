@@ -176,7 +176,7 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.8.0
+CONTROLLER_TOOLS_VERSION ?= v0.12.1
 GOLANGCI_LINT_VERSION ?= v1.49.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -271,6 +271,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
 	$(KUSTOMIZE) build examples/aio-sx/hw-settle > examples/aio-sx-hw-settle.yaml
+	$(KUSTOMIZE) build examples/aio-sx/kernel > examples/aio-sx-kernel.yaml
 	$(KUSTOMIZE) build examples/aio-sx/day2-operation/bootstrap > examples/aio-sx-day2-bootstrap.yaml
 	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml

@@ -117,9 +117,9 @@ func (r *HostProfileReconciler) UpdateHosts(instance *starlingxv1.HostProfile) e
 
 // Reconcile reads that state of the cluster for a HostProfile object and makes changes based on the state read
 // and what is in the HostProfile.Spec
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hostprofiles/finalizers,verbs=update
 func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 

@@ -14,6 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	"github.com/imdario/mergo"
 	perrors "github.com/pkg/errors"
+	"github.com/samber/lo"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
@@ -61,6 +62,7 @@ func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec, hostInfo *v1info
 		}
 	}
 	FixProfileDevicePath(a, hostInfo)
+	FixKernelSubfunction(a)
 }
 
 // FixProfileDevicePath is to fix the device path if it is offered as device node
@@ -161,6 +163,25 @@ func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.
 	}
 	result := starlingxv1.PhysicalVolumeList(list)
 	return result
+}
+
+func FixKernelSubfunction(spec *starlingxv1.HostProfileSpec) {
+
+	if spec.ProfileBaseAttributes.Kernel == nil {
+		return
+	}
+
+	kernel := *spec.ProfileBaseAttributes.Kernel
+	subfunctions := spec.ProfileBaseAttributes.SubFunctions
+
+	if kernel == "lowlatency" {
+		subfunctions = append(subfunctions, "lowlatency")
+		subfunctions = lo.Uniq(subfunctions)
+	} else {
+		subfunctions = lo.Without(subfunctions, "lowlatency")
+	}
+
+	spec.ProfileBaseAttributes.SubFunctions = subfunctions
 }
 
 // GetHostProfileSpec retrieves a HostProfileSpec from the kubernetes API
@@ -457,6 +478,10 @@ func (r *HostReconciler) validateProfileSpec(host *starlingxv1.Host, profile *st
 	if !profile.HasWorkerSubFunction() {
 		if profile.Processors != nil {
 			msg := "'processor' profile attributes are only supported on nodes which include the worker subfunction"
+			return common.NewValidationError(msg)
+		}
+		if profile.Kernel != nil {
+			msg := "'kernel' profile attributes are only supported on nodes which include the worker subfunction"
 			return common.NewValidationError(msg)
 		}
 	}

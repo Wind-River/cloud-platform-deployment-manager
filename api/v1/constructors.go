@@ -806,6 +806,11 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
+
+	if host.Kernel.ProvisionedKernel != "" {
+		spec.Kernel = &host.Kernel.ProvisionedKernel
+	}
+
 	if host.HwSettle != "" {
 		spec.HwSettle = &host.HwSettle
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceDataNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaceNetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/kernel"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/labels"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
@@ -54,6 +55,7 @@ import (
 // minimizing the number of API calls required.
 type HostInfo struct {
 	hosts.Host
+	Kernel                kernel.Kernel
 	Labels                []labels.Label
 	CPU                   []cpus.CPU
 	Memory                []memory.Memory
@@ -222,19 +224,26 @@ func (in *HostInfo) PopulateStorageTiers(client *gophercloud.ServiceClient) erro
 	return nil
 }
 
-// getHostInfo is a utility function which build all host attributes and
+// PopulateHostInfo is a utility function which build all host attributes and
 // stores them into a single structure that acts as a cache of data that can
 // be passed around and re-used rather than having to re-read data that is
 // required in multiple functions.
 func (in *HostInfo) PopulateHostInfo(client *gophercloud.ServiceClient, hostid string) error {
 	var err error
 
-	result, err := hosts.Get(client, hostid).Extract()
+	hostResult, err := hosts.Get(client, hostid).Extract()
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get host %s", hostid)
 		return err
 	}
-	in.Host = *result
+	in.Host = *hostResult
+
+	kernelResult, err := kernel.Get(client, hostid).Extract()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get kernel for host %s", hostid)
+		return err
+	}
+	in.Kernel = *kernelResult
 
 	in.Labels, err = labels.ListLabels(client, hostid)
 	if err != nil {
@@ -776,8 +785,8 @@ func (in *HostInfo) BuildInterfaceNetworkList(iface interfaces.Interface) []stri
 }
 
 // BuildInterfaceDataNetworkList is a utility function takes a builds a list
-//// of network names based on the specific interface ID and the host's list of
-//// interface-to-datanetwork associations.
+// // of network names based on the specific interface ID and the host's list of
+// // interface-to-datanetwork associations.
 func (in *HostInfo) BuildInterfaceDataNetworkList(iface interfaces.Interface) []string {
 	result := make([]string, 0)
 

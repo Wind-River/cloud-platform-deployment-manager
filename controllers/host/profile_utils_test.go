@@ -454,4 +454,150 @@ var _ = Describe("Profile utils", func() {
 			})
 		})
 	})
+
+	Describe("FixKernelSubfunction", func() {
+		Context("with profile spec data", func() {
+			It("should fix the subfunctions successfully", func() {
+				controllerPersonality := "controller"
+				workerPersonality := "worker"
+				standardKernel := "standard"
+				lowlatencyKernel := "lowlatency"
+				aioSubfuncs := []starlingxv1.SubFunction{"controller", "worker"}
+				aiolowlatencySubfuncs := []starlingxv1.SubFunction{"controller", "worker", "lowlatency"}
+				workerSubfuncs := []starlingxv1.SubFunction{"worker"}
+				workerlowlatencySubfuncs := []starlingxv1.SubFunction{"worker", "lowlatency"}
+
+				type args struct {
+					spec *starlingxv1.HostProfileSpec
+				}
+				tests := []struct {
+					name                string
+					args                args
+					nochange            bool
+					updatedSubfunctions []starlingxv1.SubFunction
+				}{
+					// tests and spec data
+					{
+						name: "All-In-One Standard Kernel NoChange",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &controllerPersonality,
+									SubFunctions: aioSubfuncs,
+									Kernel:       &standardKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: aioSubfuncs,
+					},
+					{
+						name: "All-In-One Lowlatency Kernel NoChange",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &controllerPersonality,
+									SubFunctions: aiolowlatencySubfuncs,
+									Kernel:       &lowlatencyKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: aiolowlatencySubfuncs,
+					},
+					{
+						name: "Worker Standard Kernel NoChange",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &workerPersonality,
+									SubFunctions: workerSubfuncs,
+									Kernel:       &standardKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: workerSubfuncs,
+					},
+					{
+						name: "Worker Lowlatency Kernel NoChange",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &workerPersonality,
+									SubFunctions: workerlowlatencySubfuncs,
+									Kernel:       &lowlatencyKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: workerlowlatencySubfuncs,
+					},
+					{
+						name: "All-In-One Standard Kernel Remove Lowlatency",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &controllerPersonality,
+									SubFunctions: aiolowlatencySubfuncs,
+									Kernel:       &standardKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: aioSubfuncs,
+					},
+					{
+						name: "All-In-One Standard Kernel Add Lowlatency",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &controllerPersonality,
+									SubFunctions: aioSubfuncs,
+									Kernel:       &lowlatencyKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: aiolowlatencySubfuncs,
+					},
+					{
+						name: "Worker Standard Kernel Remove Lowlatency",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &workerPersonality,
+									SubFunctions: workerlowlatencySubfuncs,
+									Kernel:       &standardKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: workerSubfuncs,
+					},
+					{
+						name: "Worker Standard Kernel Add Lowlatency",
+						args: args{
+							spec: &starlingxv1.HostProfileSpec{
+								ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+									Personality:  &workerPersonality,
+									SubFunctions: workerSubfuncs,
+									Kernel:       &lowlatencyKernel,
+								},
+							},
+						},
+						nochange:            true,
+						updatedSubfunctions: workerlowlatencySubfuncs,
+					},
+				}
+				for _, tt := range tests {
+					specBefore := tt.args.spec
+					FixKernelSubfunction(tt.args.spec)
+					specAfter := tt.args.spec
+					Expect(reflect.DeepEqual(specBefore, specAfter)).To(Equal(tt.nochange))
+					Expect(reflect.DeepEqual(tt.updatedSubfunctions, specAfter.SubFunctions)).To(BeTrue())
+				}
+			})
+		})
+	})
 })

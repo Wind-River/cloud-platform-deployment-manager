@@ -1782,6 +1782,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
+	if in.Kernel != nil {
+		if (in.Kernel == nil) != (other.Kernel == nil) {
+			return false
+		} else if in.Kernel != nil {
+			if *in.Kernel != *other.Kernel {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 
@@ -2429,6 +2439,12 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 		return false
 	}
 	if in.Delta != other.Delta {
+		return false
+	}
+	if in.StrategyApplied != other.StrategyApplied {
+		return false
+	}
+	if in.StrategyRetryCount != other.StrategyRetryCount {
 		return false
 	}
 

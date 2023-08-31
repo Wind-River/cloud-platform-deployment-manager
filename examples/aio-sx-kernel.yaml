@@ -5,17 +5,6 @@ metadata:
 ---
 apiVersion: v1
 data:
-  ca.crt: ""
-  tls.crt: ""
-  tls.key: ""
-kind: Secret
-metadata:
-  name: custom-local-ca
-  namespace: cert-manager
-type: kubernetes.io/tls
----
-apiVersion: v1
-data:
   OS_PASSWORD: U3Q4cmxpbmdYKg==
   OS_USERNAME: YWRtaW4=
 kind: Secret
@@ -33,65 +22,6 @@ stringData:
   OS_PROJECT_NAME: admin
   OS_REGION_NAME: RegionOne
 type: Opaque
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: system-registry-local-certificate
-  namespace: deployment
-spec:
-  dnsNames:
-  - registry.local
-  - registry.central
-  duration: 2160h
-  ipAddresses:
-  - ""
-  - ""
-  issuerRef:
-    kind: ClusterIssuer
-    name: custom-local-ca
-  renewBefore: 360h
-  secretName: system-registry-local-certificate
-  subject:
-    countries:
-    - ""
-    organizationalUnits:
-    - WRCP-System
-    provinces:
-    - ""
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: system-restapi-gui-certificate
-  namespace: deployment
-spec:
-  commonName: null
-  dnsNames:
-  - ""
-  duration: 2160h
-  ipAddresses:
-  - ""
-  issuerRef:
-    kind: ClusterIssuer
-    name: custom-local-ca
-  renewBefore: 360h
-  secretName: system-restapi-gui-certificate
-  subject:
-    countries:
-    - ""
-    organizationalUnits:
-    - WRCP-System
-    provinces:
-    - ""
----
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: custom-local-ca
-spec:
-  ca:
-    secretName: custom-local-ca
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
@@ -152,27 +82,6 @@ spec:
   match:
     bootMAC: CONTROLLER0MAC
   overrides:
-    interfaces:
-      ethernet:
-      - class: none
-        name: lo
-        platformNetworks: []
-        port:
-          name: lo
-    location: vbox
-    provisioningMode: dynamic
-  profile: controller-profile
----
-apiVersion: starlingx.windriver.com/v1
-kind: Host
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: controller-1
-  namespace: deployment
-spec:
-  overrides:
-    bootMAC: CONTROLLER1MAC
     location: vbox
   profile: controller-profile
 ---
@@ -191,12 +100,12 @@ spec:
   interfaces:
     ethernet:
     - class: platform
-      name: mgmt0
+      name: lo
       platformNetworks:
       - mgmt
       - cluster-host
       port:
-        name: enp0s8
+        name: lo
     - class: platform
       name: oam0
       platformNetworks:
@@ -217,6 +126,7 @@ spec:
       name: data1
       port:
         name: eth1001
+  kernel: lowlatency
   labels:
     openstack-compute-node: enabled
     openstack-control-plane: enabled
@@ -228,7 +138,7 @@ spec:
     - count: 0
       function: vswitch
     node: 0
-  provisioningMode: static
+  provisioningMode: dynamic
   rootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
   storage:
     osds:
@@ -252,13 +162,8 @@ metadata:
   name: vbox
   namespace: deployment
 spec:
-  certificates:
-  - secret: system-restapi-gui-certificate
-    type: ssl
-  - secret: system-registry-local-certificate
-    type: docker_registry
   contact: info@windriver.com
-  description: Virtual Box Standard System (HTTPS)
+  description: Virtual Box Standard System
   location: vbox
   ntpServers:
   - 0.pool.ntp.org
