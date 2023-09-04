@@ -9,6 +9,9 @@
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
     - set_fact:
+        dm_monitor_playbook: "{{ dm_monitor_playbook | default('/usr/local/share/applications/playbooks/dm-monitor-book.yaml') }}"
+
+    - set_fact:
         user_uploaded_artifacts: "{{ user_uploaded_artifacts | default(true) }}"
 
     - set_fact:
@@ -267,6 +270,13 @@
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
       when: helmv2_dm_exists.rc != 0
+
+    # Install or Upgrade DM-Monitor
+    - name: "Install or Upgrade DM-monitor"
+      shell: "ansible-playbook {{ dm_monitor_playbook }}"
+      become: yes
+      ignore_errors: yes
+      when: dm_monitor_playbook
 
     # Restart Deployment Manager if it was reinstalled
     - block:
