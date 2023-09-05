@@ -1049,6 +1049,8 @@ func (r *SystemReconciler) ReconcileSystem(client *gophercloud.ServiceClient, in
 
 	err = r.ReconcileSystemFinal(client, instance, spec, info)
 	if err != nil {
+		// Need to return true to unblock the other reconcilers to work with the
+		// system reconciler in parallel
 		return true, err
 	}
 
@@ -1288,11 +1290,11 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	ready, err := r.ReconcileSystem(client, instance, spec, &systemInfo)
 	inSync := err == nil
 
+	// Regardless of whether an error occurred, if the reconciling got
+	// far enough along to get the system in a state in which the other
+	// reconcilers can make progress than we need to mark the system as
+	// being ready. The error wil be returned in the end of this method.
 	if ready {
-		// Regardless of whether an error occurred, if the reconciling got
-		// far enough along to get the system in a state in which the other
-		// reconcilers can make progress than we need to mark the system as
-		// being ready.
 		if !r.CloudManager.GetSystemReady(instance.Namespace) {
 			// Set the system type which may be used by other reconcilers to make
 			// decisions about when to reconcile certain resources.
@@ -1306,13 +1308,13 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 				"system is now ready for other reconcilers")
 
-			err = r.CloudManager.NotifySystemDependencies(instance.Namespace)
-			if err != nil {
+			err2 := r.CloudManager.NotifySystemDependencies(instance.Namespace)
+			if err2 != nil {
 				// Revert to not-ready so that when we reconcile the system
 				// resource again we will push the change out to all other
 				// reconcilers again.
 				r.CloudManager.SetSystemReady(instance.Namespace, false)
-				return err
+				return err2
 			}
 		}
 	}
@@ -1320,10 +1322,10 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {
 		logSystem.Info("updating status for system", "status", instance.Status)
 
-		err2 := r.Client.Status().Update(context.TODO(), instance)
-		if err2 != nil {
-			err2 = perrors.Wrap(err2, "failed to update system status")
-			return err2
+		err3 := r.Client.Status().Update(context.TODO(), instance)
+		if err3 != nil {
+			err3 = perrors.Wrap(err3, "failed to update system status")
+			return err3
 		}
 	}
 
