@@ -935,7 +935,7 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 
 	for index, c := range certificates {
 		// Ignore OpenLDAP certificate since it's being installed during the initial unlock.
-		if c.Type == "openldap" || c.Type == "ssl_ca" {
+		if c.Type == "openldap" {
 			continue
 		}
 		cert := CertificateInfo{
@@ -981,14 +981,12 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.F
 	result := make([]ControllerFileSystemInfo, 0)
 
 	for _, fs := range fileSystems {
-		if fs.Name == "backup" || fs.Name == "database" {
-			info := ControllerFileSystemInfo{
-				Name: fs.Name,
-				Size: fs.Size,
-			}
-
-			result = append(result, info)
+		info := ControllerFileSystemInfo{
+			Name: fs.Name,
+			Size: fs.Size,
 		}
+
+		result = append(result, info)
 	}
 
 	if spec.Storage == nil {
@@ -1076,6 +1074,15 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 	}
 
 	spec.VSwitchType = &systemInfo.Capabilities.VSwitchType
+
+	if systemInfo.DRBD != nil {
+		spec.Storage = &SystemStorageInfo{
+			DRBD: &DRBDConfiguration{
+				LinkUtilization: systemInfo.DRBD.LinkUtilization,
+			},
+		}
+	}
+
 	if systemInfo.DNS != nil {
 		if systemInfo.DNS.Nameservers != "" {
 			nameservers := StringsToDNSServerList(strings.Split(systemInfo.DNS.Nameservers, ","))
