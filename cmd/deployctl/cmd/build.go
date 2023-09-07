@@ -39,6 +39,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
 	var noCACertificates bool
+	var noDRBDLinkUtilization bool
 	var noServiceParams bool
 	var outputFile *os.File
 	var minimalConfig bool
@@ -167,7 +168,6 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	if minimalConfig {
-		noCACertificates = true
 		noDefaults = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
@@ -175,6 +175,8 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		normalizeConsole = true
 		noServiceParams = true
 	}
+	noDRBDLinkUtilization = true
+	noCACertificates = true
 
 	ao, err := manager.GetAuthOptionsFromEnv()
 	if err != nil {
@@ -281,6 +283,10 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	systemFilters := make([]build.SystemFilter, 0)
+
+	if noDRBDLinkUtilization {
+		systemFilters = append(systemFilters, build.NewDRBDLinkUtilizationFilter())
+	}
 
 	if noCACertificates {
 		systemFilters = append(systemFilters, build.NewCACertificateFilter())

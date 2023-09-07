@@ -711,6 +711,19 @@ type SystemFilter interface {
 	Filter(system *v1.System, deployment *Deployment) error
 }
 
+// Filter for DRBD
+type DRBDLinkUtilizationFilter struct {
+}
+
+func NewDRBDLinkUtilizationFilter() *DRBDLinkUtilizationFilter {
+	return &DRBDLinkUtilizationFilter{}
+}
+
+func (in *DRBDLinkUtilizationFilter) Filter(system *v1.System, deployment *Deployment) error {
+	system.Spec.Storage.DRBD = nil
+	return nil
+}
+
 // CACertificateFilter defines a system filter that removes trusted CA
 // certificates from the configuration under the assumption that they were added
 // at bootstrap time rather than as a post install step.  This is being done
