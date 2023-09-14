@@ -32,6 +32,9 @@ const (
 	NormalizeInterfaceMTUFilterArg   = "normalize-mtu"
 	NormalizeConsoleFilterArg        = "normalize-console"
 	MinimalConfigFilterArg           = "minimal-config"
+	AllowDRBDConfigArg               = "allow-drbd"
+	AllowAllFileSystemsArg           = "allow-all-filesystems"
+	AllowCACertificatesArg           = "allow-ca-certificates"
 )
 
 func CollectCmdRun(cmd *cobra.Command, args []string) {
@@ -39,6 +42,9 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
 	var noCACertificates bool
+	var isDRBDLinkUtilization bool
+	var isFileSystems bool
+	var isCACertificates bool
 	var noServiceParams bool
 	var outputFile *os.File
 	var minimalConfig bool
@@ -148,8 +154,8 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(13)
 	}
 
-	if noCACertificates, err = cmd.Flags().GetBool(NoCACertificatesFilterArg); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+	if noCACertificates, err = cmd.Flags().GetBool(NoCACertificatesFilterArg); noCACertificates {
+		_, _ = fmt.Fprintf(os.Stderr, "the %q argument is deprecated, the CA certificates will not be built by default.\n",
 			NoCACertificatesFilterArg)
 		os.Exit(14)
 	}
@@ -166,8 +172,25 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(16)
 	}
 
+	if isDRBDLinkUtilization, err = cmd.Flags().GetBool(AllowDRBDConfigArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+			AllowDRBDConfigArg)
+		os.Exit(17)
+	}
+
+	if isFileSystems, err = cmd.Flags().GetBool(AllowAllFileSystemsArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+			AllowAllFileSystemsArg)
+		os.Exit(18)
+	}
+
+	if isCACertificates, err = cmd.Flags().GetBool(AllowCACertificatesArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
+			AllowCACertificatesArg)
+		os.Exit(19)
+	}
+
 	if minimalConfig {
-		noCACertificates = true
 		noDefaults = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
@@ -175,7 +198,6 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		normalizeConsole = true
 		noServiceParams = true
 	}
-
 	ao, err := manager.GetAuthOptionsFromEnv()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "failed to build authentication options", err)
@@ -282,7 +304,15 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 
 	systemFilters := make([]build.SystemFilter, 0)
 
-	if noCACertificates {
+	if !isDRBDLinkUtilization {
+		systemFilters = append(systemFilters, build.NewDRBDLinkUtilizationFilter())
+	}
+
+	if !isFileSystems {
+		systemFilters = append(systemFilters, build.NewFileSystemFilter())
+	}
+
+	if !isCACertificates {
 		systemFilters = append(systemFilters, build.NewCACertificateFilter())
 	}
 
@@ -369,4 +399,7 @@ func init() {
 	collectCmd.Flags().Bool(NormalizeInterfaceMTUFilterArg, false, "Normalize interface MTU values")
 	collectCmd.Flags().Bool(NormalizeConsoleFilterArg, false, "Normalize serial console attributes")
 	collectCmd.Flags().Bool(MinimalConfigFilterArg, false, "Shorthand notation for adding all available filters")
+	collectCmd.Flags().Bool(AllowDRBDConfigArg, false, "Allow DRBD from system instances")
+	collectCmd.Flags().Bool(AllowAllFileSystemsArg, false, "Allow all types of filesystems from system instances, only back, database, instance and image-conversion are allowed by default")
+	collectCmd.Flags().Bool(AllowCACertificatesArg, false, "Include all trusted CA certificates from system instances")
 }

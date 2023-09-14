@@ -222,7 +222,9 @@ $ ../deployctl build -n deployment -s vbox --minimal-config
 building deployment for system "vbox" in namespace "deployment"
 building namespace configuration
 building system configuration
+...filtering system attributes
 building system endpoint secret configuration
+building system license secret configuration
 building certificate secret configurations
 building data network configurations
 building platform network configurations

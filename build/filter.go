@@ -711,6 +711,45 @@ type SystemFilter interface {
 	Filter(system *v1.System, deployment *Deployment) error
 }
 
+// Filter for DRBD
+type DRBDLinkUtilizationFilter struct {
+}
+
+func NewDRBDLinkUtilizationFilter() *DRBDLinkUtilizationFilter {
+	return &DRBDLinkUtilizationFilter{}
+}
+
+func (in *DRBDLinkUtilizationFilter) Filter(system *v1.System, deployment *Deployment) error {
+	system.Spec.Storage.DRBD = nil
+	return nil
+}
+
+// Filter all filesystem types except backup and database
+type FileSystemFilter struct {
+}
+
+func NewFileSystemFilter() *FileSystemFilter {
+	return &FileSystemFilter{}
+}
+
+func (in *FileSystemFilter) Filter(system *v1.System, deployment *Deployment) error {
+	result := make([]v1.ControllerFileSystemInfo, 0)
+
+	for _, fs := range *system.Spec.Storage.FileSystems {
+		if fs.Name == "backup" || fs.Name == "database" || fs.Name == "instances" || fs.Name == "image-conversion" {
+			info := v1.ControllerFileSystemInfo{
+				Name: fs.Name,
+				Size: fs.Size,
+			}
+			result = append(result, info)
+		}
+	}
+	list := v1.ControllerFileSystemList(result)
+	system.Spec.Storage.FileSystems = &list
+
+	return nil
+}
+
 // CACertificateFilter defines a system filter that removes trusted CA
 // certificates from the configuration under the assumption that they were added
 // at bootstrap time rather than as a post install step.  This is being done
