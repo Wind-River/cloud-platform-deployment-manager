@@ -16,7 +16,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "deploy",
+	Use:   "deployctl",
 	Short: "A utility to build and analyze running systems.",
 	Long: `This is a helper tool which is intended to be used as a companion
 application to the deployment system.  The intent is that this can be used
@@ -62,7 +62,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".deploy" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".deploy")
+		viper.SetConfigName(".deployctl")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
