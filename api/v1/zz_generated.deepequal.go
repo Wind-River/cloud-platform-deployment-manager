@@ -280,6 +280,9 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		return false
 	}
 
+	if in.UUID != other.UUID {
+		return false
+	}
 	if in.Name != other.Name {
 		return false
 	}
