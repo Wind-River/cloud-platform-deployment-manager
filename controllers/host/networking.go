@@ -1545,6 +1545,10 @@ func (r *HostReconciler) ReconcileVLANInterfaces(client *gophercloud.ServiceClie
 		}
 
 		host.InterfaceNetworks = results
+
+		// Delete current defaults so that it will obtain the latest info
+		logHost.Info("vlan updated. Remove defaults")
+		instance.Status.Defaults = nil
 	}
 
 	return nil
@@ -1788,6 +1792,10 @@ func (r *HostReconciler) ReconcileVFInterfaces(client *gophercloud.ServiceClient
 		}
 
 		host.InterfaceNetworks = results
+
+		// Delete current defaults so that it will obtain the latest info
+		logHost.Info("vf updated. Remove defaults")
+		instance.Status.Defaults = nil
 	}
 
 	return nil
