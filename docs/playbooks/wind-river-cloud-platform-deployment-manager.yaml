@@ -4,6 +4,11 @@
   hosts: all
   gather_facts: false
   become: false
+
+  vars:
+    helmv2_installed: false
+    helmv3_installed: false
+
   tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
@@ -157,11 +162,17 @@
       ignore_errors: yes
       register: helmv2_releases
 
+    # Ansible returns error code 2 to helmv2_releases if helmv2-cli does not exist
+    - name: Check if helmv2-cli is installed
+      set_fact:
+        helmv2_installed: "{{ false if helmv2_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv2
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv2_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv2_dm_exists
+      when: helmv2_installed
 
     - name: Get list of releases in helmv3
       command: >-
@@ -171,15 +182,22 @@
       ignore_errors: yes
       register: helmv3_releases
 
+    # Ansible returns error code 2 to helmv3_releases if helmv3 does not exist
+    - name: Check if helmv3 is installed
+      set_fact:
+        helmv3_installed: "{{ false if helmv3_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv3
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv3_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv3_dm_exists
+      when: helmv3_installed
 
     - name: Set reconfig fact
       set_fact:
-        reconfig_flag: "{{ true if helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
+        reconfig_flag: "{{ true if (helmv2_installed and helmv2_dm_exists.rc == 0)
+                        or (helmv3_installed and helmv3_dm_exists.rc == 0)
                         else false }}"
 
     - name: Mark the bootstrap as finalized
@@ -226,7 +244,7 @@
         environment:
           KUBECONFIG: "/etc/kubernetes/admin.conf"
 
-      when: helmv2_dm_exists.rc == 0
+      when: helmv2_installed and helmv2_dm_exists.rc == 0
 
     # Remove v1 webhook and webhook service
     - block:
@@ -271,11 +289,11 @@
           KUBECONFIG: "/etc/kubernetes/admin.conf"
         when: webhook_service_exists.rc == 0
 
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed and helmv3_dm_exists.rc == 0
 
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed
 
     # Install or Upgrade DM-Monitor
     - name: "Install or Upgrade DM-monitor"
