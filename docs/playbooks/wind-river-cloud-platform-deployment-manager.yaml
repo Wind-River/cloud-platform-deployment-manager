@@ -349,6 +349,24 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
+         # Configure required region value for subcloud
+        - name: Get subcloud region value from environment
+          shell: source /etc/platform/openrc; echo $OS_REGION_NAME
+          register: os_region_name_from_env
+
+        - name: Show subcloud region
+          debug:
+            msg:
+            - "Subcloud region value : {{os_region_name_from_env.stdout}}"
+
+        - name: Configure new subcloud region value
+          lineinfile:
+            path: "{{deploy_config}}"
+            regexp: 'OS_REGION_NAME'
+            line: "  OS_REGION_NAME: {{os_region_name_from_env.stdout}}"
+            state: present
+          when: ("subcloud" in get_distributed_cloud_role.stdout)
+
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment
             # manager to come up and download its certificates.  It needs to
