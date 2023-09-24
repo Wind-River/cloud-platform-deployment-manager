@@ -793,25 +793,25 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 type ServiceParameterFilter struct {
 }
 
+// Filter out the default service parameters
 func NewServiceParametersSystemFilter() *ServiceParameterFilter {
 	return &ServiceParameterFilter{}
 }
 
-func IsDefaultServiceParameter(sp *v1.ServiceParameterInfo) bool {
-	return true
-}
-
-func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployment) error {
+func (in *ServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
 	if system.Spec.ServiceParameters == nil {
 		return nil
 	}
 
 	result := make([]v1.ServiceParameterInfo, 0)
 	for _, sp := range *system.Spec.ServiceParameters {
-		// currently this skips everything
-		if IsDefaultServiceParameter(&sp) {
+
+		// If is a default service parameter, skip to add it
+		if v1.IsDefaultServiceParameter(&sp) {
 			continue
 		}
+
 		result = append(result, sp)
 	}
 
@@ -822,6 +822,20 @@ func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployme
 		system.Spec.ServiceParameters = nil
 	}
 
+	return nil
+}
+
+type NoServiceParameterFilter struct {
+}
+
+// Fileter out all the service parameters
+func NewNoServiceParametersSystemFilter() *NoServiceParameterFilter {
+	return &NoServiceParameterFilter{}
+}
+
+func (in *NoServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
+	system.Spec.ServiceParameters = nil
 	return nil
 }
 
