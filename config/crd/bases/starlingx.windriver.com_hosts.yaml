@@ -1087,6 +1087,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               hostProfileConfigurationUpdated:
                 description: Value for host profile configuration is updated or not

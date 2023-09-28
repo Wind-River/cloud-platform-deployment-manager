@@ -447,7 +447,7 @@ type SystemStatus struct {
 
 	// DeploymentScope defines whether the resource has been deployed
 	// on the initial setup or during an update.
-	// +kubebuilder:validation:Enum=bootstrap;principal
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
 	// +optional
 	// +kubebuilder:default:=bootstrap
 	DeploymentScope string `json:"deploymentScope"`
