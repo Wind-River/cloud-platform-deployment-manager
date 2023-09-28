@@ -399,7 +399,7 @@
         #   deploymentScope:
         #    "principal"
         - name: Search for 'principal' scope in deploy_config
-          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:(?:\s*#.*)?\n)*\s*"principal"\s*' {{ deploy_config }}
+          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:\s*#.*\n)*\s*(?:"principal"|"Principal"|"PRINCIPAL")\s*' {{ deploy_config }}
           changed_when: false
           failed_when: false
           register: scope_principal

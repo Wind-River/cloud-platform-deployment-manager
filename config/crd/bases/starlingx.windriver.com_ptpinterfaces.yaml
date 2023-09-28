@@ -77,6 +77,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This
