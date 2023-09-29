@@ -1359,7 +1359,6 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
 					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
-					logSystem.Info(fmt.Sprintf("lowerCaseScope: %s", lowerCaseScope))
 					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
 						deploymentScope = cloudManager.ScopeBootstrap
