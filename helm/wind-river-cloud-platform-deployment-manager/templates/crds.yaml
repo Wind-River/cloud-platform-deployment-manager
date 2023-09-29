@@ -115,6 +115,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -1758,6 +1762,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               hostProfileConfigurationUpdated:
                 description: Value for host profile configuration is updated or not
@@ -1951,6 +1959,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -2076,6 +2088,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -2194,6 +2210,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -2517,6 +2537,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
