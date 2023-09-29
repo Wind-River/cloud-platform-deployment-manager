@@ -437,11 +437,12 @@ func (r *PtpInstanceReconciler) GetScopeConfig(instance *starlingxv1.PtpInstance
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
-					switch scope := status_config.Status.DeploymentScope; scope {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopeBootstrap
 					case cloudManager.ScopePrincipal:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopePrincipal
 					default:
 						err = fmt.Errorf("Unsupported DeploymentScope: %s",
 							status_config.Status.DeploymentScope)
