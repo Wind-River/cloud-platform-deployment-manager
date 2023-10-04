@@ -418,6 +418,18 @@ func serviceparametersUpdateRequired(spec *starlingxv1.ServiceParameterInfo, p *
 	return serviceparametersOpts, result
 }
 
+// RefreshServiceParameterList updates the service parameters list in SystemInfo
+func (r *SystemReconciler) RefreshServiceParameterList(client *gophercloud.ServiceClient, instance *starlingxv1.System, info *v1info.SystemInfo) error {
+	result, err := serviceparameters.ListServiceParameters(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to refresh service parameters list")
+		return err
+	}
+	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
+	info.ServiceParameters = result
+	return nil
+}
+
 // ReconcileServiceParameters configures the system resources to align with the desired ServiceParameter state.
 func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !utils.IsReconcilerEnabled(utils.ServiceParameters) {
@@ -466,19 +478,60 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 			updated = true
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
 		}
+	}
 
-		// Note: There is no support in the reconcile for DELETE of service parameters, since there are
-		// default service parameters setup by the system, that would complicate a reconcile.
+	// update the system object with the list of service params
+	if updated {
+		error := r.RefreshServiceParameterList(client, instance, info)
+		if error != nil {
+			return error
+		}
+	}
+
+	updated = false
+
+	for _, info_sp := range info.ServiceParameters {
+		found := false
+		for _, spec_sp := range *spec.ServiceParameters {
+			// A match occurs when service, section and paramname are equal
+			if info_sp.Service == spec_sp.Service &&
+				info_sp.Section == spec_sp.Section &&
+				info_sp.ParamName == spec_sp.ParamName {
+				// do nothing as it should be able to be updated by previous section
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Firstly check if it is a default service parameter as we are not
+			// deleting the default service parameters, this should not be happening
+			// as we delete the default parameters from spec in RemoveDefaultSystemSpecs
+			sp := starlingxv1.ServiceParameterInfo{
+				Service:   info_sp.Service,
+				Section:   info_sp.Section,
+				ParamName: info_sp.ParamName,
+			}
+			if starlingxv1.IsDefaultServiceParameter(&sp) {
+				msg := fmt.Sprintf("it is unsafe to delete default service parameters: %q %q %q", info_sp.Service, info_sp.Section, info_sp.ParamName)
+				return common.NewUserDataError(msg)
+			}
+
+			err := serviceparameters.Delete(client, info_sp.ID).ExtractErr()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "ServiceParameter %q %q %q has been created", info_sp.Service, info_sp.Section, info_sp.ParamName)
+		}
+
 	}
 	// update the system object with the list of service params
 	if updated {
-		result, err := serviceparameters.ListServiceParameters(client)
+		err := r.RefreshServiceParameterList(client, instance, info)
 		if err != nil {
-			err = perrors.Wrap(err, "failed to refresh service parameters list")
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
-		info.ServiceParameters = result
 	}
 
 	return nil
