@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package cmd
 
@@ -32,9 +32,6 @@ const (
 	NormalizeInterfaceMTUFilterArg   = "normalize-mtu"
 	NormalizeConsoleFilterArg        = "normalize-console"
 	MinimalConfigFilterArg           = "minimal-config"
-	AllowDRBDConfigArg               = "allow-drbd"
-	AllowAllFileSystemsArg           = "allow-all-filesystems"
-	AllowCACertificatesArg           = "allow-ca-certificates"
 )
 
 func CollectCmdRun(cmd *cobra.Command, args []string) {
@@ -42,9 +39,8 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
 	var noCACertificates bool
-	var isDRBDLinkUtilization bool
-	var isFileSystems bool
-	var isCACertificates bool
+	var noDRBDLinkUtilization bool
+	var noFileSystems bool
 	var noServiceParams bool
 	var outputFile *os.File
 	var minimalConfig bool
@@ -154,8 +150,8 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(13)
 	}
 
-	if noCACertificates, err = cmd.Flags().GetBool(NoCACertificatesFilterArg); noCACertificates {
-		_, _ = fmt.Fprintf(os.Stderr, "the %q argument is deprecated, the CA certificates will not be built by default.\n",
+	if noCACertificates, err = cmd.Flags().GetBool(NoCACertificatesFilterArg); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
 			NoCACertificatesFilterArg)
 		os.Exit(14)
 	}
@@ -172,32 +168,24 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		os.Exit(16)
 	}
 
-	if isDRBDLinkUtilization, err = cmd.Flags().GetBool(AllowDRBDConfigArg); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
-			AllowDRBDConfigArg)
-		os.Exit(17)
-	}
-
-	if isFileSystems, err = cmd.Flags().GetBool(AllowAllFileSystemsArg); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
-			AllowAllFileSystemsArg)
-		os.Exit(18)
-	}
-
-	if isCACertificates, err = cmd.Flags().GetBool(AllowCACertificatesArg); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
-			AllowCACertificatesArg)
-		os.Exit(19)
-	}
-
 	if minimalConfig {
+		noCACertificates = true
 		noDefaults = true
+		noDRBDLinkUtilization = true
+		noFileSystems = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
 		normalizeMTU = true
 		normalizeConsole = true
 		noServiceParams = true
 	}
+
+	if noDefaults {
+		noDRBDLinkUtilization = true
+		noFileSystems = true
+		noCACertificates = true
+	}
+
 	ao, err := manager.GetAuthOptionsFromEnv()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "failed to build authentication options", err)
@@ -304,20 +292,20 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 
 	systemFilters := make([]build.SystemFilter, 0)
 
-	if !isDRBDLinkUtilization {
+	if noDRBDLinkUtilization {
 		systemFilters = append(systemFilters, build.NewDRBDLinkUtilizationFilter())
 	}
 
-	if !isFileSystems {
+	if noFileSystems {
 		systemFilters = append(systemFilters, build.NewFileSystemFilter())
 	}
 
-	if !isCACertificates {
+	if noCACertificates {
 		systemFilters = append(systemFilters, build.NewCACertificateFilter())
 	}
 
 	if noServiceParams {
-		systemFilters = append(systemFilters, build.NewServiceParametersSystemFilter())
+		systemFilters = append(systemFilters, build.NewNoServiceParametersSystemFilter())
 	}
 
 	if len(systemFilters) > 0 {
@@ -388,7 +376,7 @@ func init() {
 	collectCmd.Flags().StringP(OutputFileNameArg, "o", "deployment-config.yaml", "A destination path used for output.")
 	collectCmd.Flags().StringP(SystemNameArg, "s", "", "The name of the system to be created")
 	collectCmd.Flags().StringP(NamespaceNameArg, "n", "deployment", "The name of the namespace used to contain the system")
-	collectCmd.Flags().BoolP(NoDefaultsFilterArg, "f", false, "Enable/disable use of filters to remove unwanted fields")
+	collectCmd.Flags().BoolP(NoDefaultsFilterArg, "f", false, "Exclude all unwanted default fields for initial config")
 	collectCmd.Flags().Bool(NoCACertificatesFilterArg, false, "Exclude all trusted CA certificates from system instances")
 	collectCmd.Flags().Bool(NoMemoryFilterArg, false, "Exclude all memory configurations from profiles")
 	collectCmd.Flags().Bool(NoProcessorFilterArg, false, "Exclude all processor configurations from profiles")
@@ -399,7 +387,4 @@ func init() {
 	collectCmd.Flags().Bool(NormalizeInterfaceMTUFilterArg, false, "Normalize interface MTU values")
 	collectCmd.Flags().Bool(NormalizeConsoleFilterArg, false, "Normalize serial console attributes")
 	collectCmd.Flags().Bool(MinimalConfigFilterArg, false, "Shorthand notation for adding all available filters")
-	collectCmd.Flags().Bool(AllowDRBDConfigArg, false, "Allow DRBD from system instances")
-	collectCmd.Flags().Bool(AllowAllFileSystemsArg, false, "Allow all types of filesystems from system instances, only back, database, instance and image-conversion are allowed by default")
-	collectCmd.Flags().Bool(AllowCACertificatesArg, false, "Include all trusted CA certificates from system instances")
 }
