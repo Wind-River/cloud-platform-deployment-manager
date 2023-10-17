@@ -40,6 +40,7 @@ var _ = Describe("Test Build utilities:", func() {
 			NewBMAddressFilter(),
 			NewStorageMonitorFilter(),
 			NewInterfaceRemoveUuidFilter(),
+			NewHostKernelFilter(),
 		}
 		Expect(reflect.DeepEqual(
 			got.hostFilters, expectHostFilter)).To(BeTrue())

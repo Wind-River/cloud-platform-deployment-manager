@@ -65,6 +65,7 @@ var defaultHostFilters = []HostFilter{
 	NewBMAddressFilter(),
 	NewStorageMonitorFilter(),
 	NewInterfaceRemoveUuidFilter(),
+	NewHostKernelFilter(),
 }
 
 // NewDeploymentBuilder returns an instantiation of a deployment builder
