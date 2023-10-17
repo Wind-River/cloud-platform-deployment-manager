@@ -4,9 +4,12 @@
 package build
 
 import (
+	"reflect"
+	"strings"
+
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
-	"reflect"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -94,5 +97,125 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(reflect.DeepEqual(got, &expect)).To(BeTrue())
 			})
 		})
+	})
+
+	Describe("Test the HostKernelFilter on different types of hosts", func() {
+		const (
+			aio_index              = 0 // all-in-one controller
+			ctrl_index             = 1 // standard controller
+			wrk_index              = 2 // worker
+			str_index              = 3 // storage
+			number_of_tested_hosts = 4 // number of hosts
+		)
+
+		kernelfilter := NewHostKernelFilter()
+		deployment := Deployment{}
+
+		hosts := make([]v1.Host, number_of_tested_hosts)
+		profiles := make([]v1.HostProfile, number_of_tested_hosts)
+		deployment.Hosts = make([]*v1.Host, number_of_tested_hosts)
+		deployment.Profiles = make([]*v1.HostProfile, number_of_tested_hosts)
+		for i := 0; i < number_of_tested_hosts; i++ {
+			deployment.Hosts[i] = &hosts[i]
+			deployment.Profiles[i] = &profiles[i]
+		}
+
+		var populatespec = func(hostinfo v1info.HostInfo,
+			profile *v1.HostProfile, host *v1.Host) {
+
+			host.Spec.Profile = hostinfo.Hostname
+			profile.Spec.Personality = &hostinfo.Personality
+			profile.Spec.Kernel = &hostinfo.Kernel.ProvisionedKernel
+			sf := strings.Split(hostinfo.SubFunctions, ",")
+			profile.Spec.SubFunctions = make([]v1.SubFunction, len(sf))
+			for i := 0; i < len(sf); i++ {
+				profile.Spec.SubFunctions[i] = v1.SubFunctionFromString(sf[i])
+			}
+		}
+
+		Context("when host is an all-in-one controller node", func() {
+
+			host := deployment.Hosts[aio_index]
+			profile := deployment.Profiles[aio_index]
+			hostinfo := v1info.HostInfo{}
+
+			hostinfo.Hostname = "controller-0"
+			hostinfo.Personality = "controller"
+			hostinfo.SubFunctions = "controller,worker,lowlatency"
+			hostinfo.Kernel.Hostname = "controller-0"
+			hostinfo.Kernel.RunningKernel = "lowlatency"
+			hostinfo.Kernel.ProvisionedKernel = "lowlatency"
+
+			populatespec(hostinfo, profile, host)
+			It("should not remove the kernel parameter from the spec", func() {
+				kernelfilter.Filter(profile, host, &deployment)
+				Expect(profile.Spec.Kernel).NotTo(BeNil(),
+					"Kernel parameter should not be Nil")
+			})
+		})
+
+		Context("when host is a standard controller node", func() {
+			host := deployment.Hosts[ctrl_index]
+			profile := deployment.Profiles[ctrl_index]
+			hostinfo := v1info.HostInfo{}
+
+			hostinfo.Hostname = "controller-1"
+			hostinfo.Personality = "controller"
+			hostinfo.SubFunctions = "controller"
+			hostinfo.Kernel.Hostname = "controller-1"
+			hostinfo.Kernel.RunningKernel = "standard"
+			hostinfo.Kernel.ProvisionedKernel = "standard"
+
+			populatespec(hostinfo, profile, host)
+
+			It("should remove the kernel parameter from the spec", func() {
+				kernelfilter.Filter(profile, host, &deployment)
+				Expect(profile.Spec.Kernel).To(BeNil(),
+					"Kernel parameter should be Nil")
+			})
+		})
+
+		Context("when host is a worker node", func() {
+			host := deployment.Hosts[wrk_index]
+			profile := deployment.Profiles[wrk_index]
+			hostinfo := v1info.HostInfo{}
+
+			hostinfo.Hostname = "worker-0"
+			hostinfo.Personality = "worker"
+			hostinfo.SubFunctions = "worker,lowlatency"
+			hostinfo.Kernel.Hostname = "worker-0"
+			hostinfo.Kernel.RunningKernel = "lowlatency"
+			hostinfo.Kernel.ProvisionedKernel = "lowlatency"
+
+			populatespec(hostinfo, profile, host)
+
+			It("should not remove the kernel parameter from the spec", func() {
+				kernelfilter.Filter(profile, host, &deployment)
+				Expect(profile.Spec.Kernel).NotTo(BeNil(),
+					"Kernel parameter should not be Nil")
+			})
+		})
+
+		Context("when host is a dedicated storage node", func() {
+			host := deployment.Hosts[str_index]
+			profile := deployment.Profiles[str_index]
+			hostinfo := v1info.HostInfo{}
+
+			hostinfo.Hostname = "storage-0"
+			hostinfo.Personality = "storage"
+			hostinfo.SubFunctions = "storage"
+			hostinfo.Kernel.Hostname = "storage-0"
+			hostinfo.Kernel.RunningKernel = "standard"
+			hostinfo.Kernel.ProvisionedKernel = "standard"
+
+			populatespec(hostinfo, profile, host)
+
+			It("should remove the kernel parameter from the spec", func() {
+				kernelfilter.Filter(profile, host, &deployment)
+				Expect(profile.Spec.Kernel).To(BeNil(),
+					"Kernel parameter should be Nil")
+			})
+		})
+
 	})
 })

@@ -909,3 +909,22 @@ func (in *InterfaceRemoveUuidFilter) Filter(profile *v1.HostProfile, host *v1.Ho
 	}
 	return nil
 }
+
+// HostKernelFilter defines a profile and host filter that removes
+// kernel values from interfaces.
+type HostKernelFilter struct {
+}
+
+func NewHostKernelFilter() *HostKernelFilter {
+	return &HostKernelFilter{}
+}
+
+func (in *HostKernelFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+
+	// filter kernel parameter from hostprofile for hosts that are not worker/compute nodes
+	if !profile.Spec.HasWorkerSubFunction() {
+		profile.Spec.Kernel = nil
+	}
+
+	return nil
+}
