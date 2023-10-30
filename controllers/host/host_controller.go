@@ -1453,7 +1453,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 
 	if deltaString != "" {
-		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 		instance.Status.Delta = deltaString
 
 		err = r.Client.Status().Update(context.TODO(), instance)
