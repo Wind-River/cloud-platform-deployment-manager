@@ -213,9 +213,9 @@ builder-build:
 	docker build . -t ${BUILDER_IMG} -f Dockerfile.builder
 
 builder-run: builder-build
+	git config --global --add safe.directory /go/src/github.com/wind-river/cloud-platform-deployment-manager
 	docker run -v /var/run/docker.sock:/var/run/docker.sock \
 		-v ${PWD}:/go/src/github.com/wind-river/cloud-platform-deployment-manager \
-		--user="$(id --user):$(id --group)" \
 		--rm ${BUILDER_IMG}
 
 # Check minimum helm version
