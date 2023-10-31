@@ -1188,6 +1188,11 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 		result = true
 	}
 
+	if status.Defaults == nil {
+		logHost.Info("defaults is nil. Update status")
+		result = true
+	}
+
 	return result
 }
 
@@ -1418,6 +1423,12 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	//  configuration.
 	profile.ProvisioningMode = nil
 
+	// N3000 interface name change apply
+	if host.IsUnlockedEnabled() {
+		logHost.Info("Sync interface name")
+		common.SyncIFNameByUuid(profile, current)
+	}
+
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 	if inSync {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
@@ -1437,7 +1448,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 
 	if deltaString != "" {
-		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 		instance.Status.Delta = deltaString
 
 		err = r.Client.Status().Update(context.TODO(), instance)
@@ -1755,11 +1766,12 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
-					switch scope := status_config.Status.DeploymentScope; scope {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopeBootstrap
 					case cloudManager.ScopePrincipal:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopePrincipal
 					default:
 						err = fmt.Errorf("Unsupported DeploymentScope: %s",
 							status_config.Status.DeploymentScope)
