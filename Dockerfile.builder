@@ -14,12 +14,14 @@ RUN curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(
 # Install the latest version of Docker although we should probably try and
 # align the container version and the host version to ensure compatibility.
 RUN apt-get update && \
-apt-get -y --no-install-recommends install software-properties-common && \
-curl -fsSL https://download.docker.com/linux/debian/gpg > /tmp/dkey; apt-key add /tmp/dkey && \
-add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/debian \
-   $(lsb_release -cs) \
-   stable" && \
+apt-get -y --no-install-recommends install software-properties-common ca-certificates curl gnupg && \
+install -m 0755 -d /etc/apt/keyrings &&
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+chmod a+r /etc/apt/keyrings/docker.gpg && \
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null && \
 apt-get update && \
 apt-get -y install docker-ce
 
