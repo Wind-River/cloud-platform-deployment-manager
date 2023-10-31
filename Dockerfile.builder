@@ -14,8 +14,8 @@ RUN curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(
 # Install the latest version of Docker although we should probably try and
 # align the container version and the host version to ensure compatibility.
 RUN apt-get update && \
-apt-get -y --no-install-recommends install software-properties-common ca-certificates curl gnupg && \
-install -m 0755 -d /etc/apt/keyrings &&
+apt-get -y --no-install-recommends install software-properties-common ca-certificates gnupg && \
+install -m 0755 -d /etc/apt/keyrings && \
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
 chmod a+r /etc/apt/keyrings/docker.gpg && \
 echo \
