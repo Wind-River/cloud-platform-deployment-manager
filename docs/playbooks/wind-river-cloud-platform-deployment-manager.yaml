@@ -291,6 +291,18 @@
 
       when: helmv3_installed and helmv3_dm_exists.rc == 0
 
+    - block:
+      - name: Search for the pod of the Deployment Manager
+        shell: |
+          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: deployment_manager_pod_name
+
+      - debug:
+          msg: "{{ deployment_manager_pod_name.stdout }}"
+      when: reconfig_flag
+
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
       when: helmv3_installed
@@ -303,25 +315,12 @@
       when: dm_monitor_playbook
 
     # Restart Deployment Manager if it was reinstalled
-    - block:
-      - name: Search for the pod of the Deployment Manager
-        shell: |
-          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        register: deployment_manager_pod_name
-
-      - debug:
-          msg: "{{ deployment_manager_pod_name.stdout }}"
-
-      - name: Restart Deployment Manager if reinstalled
-        command: >-
-          kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        when: deployment_manager_pod_name.stdout
-
-      when: reconfig_flag
+    - name: Restart Deployment Manager if reinstalled
+      command: >-
+        kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      when: deployment_manager_pod_name.stdout and reconfig_flag
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
