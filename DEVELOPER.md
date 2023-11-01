@@ -79,16 +79,25 @@ export PATH=$PATH:/usr/local/bin
 
 The Docker version that is shipped with most distributions is out of date
 therefore it must be removed and the latest stable version must be installed
-manually.
+manually. Follow the https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+to install docker using the repository.
 
 ```bash
-sudo apt-get remove docker docker-engine docker.io containerd runc
+# Add Docker's official GPG key:
 sudo apt-get update
-sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg-agent     software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository    "deb [arch=amd64] https://download.docker.com/linux/ubuntu   $(lsb_release -cs) stable"
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
 ```
 
 Finally, to avoid having to use "sudo" to run docker commands you should
