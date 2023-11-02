@@ -314,13 +314,15 @@
       ignore_errors: yes
       when: dm_monitor_playbook
 
-    # Restart Deployment Manager if it was reinstalled
+    # Delete old Deployment Manager pod if it was reinstalled,
+    # the pod to delete may already be terminated by helm
     - name: Restart Deployment Manager if reinstalled
       command: >-
         kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
       environment:
         KUBECONFIG: "/etc/kubernetes/admin.conf"
       when: deployment_manager_pod_name.stdout is defined and deployment_manager_pod_name.stdout
+      failed_when: false
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
