@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -18,6 +20,8 @@ import (
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -82,21 +86,25 @@ func compareRangeArrays(x, y [][]string) bool {
 
 // poolUpdateRequired determines whether a system address pool resource must
 // be updated to align with the stored value.  Only the updated fields are
-//// include in the request options to minimum churn and to ease debugging.
-func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool) {
+// include in the request options to minimum churn and to ease debugging.
+func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool, r *PlatformNetworkReconciler) (opts addresspools.AddressPoolOpts, result bool) {
+	var delta strings.Builder
 	if instance.Name != p.Name {
 		opts.Name = &instance.Name
+		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
 	}
 
 	spec := instance.Spec
 	if !strings.EqualFold(spec.Subnet, p.Network) {
 		opts.Network = &spec.Subnet
+		delta.WriteString(fmt.Sprintf("\t+Network: %s\n", *opts.Network))
 		result = true
 	}
 
 	if spec.Prefix != p.Prefix {
 		opts.Prefix = &spec.Prefix
+		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
 		result = true
 	}
 
@@ -106,12 +114,14 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 		//  so causes an exception when a related route is added.
 		if spec.Gateway != nil && (p.Gateway == nil || !strings.EqualFold(*spec.Gateway, *p.Gateway)) {
 			opts.Gateway = spec.Gateway
+			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.Gateway))
 			result = true
 		}
 	}
 
 	if spec.Allocation.Order != nil && *spec.Allocation.Order != p.Order {
 		opts.Order = spec.Allocation.Order
+		delta.WriteString(fmt.Sprintf("\t+Order: %s\n", *opts.Order))
 		result = true
 	}
 
@@ -119,8 +129,20 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 		ranges := makeRangeArray(spec.Allocation.Ranges)
 		if !compareRangeArrays(ranges, p.Ranges) {
 			opts.Ranges = &ranges
+			delta.WriteString(fmt.Sprintf("\t+Ranges: %s\n", *opts.Ranges))
 			result = true
 		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPlatformNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPlatformNetwork.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 	}
 
 	return opts, result
@@ -179,7 +201,7 @@ func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
 func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
-	if opts, ok := poolUpdateRequired(instance, pool); ok {
+	if opts, ok := poolUpdateRequired(instance, pool, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
 			// synchronized state unless there is an annotation on the resource.
@@ -550,6 +572,14 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 			instance.Status.Reconciled = instance.Status.InSync
 		}
 
+		if instance.Status.Reconciled {
+			instance.Status.ConfigurationUpdated = false
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+			}
+		}
+
 		if r.statusUpdateRequired(instance, oldStatus) {
 			err2 := r.Client.Status().Update(context.TODO(), instance)
 			if err2 != nil {
@@ -593,10 +623,143 @@ func (r *PlatformNetworkReconciler) StopAfterInSync() bool {
 	return utils.GetReconcilerOptionBool(utils.PlatformNetwork, utils.StopAfterInSync, true)
 }
 
+// Obtain deploymentScope value from configuration
+// Taking this value from annotation in instacne
+// (It seems Client.Get does not update Status value from configuration)
+// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
+// "principal" if "principal" in configuration
+func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.PlatformNetwork) (scope string, err error) {
+	// Set default value for deployment scope
+	deploymentScope := cloudManager.ScopeBootstrap
+	// Set DeploymentScope from configuration
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	if annotation != nil {
+		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
+		if ok {
+			status_config := &starlingxv1.PlatformNetwork{}
+			err := json.Unmarshal([]byte(config), &status_config)
+			if err == nil {
+				if status_config.Status.DeploymentScope != "" {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
+					case cloudManager.ScopeBootstrap:
+						deploymentScope = cloudManager.ScopeBootstrap
+					case cloudManager.ScopePrincipal:
+						deploymentScope = cloudManager.ScopePrincipal
+					default:
+						err = fmt.Errorf("Unsupported DeploymentScope: %s",
+							status_config.Status.DeploymentScope)
+						return deploymentScope, err
+					}
+				}
+			} else {
+				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
+				return deploymentScope, err
+			}
+		}
+	}
+	return deploymentScope, nil
+}
+
+// Update deploymentScope and ReconcileAfterInSync in instance
+// ReconcileAfterInSync value will be:
+// "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "false" if deploymentScope is "bootstrap"
+// Then reflect these values to cluster object
+func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.PlatformNetwork) (err error) {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
+		}
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logPlatformNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+		// Put ReconcileAfterInSync values depends on scope
+		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "false" if scope is "bootstrap" or None
+		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+		if deploymentScope == cloudManager.ScopePrincipal {
+			if !ok || afterInSync != "true" {
+				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+			}
+		} else {
+			if ok && afterInSync == "true" {
+				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+			}
+		}
+		return r.Client.Update(context.TODO(), instance)
+	})
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
+		return err
+	}
+
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
+		}
+
+		// Update scope status
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logPlatformNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+		instance.Status.DeploymentScope = deploymentScope
+
+		// Set default value for StrategyRequired
+		if instance.Status.StrategyRequired == "" {
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		// Check if the configuration is updated
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			if instance.Status.ObservedGeneration == 0 &&
+				instance.Status.Reconciled {
+				// Case: DM upgrade in reconciled node
+				instance.Status.ConfigurationUpdated = false
+			} else {
+				// Case: Fresh install or Day-2 operation
+				instance.Status.ConfigurationUpdated = true
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+					instance.Status.Reconciled = false
+					// Update strategy required status for strategy monitor
+					r.CloudManager.UpdateConfigVersion()
+					r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+				}
+			}
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			// Reset strategy when new configuration is applied
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		return r.Client.Status().Update(context.TODO(), instance)
+	})
+
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update status: %s",
+			common.FormatStruct(instance.Status))
+		return err
+	}
+
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a PlatformNetwork object and makes changes based on the state read
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
 func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
@@ -622,6 +785,15 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Update scope from configuration
+	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance)
+	if err != nil {
+		logPlatformNetwork.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logPlatformNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so

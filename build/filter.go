@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package build
 
@@ -783,5 +783,76 @@ func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployme
 		system.Spec.ServiceParameters = nil
 	}
 
+	return nil
+}
+
+// InterfaceRemoveUuidFilter defines a profile and host filter that removes
+// uuid values from interfaces.
+type InterfaceRemoveUuidFilter struct {
+	updates map[string]string
+}
+
+func NewInterfaceRemoveUuidFilter() *InterfaceRemoveUuidFilter {
+	return &InterfaceRemoveUuidFilter{}
+}
+
+func (in *InterfaceRemoveUuidFilter) Reset() {
+	in.updates = make(map[string]string)
+}
+
+func (in *InterfaceRemoveUuidFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
+	info.UUID = ""
+}
+
+func (in *InterfaceRemoveUuidFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+	// Check in profile
+	if profile.Spec.Interfaces == nil {
+		return nil
+	}
+
+	ethernet := profile.Spec.Interfaces.Ethernet
+	for idx := range ethernet {
+		in.CheckInterface(&ethernet[idx].CommonInterfaceInfo)
+	}
+
+	bonds := profile.Spec.Interfaces.Bond
+	for idx := range bonds {
+		in.CheckInterface(&bonds[idx].CommonInterfaceInfo)
+	}
+
+	vlans := profile.Spec.Interfaces.VLAN
+	for idx := range vlans {
+		in.CheckInterface(&vlans[idx].CommonInterfaceInfo)
+	}
+
+	vfs := profile.Spec.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
+	}
+
+	// Check in host override
+	if host.Spec.Overrides.Interfaces == nil {
+		return nil
+	}
+
+	ethernet = host.Spec.Overrides.Interfaces.Ethernet
+	for idx := range ethernet {
+		in.CheckInterface(&ethernet[idx].CommonInterfaceInfo)
+	}
+
+	bonds = host.Spec.Overrides.Interfaces.Bond
+	for idx := range bonds {
+		in.CheckInterface(&bonds[idx].CommonInterfaceInfo)
+	}
+
+	vlans = host.Spec.Overrides.Interfaces.VLAN
+	for idx := range vlans {
+		in.CheckInterface(&vlans[idx].CommonInterfaceInfo)
+	}
+
+	vfs = host.Spec.Overrides.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
+	}
 	return nil
 }

@@ -1,19 +1,23 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package manager
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"sync"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -38,13 +42,40 @@ const (
 	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
 )
 
+const (
+	ScopeBootstrap = "bootstrap"
+	ScopePrincipal = "principal"
+)
+
+const (
+	StrategyNotRequired    = "not_required"
+	StrategyLockRequired   = "lock_required"
+	StrategyUnlockRequired = "unlock_required"
+)
+
+const (
+	StrategyInitial      = "initial"
+	StrategyBuilding     = "building"
+	StrategyBuildFailed  = "build-failed"
+	StrategyBuildTimeout = "build-timeout"
+	StrategyReadyToApply = "ready-to-apply"
+	StrategyApplying     = "applying"
+	StrategyApplyFailed  = "apply-failed"
+	StrategyApplyTimeout = "apply-timeout"
+	StrategyApplied      = "applied"
+	StrategyAborting     = "aborting"
+	StrategyAbortFailed  = "abort-failed"
+	StrategyAbortTimeout = "abort-timeout"
+	StrategyAborted      = "aborted"
+)
+
 // CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
 type CloudManager interface {
 	ResetPlatformClient(namespace string) error
 	GetPlatformClient(namespace string) *gophercloud.ServiceClient
 	GetKubernetesClient() client.Client
-	BuildPlatformClient(namespace string) (*gophercloud.ServiceClient, error)
+	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
 	SetSystemReady(namespace string, value bool)
@@ -53,6 +84,30 @@ type CloudManager interface {
 	GetSystemType(namespace string) SystemType
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object client.Object)
+
+	// Strategy related methods
+	SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string)
+	GetStrategyRequiredList() map[string]*ResourceInfo
+	ListStrategyRequired() string
+	UpdateConfigVersion()
+	GetConfigVersion() int
+	GetMonitorVersion() int
+	SetMonitorVersion(i int)
+	StrageySent()
+	GetStrageySent() bool
+	ClearStragey()
+	GetStrageyNamespace() string
+	GetVimClient() *gophercloud.ServiceClient
+	SetStrategyAppliedSent(namespace string, applied bool) error
+	StartStrategyMonitor()
+	SetStrategyRetryCount(c int) error
+	GetStrategyRetryCount() (int, error)
+
+	// gophercloud
+	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcActionStrategy(c *gophercloud.ServiceClient, opts systemconfigupdate.StrategyActionOpts) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcCreate(c *gophercloud.ServiceClient, opts systemconfigupdate.SystemConfigUpdateOpts) (*systemconfigupdate.SystemConfigUpdate, error)
+	GcDelete(c *gophercloud.ServiceClient) (r systemconfigupdate.DeleteResult)
 }
 
 type SystemType string
@@ -77,18 +132,65 @@ type SystemNamespace struct {
 	systemType SystemType
 }
 
+// Strategy related consts and defines
+const (
+	ResourceSystem          = "system"
+	ResourceHost            = "host"
+	ResourcePlatformnetwork = "platformnetwork"
+	ResourceDatanetwork     = "datanetwork"
+	ResourcePtpinstance     = "ptpinstance"
+	ResourcePtpinterface    = "ptpinterface"
+)
+
+const (
+	PersonalityController       = "controller"
+	PersonalityWorker           = "worker"
+	PersonalityStorage          = "storage"
+	PersonalityControllerWorker = "controller-worker"
+)
+
+type ResourceInfo struct {
+	ResourceType     string
+	Personality      string
+	Name             string
+	Reconciled       bool
+	StrategyRequired string
+}
+
+type StrategyStatus struct {
+	ResourceInfo   map[string]*ResourceInfo
+	ConfigVersion  int
+	MonitorVersion int
+	StrategySent   bool
+	Namespace      string
+	MonitorStarted bool
+}
+
 type PlatformManager struct {
 	manager.Manager
-	lock     sync.Mutex
-	systems  map[string]*SystemNamespace
-	monitors map[string]*Monitor
+	lock           sync.Mutex
+	systems        map[string]*SystemNamespace
+	monitors       map[string]*Monitor
+	strategyStatus *StrategyStatus
+	vimClient      *gophercloud.ServiceClient
+}
+
+func NewStrategyStatus() *StrategyStatus {
+	return &StrategyStatus{
+		ResourceInfo:   make(map[string]*ResourceInfo),
+		ConfigVersion:  0,
+		MonitorVersion: 0,
+		StrategySent:   false,
+		MonitorStarted: false,
+	}
 }
 
 func NewPlatformManager(manager manager.Manager) CloudManager {
 	return &PlatformManager{
-		Manager:  manager,
-		systems:  make(map[string]*SystemNamespace),
-		monitors: make(map[string]*Monitor),
+		Manager:        manager,
+		systems:        make(map[string]*SystemNamespace),
+		monitors:       make(map[string]*Monitor),
+		strategyStatus: NewStrategyStatus(),
 	}
 }
 
@@ -169,6 +271,33 @@ func (m *PlatformManager) NotifySystemController(namespace string) error {
 		}
 
 		log.Info("system controller has been notified", "name", obj.Name)
+	}
+
+	return nil
+}
+
+func (m *PlatformManager) SetStrategyAppliedSent(namespace string, applied bool) error {
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return err
+	}
+
+	// There should only be a single system, but for the sake of completeness
+	// update any instance returned by the API.
+	for _, obj := range systems.Items {
+		obj.Status.StrategyApplied = applied
+
+		err = m.GetClient().Status().Update(context.TODO(), &obj)
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update system with strategy applied")
+			return err
+		}
+
+		log.Info("Update strategy applied in System", "strategyApplied", obj.Status.StrategyApplied)
 	}
 
 	return nil
@@ -396,7 +525,7 @@ func (m *PlatformManager) StartMonitor(monitor *Monitor, message string) error {
 	key := monitor.GetKey()
 	m.monitors[key] = monitor
 
-	log.V(2).Info("starting monitor", "key", key)
+	log.V(2).Info("starting monitor", "key", key, "message", message)
 
 	// Run the monitor.
 	monitor.Start(m)
@@ -418,6 +547,239 @@ func (m *PlatformManager) CancelMonitor(object client.Object) {
 		monitor.Stop()
 		delete(m.monitors, key)
 	}
+}
+
+func (m *PlatformManager) StartStrategyMonitor() {
+	if !m.strategyStatus.MonitorStarted {
+		log.Info("Start strategy monitor")
+		go StrategyRequiredMonitor(instance)
+		m.strategyStatus.MonitorStarted = true
+	}
+}
+
+// SetResourceInfo to store strategy required values of each resources
+func (m *PlatformManager) SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	// If this is the first resource information, start strategy monitor
+	if len(m.strategyStatus.ResourceInfo) == 0 {
+		m.StartStrategyMonitor()
+	}
+
+	info, ok := m.strategyStatus.ResourceInfo[resourcename]
+	if ok {
+		info.ResourceType = resourcetype
+		info.Personality = personality
+		info.Reconciled = reconciled
+		info.StrategyRequired = required
+		log.Info("Resource Info is updated", "Personality", personality, "Resource Name", resourcename, "Reconciled", reconciled, "Strategy Required", required)
+	} else {
+		info = &ResourceInfo{
+			ResourceType:     resourcetype,
+			Personality:      personality,
+			Name:             resourcename,
+			Reconciled:       reconciled,
+			StrategyRequired: required,
+		}
+		m.strategyStatus.ResourceInfo[resourcename] = info
+		log.Info("Resource Info is added", "Personality", personality, "Resource Name", resourcename, "Reconciled", reconciled, "Strategy Required", required)
+	}
+}
+
+// GetStrategyRequiredList returns the current strategy required list
+func (m *PlatformManager) GetStrategyRequiredList() map[string]*ResourceInfo {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.ResourceInfo
+}
+
+// ListStrategyRequired returns the current StrategyStatus in json format string
+func (m *PlatformManager) ListStrategyRequired() string {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	data, err := json.Marshal(m.strategyStatus)
+	if err != nil {
+		return "erro in marshal"
+	}
+	jdata := string(data)
+
+	return jdata
+}
+
+// UpdateConfigVersion to increase configuration version
+func (m *PlatformManager) UpdateConfigVersion() {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	current_version := m.strategyStatus.ConfigVersion
+	m.strategyStatus.ConfigVersion++
+	log.Info("Config version is updated", "from", current_version, "to", m.strategyStatus.ConfigVersion)
+}
+
+// GetConfigVersion to return the current configuration version
+func (m *PlatformManager) GetConfigVersion() int {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.ConfigVersion
+}
+
+// GetMonitorVersion to return monitor version
+func (m *PlatformManager) GetMonitorVersion() int {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.MonitorVersion
+}
+
+// GetMonitorVersion to set monitor version
+func (m *PlatformManager) SetMonitorVersion(i int) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	m.strategyStatus.MonitorVersion = i
+}
+
+// StrageySent to update strategy sent with true
+func (m *PlatformManager) StrageySent() {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	m.strategyStatus.StrategySent = true
+}
+
+// GetStrageySent to return the current strategy sent value
+func (m *PlatformManager) GetStrageySent() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.StrategySent
+}
+
+// GetStrategyRetryCount to return strategy retry count value
+func (m *PlatformManager) GetStrategyRetryCount() (int, error) {
+	count := 0
+
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = m.strategyStatus.Namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return count, err
+	}
+
+	// There should only be a single system, but for the sake of completeness.
+	// Obtain current retry value from system resource
+	for _, obj := range systems.Items {
+		count = obj.Status.StrategyRetryCount
+	}
+	return count, nil
+}
+
+// SetStrategyRetryCount to set strategy retry count value
+func (m *PlatformManager) SetStrategyRetryCount(c int) error {
+	// Update the same value in System resources in case of
+	// DM container failure
+	systems := &v1.SystemList{}
+	opts := client.ListOptions{}
+	opts.Namespace = m.strategyStatus.Namespace
+	err := m.GetClient().List(context.TODO(), systems, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to query system list")
+		return err
+	}
+
+	// There should only be a single system, but for the sake of completeness
+	// update any instance returned by the API.
+	for _, obj := range systems.Items {
+
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			instance := &v1.System{}
+			err := m.GetClient().Get(context.TODO(), types.NamespacedName{
+				Name:      obj.Name,
+				Namespace: obj.Namespace,
+			}, instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to obtain latest system instance")
+				return err
+			}
+			instance.Status.StrategyRetryCount = c
+			return m.GetClient().Status().Update(context.TODO(), instance)
+		})
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update system with strategy retry count")
+			return err
+		}
+
+		log.Info("Update strategy retry count in System", "strategyApplied", obj.Status.StrategyRetryCount)
+	}
+	return nil
+}
+
+// ClearStragey to clear strategy status
+func (m *PlatformManager) ClearStragey() {
+	// Clear applied status in System instance
+	err := m.SetStrategyAppliedSent(m.strategyStatus.Namespace, false)
+	if err != nil {
+		log.Error(err, "Set strategy applied sent false error")
+	}
+	m.strategyStatus = NewStrategyStatus()
+
+	// Reset strategy retry count
+	err = m.SetStrategyRetryCount(0)
+	if err != nil {
+		log.Error(err, "Set strategy retry count clear failure")
+	}
+}
+
+// GetStrageyNamespace returns namespace for gopher client
+func (m *PlatformManager) GetStrageyNamespace() string {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+
+	return m.strategyStatus.Namespace
+}
+
+// GetVimClient returns vim client for system update
+func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
+	if m.vimClient == nil {
+		namespace := m.GetStrageyNamespace()
+		if namespace == "" {
+			log.Info("No Namespace. Waiting for platform client creation")
+		} else {
+			c, err := m.BuildPlatformClient(namespace, VimEndpointName, VimEndpointType)
+			if err != nil {
+				log.Error(err, "Create client failed")
+			} else {
+				m.vimClient = c
+			}
+		}
+	}
+	return m.vimClient
+}
+
+// GcCreate is wrapper function for systemconfigupdate Create
+func (m *PlatformManager) GcCreate(c *gophercloud.ServiceClient, opts systemconfigupdate.SystemConfigUpdateOpts) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.Create(c, opts)
+}
+
+// GcDelete is wrapper function for systemconfigupdate Delete
+func (m *PlatformManager) GcDelete(c *gophercloud.ServiceClient) (r systemconfigupdate.DeleteResult) {
+	return systemconfigupdate.Delete(c)
+}
+
+// GcActionStrategy is wrapper function for systemconfigupdate ActionStrategy
+func (m *PlatformManager) GcActionStrategy(c *gophercloud.ServiceClient, opts systemconfigupdate.StrategyActionOpts) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.ActionStrategy(c, opts)
+}
+
+// GcShow is wrapper function for systemconfigupdate Show
+func (m *PlatformManager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
+	return systemconfigupdate.Show(c)
 }
 
 var instance CloudManager

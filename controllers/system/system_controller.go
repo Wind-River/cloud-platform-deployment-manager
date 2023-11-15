@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package system
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -42,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -76,7 +76,7 @@ func InstallCertificate(filename string, data []byte) error {
 	}
 
 	path := fmt.Sprintf("%s/%s", CertificateDirectory, filename)
-	err = ioutil.WriteFile(path, data, 0600)
+	err = os.WriteFile(path, data, 0600)
 	if err != nil {
 		return err
 	}
@@ -514,6 +514,16 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	}
 
 	if !r.ControllerNodesAvailable(required) {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return false, err
+			}
+		}
 		msg := fmt.Sprintf("waiting for %d controller(s) in available state before resizing filesystems", required)
 		m := NewAvailableControllerNodeMonitor(instance, required)
 		return false, r.CloudManager.StartMonitor(m, msg)
@@ -974,8 +984,6 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		// allow reconciliation to proceed.  This will ensure that attributes
 		// that are not readily comparable with the DeepEqual (i.e., licenses
 		// and certificates) will get handled properly when needed.
-		// TODO(alegacy):  This will need to be improved when we need to
-		// support day-2 operations.
 		return nil, true
 	}
 
@@ -986,12 +994,27 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 
 	if spec.DeepEqual(current) {
 		logSystem.V(2).Info("no changes between spec and current configuration")
+		instance.Status.Delta = ""
 		return nil, false
 	}
 
 	logSystem.Info("spec is:", "values", spec)
 
 	logSystem.Info("current is:", "values", current)
+
+	deltaString, err := common.GetDeltaString(current, spec, common.SystemProperties)
+	if err != nil {
+		logSystem.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
+	}
+
+	if deltaString != "" {
+		logSystem.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		instance.Status.Delta = deltaString
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logSystem.Info(fmt.Sprintf("failed to update status:  %s\n", err))
+		}
+	}
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
@@ -1025,6 +1048,8 @@ func (r *SystemReconciler) ReconcileSystem(client *gophercloud.ServiceClient, in
 
 	err = r.ReconcileSystemFinal(client, instance, spec, info)
 	if err != nil {
+		// Need to return true to unblock the other reconcilers to work with the
+		// system reconciler in parallel
 		return true, err
 	}
 
@@ -1052,6 +1077,11 @@ func (r *SystemReconciler) statusUpdateRequired(instance *starlingxv1.System, in
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		status.Reconciled = true
+		status.ConfigurationUpdated = false
+		status.StrategyRequired = cloudManager.StrategyNotRequired
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, status.Reconciled, status.StrategyRequired)
+		}
 		result = true
 	}
 
@@ -1259,11 +1289,11 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	ready, err := r.ReconcileSystem(client, instance, spec, &systemInfo)
 	inSync := err == nil
 
+	// Regardless of whether an error occurred, if the reconciling got
+	// far enough along to get the system in a state in which the other
+	// reconcilers can make progress than we need to mark the system as
+	// being ready. The error wil be returned in the end of this method.
 	if ready {
-		// Regardless of whether an error occurred, if the reconciling got
-		// far enough along to get the system in a state in which the other
-		// reconcilers can make progress than we need to mark the system as
-		// being ready.
 		if !r.CloudManager.GetSystemReady(instance.Namespace) {
 			// Set the system type which may be used by other reconcilers to make
 			// decisions about when to reconcile certain resources.
@@ -1277,13 +1307,13 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 				"system is now ready for other reconcilers")
 
-			err = r.CloudManager.NotifySystemDependencies(instance.Namespace)
-			if err != nil {
+			err2 := r.CloudManager.NotifySystemDependencies(instance.Namespace)
+			if err2 != nil {
 				// Revert to not-ready so that when we reconcile the system
 				// resource again we will push the change out to all other
 				// reconcilers again.
 				r.CloudManager.SetSystemReady(instance.Namespace, false)
-				return err
+				return err2
 			}
 		}
 	}
@@ -1291,10 +1321,10 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {
 		logSystem.Info("updating status for system", "status", instance.Status)
 
-		err2 := r.Client.Status().Update(context.TODO(), instance)
-		if err2 != nil {
-			err2 = perrors.Wrap(err2, "failed to update system status")
-			return err2
+		err3 := r.Client.Status().Update(context.TODO(), instance)
+		if err3 != nil {
+			err3 = perrors.Wrap(err3, "failed to update system status")
+			return err3
 		}
 	}
 
@@ -1311,10 +1341,144 @@ func (r *SystemReconciler) StopAfterInSync() bool {
 	return utils.GetReconcilerOptionBool(utils.System, utils.StopAfterInSync, true)
 }
 
+// Obtain deploymentScope value from configuration
+// Taking this value from annotation in instacne
+// (It seems Client.Get does not update Status value from configuration)
+// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
+// "principal" if "principal" in configuration
+func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope string, err error) {
+	// Set default value for deployment scope
+	deploymentScope := cloudManager.ScopeBootstrap
+	// Set DeploymentScope from configuration
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	if annotation != nil {
+		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
+		if ok {
+			status_config := &starlingxv1.System{}
+			err := json.Unmarshal([]byte(config), &status_config)
+			if err == nil {
+				if status_config.Status.DeploymentScope != "" {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
+					case cloudManager.ScopeBootstrap:
+						deploymentScope = cloudManager.ScopeBootstrap
+					case cloudManager.ScopePrincipal:
+						deploymentScope = cloudManager.ScopePrincipal
+					default:
+						err = fmt.Errorf("Unsupported DeploymentScope: %s",
+							status_config.Status.DeploymentScope)
+						return deploymentScope, err
+					}
+				}
+			} else {
+				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
+				return deploymentScope, err
+			}
+		}
+	}
+	return deploymentScope, nil
+}
+
+// Update deploymentScope and ReconcileAfterInSync in instance
+// ReconcileAfterInSync value will be:
+// "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "false" if deploymentScope is "bootstrap"
+// Then reflect these values to cluster object
+func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err error) {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
+		}
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+		// Put ReconcileAfterInSync values depends on scope
+		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "false" if scope is "bootstrap" or None
+		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
+		if deploymentScope == cloudManager.ScopePrincipal {
+			if !ok || afterInSync != "true" {
+				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
+			}
+		} else {
+			if ok && afterInSync == "true" {
+				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
+			}
+		}
+		return r.Client.Update(context.TODO(), instance)
+	})
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
+		return err
+	}
+
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		}, instance)
+		if err != nil {
+			return err
+		}
+
+		// Update scope status
+		deploymentScope, err := r.GetScopeConfig(instance)
+		if err != nil {
+			return err
+		}
+		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
+
+		instance.Status.DeploymentScope = deploymentScope
+
+		// Set default value for StrategyRequired
+		if instance.Status.StrategyRequired == "" {
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		// Check if the configuration is updated
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			if instance.Status.ObservedGeneration == 0 &&
+				instance.Status.Reconciled {
+				// Case: DM upgrade in reconciled node
+				instance.Status.ConfigurationUpdated = false
+			} else {
+				// Case: Fresh install or Day-2 operation
+				instance.Status.ConfigurationUpdated = true
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+					instance.Status.Reconciled = false
+					// Update strategy required status for strategy monitor
+					r.CloudManager.UpdateConfigVersion()
+					r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+				}
+			}
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			// Reset strategy when new configuration is applied
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+		}
+
+		return r.Client.Status().Update(context.TODO(), instance)
+	})
+
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update status: %s",
+			common.FormatStruct(instance.Status))
+		return err
+	}
+
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/finalizers,verbs=update
 func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
@@ -1341,6 +1505,15 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
+	// Update scope from configuration
+	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance)
+	if err != nil {
+		logSystem.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
+
 	err = r.installRootCertificates(instance)
 	if err != nil {
 		logSystem.Error(err, "failed to install root certificates")
@@ -1350,7 +1523,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
 	if platformClient == nil {
 		// Create the platform client
-		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace)
+		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
 		if err != nil {
 			return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 		}
@@ -1365,6 +1538,15 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 			}
 		}
+	}
+
+	// If strategy is applied, start strategy monitor
+	if instance.Status.StrategyApplied {
+		logSystem.Info("Strategy applied, start strategy monitor")
+		r.CloudManager.StrageySent()
+		r.CloudManager.StartStrategyMonitor()
+	} else {
+		logSystem.V(2).Info("Strategy not applied")
 	}
 
 	err = r.ReconcileResource(platformClient, instance)

@@ -72,10 +72,38 @@ type PlatformNetworkStatus struct {
 	// Reconciled defines whether the network has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
 	// Defines whether the resource has been provisioned on the target system.
+	// +optional
 	InSync bool `json:"inSync"`
+
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
+
+	// Delta between final profile vs current configuration
+	// +optional
+	Delta string `json:"delta"`
 }
 
 // +kubebuilder:object:root=true
@@ -83,8 +111,8 @@ type PlatformNetworkStatus struct {
 // attributes of a StarlingX system.  This is a composition of the following
 // StarlingX API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status
@@ -93,6 +121,7 @@ type PlatformNetworkStatus struct {
 // +kubebuilder:printcolumn:name="prefix",type="string",JSONPath=".spec.prefix",description="The platform network address prefix."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 type PlatformNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2022 Wind River Systems, Inc.
+# Copyright(c) 2019-2023 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -15,15 +15,16 @@ HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{pri
 HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
 HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
-# Parameters for deploy tool
+# Parameters for deployctl tool
 GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG := $(shell git describe --abbrev=0 --tags)
+GIT_LAST_TAG := WRCP_22.12-wrs.12    # version needs to be specified here
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
-DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deploy/cmd.GitLastTag=${GIT_LAST_TAG}
-DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitHead=${GIT_HEAD}
-DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deploy/cmd.GitBranch=${GIT_BRANCH}
+DEPLOY_LDFLAGS := -X ${APP_MODULE}/cmd/deployctl/cmd.GitLastTag=${GIT_LAST_TAG}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitPatch=${GIT_PATCH}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitHead=${GIT_HEAD}
+DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitBranch=${GIT_BRANCH}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
@@ -101,22 +102,22 @@ golangci: golangci-lint ## Run the golangci-lint static analysis
 	$(GOLANGCI_LINT) run ./controllers/...
 
 .PHONY: vet
-vet: golangci ## Run go vet against code.
+vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate fmt golangci vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet ## Build manager binary.
+build: generate fmt golangci vet ## Build manager binary.
 	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
 
 .PHONY: tools
-tools: generate fmt vet ## Build deploy binary.
-	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deploy cmd/deploy/main.go
+tools: generate fmt vet ## Build deployctl binary.
+	go build -ldflags "${DEPLOY_LDFLAGS}" -gcflags "${GOBUILD_GCFLAGS}" -o bin/deployctl cmd/deployctl/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
@@ -256,7 +257,10 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/bond > examples/standard-bond.yaml
 	$(KUSTOMIZE) build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
+	$(KUSTOMIZE) build examples/standard/hw-settle > examples/standard-hw-settle.yaml
 	$(KUSTOMIZE) build examples/storage/default > examples/storage.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/bootstrap > examples/storage-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/principal > examples/storage-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-sx/default > examples/aio-sx.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-sx/https > examples/aio-sx-https.yaml
@@ -265,7 +269,12 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/vf-rate-limit > examples/aio-sx-vf-rate-limit.yaml
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
+	$(KUSTOMIZE) build examples/aio-sx/hw-settle > examples/aio-sx-hw-settle.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/bootstrap > examples/aio-sx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https > examples/aio-dx-https.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https-with-cert-manager > examples/aio-dx-https-with-cert-manager.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/bootstrap > examples/aio-dx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/principal > examples/aio-dx-day2-principal.yaml

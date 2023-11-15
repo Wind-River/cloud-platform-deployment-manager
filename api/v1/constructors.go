@@ -301,6 +301,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 	for _, iface := range host.Interfaces {
 		data := CommonInterfaceInfo{
+			UUID:  iface.ID,
 			Name:  iface.Name,
 			Class: iface.Class,
 		}
@@ -749,17 +750,21 @@ func NewNamespace(name string) (*v1.Namespace, error) {
 // more explicit
 // (e.g., /dev/disk/by-path/pci-0000:00:14.0-usb-0:1:1.0-scsi-0:0:0:0).
 func FixDevicePath(path string, host v1info.HostInfo) string {
+	// device path starts from /dev/disk/*
+	formPath := regexp.MustCompile(`(?s)^/dev/disk/.*`)
+	// e.g. sda
 	shortFormNode := regexp.MustCompile(`(?s)^\w+$`)
-	longFormNode := regexp.MustCompile(`(?s)^/dev/\w+$`)
 
 	var searchPath string
-	if shortFormNode.MatchString(path) {
-		searchPath = fmt.Sprintf("/dev/%s", path)
-	} else if longFormNode.MatchString(path) {
-		searchPath = path
-	} else {
-		// Likely already in the devicePath format
+	if formPath.MatchString(path) {
+		// Find the device path
 		return path
+	} else if shortFormNode.MatchString(path) {
+		// Append /dev/ to the short format to get full format of device node
+		searchPath = fmt.Sprintf("/dev/%s", path)
+	} else {
+		// For the rest formats, likely is a full format of a device node
+		searchPath = path
 	}
 
 	if disk, ok := host.FindDiskByNode(searchPath); ok {
@@ -801,6 +806,9 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
+	if host.HwSettle != "" {
+		spec.HwSettle = &host.HwSettle
+	}
 	if host.AppArmor != "" {
 		spec.AppArmor = &host.AppArmor
 	}
@@ -921,6 +929,10 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 	result := make([]CertificateInfo, 0)
 
 	for index, c := range certificates {
+		// Ignore OpenLDAP certificate since it's being installed during the initial unlock.
+		if c.Type == "openldap" {
+			continue
+		}
 		cert := CertificateInfo{
 			Type: c.Type,
 			// Use a fixed naming so that we can document how we auto-generate

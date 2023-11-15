@@ -28,17 +28,47 @@ type PtpInstanceStatus struct {
 	// Reconciled defines whether the host has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
 	// Defines whether the resource has been provisioned on the target system.
+	// +optional
 	InSync bool `json:"inSync"`
+
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
+
+	// Delta between final profile vs current configuration
+	// +optional
+	Delta string `json:"delta"`
 }
 
 // +kubebuilder:object:root=true
 // +deepequal-gen=false
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +TODO(ecandotti): enhance docs/playbooks/wind-river-cloud-platform-deployment-manager.yaml#L431 since it's looking for the last column to get 'reconciled' value.
 // PtpInstance is the Schema for the ptpinstances API
 type PtpInstance struct {
 	metav1.TypeMeta   `json:",inline"`

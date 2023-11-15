@@ -199,6 +199,11 @@ spec:
                 description: Console defines the installation output device.
                 pattern: ^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$
                 type: string
+              hwSettle:
+                description: HwSettle defines the wait time for SCSI devices to show
+                  up.
+                pattern: ^[0-9]+$
+                type: string
               installOutput:
                 description: InstallOutput defines the install output method.  The
                   graphical mode is only suitable when the console attribute is set
@@ -300,6 +305,10 @@ spec:
                           - layer2
                           - layer2+3
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
+                          type: string
                       required:
                       - class
                       - members
@@ -385,6 +394,10 @@ spec:
                           - master
                           - slave
                           - none
+                          type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV VF interfaces
@@ -475,6 +488,10 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV virtual
                             functions for this VF interface.
@@ -558,6 +575,10 @@ spec:
                           - master
                           - slave
                           - none
+                          type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vid:
                           description: VID defines the VLAN ID value to be assigned

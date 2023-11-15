@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package v1
 
@@ -414,30 +414,71 @@ func (in ServiceParameterInfo) IsKeyEqual(x ServiceParameterInfo) bool {
 // SystemStatus defines the observed state of System
 type SystemStatus struct {
 	// ID defines the unique identifier assigned by the system.
+	// +optional
 	ID string `json:"id"`
 
 	// SystemType defines the current system type reported by the system API.
+	// +optional
 	SystemType string `json:"systemType"`
 
 	// SystemMode defines the current system mode reported by the system API.
+	// +optional
 	SystemMode string `json:"systemMode"`
 
 	// SoftwareVersion defines the current software version reported by the
 	// system API.
+	// +optional
 	SoftwareVersion string `json:"softwareVersion"`
-
-	// Defines whether the resource has been provisioned on the target system.
-	InSync bool `json:"inSync"`
-
-	// Reconciled defines whether the System has been successfully reconciled
-	// at least once.  If further changes are made they will be ignored by the
-	// reconciler.
-	Reconciled bool `json:"reconciled"`
 
 	// Defaults defines the configuration attributed collected before applying
 	// any user configuration values.
 	// +optional
 	Defaults *string `json:"defaults,omitempty"`
+
+	// Reconciled defines whether the System has been successfully reconciled
+	// at least once.  If further changes are made they will be ignored by the
+	// reconciler.
+	// +optional
+	Reconciled bool `json:"reconciled"`
+
+	// Defines whether the resource has been provisioned on the target system.
+	// +optional
+	InSync bool `json:"inSync"`
+
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
+
+	// Delta between final profile vs current configuration
+	// +optional
+	Delta string `json:"delta"`
+
+	// Strategy monitor status information for Day 2 operation
+	// +optional
+	// +kubebuilder:default:=false
+	StrategyApplied bool `json:"strategyApplied"`
+
+	// Strategy monitor retry count for Day 2 operation
+	// +optional
+	StrategyRetryCount int `json:"strategyRetryCount"`
 }
 
 // +kubebuilder:object:root=true
@@ -445,11 +486,11 @@ type SystemStatus struct {
 // of a StarlingX system.  This is a composition of the following StarlingX
 // API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status
@@ -457,7 +498,9 @@ type SystemStatus struct {
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".status.systemType",description="The configured system type."
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.softwareVersion",description="The current software version"
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +TODO(ecandotti): enhance docs/playbooks/wind-river-cloud-platform-deployment-manager.yaml#L431 since it's looking for the last column to get 'reconciled' value.
 type System struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -280,6 +280,9 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		return false
 	}
 
+	if in.UUID != other.UUID {
+		return false
+	}
 	if in.Name != other.Name {
 		return false
 	}
@@ -507,6 +510,21 @@ func (in *DataNetworkStatus) DeepEqual(other *DataNetworkStatus) bool {
 		return false
 	}
 	if in.InSync != other.InSync {
+		return false
+	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
 		return false
 	}
 
@@ -847,18 +865,40 @@ func (in *HostStatus) DeepEqual(other *HostStatus) bool {
 		}
 	}
 
-	if in.InSync != other.InSync {
-		return false
-	}
-	if in.Reconciled != other.Reconciled {
-		return false
-	}
 	if (in.Defaults == nil) != (other.Defaults == nil) {
 		return false
 	} else if in.Defaults != nil {
 		if *in.Defaults != *other.Defaults {
 			return false
 		}
+	}
+
+	if in.Reconciled != other.Reconciled {
+		return false
+	}
+	if in.InSync != other.InSync {
+		return false
+	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedHostProfileGeneration != other.ObservedHostProfileGeneration {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.HostProfileConfigurationUpdated != other.HostProfileConfigurationUpdated {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
+		return false
 	}
 
 	return true
@@ -1423,6 +1463,21 @@ func (in *PlatformNetworkStatus) DeepEqual(other *PlatformNetworkStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
+		return false
+	}
 
 	return true
 }
@@ -1717,6 +1772,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 		}
 	}
 
+	if in.HwSettle != nil {
+		if (in.HwSettle == nil) != (other.HwSettle == nil) {
+			return false
+		} else if in.HwSettle != nil {
+			if *in.HwSettle != *other.HwSettle {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 
@@ -1848,6 +1913,21 @@ func (in *PtpInstanceStatus) DeepEqual(other *PtpInstanceStatus) bool {
 	if in.InSync != other.InSync {
 		return false
 	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
+		return false
+	}
 
 	return true
 }
@@ -1928,6 +2008,21 @@ func (in *PtpInterfaceStatus) DeepEqual(other *PtpInterfaceStatus) bool {
 		return false
 	}
 	if in.InSync != other.InSync {
+		return false
+	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
 		return false
 	}
 
@@ -2307,18 +2402,40 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 	if in.SoftwareVersion != other.SoftwareVersion {
 		return false
 	}
-	if in.InSync != other.InSync {
-		return false
-	}
-	if in.Reconciled != other.Reconciled {
-		return false
-	}
 	if (in.Defaults == nil) != (other.Defaults == nil) {
 		return false
 	} else if in.Defaults != nil {
 		if *in.Defaults != *other.Defaults {
 			return false
 		}
+	}
+
+	if in.Reconciled != other.Reconciled {
+		return false
+	}
+	if in.InSync != other.InSync {
+		return false
+	}
+	if in.DeploymentScope != other.DeploymentScope {
+		return false
+	}
+	if in.ObservedGeneration != other.ObservedGeneration {
+		return false
+	}
+	if in.ConfigurationUpdated != other.ConfigurationUpdated {
+		return false
+	}
+	if in.StrategyRequired != other.StrategyRequired {
+		return false
+	}
+	if in.Delta != other.Delta {
+		return false
+	}
+	if in.StrategyApplied != other.StrategyApplied {
+		return false
+	}
+	if in.StrategyRetryCount != other.StrategyRetryCount {
+		return false
 	}
 
 	return true

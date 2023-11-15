@@ -32,6 +32,10 @@ spec:
       jsonPath: .status.inSync
       name: insync
       type: boolean
+    - description: The current deploymentScope state.
+      jsonPath: .status.deploymentScope
+      name: scope
+      type: string
     - description: The current reconciliation state.
       jsonPath: .status.reconciled
       name: reconciled
@@ -328,9 +332,27 @@ spec:
           status:
             description: SystemStatus defines the observed state of System
             properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
               defaults:
                 description: Defaults defines the configuration attributed collected
                   before applying any user configuration values.
+                type: string
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
+              deploymentScope:
+                default: bootstrap
+                description: DeploymentScope defines whether the resource has been
+                  deployed on the initial setup or during an update.
+                enum:
+                - bootstrap
+                - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
@@ -339,6 +361,11 @@ spec:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
+              observedGeneration:
+                description: Reflect value of configuration generation. The value
+                  will be set when configuration generation is updated.
+                format: int64
+                type: integer
               reconciled:
                 description: Reconciled defines whether the System has been successfully
                   reconciled at least once.  If further changes are made they will
@@ -348,6 +375,21 @@ spec:
                 description: SoftwareVersion defines the current software version
                   reported by the system API.
                 type: string
+              strategyApplied:
+                default: false
+                description: Strategy monitor status information for Day 2 operation
+                type: boolean
+              strategyRequired:
+                default: not_required
+                description: Value for configuration is updated or not
+                enum:
+                - not_required
+                - lock_required
+                - unlock_required
+                type: string
+              strategyRetryCount:
+                description: Strategy monitor retry count for Day 2 operation
+                type: integer
               systemMode:
                 description: SystemMode defines the current system mode reported by
                   the system API.
@@ -356,13 +398,6 @@ spec:
                 description: SystemType defines the current system type reported by
                   the system API.
                 type: string
-            required:
-            - id
-            - inSync
-            - reconciled
-            - softwareVersion
-            - systemMode
-            - systemType
             type: object
         type: object
     served: true

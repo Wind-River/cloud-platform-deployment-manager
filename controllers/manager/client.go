@@ -1,22 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package manager
 
 import (
 	"context"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/acceptance/clients"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
-	perrors "github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/acceptance/clients"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
+	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
+	perrors "github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -44,6 +46,8 @@ const (
 	// Well-known openstack API attribute values for the system API
 	SystemEndpointName = "sysinv"
 	SystemEndpointType = "platform"
+	VimEndpointName    = "vim"
+	VimEndpointType    = "nfv"
 )
 
 // Builds the client authentication options from a given secret which should
@@ -179,7 +183,7 @@ func GetAuthOptionsFromEnv() (gophercloud.AuthOptions, error) {
 	return ao, nil
 }
 
-func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.ServiceClient, error) {
+func (m *PlatformManager) BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error) {
 	var provider *gophercloud.ProviderClient
 
 	secret := &v1.Secret{}
@@ -242,8 +246,8 @@ func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.Se
 
 	// Set the destination endpoint options to point to the system API
 	endpointOpts := gophercloud.EndpointOpts{
-		Name:         SystemEndpointName,
-		Type:         SystemEndpointType,
+		Name:         endpointName,
+		Type:         endpointType,
 		Availability: availability,
 		Region:       string(secret.Data[RegionNameKey]),
 	}
@@ -270,21 +274,33 @@ func (m *PlatformManager) BuildPlatformClient(namespace string) (*gophercloud.Se
 		c.HTTPClient.Transport = &clients.LogRoundTripper{Rt: t}
 	}
 
-	// Test the client because the authentication endpoint is different from
-	// the resource endpoint therefore there is no guarantee that it works.
-	_, err = system.GetDefaultSystem(c)
-	if err != nil {
-		err = perrors.Wrap(err, "failed to test client connection")
-		return nil, err
-	}
+	if endpointName == SystemEndpointName {
 
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
+		// Test the client because the authentication endpoint is different from
+		// the resource endpoint therefore there is no guarantee that it works.
+		_, err = system.GetDefaultSystem(c)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to test system client connection")
+			return nil, err
+		}
 
-	if obj, ok := m.systems[namespace]; !ok {
-		m.systems[namespace] = &SystemNamespace{client: c}
-	} else {
-		obj.client = c
+		m.lock.Lock()
+		defer func() { m.lock.Unlock() }()
+
+		if obj, ok := m.systems[namespace]; !ok {
+			m.systems[namespace] = &SystemNamespace{client: c}
+			m.strategyStatus.Namespace = namespace
+		} else {
+			obj.client = c
+		}
+	} else if endpointName == VimEndpointName {
+		// Test the client because the authentication endpoint is different from
+		// the resource endpoint therefore there is no guarantee that it works.
+		res, err := systemconfigupdate.Show(c)
+		if err != nil || res == nil {
+			err = perrors.Wrap(err, "failed to test vim client connection")
+			return nil, err
+		}
 	}
 
 	return c, nil

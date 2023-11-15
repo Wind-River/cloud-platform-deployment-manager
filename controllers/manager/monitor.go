@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package manager
 
@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -220,4 +221,229 @@ func (m *Monitor) handleClientError(err error) (stop bool) {
 	// otherwise we should keep going since there is no other way to ensure that
 	// the reconciler will continue.
 	return m.notify() == nil
+}
+
+// DefaultNewStrategyRequiredMonitorInterval represents the default interval between
+// polling attempts to check
+const DefaultNewStrategyRequiredMonitorInterval = 15 * time.Second
+const DefaultMaxStrategyRetryCount = 120
+
+// StrategyRequiredMonitor is a monitor to analyze the strategy needs
+func StrategyRequiredMonitor(management CloudManager) {
+	log.Info("StrategyRequiredMonitor starts")
+	for {
+		time.Sleep(DefaultNewStrategyRequiredMonitorInterval)
+		finished := ManageStrategy(management)
+		if finished {
+			//Clear strategy
+			management.ClearStragey()
+			break
+		}
+	}
+	log.Info("StrategyRequiredMonitor ends")
+}
+
+func deleteStrategy(management CloudManager, c *gophercloud.ServiceClient) {
+	log.Info("Deleting strategy")
+	// Delete strategy
+	r := management.GcDelete(c)
+	log.Info("Strategy deleted", "result", r)
+}
+
+func monitorStrategyState(management CloudManager) bool {
+	client := management.GetVimClient()
+	if client == nil {
+		log.Info("Vim client is not ready. Wait")
+		return false
+	}
+
+	// Obtain current strategy status
+	s, err := management.GcShow(client)
+	if err != nil {
+		log.Error(err, "Obtain strategy status failed")
+		return false
+	}
+	log.Info("Strategy status", "state", s.State)
+	log.V(2).Info("Strategy status", "show", s)
+
+	switch s.State {
+	case StrategyReadyToApply:
+		// Apply strategy
+		a := "apply-all"
+		action := systemconfigupdate.StrategyActionOpts{
+			Action: &a,
+		}
+		log.Info("Sending stragety action", "StrategyActionOpts", action)
+		_, err = management.GcActionStrategy(client, action)
+		if err != nil {
+			log.Error(err, "Strategy apply failed.")
+			c, err := management.GetStrategyRetryCount()
+			if err != nil {
+				log.Error(err, "Fail to obtain strategy retry count")
+			}
+			c++
+			// Check max retry count
+			if c > DefaultMaxStrategyRetryCount {
+				log.Error(err, "Retry exceeds to apply strategy")
+				deleteStrategy(management, client)
+				return true
+			}
+			// Update retry count
+			err = management.SetStrategyRetryCount(c)
+			if err != nil {
+				log.Error(err, "Fail to update strategy retry count", "count", c)
+			}
+
+		} else {
+			// Update strategy applied in System
+			namespace := management.GetStrageyNamespace()
+			if namespace == "" {
+				log.Info("System namespace does not exist. Skip")
+			} else {
+				err = management.SetStrategyAppliedSent(namespace, true)
+				if err != nil {
+					log.Error(err, "Set strategy applied sent true error")
+				}
+			}
+		}
+	case StrategyBuildFailed:
+		log.Error(err, "Strategy build failed", "reason", s.BuildPhase.Reason)
+		deleteStrategy(management, client)
+		return true
+
+	case StrategyApplyFailed:
+		log.Error(err, "Strategy apply failed", "reason", s.ApplyPhase.Reason)
+		deleteStrategy(management, client)
+		return true
+
+	case StrategyApplying:
+		log.Info("Strategy applying", "percentage", s.ApplyPhase.CompletionPercentage, "stage", s.ApplyPhase.CurrentStage)
+
+	case StrategyBuildTimeout, StrategyApplyTimeout, StrategyAbortFailed, StrategyAbortTimeout, StrategyAborted:
+		log.Error(err, "Error occuured in strategy", "state", s.State)
+		deleteStrategy(management, client)
+		return true
+
+	case StrategyApplied:
+		log.Info("Strategy applied. Finish strategy monitor.")
+		deleteStrategy(management, client)
+		return true
+	}
+	return false
+}
+
+// Run function for StrategyRequiredMonitor
+// responsible for monitor resource information and send
+// strategy if needed
+func ManageStrategy(management CloudManager) bool {
+
+	log.V(2).Info("ManageStrategy Run start")
+
+	// Check version
+	// If monitor version is not equal to config version,
+	// wait until configuration is updated
+	config_version := management.GetConfigVersion()
+	monitor_version := management.GetMonitorVersion()
+	if monitor_version != config_version {
+		management.SetMonitorVersion(config_version)
+		log.Info("ManageStrategy monitor version different. Wait until matched")
+		return false
+	}
+
+	resource := management.GetStrategyRequiredList()
+
+	// Monitor strategy status after strategy is sent
+	if management.GetStrageySent() {
+		r := monitorStrategyState(management)
+		return r
+	}
+
+	monitor_list := management.ListStrategyRequired()
+	log.V(2).Info("Current Strategy Required List", "StrategyStatus", monitor_list)
+
+	// If strategy is not sent yet, check necessity
+	var request systemconfigupdate.SystemConfigUpdateOpts
+	request.AlarmRestrictions = "strict"
+	request.ControllerApplyType = "ignore"
+	request.DefaultInstanceAction = "stop-start"
+	request.MaxParallerWorkers = 10
+	request.StorageApplyType = "ignore"
+	request.WorkerApplyType = "ignore"
+	request_needed := false
+	for _, r := range resource {
+		if r.StrategyRequired == StrategyNotRequired && !r.Reconciled {
+			// Resource is under reconcile, wait until reconciled.
+			log.Info("Waiting reconciled", "name", r.Name)
+			return false
+		}
+
+		switch r.ResourceType {
+		case ResourceSystem:
+			if r.StrategyRequired != StrategyNotRequired {
+				request.ControllerApplyType = "serial"
+				request.WorkerApplyType = "parallel"
+				request_needed = true
+			}
+		case ResourceHost:
+			switch r.Personality {
+			case PersonalityController:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in controller")
+					request.ControllerApplyType = "serial"
+					request.WorkerApplyType = "parallel"
+					request_needed = true
+				}
+			case PersonalityWorker:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in worker")
+					request.WorkerApplyType = "parallel"
+					request_needed = true
+				}
+			case PersonalityStorage:
+				if r.StrategyRequired != StrategyNotRequired {
+					log.V(2).Info("Strategy required in storage")
+					request.StorageApplyType = "serial"
+					request_needed = true
+				}
+			case PersonalityControllerWorker:
+				log.V(2).Info("ControllerWorker!")
+			}
+		}
+	}
+	if request_needed {
+		client := management.GetVimClient()
+		if client == nil {
+			log.Info("Vim client is not ready. Wait")
+			return false
+		} else {
+			log.Info("Sending stragety request", "SystemConfigUpdateOpts", request)
+			_, err := management.GcCreate(client, request)
+			if err != nil {
+				log.Error(err, "Strategy creation failed")
+				c, err := management.GetStrategyRetryCount()
+				if err != nil {
+					log.Error(err, "Fail to obtain strategy retry count")
+				}
+				log.V(2).Info("Obtain current retry count", "retry count", c)
+				c++
+				err = management.SetStrategyRetryCount(c)
+				if err != nil {
+					log.Error(err, "Fail to update strategy retry count", "count", c)
+				}
+				if c > DefaultMaxStrategyRetryCount {
+					log.Error(err, "Retry exceeds to create strategy")
+					return true
+				}
+			} else {
+				management.StrageySent()
+				err = management.SetStrategyRetryCount(0)
+				if err != nil {
+					log.Error(err, "Fail to clear strategy retry count")
+				}
+				log.Info("Stragety request sent")
+			}
+			return false
+		}
+	}
+	return true
 }

@@ -1,0 +1,6 @@
+bases:
+  - ../../default
+
+patches:
+  - aio-dx-day2-bootstrap.yaml
+

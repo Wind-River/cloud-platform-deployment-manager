@@ -1,17 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2022 Wind River Systems, Inc.
+# Copyright(c) 2021-2023 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
   become: false
+
+  vars:
+    helmv2_installed: false
+    helmv3_installed: false
+
   tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
-    
+
+    - set_fact:
+        dm_monitor_playbook: "{{ dm_monitor_playbook | default('/usr/local/share/applications/playbooks/dm-monitor-book.yaml') }}"
+
+    - set_fact:
+        user_uploaded_artifacts: "{{ user_uploaded_artifacts | default(true) }}"
+
+    - set_fact:
+        ansible_port: "{{ ansible_port | default(22) }}"
+        wait_for_timeout: " {{ wait_for_timeout | default(400) }}"
+        boot_wait_time: " {{ boot_wait_time | default(180) }}"
+
     - set_fact:
         helm_chart_overrides: "{{ deployment_manager_overrides }}"
       when: deployment_manager_overrides is defined
-    
+
     - set_fact:
         deploy_config: "{{ deployment_config }}"
         wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
@@ -22,7 +38,7 @@
         - name: Get host name
           shell: |
             source /etc/platform/openrc; hostname
-          register: get_host_name 
+          register: get_host_name
 
         # In order to determine if the host is a subcloud's node
         - name: Get distributed_cloud_role
@@ -83,7 +99,33 @@
       - set_fact:
           helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
         when: helm_chart_overrides is defined
-      
+
+      - block:
+
+        ## user not uploaded the artifacts
+        ## check in subcloud /usr/local/share/applications/
+
+        - set_fact:
+            helm_chart_overrides: "/usr/local/share/applications/overrides/wind-river-cloud-platform-deployment-manager-overrides-subcloud.yaml"
+            manager_chart: "/usr/local/share/applications/helm/wind-river-cloud-platform-deployment-manager-*.tgz"
+
+        - name: Check if helm-chart file exists in subcloud
+          shell: ls {{ manager_chart }}
+          ignore_errors: yes
+          register: helm_chart_file
+
+        - name: Check if helm-overrides file exists in subcloud
+          stat:
+            path: "{{ helm_chart_overrides }}"
+          register: helm_chart_overrides_file
+
+        - name: Fail helm-chart and overrides not exists in subcloud
+          fail:
+            msg: "Helm-chart and overrides not exists in subcloud"
+          when: (helm_chart_file.stdout | length == 0 or helm_chart_overrides_file.stat.exists == False)
+
+        when: ("subcloud" in get_distributed_cloud_role.stdout and user_uploaded_artifacts is false)
+
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
@@ -111,12 +153,6 @@
       set_fact:
         config_permdir: "{{ platform_path + '/config/' + software_version }}"
 
-    - name: Mark the bootstrap as finalized
-      file:
-        path: "{{ config_permdir }}/.bootstrap_finalized"
-        state: touch
-      become: yes
-
     # Check if DM already exists in either helmv2 or helmv3
     - name: Get list of releases in helmv2
       command: >-
@@ -126,11 +162,17 @@
       ignore_errors: yes
       register: helmv2_releases
 
+    # Ansible returns error code 2 to helmv2_releases if helmv2-cli does not exist
+    - name: Check if helmv2-cli is installed
+      set_fact:
+        helmv2_installed: "{{ false if helmv2_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv2
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv2_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv2_dm_exists
+      when: helmv2_installed
 
     - name: Get list of releases in helmv3
       command: >-
@@ -140,11 +182,42 @@
       ignore_errors: yes
       register: helmv3_releases
 
+    # Ansible returns error code 2 to helmv3_releases if helmv3 does not exist
+    - name: Check if helmv3 is installed
+      set_fact:
+        helmv3_installed: "{{ false if helmv3_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv3
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv3_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv3_dm_exists
+      when: helmv3_installed
+
+    - name: Set reconfig fact
+      set_fact:
+        reconfig_flag: "{{ true if (helmv2_installed and helmv2_dm_exists.rc == 0)
+                        or (helmv3_installed and helmv3_dm_exists.rc == 0)
+                        else false }}"
+
+    - name: Mark the bootstrap as finalized
+      file:
+        path: "{{ config_permdir }}/.bootstrap_finalized"
+        state: touch
+      become: yes
+      when: not reconfig_flag
+
+    - block:
+      - name: Search for the pod of the Deployment Manager
+        shell: |
+          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: deployment_manager_pod_name
+
+      - debug:
+          msg: "{{ deployment_manager_pod_name.stdout }}"
+      when: reconfig_flag
 
     # Follow a different reinstallation procedure if DM is installed in helmv2
     - block:
@@ -183,7 +256,7 @@
         environment:
           KUBECONFIG: "/etc/kubernetes/admin.conf"
 
-      when: helmv2_dm_exists.rc == 0
+      when: helmv2_installed and helmv2_dm_exists.rc == 0
 
     # Remove v1 webhook and webhook service
     - block:
@@ -228,36 +301,58 @@
           KUBECONFIG: "/etc/kubernetes/admin.conf"
         when: webhook_service_exists.rc == 0
 
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed and helmv3_dm_exists.rc == 0
 
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed
 
-    # Restart Deployment Manager if it was reinstalled
-    - block:
-      - name: Search for the pod of the Deployment Manager
-        shell: |
-          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        register: deployment_manager_pod_name
+    # Install or Upgrade DM-Monitor
+    - name: "Install or Upgrade DM-monitor"
+      shell: "ansible-playbook {{ dm_monitor_playbook }}"
+      become: yes
+      ignore_errors: yes
+      when: dm_monitor_playbook
 
-      - debug:
-          msg: "{{ deployment_manager_pod_name.stdout }}"
-
-      - name: Restart Deployment Manager if reinstalled
-        command: >-
-          kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        when: deployment_manager_pod_name.stdout
-
-      when: helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
+    # Delete old Deployment Manager pod if it was reinstalled,
+    # the pod to delete may already be terminated by helm
+    - name: Restart Deployment Manager if reinstalled
+      command: >-
+        kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      when: deployment_manager_pod_name.stdout is defined and deployment_manager_pod_name.stdout
+      failed_when: false
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
       register: wait_for_deployment_manager
+      ignore_errors: true
+
+    - block:
+      - name: Search for the Deployment Manager pod name in case of failure
+        shell: |
+          kubectl -n platform-deployment-manager get pods | awk 'NR == 2 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: deployment_manager_pod_name_after_fail
+
+      - name: Describe DM pod in case of download failed
+        shell: |
+          kubectl -n platform-deployment-manager describe pod "{{ deployment_manager_pod_name_after_fail.stdout }}" |
+          awk '/Failed/ || /error/  {print $0}'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: describe_dm_failed_pod
+
+      - name: Fail if Deployment Manager pod is not ready
+        fail:
+          msg:
+            - "Deployment manager pod are not ready"
+            - "Check helm overrides files and ensure you can pull the image from the specified URL."
+            - "Err_code= dm_pod_failed"
+            - "Pod information: {{describe_dm_failed_pod.stdout}}"
+      when: wait_for_deployment_manager.stderr != ""
 
     - block:
         - name: Upload Deployment Configuration File
@@ -273,6 +368,24 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
+         # Configure required region value for subcloud
+        - name: Get subcloud region value from environment
+          shell: source /etc/platform/openrc; echo $OS_REGION_NAME
+          register: os_region_name_from_env
+
+        - name: Show subcloud region
+          debug:
+            msg:
+            - "Subcloud region value : {{os_region_name_from_env.stdout}}"
+
+        - name: Configure new subcloud region value
+          lineinfile:
+            path: "{{deploy_config}}"
+            regexp: 'OS_REGION_NAME'
+            line: "  OS_REGION_NAME: {{os_region_name_from_env.stdout}}"
+            state: present
+          when: ("subcloud" in get_distributed_cloud_role.stdout)
+
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment
             # manager to come up and download its certificates.  It needs to
@@ -281,12 +394,47 @@
             timeout: 10
             msg: Waiting for the Deployment Manager validation webhooks to start
 
+        # Search for both cases:
+        #   deploymentScope: "principal"
+        # and
+        #   deploymentScope:
+        #    "principal"
+        - name: Search for 'principal' scope in deploy_config
+          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:\s*#.*\n)*\s*(?:"principal"|"Principal"|"PRINCIPAL")\s*' {{ deploy_config }}
+          changed_when: false
+          failed_when: false
+          register: scope_principal
+
+        # Check if there is any strategy-related alarm
+        - name: Check if a VIM strategy is in progress
+          shell: |
+            source /etc/platform/openrc; fm alarm-list | grep 900.
+          failed_when: false
+          register: strategy_alarms
+
+        - name: Fail if there is a strategy in progress during a Day-2 operation
+          fail:
+            msg:
+              - "VIM Strategy in progress."
+              - "Wait until all the strategies are cleared before applying the system configuration update."
+          when: ( scope_principal.stdout_lines | length > 0 and strategy_alarms.stdout != "")
+
         - name: Apply Deployment Configuration File
           shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f {{ deploy_config }}
           register: apply_deploy_config
           retries: 5
           delay: 10
           until: apply_deploy_config.rc == 0
+          ignore_errors: true
+
+        - name: Fail if config file failed to apply
+          fail:
+            msg:
+              - "Failed to apply DM config file"
+              - "Check syntax into config file. See documentation examples. "
+              - "Err_code= dm_apply_failed"
+              - "Config file error: {{apply_deploy_config.stderr}}"
+          when: apply_deploy_config.rc != 0
 
         # Waiting task after apply config to avoid failures getting info
         - wait_for:
@@ -363,11 +511,19 @@
       when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
              and "unlocked" not in current_administrativestate.stdout)
 
-      # Verification block
+      # Main verification block.
+      # Behavior:
+      # This block waits until the host unlock is triggered.
+      # - If the unlock is not triggered after a certain time, it might indicate DM failures.
+      #   In this case, it proceeds to the 'get failure information' block to collect details 
+      #   about the potential cause.
+      # - If the unlock process is in progress, it proceeds to the 'unlock verifications' block.
+      #   Here, it waits for the host's port to be closed and then reopened. Following that, it checks
+      #   the status of resources before completing.
     - block:
+
         # - If unlock task is triggered, is highly probable that the config applied is correct.
-        # - If the task fails (by achieving max retries without calling the unlock), the
-        #   playbook will fail but it will collect some information before exiting.
+        # - The task fails by achieving max retries without calling the unlock.
         - name: Wait until unlock task triggered
           shell: |
             source /etc/platform/openrc;
@@ -384,58 +540,252 @@
             - "waiting: {{get_show_task_status.stdout}}"
             - "waiting: {{get_show_task_status.stderr}}"
 
-        # Get a list of unreconciled resources at moment of failing
-        - name: Retrieve kubectl resources reconciled status
-          shell: >-
-            kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
-            awk '$NF ~ /^false/ {print}'
-          environment:
-            KUBECONFIG: "/etc/kubernetes/admin.conf"
-          register: get_recon_status_pre_unlock
+        # Get failure information Block:
+        # if unlock was not triggered, get information and make the playbook fail below
+        - block:
 
-        - name: Show unreconciled resources
-          debug:
-            msg:
-            - "recon: {{get_recon_status_pre_unlock.stdout}}"
+          # Get a list of unreconciled resources pre unlock
+          # This task is getting the last column as RECONCILED value
+          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
+          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
+          - name: Retrieve kubectl resources in unreconciled status
+            shell: >-
+              kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
+              awk '$NF ~ /^false/ {print}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_recon_status
 
-        # Get pod name to retrieve the logs
-        - name: Get dm pod name
-          shell: >-
-            kubectl -n platform-deployment-manager get pods |
-            awk '$1 ~ /^platform-deployment-manager/ {print $1}'
-          environment:
-            KUBECONFIG: "/etc/kubernetes/admin.conf"
-          register: get_dm_pod_name
+          - name: Show unreconciled resources
+            debug:
+              msg:
+              - "recon: {{get_recon_status.stdout}}"
 
-        # Get errors from pod logs. Searching for error lines into logs which:
-        # - Contain 'ERROR' key word.
-        # - Are not validation or waiting errors (which could be temporal).
-        # - Are not the same "Verb + value". Usually we see same error
-        #   multiple times in logs.
-        - name: Retrieve dm logs
-          shell: >-
-            kubectl -n platform-deployment-manager logs "{{ get_dm_pod_name.stdout }}" |
-            awk '(/ERROR/ && !/validation/ && !/waiting/ && !/Reconciler error/&& !(seen[$10, $NF]++)) {print}'
-          environment:
-            KUBECONFIG: "/etc/kubernetes/admin.conf"
-          register: get_logs_pre_unlock
+          # Get pod name to retrieve the logs
+          - name: Get DM pod name
+            shell: >-
+              kubectl -n platform-deployment-manager get pods |
+              awk '$1 ~ /^platform-deployment-manager/ {print $1}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_dm_pod_name
 
-        - name: Show logs
-          debug:
-            msg:
-            - "Pod log: {{get_logs_pre_unlock.stdout}}"
-            - "err: {{get_logs_pre_unlock.stderr}}"
+          # Get errors from pod logs. Searching for error lines into logs which:
+          # - Contain 'ERROR' key word.
+          # - Are not the same "Verb + value". Usually we see same error
+          # - Are not validation or waiting errors (which could be temporal).
+          #   multiple times in logs.
+          - name: Retrieve DM logs
+            shell: >-
+              kubectl -n platform-deployment-manager logs "{{ get_dm_pod_name.stdout }}" |
+              awk '(/ERROR/ && !/validation/ && !/waiting/ && !/Reconciler error/&& !(seen[$10, $NF]++)) {print}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_logs_pre_unlock
 
-        # If the task "Wait until unlock task triggered" failed, we export some
-        # useful information to the fail playbook msg.
-        - name: Output dm logs
+          - name: Show logs
+            debug:
+              msg:
+              - "Pod log: {{get_logs_pre_unlock.stdout}}"
+              - "err: {{get_logs_pre_unlock.stderr}}"
+
+          when: ("Unlocking" not in get_show_task_status.stdout)
+
+        # Unlock verifications Block:
+        # if unlock was triggered, wait until unlock complete
+        # and check resources and logs.
+        - block:
+
+          # check close-open port before starting last checkings
+          - block:
+            - name: Waiting for port to be closed due to unlock task
+              wait_for:
+                port: "{{ ansible_port }}"
+                host: "{{ ansible_host }}"
+                timeout: "{{ wait_for_timeout }}"
+                state: stopped
+
+            - name: Waiting for port to become open
+              local_action:
+                module: wait_for
+                  port={{ ansible_port }}
+                  host={{ ansible_host }}
+                  timeout={{ wait_for_timeout }}
+                  state=started
+              retries: 20
+              delay: 20
+
+            # Rescue block due to port timing issues:
+            # It will check the administrative state and status of resources.
+            # If the state is not "unlocked," log the information from the subcloud.
+            # If the state is "unlocked," continue with the normal flow of the main block.
+            rescue:
+              - name: Waiting for port to become open
+                local_action:
+                  module: wait_for
+                    port={{ ansible_port }}
+                    host={{ ansible_host }}
+                    delay={{ boot_wait_time }}
+                    timeout={{ wait_for_timeout }}
+                    state=started
+                retries: 20
+                delay: 20
+
+              - name: Wait for {{ boot_wait_time }} seconds before checking status
+                wait_for:
+                  timeout: 300
+                register: waiting_after_failures
+                ignore_errors: true
+
+              - name: Get post unlock state
+                shell: >-
+                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}" |
+                  awk 'NR == 1 { for (i=1; i<=NF; i++) { if ($i == "ADMINISTRATIVE") { col = i; break } } } NR > 1 { print $col }'
+                environment:
+                  KUBECONFIG: "/etc/kubernetes/admin.conf"
+                register: get_final_admin_state
+                until: ( administrative_state == get_final_admin_state.stdout)
+                retries: 4
+                delay: 15
+                ignore_errors: yes
+
+              - name: Retrieve kubectl resources reconciled status
+                shell: >-
+                  (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}")
+                environment:
+                  KUBECONFIG: "/etc/kubernetes/admin.conf"
+                register: resources_status
+                ignore_errors: yes
+
+              - name: Showing status after unlock
+                debug:
+                  msg:
+                  - "WARNING. Final status after reboot: {{get_final_admin_state.stdout}}"
+                  - "It's possible that the status after attempting to unlock is not as desired:"
+                  - "{{resources_status.stdout}}"
+                when: ( administrative_state != get_final_admin_state.stdout)
+
+          # Waiting task after unlock to catch right status
+          # This simple task usually doesn't fail. However, in some
+          # cases, after unlocking, we may encounter two reboots. In such
+          # situations, this task might fail due to a loss of connection.
+          # If that happens, the following block will wait for the
+          # subsequent reboot.
+          - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
+            wait_for:
+              timeout: "{{ boot_wait_time }}"
+            register: waiting_after_reboot
+            ignore_errors: true
+
+          # Retry block: sometimes system reboots twice
+          # It will take some extra time.
+          - block:
+            - name: Waiting for port to become open on second reboot
+              local_action:
+                module: wait_for
+                  port={{ ansible_port }}
+                  host={{ ansible_host }}
+                  delay={{ boot_wait_time }}
+                  timeout={{ wait_for_timeout }}
+                  state=started
+              retries: 20
+              delay: 20
+
+            # Waiting task after unlock to catch right status
+            - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
+              wait_for:
+                timeout: "{{ boot_wait_time }}"
+              register: waiting_after_new_reboot
+              ignore_errors: true
+
+            - name: Fail in case of new loss of connection
+              fail:
+                msg:
+                  - "Unexpected loss of connection. Check subcloud status manually."
+                  - "Then, use subcloud reconfig command to complete deployment"
+              register: new_reboot
+              when: waiting_after_new_reboot.failed
+
+            when: waiting_after_reboot.failed
+
+          # After reboot, wait some time for resources to be reconciled.
+          # If we have all of them reconciled, playbook won't fail.
+          # This task is getting the last column as RECONCILED status value
+          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
+          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
+          - name: Retrieve kubectl resources reconciled status
+            shell: >-
+              (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+               kubectl -n deployment get hosts "{{ get_host_name.stdout}}") |
+               awk '$NF ~ /^false/ {print}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_unrecon_status_post
+            until: (get_unrecon_status_post.stdout == "" and get_unrecon_status_post.stderr == "")
+            retries: 80
+            delay: 25
+            ignore_errors: yes
+
+          - name: fail if previous task failed
+            fail:
+              msg:
+                - "Unexpected failure while waiting for reconciled resources"
+                - "{{get_unrecon_status_post.stderr}}"
+            register: unexpected_failure
+            when: (get_unrecon_status_post.stderr != "")
+
+          # Get pod name to retrieve the logs after unlock
+          - name: Get DM pod name
+            shell: >-
+              kubectl -n platform-deployment-manager get pods |
+              awk '$1 ~ /^platform-deployment-manager/ {print $1}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_dm_pod_name_after
+
+          # Get errors from pod logs again, but after unlock
+          - name: Retrieve DM logs after unlock
+            shell: >-
+              kubectl -n platform-deployment-manager logs "{{ get_dm_pod_name_after.stdout }}" |
+              awk '(/ERROR/ && !/validation/ && !/waiting/ && !/Reconciler error/&& !/unhandled/ && !(seen[$10, $NF]++)) {print}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: get_logs_after_unlock
+
+          - name: Show errors from logs after unlock
+            debug:
+              msg:
+              - "Pod log: {{get_logs_after_unlock.stdout}}"
+              - "err: {{get_logs_after_unlock.stderr}}"
+
+          when: ("Unlocking" in get_show_task_status.stdout)
+
+        # If the task "Wait until unlock task triggered" failed,  we export some
+        # useful information and fail the playbook with msg.
+        - name: fail if unlock task not triggered
           fail:
             msg:
               - "Fail waiting for host unlock to be triggered. It could be due to DM config errors"
-              - "UNRECONCILED resources: {{get_recon_status_pre_unlock.stdout}}"
+              - "UNRECONCILED resources: {{get_recon_status.stdout}}"
+              - "Err_code= unrec_pre_unlock"
               - "{{get_logs_pre_unlock.stdout}}"
-          register: fail_dm_logs
+          register: fail_dm_pre_unlock
           when: ("Unlocking" not in get_show_task_status.stdout)
+
+        # If we have unreconciled resources after unlock and after
+        # waiting some time, it will fail displaying possible errors
+        # from logs.
+        - name: Fail if there are failures after unlock
+          fail:
+            msg:
+              - "Fail waiting resources to be reconciled after unlock. It could be due to DM config errors"
+              - "UNRECONCILED resources: {{get_unrecon_status_post.stdout}}"
+              - "Err_code= unrec_after_unlock"
+              - "{{get_logs_after_unlock.stdout}}"
+          register: fail_dm_after_unlock
+          when: ("Unlocking" in get_show_task_status.stdout
+                 and get_unrecon_status_post.stdout != "")
 
       when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
              and "unlocked" not in current_administrativestate.stdout

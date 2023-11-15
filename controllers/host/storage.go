@@ -636,15 +636,131 @@ func (r *HostReconciler) ReconcileOSDs(client *gophercloud.ServiceClient, instan
 	return nil
 }
 
-// ReconcileFileSystems is responsible for reconciling the storage file system
-// configuration of a host resource.
-func (r *HostReconciler) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+// DeleteFileSystems is responsible for deleting the optional storage
+// file system configuration of a host resource.
+func (r *HostReconciler) DeleteFileSystems(client *gophercloud.ServiceClient, removed []string, host *v1info.HostInfo) (bool, error) {
+
+	updated := false
+	for _, fsInfo := range removed {
+		for _, fs := range host.FileSystems {
+			if fsInfo == fs.Name {
+				logHost.Info("Deleting host filesystem", fs.Name)
+				err := hostFilesystems.Delete(client, fs.ID).ExtractErr()
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to remove file systems")
+					return updated, err
+				}
+				updated = true
+				// refresh host info after removal
+				result, err2 := hostFilesystems.ListFileSystems(client, host.ID)
+				if err2 != nil {
+					err2 = perrors.Wrap(err2, "failed to list file systems")
+					return updated, err2
+				}
+				host.FileSystems = result
+			}
+		}
+	}
+	return updated, nil
+}
+
+// CreateFileSystems is responsible for creating the optional storage
+// file system configuration of a host resource.
+func (r *HostReconciler) CreateFileSystems(client *gophercloud.ServiceClient, added []string, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (bool, error) {
+
+	updated := false
+	for _, fsInfo := range added {
+		for _, fs := range *profile.Storage.FileSystems {
+			if fsInfo == fs.Name {
+				opts := hostFilesystems.CreateFileSystemOpts{
+					Name:     fs.Name,
+					Size:     fs.Size,
+					HostUUID: host.ID,
+				}
+				logHost.Info("Creating host filesystem", "opts", opts)
+				_, err := hostFilesystems.Create(client, opts).Extract()
+				if err != nil {
+					err = perrors.Wrapf(err, "failed to create file systems")
+					return updated, err
+				}
+				updated = true
+				// refresh host info after creation
+				result, err2 := hostFilesystems.ListFileSystems(client, host.ID)
+				if err2 != nil {
+					err2 = perrors.Wrap(err2, "failed to list file systems")
+					return updated, err2
+				}
+				host.FileSystems = result
+			}
+		}
+	}
+	return updated, nil
+}
+
+// ReconcileFileSystemSizes is responsible for reconciling the optional storage
+// file system types(and size) configuration of a host resource before the initial unlock.
+func (r *HostReconciler) ReconcileFileSystemTypes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	if profile.Storage.FileSystems == nil {
 		return nil
 	}
 
-	if !common.IsReconcilerEnabled(common.FileSystems) {
+	if !common.IsReconcilerEnabled(common.FileSystemTypes) {
+		return nil
+	}
+
+	if len(*profile.Storage.FileSystems) == 0 {
+		return nil
+	}
+
+	configured := []string{}
+	current := []string{}
+
+	for _, fsInfo := range *profile.Storage.FileSystems {
+		configured = append(configured, fsInfo.Name)
+	}
+
+	for _, fs := range host.FileSystems {
+		current = append(current, fs.Name)
+	}
+
+	// Find difference of file system types to add or remove
+	added, removed, _ := common.ListDelta(current, configured)
+	_, _, fs_to_add := common.ListDelta(added, FileSystemCreationAllowed)
+	_, _, fs_to_remove := common.ListDelta(removed, FileSystemCreationAllowed)
+
+	if len(fs_to_remove) > 0 {
+		updated, err := r.DeleteFileSystems(client, fs_to_remove, host)
+		if err != nil {
+			return err
+		}
+		if updated {
+			r.NormalEvent(instance, ctrlcommon.ResourceDeleted, "filesystem sizes have been deleted")
+		}
+	}
+
+	if len(fs_to_add) > 0 {
+		updated, err := r.CreateFileSystems(client, fs_to_add, profile, host)
+		if err != nil {
+			return err
+		}
+		if updated {
+			r.NormalEvent(instance, ctrlcommon.ResourceCreated, "filesystem sizes have been created")
+		}
+	}
+
+	return nil
+}
+
+// ReconcileFileSystemSizes is responsible for reconciling the storage file system
+// configuration of a host resource.
+func (r *HostReconciler) ReconcileFileSystemSizes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+
+	if profile.Storage.FileSystems == nil {
+		return nil
+	}
+
+	if !common.IsReconcilerEnabled(common.FileSystemSizes) {
 		return nil
 	}
 
@@ -675,27 +791,6 @@ func (r *HostReconciler) ReconcileFileSystems(client *gophercloud.ServiceClient,
 				}
 
 				updates = append(updates, opts)
-			}
-		}
-
-		// TODO: REMOVE ME: properly support host-fs-add API
-		//
-		// For now, check for non-existent optional filesystems that are not
-		// currently provisioned and send the request anyway so that the
-		// host-fs-modify API can create and resize as needed.
-		if !found {
-			opt_fs_list := [2]string{"instances", "image-conversion"}
-			for _, opt_fs := range opt_fs_list {
-				if fsInfo.Name == opt_fs {
-					found = true
-					opts := hostFilesystems.FileSystemOpts{
-						Name: fsInfo.Name,
-						Size: fsInfo.Size,
-					}
-
-					updates = append(updates, opts)
-					break
-				}
 			}
 		}
 
@@ -737,6 +832,11 @@ func (r *HostReconciler) ReconcileStorage(client *gophercloud.ServiceClient, ins
 	//  handle the initial provisioning case.
 
 	err := r.ReconcileMonitor(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileFileSystemTypes(client, instance, profile, host)
 	if err != nil {
 		return err
 	}

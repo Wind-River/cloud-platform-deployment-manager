@@ -105,17 +105,54 @@ type HostStatus struct {
 	// AvailabilityStatus is the last known availability status of the host.
 	AvailabilityStatus *string `json:"availabilityStatus,omitempty"`
 
-	// InSync defines whether the desired state matches the operational state.
-	InSync bool `json:"inSync"`
+	// Defaults defines the configuration attributed collected before applying
+	// any user configuration values.
+	Defaults *string `json:"defaults,omitempty"`
 
 	// Reconciled defines whether the host has been successfully reconciled
 	// at least once.  If further changes are made they will be ignored by the
 	// reconciler.
+	// +optional
 	Reconciled bool `json:"reconciled"`
 
-	// Defaults defines the configuration attributed collected before applying
-	// any user configuration values.
-	Defaults *string `json:"defaults,omitempty"`
+	// InSync defines whether the desired state matches the operational state.
+	// +optional
+	InSync bool `json:"inSync"`
+
+	// DeploymentScope defines whether the resource has been deployed
+	// on the initial setup or during an update.
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
+	// +optional
+	// +kubebuilder:default:=bootstrap
+	DeploymentScope string `json:"deploymentScope"`
+
+	// Reflect value of configuration generation of host profile.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedHostProfileGeneration int64 `json:"observedHostProfileGeneration"`
+
+	// Reflect value of configuration generation.
+	// The value will be set when configuration generation is updated.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Value for host profile configuration is updated or not
+	// +optional
+	HostProfileConfigurationUpdated bool `json:"hostProfileConfigurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +optional
+	ConfigurationUpdated bool `json:"configurationUpdated"`
+
+	// Value for configuration is updated or not
+	// +kubebuilder:validation:Enum=not_required;lock_required;unlock_required
+	// +optional
+	// +kubebuilder:default:=not_required
+	StrategyRequired string `json:"strategyRequired"`
+
+	// Delta between final profile vs current configuration
+	// +optional
+	Delta string `json:"delta"`
 }
 
 // +kubebuilder:object:root=true
@@ -130,7 +167,9 @@ type HostStatus struct {
 // +kubebuilder:printcolumn:name="availability",type="string",JSONPath=".status.availabilityStatus",description="The availability status of the host."
 // +kubebuilder:printcolumn:name="profile",type="string",JSONPath=".spec.profile",description="The configuration profile of the host."
 // +kubebuilder:printcolumn:name="insync",type="boolean",JSONPath=".status.inSync",description="The current synchronization state."
+// +kubebuilder:printcolumn:name="scope",type="string",JSONPath=".status.deploymentScope",description="The current deploymentScope state."
 // +kubebuilder:printcolumn:name="reconciled",type="boolean",JSONPath=".status.reconciled",description="The current reconciliation state."
+// +TODO(ecandotti): enhance docs/playbooks/wind-river-cloud-platform-deployment-manager.yaml#L431 since it's looking for the last column to get 'reconciled' value.
 type Host struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

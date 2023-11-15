@@ -89,8 +89,24 @@ func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo)
 
 	result := make([]starlingxv1.OSDInfo, 0)
 	for _, o := range *a.Storage.OSDs {
+		found := false
 		o.Path = starlingxv1.FixDevicePath(o.Path, *hostInfo)
-		result = append(result, o)
+
+		// Check if the element exists with different format(short device node,
+		// full deveice node, device path etc.) in the result list, should
+		// not add duplication the profile.
+		if len(result) > 0 {
+			for _, elem := range result {
+				found = common.CompareStructs(o, elem)
+				if found {
+					break
+				}
+			}
+		}
+
+		if !found {
+			result = append(result, o)
+		}
 	}
 	list := starlingxv1.OSDList(result)
 	a.Storage.OSDs = &list
@@ -119,20 +135,46 @@ func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.
 
 	list := make([]starlingxv1.PhysicalVolumeInfo, 0)
 	for _, pv := range *a {
+		found := false
 		pvPath := starlingxv1.FixDevicePath(pv.Path, *hostInfo)
 		pvInfo := starlingxv1.PhysicalVolumeInfo{
 			Type: pv.Type,
 			Path: pvPath,
 			Size: pv.Size,
 		}
-		list = append(list, pvInfo)
+
+		// Check if the element exists with different format(short device node,
+		// full deveice node, device path etc.) in the result list, should
+		// not add duplication the profile.
+		if len(list) > 0 {
+			for _, elem := range list {
+				found = common.CompareStructs(pvInfo, elem)
+				if found {
+					break
+				}
+			}
+		}
+
+		if !found {
+			list = append(list, pvInfo)
+		}
 	}
 	result := starlingxv1.PhysicalVolumeList(list)
 	return result
 }
 
-// GetHostProfile retrieves a HostProfileSpec from the kubernetes API
-func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1.HostProfileSpec, error) {
+// GetHostProfileSpec retrieves a HostProfileSpec from the kubernetes API
+func (r *HostReconciler) GetHostProfileSpec(namespace, profile string) (*starlingxv1.HostProfileSpec, error) {
+	instance, err := r.GetHostProfile(namespace, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instance.Spec, nil
+}
+
+// GetHostProfile retrieves a HostProfile from the kubernetes API
+func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1.HostProfile, error) {
 	instance := &starlingxv1.HostProfile{}
 	name := types.NamespacedName{Namespace: namespace, Name: profile}
 
@@ -147,7 +189,7 @@ func (r *HostReconciler) GetHostProfile(namespace, profile string) (*starlingxv1
 		}
 	}
 
-	return &instance.Spec, nil
+	return instance, nil
 }
 
 // DeleteHostProfile deletes a HostProfile from the kubernetes API
@@ -184,7 +226,7 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 			return nil, common.NewValidationError(msg)
 		}
 
-		parent, err := r.GetHostProfile(namespace, *current.Base)
+		parent, err := r.GetHostProfileSpec(namespace, *current.Base)
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +248,7 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 // will be applied to the host at configuration time.
 func (r *HostReconciler) BuildCompositeProfile(host *starlingxv1.Host) (*starlingxv1.HostProfileSpec, error) {
 	// Start with the explicit profile attached to the host.
-	profile, err := r.GetHostProfile(host.Namespace, host.Spec.Profile)
+	profile, err := r.GetHostProfileSpec(host.Namespace, host.Spec.Profile)
 	if err != nil {
 		return nil, err
 	}
