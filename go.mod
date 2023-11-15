@@ -7,6 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.0
+	github.com/google/go-cmp v0.5.9
 	github.com/gophercloud/gophercloud v0.0.0-20230605171524-742ad279b1e1
 	github.com/imdario/mergo v0.3.12
 	github.com/mitchellh/go-homedir v1.1.0
@@ -18,7 +19,6 @@ require (
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5
-	k8s.io/klog v1.0.0
 	sigs.k8s.io/controller-runtime v0.11.2
 )
 
@@ -39,7 +39,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -91,4 +90,4 @@ require (
 )
 
 // replace github.com/gophercloud/gophercloud => ./external/gophercloud
-replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20230731150227-137664ed2caf
+replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20231115182544-899f8523f149

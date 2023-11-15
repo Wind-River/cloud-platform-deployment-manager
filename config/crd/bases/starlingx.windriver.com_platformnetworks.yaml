@@ -128,6 +128,7 @@ spec:
                 - cluster-pod
                 - cluster-service
                 - storage
+                - admin
                 - other
                 type: string
             required:
