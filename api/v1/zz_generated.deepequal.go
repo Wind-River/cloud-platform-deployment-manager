@@ -1416,6 +1416,9 @@ func (in *PlatformNetworkSpec) DeepEqual(other *PlatformNetworkSpec) bool {
 	if in.Subnet != other.Subnet {
 		return false
 	}
+	if in.FloatingAddress != other.FloatingAddress {
+		return false
+	}
 	if in.Prefix != other.Prefix {
 		return false
 	}

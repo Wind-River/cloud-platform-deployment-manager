@@ -90,4 +90,4 @@ require (
 )
 
 // replace github.com/gophercloud/gophercloud => ./external/gophercloud
-replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20231115182544-899f8523f149
+replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20231201194816-936d2409d43d

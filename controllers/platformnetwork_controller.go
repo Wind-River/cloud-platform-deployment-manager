@@ -333,7 +333,7 @@ func (r *PlatformNetworkReconciler) ReconcileAddressPool(client *gophercloud.Ser
 }
 
 // plNetworkUpdateRequired determines whether a system network resource must be
-// updated to align with the stored value.  Only the updated fields are
+// updated to align with the stored value. Only the updated fields are
 // include in the request options to minimum churn and to ease debugging.
 func plNetworkUpdateRequired(instance *starlingxv1.PlatformNetwork, n *networks.Network) (opts networks.NetworkOpts, result bool) {
 	if instance.Name != n.Name {
