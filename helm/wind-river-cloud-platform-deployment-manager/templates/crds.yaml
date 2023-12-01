@@ -1913,6 +1913,9 @@ spec:
                 required:
                 - type
                 type: object
+              floatingAddress:
+                description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+                type: string
               gateway:
                 description: Gateway defines the nexthop gateway IP address if applicable
                 type: string
@@ -1921,7 +1924,7 @@ spec:
                 minimum: 1
                 type: integer
               subnet:
-                description: Subnet defines the IPv4 or IPv6 network address for the network
+                description: Subnet defines the subdivision IPv4 or IPv6 network address for the network
                 type: string
               type:
                 description: Type defines the intended usage of the network
