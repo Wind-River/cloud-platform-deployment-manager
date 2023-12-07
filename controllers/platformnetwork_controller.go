@@ -13,6 +13,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/oamNetworks"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
@@ -84,6 +85,62 @@ func compareRangeArrays(x, y [][]string) bool {
 	return len(x) == count
 }
 
+// oamUpdateRequired determines whether a oam network resource must
+// be updated to align with the stored value.  Only the updated fields are
+// include in the request options to minimum churn and to ease debugging.
+func oamUpdateRequired(instance *starlingxv1.PlatformNetwork, p *oamNetworks.OAMNetwork, r *PlatformNetworkReconciler) (opts oamNetworks.OAMNetworkOpts, result bool) {
+	var delta strings.Builder
+
+	spec := instance.Spec
+	instance_subnet := fmt.Sprintf("%s/%d", spec.Subnet, spec.Prefix)
+	if instance_subnet != p.OAMSubnet {
+		opts.OAMSubnet = &instance_subnet
+		delta.WriteString(fmt.Sprintf("\t+Subnet: %s\n", *opts.OAMSubnet))
+		result = true
+	}
+
+	if instance.Spec.Type != networks.NetworkTypeOther {
+		// TODO(alegacy): There is a sysinv bug in how the gateway address
+		//  gets registered in the database.  It doesn't have a "name" and
+		//  so causes an exception when a related route is added.
+		if spec.Gateway != nil && (p.OAMGatewayIP == nil || !strings.EqualFold(*spec.Gateway, *p.OAMGatewayIP)) {
+			opts.OAMGatewayIP = spec.Gateway
+			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.OAMGatewayIP))
+			result = true
+		}
+	}
+
+	if spec.FloatingAddress != "" && spec.FloatingAddress != p.OAMFloatingIP {
+		opts.OAMFloatingIP = &spec.FloatingAddress
+		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.OAMFloatingIP))
+		result = true
+	}
+
+	tempRange := [][]string{{p.OAMStartIP, p.OAMEndIP}}
+	if len(spec.Allocation.Ranges) > 0 {
+		ranges := makeRangeArray(spec.Allocation.Ranges)
+		if !compareRangeArrays(ranges, tempRange) {
+			opts.OAMStartIP = &ranges[0][0]
+			opts.OAMEndIP = &ranges[0][1]
+			delta.WriteString(fmt.Sprintf("\t+Start IP: %s\n", *opts.OAMStartIP))
+			delta.WriteString(fmt.Sprintf("\t+End IP: %s\n", *opts.OAMEndIP))
+			result = true
+		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPlatformNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPlatformNetwork.Info(fmt.Sprintf("failed to update oam status:  %s\n", err))
+	}
+	return opts, result
+}
+
 // poolUpdateRequired determines whether a system address pool resource must
 // be updated to align with the stored value.  Only the updated fields are
 // include in the request options to minimum churn and to ease debugging.
@@ -105,6 +162,12 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 	if spec.Prefix != p.Prefix {
 		opts.Prefix = &spec.Prefix
 		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
+		result = true
+	}
+
+	if spec.FloatingAddress != "" && spec.FloatingAddress != p.FloatingAddress {
+		opts.FloatingAddress = &spec.FloatingAddress
+		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.FloatingAddress))
 		result = true
 	}
 
@@ -200,6 +263,39 @@ func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.
 // ReconcileUpdated is a method which handles reconciling an existing data
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
+func (r *PlatformNetworkReconciler) ReconcileUpdatedOAMNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, oam *oamNetworks.OAMNetwork) error {
+	if opts, ok := oamUpdateRequired(instance, oam, r); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoChangesAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPlatformNetwork.Info(common.ChangedAllowedAfterReconciled)
+			}
+		}
+
+		// Update existing oam network
+		logPlatformNetwork.Info("updating oam network", "uuid", oam.UUID, "opts", opts)
+
+		result, err := oamNetworks.Update(client, oam.UUID, opts).Extract()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update oam network: %+v", opts)
+			return err
+		}
+
+		*oam = *result
+
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+			"oam network has been updated")
+
+	}
+
+	return nil
+}
+
 func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if opts, ok := poolUpdateRequired(instance, pool, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
@@ -227,6 +323,7 @@ func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercl
 
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 			"address pool has been updated")
+
 	}
 
 	return nil
@@ -317,6 +414,18 @@ func (r *PlatformNetworkReconciler) ReconcileAddressPool(client *gophercloud.Ser
 	} else {
 		if pool == nil {
 			pool, err = r.ReconcileNewAddressPool(client, instance)
+		} else if instance.Spec.Type == "oam" {
+			oamNetworkList, err := oamNetworks.ListNetworks(client)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to get oam network")
+				return err
+			}
+			oamNetwork := &oamNetworkList[0]
+			err = r.ReconcileUpdatedOAMNetwork(client, instance, oamNetwork)
+
+			if err != nil {
+				return err
+			}
 		} else {
 			err = r.ReconcileUpdatedAddressPool(client, instance, pool)
 		}

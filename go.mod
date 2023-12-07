@@ -7,8 +7,8 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.0
-	github.com/google/go-cmp v0.5.9
-	github.com/gophercloud/gophercloud v0.0.0-20230605171524-742ad279b1e1
+	github.com/google/go-cmp v0.6.0
+	github.com/gophercloud/gophercloud v1.8.0
 	github.com/imdario/mergo v0.3.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -92,4 +92,5 @@ require (
 )
 
 // replace github.com/gophercloud/gophercloud => ./external/gophercloud
-replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20231201194816-936d2409d43d
+
+replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20231207152242-d06bd3ca4f52
