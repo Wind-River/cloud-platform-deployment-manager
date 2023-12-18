@@ -562,7 +562,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 	}
 
 	nets := make([]*starlingxv1.PlatformNetwork, 0)
-	always_generate_networks := []string{"storage"}
+	always_generate_networks := []string{"storage", "mgmt", "oam", "admin"}
 	sort.Strings(always_generate_networks)
 	for _, p := range pools {
 		skip := false
