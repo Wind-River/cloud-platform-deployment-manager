@@ -6,7 +6,7 @@ metadata:
   name: vbox
   namespace: deployment
 status:
-  desploymentScope:
+  deploymentScope:
     "bootstrap"
 spec:
   description: Virtual Box Standard System
@@ -33,4 +33,4 @@ spec:
   mtu: 1500
   type: vlan
 status:
-  desploymentScope: "bootstrap"
+  deploymentScope: "bootstrap"
