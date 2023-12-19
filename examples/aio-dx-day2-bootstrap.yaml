@@ -114,7 +114,7 @@ spec:
     location: vbox
   profile: controller-profile
 status:
-  desploymentScope: bootstrap
+  deploymentScope: bootstrap
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
