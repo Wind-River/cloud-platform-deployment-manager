@@ -19,4 +19,4 @@ spec:
     location: vbox
   profile: controller-profile
 status:
-  desploymentScope: "principal"
+  deploymentScope: "principal"
