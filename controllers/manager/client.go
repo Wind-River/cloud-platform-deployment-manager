@@ -5,6 +5,7 @@ package manager
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
+	common "github.com/wind-river/cloud-platform-deployment-manager/common"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -44,10 +46,11 @@ const (
 
 const (
 	// Well-known openstack API attribute values for the system API
-	SystemEndpointName = "sysinv"
-	SystemEndpointType = "platform"
-	VimEndpointName    = "vim"
-	VimEndpointType    = "nfv"
+	SystemEndpointName  = "sysinv"
+	SystemEndpointType  = "platform"
+	VimEndpointName     = "vim"
+	VimEndpointType     = "nfv"
+	KeystoneEndpointURL = "http://controller:5000/v3"
 )
 
 // Builds the client authentication options from a given secret which should
@@ -81,6 +84,7 @@ func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) ([]gophercloud.AuthOpti
 	if authURL == "" {
 		return nil, NewClientError("OS_AUTH_URL must be provided")
 	}
+
 	if userID == "" && username == "" {
 		return nil, NewClientError("OS_USERID or OS_USERNAME must be provided")
 	}
@@ -93,8 +97,13 @@ func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) ([]gophercloud.AuthOpti
 		return nil, NewClientError("OS_APPLICATION_CREDENTIAL_SECRET must be provided")
 	}
 
+	parsedAuthURLs, err := parseURLs(authURL)
+	if err != nil {
+		return nil, NewClientError("OS_AUTH_URL format error")
+	}
+
 	result := make([]gophercloud.AuthOptions, 0)
-	for _, entry := range strings.Split(authURL, ",") {
+	for _, entry := range parsedAuthURLs {
 		// The authURL may be specified as a comma separated list of URL therefore
 		// return a list of auth options to the caller.
 		ao := gophercloud.AuthOptions{
@@ -115,6 +124,76 @@ func GetAuthOptionsFromSecret(endpointSecret *v1.Secret) ([]gophercloud.AuthOpti
 	}
 
 	return result, nil
+}
+
+func replaceDomainWithIP(originalURL string) (string, error) {
+	// Parse the URL
+	parsedURL, err := url.Parse(originalURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Resolve the IP address for the domain
+	ipAddresses, err := net.LookupHost(parsedURL.Hostname())
+
+	if err != nil {
+		// Consider not print errors as the DNS/DNS mask are not configured
+		// to get the IP address.
+		log.V(2).Info("unable to find IP address", "Domain", parsedURL.Hostname())
+		return "", nil
+	}
+
+	// Use the first IP address.
+	// TODO(yuxing): may want to handle multiple addresses differently.
+	ipAddress := ipAddresses[0]
+
+	// Join IP address with port to ensure wrapping IPv6 addresses with square
+	// brackets.
+	parsedHost := net.JoinHostPort(ipAddress, parsedURL.Port())
+
+	// Replace the domain with the IP address in the URL.
+	newURL := strings.Replace(originalURL, parsedURL.Host, parsedHost, 1)
+
+	return newURL, nil
+}
+
+func parseURLs(authURL string) ([]string, error) {
+	authURLs := strings.Split(authURL, ",")
+	if !common.ContainsString(authURLs, KeystoneEndpointURL) {
+		// add controller by default as it is expected to be used as the domain
+		// of local clients
+		authURLs = append(authURLs, KeystoneEndpointURL)
+	}
+
+	parsedURLs := make([]string, 0)
+	for _, entry := range authURLs {
+		u, err := url.ParseRequestURI(entry)
+		if err != nil {
+			// Not a valid URL
+			return nil, err
+		}
+
+		log.V(2).Info("Parsing IP of host", "host", u.Hostname())
+		if net.ParseIP(u.Hostname()) != nil {
+			// Already IP address format as host name
+			parsedURLs = append(parsedURLs, entry)
+		} else {
+			// Need to search and replace the hostname with IP address
+			newURL, err := replaceDomainWithIP(entry)
+			if err != nil {
+				return nil, err
+			}
+			if newURL != "" {
+				log.V(2).Info("Replaced domain with IP", "URL", entry, "new URL", newURL)
+				parsedURLs = append(parsedURLs, newURL)
+			}
+		}
+	}
+
+	// Remove duplicates
+	parsedURLs = common.DedupeSlice(parsedURLs)
+	log.V(2).Info("Parsed AUTH URLS", "URLs", strings.Join(parsedURLs, ","))
+	return parsedURLs, nil
 }
 
 func GetAuthOptionsFromEnv() (gophercloud.AuthOptions, error) {

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package common
 
@@ -344,6 +344,51 @@ var _ = Describe("Common utils", func() {
 				}
 				for _, tt := range tests {
 					gotResult := RemoveString(tt.args.slice, tt.args.s)
+					Expect(reflect.DeepEqual(gotResult, tt.wantResult)).To(BeTrue())
+				}
+			})
+		})
+	})
+
+	Describe("DedupeSlice utility", func() {
+		Context("with a slice with duplicates", func() {
+			It("should remove the string duplicates", func() {
+				stringTests := []struct {
+					name       string
+					given      []string
+					wantResult []string
+				}{
+					{name: "one string duplicate",
+						given:      []string{"foo0", "foo1", "foo1", "foo2", "foo3"},
+						wantResult: []string{"foo0", "foo1", "foo2", "foo3"},
+					},
+					{name: "two string duplicates",
+						given:      []string{"foo0", "foo1", "foo1", "foo2", "foo2"},
+						wantResult: []string{"foo0", "foo1", "foo2"},
+					},
+				}
+				for _, tt := range stringTests {
+					gotResult := DedupeSlice(tt.given)
+					Expect(reflect.DeepEqual(gotResult, tt.wantResult)).To(BeTrue())
+				}
+			})
+			It("should remove the int duplicates", func() {
+				intTests := []struct {
+					name       string
+					given      []int
+					wantResult []int
+				}{
+					{name: "one int duplicate",
+						given:      []int{101, 202, 303, 404, 303},
+						wantResult: []int{101, 202, 303, 404},
+					},
+					{name: "two int duplicates",
+						given:      []int{101, 101, 202, 303, 404, 101},
+						wantResult: []int{101, 202, 303, 404},
+					},
+				}
+				for _, tt := range intTests {
+					gotResult := DedupeSlice(tt.given)
 					Expect(reflect.DeepEqual(gotResult, tt.wantResult)).To(BeTrue())
 				}
 			})
