@@ -31,6 +31,8 @@ import (
 
 var logPlatformNetwork = log.Log.WithName("controller").WithName("platformnetwork")
 
+var SUBCLOUD_WRITABLE_NETWORK_TYPES = []string{"admin"}
+
 const PlatformNetworkControllerName = "platformnetwork-controller"
 
 const PlatformNetworkFinalizerName = "platformnetwork.finalizers.windriver.com"
@@ -211,6 +213,26 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 	return opts, result
 }
 
+func poolOptsCreation(instance *starlingxv1.PlatformNetwork) (opts addresspools.AddressPoolOpts) {
+	opts.Name = &instance.Name
+
+	spec := instance.Spec
+	opts.Network = &spec.Subnet
+	opts.Prefix = &spec.Prefix
+	opts.FloatingAddress = &spec.FloatingAddress
+	opts.Gateway = spec.Gateway
+	if spec.Allocation.Order != nil {
+		opts.Order = spec.Allocation.Order
+	}
+
+	if len(spec.Allocation.Ranges) > 0 {
+		ranges := makeRangeArray(spec.Allocation.Ranges)
+		opts.Ranges = &ranges
+	}
+
+	return opts
+}
+
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (*addresspools.AddressPool, error) {
@@ -296,7 +318,7 @@ func (r *PlatformNetworkReconciler) ReconcileUpdatedOAMNetwork(client *gopherclo
 	return nil
 }
 
-func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
+func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) (*addresspools.AddressPool, error) {
 	if opts, ok := poolUpdateRequired(instance, pool, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
 			// Do not process any further changes once we have reached a
@@ -304,29 +326,59 @@ func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercl
 			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoChangesAfterReconciled
 				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
-				return common.NewChangeAfterInSync(msg)
+				return pool, common.NewChangeAfterInSync(msg)
 			} else {
 				logPlatformNetwork.Info(common.ChangedAllowedAfterReconciled)
 			}
 		}
 
-		// Update existing pool
-		logPlatformNetwork.Info("updating address pool", "uuid", pool.ID, "opts", opts)
-
-		result, err := addresspools.Update(client, pool.ID, opts).Extract()
-		if err != nil {
-			err = perrors.Wrapf(err, "failed to update pool: %+v", opts)
-			return err
+		createAddressPool := false
+		for _, t := range SUBCLOUD_WRITABLE_NETWORK_TYPES {
+			if t == instance.Spec.Type {
+				createAddressPool = true
+				break
+			}
 		}
 
-		*pool = *result
+		if createAddressPool {
+			newOpts := poolOptsCreation(instance)
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
-			"address pool has been updated")
+			// Update existing pool
+			logPlatformNetwork.Info("Deleting address pool", "uuid", pool.ID, "opts", opts)
+			err := addresspools.Delete(client, pool.ID).ExtractErr()
+
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to delete pool: %+v", opts)
+				return pool, err
+			}
+
+			logPlatformNetwork.Info("Creating address pool", "opts", opts)
+
+			result, err := addresspools.Create(client, newOpts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to create pool: %+v", opts)
+				return pool, err
+			}
+			*pool = *result
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+				"address pool has been created")
+		} else {
+			// Update existing pool
+			logPlatformNetwork.Info("updating address pool", "uuid", pool.ID, "opts", opts)
+
+			result, err := addresspools.Update(client, pool.ID, opts).Extract()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update pool: %+v", opts)
+				return pool, err
+			}
+			*pool = *result
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+				"address pool has been updated")
+		}
 
 	}
 
-	return nil
+	return pool, nil
 }
 
 // ReconcileNew is a method which handles reconciling a new data resource and
@@ -373,7 +425,7 @@ func (r *PlatformNetworkReconciler) FindExistingAddressPool(client *gophercloud.
 
 			// The resource may have been deleted by the system or operator
 			// therefore continue and attempt to recreate it.
-			logPlatformNetwork.Info("resource no longer exists", "id", *id)
+			logPlatformNetwork.Info("address pool no longer exists", "id", *id)
 			return nil, nil
 		}
 
@@ -427,7 +479,7 @@ func (r *PlatformNetworkReconciler) ReconcileAddressPool(client *gophercloud.Ser
 				return err
 			}
 		} else {
-			err = r.ReconcileUpdatedAddressPool(client, instance, pool)
+			pool, err = r.ReconcileUpdatedAddressPool(client, instance, pool)
 		}
 
 		if err == nil && pool != nil {
@@ -593,7 +645,7 @@ func (r *PlatformNetworkReconciler) FindExistingNetwork(client *gophercloud.Serv
 
 			// The resource may have been deleted by the system or operator
 			// therefore continue and attempt to recreate it.
-			logPlatformNetwork.Info("resource no longer exists", "id", *id)
+			logPlatformNetwork.Info("network no longer exists", "id", *id)
 			return nil, nil
 		}
 
