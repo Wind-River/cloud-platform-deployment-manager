@@ -107,8 +107,6 @@ consider adding your user id to the local docker group.
 sudo usermod -a -G docker ${USER}
 newgrp docker
 ```
-## Install golangci
-curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
 
 ## Install other dependencies
 sudo apt-get install make
