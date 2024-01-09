@@ -37,7 +37,8 @@ var _ = Describe("Test filters utilities:", func() {
 				system.Spec.ServiceParameters = &spList
 
 				spFilter := ServiceParameterFilter{}
-				spFilter.Filter(&system, &deployment)
+				err := spFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				got := system.Spec.ServiceParameters
 				expectSpArrary := make([]v1.ServiceParameterInfo, 0)
 				expectSpArrary = append(expectSpArrary, sp)
@@ -68,10 +69,11 @@ var _ = Describe("Test filters utilities:", func() {
 
 				//the default service parameter filter should be always applied
 				spFilter := ServiceParameterFilter{}
-				spFilter.Filter(&system, &deployment)
-
+				err := spFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				noSpFilter := NoServiceParameterFilter{}
-				noSpFilter.Filter(&system, &deployment)
+				err = noSpFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				got := system.Spec.ServiceParameters
 				Expect(got).To(BeNil())
 			})
