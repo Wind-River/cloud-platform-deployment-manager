@@ -40,7 +40,8 @@ var _ = Describe("Test filters utilities:", func() {
 				system.Spec.ServiceParameters = &spList
 
 				spFilter := ServiceParameterFilter{}
-				spFilter.Filter(&system, &deployment)
+				err := spFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				got := system.Spec.ServiceParameters
 				expectSpArrary := make([]v1.ServiceParameterInfo, 0)
 				expectSpArrary = append(expectSpArrary, sp)
@@ -71,10 +72,11 @@ var _ = Describe("Test filters utilities:", func() {
 
 				//the default service parameter filter should be always applied
 				spFilter := ServiceParameterFilter{}
-				spFilter.Filter(&system, &deployment)
-
+				err := spFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				noSpFilter := NoServiceParameterFilter{}
-				noSpFilter.Filter(&system, &deployment)
+				err = noSpFilter.Filter(&system, &deployment)
+				Expect(err).To(BeNil())
 				got := system.Spec.ServiceParameters
 				Expect(got).To(BeNil())
 			})
@@ -148,7 +150,8 @@ var _ = Describe("Test filters utilities:", func() {
 
 			populatespec(hostinfo, profile, host)
 			It("should not remove the kernel parameter from the spec", func() {
-				kernelfilter.Filter(profile, host, &deployment)
+				err := kernelfilter.Filter(profile, host, &deployment)
+				Expect(err).To(BeNil())
 				Expect(profile.Spec.Kernel).NotTo(BeNil(),
 					"Kernel parameter should not be Nil")
 			})
@@ -169,7 +172,8 @@ var _ = Describe("Test filters utilities:", func() {
 			populatespec(hostinfo, profile, host)
 
 			It("should remove the kernel parameter from the spec", func() {
-				kernelfilter.Filter(profile, host, &deployment)
+				err := kernelfilter.Filter(profile, host, &deployment)
+				Expect(err).To(BeNil())
 				Expect(profile.Spec.Kernel).To(BeNil(),
 					"Kernel parameter should be Nil")
 			})
@@ -190,7 +194,8 @@ var _ = Describe("Test filters utilities:", func() {
 			populatespec(hostinfo, profile, host)
 
 			It("should not remove the kernel parameter from the spec", func() {
-				kernelfilter.Filter(profile, host, &deployment)
+				err := kernelfilter.Filter(profile, host, &deployment)
+				Expect(err).To(BeNil())
 				Expect(profile.Spec.Kernel).NotTo(BeNil(),
 					"Kernel parameter should not be Nil")
 			})
@@ -211,7 +216,8 @@ var _ = Describe("Test filters utilities:", func() {
 			populatespec(hostinfo, profile, host)
 
 			It("should remove the kernel parameter from the spec", func() {
-				kernelfilter.Filter(profile, host, &deployment)
+				err := kernelfilter.Filter(profile, host, &deployment)
+				Expect(err).To(BeNil())
 				Expect(profile.Spec.Kernel).To(BeNil(),
 					"Kernel parameter should be Nil")
 			})
