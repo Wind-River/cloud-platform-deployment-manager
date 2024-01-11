@@ -1,0 +1,36 @@
+kind: System
+apiVersion: starlingx.windriver.com/v1
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+status:
+  deploymentScope:
+    "bootstrap"
+spec:
+  description: Virtual Box Standard System
+  location: vbox
+  contact: info@windriver.com
+  ntpServers:
+    - 0.pool.ntp.org
+    - 1.pool.ntp.org
+    - 2.pool.ntp.org
+  storage:
+    backends:
+    - name: ceph-store
+      type: ceph
+---
+apiVersion: starlingx.windriver.com/v1
+kind: DataNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0
+  namespace: deployment
+spec:
+  description: group0 data networks for the tenant1 networks.
+  mtu: 1500
+  type: vlan
+status:
+  deploymentScope: "bootstrap"

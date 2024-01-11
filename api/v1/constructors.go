@@ -27,9 +27,10 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
+	common "github.com/wind-river/cloud-platform-deployment-manager/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
-	v1types "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -301,6 +302,7 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 	for _, iface := range host.Interfaces {
 		data := CommonInterfaceInfo{
+			UUID:  iface.ID,
 			Name:  iface.Name,
 			Class: iface.Class,
 		}
@@ -732,11 +734,11 @@ func parseBoardManagementInfo(profile *HostProfileSpec, host v1info.HostInfo) er
 
 func NewNamespace(name string) (*v1.Namespace, error) {
 	namespace := v1.Namespace{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Namespace",
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 	}
@@ -805,6 +807,11 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	}
 	spec.Console = &host.Console
 	spec.InstallOutput = &host.InstallOutput
+
+	if host.Kernel.ProvisionedKernel != "" {
+		spec.Kernel = &host.Kernel.ProvisionedKernel
+	}
+
 	if host.HwSettle != "" {
 		spec.HwSettle = &host.HwSettle
 	}
@@ -895,11 +902,11 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 func NewHostProfile(name string, namespace string, hostInfo v1info.HostInfo) (*HostProfile, error) {
 	name = fmt.Sprintf("%s-profile", name)
 	profile := HostProfile{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindHostProfile,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1145,11 +1152,11 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 
 func NewSystem(namespace string, name string, systemInfo v1info.SystemInfo) (*System, error) {
 	system := System{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindSystem,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1181,11 +1188,11 @@ func NewBMSecret(name string, namespace string, username string) (*v1.Secret, er
 	fakePassword := []byte("")
 
 	secret := v1.Secret{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -1201,11 +1208,11 @@ func NewBMSecret(name string, namespace string, username string) (*v1.Secret, er
 
 func NewLicenseSecret(name string, namespace string, content string) (*v1.Secret, error) {
 	secret := v1.Secret{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -1224,11 +1231,11 @@ func NewCertificateSecret(name string, namespace string) (*v1.Secret, error) {
 	fakeInput := []byte("")
 
 	secret := v1.Secret{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -1264,11 +1271,11 @@ func NewHostSpec(hostInfo v1info.HostInfo) (*HostSpec, error) {
 
 func NewHost(name string, namespace string, hostInfo v1info.HostInfo) (*Host, error) {
 	host := Host{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindHost,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1317,11 +1324,11 @@ func NewDataNetworkSpec(net datanetworks.DataNetwork) (*DataNetworkSpec, error) 
 
 func NewDataNetwork(name string, namespace string, net datanetworks.DataNetwork) (*DataNetwork, error) {
 	dataNetwork := DataNetwork{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindDataNetwork,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1356,11 +1363,11 @@ func NewPtpInstanceSpec(inst ptpinstances.PTPInstance) (*PtpInstanceSpec, error)
 
 func NewPTPInstance(name string, namespace string, inst ptpinstances.PTPInstance) (*PtpInstance, error) {
 	ptpInstance := PtpInstance{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPTPInstance,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1395,11 +1402,11 @@ func NewPtpInterfaceSpec(PTPint ptpinterfaces.PTPInterface) (*PtpInterfaceSpec, 
 
 func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInterface) (*PtpInterface, error) {
 	ptpInterface := PtpInterface{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPTPInterface,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1420,10 +1427,11 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 
 func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
-		Type:    network_type,
-		Subnet:  pool.Network,
-		Prefix:  pool.Prefix,
-		Gateway: pool.Gateway,
+		Type:            network_type,
+		Subnet:          pool.Network,
+		FloatingAddress: pool.FloatingAddress,
+		Prefix:          pool.Prefix,
+		Gateway:         pool.Gateway,
 		Allocation: AllocationInfo{
 			Type:  networks.AllocationOrderDynamic,
 			Order: &pool.Order,
@@ -1446,11 +1454,11 @@ func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) 
 
 func NewPlatformNetwork(name string, namespace string, pool addresspools.AddressPool, network_type string) (*PlatformNetwork, error) {
 	platformNetwork := PlatformNetwork{
-		TypeMeta: v1types.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPlatformNetwork,
 		},
-		ObjectMeta: v1types.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
@@ -1467,4 +1475,17 @@ func NewPlatformNetwork(name string, namespace string, pool addresspools.Address
 	spec.DeepCopyInto(&platformNetwork.Spec)
 
 	return &platformNetwork, nil
+}
+
+// IsDefaultServiceParameter returns if a service parameter is a default.
+// The default parameters are defined in common/constants.go.
+func IsDefaultServiceParameter(sp *ServiceParameterInfo) bool {
+	for _, defaultParameter := range common.DefaultParameters {
+		if sp.Service == defaultParameter.Service &&
+			sp.Section == defaultParameter.Section &&
+			sp.ParamName == defaultParameter.ParamName {
+			return true
+		}
+	}
+	return false
 }

@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: hostprofiles.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -305,6 +304,10 @@ spec:
                           - layer2
                           - layer2+3
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
+                          type: string
                       required:
                       - class
                       - members
@@ -390,6 +393,10 @@ spec:
                           - master
                           - slave
                           - none
+                          type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV VF interfaces
@@ -480,6 +487,10 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV virtual
                             functions for this VF interface.
@@ -564,6 +575,10 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the
+                            interface
+                          type: string
                         vid:
                           description: VID defines the VLAN ID value to be assigned
                             to this VLAN interface.
@@ -578,6 +593,12 @@ spec:
                       type: object
                     type: array
                 type: object
+              kernel:
+                description: Kernel defines the kernel of the host
+                enum:
+                - standard
+                - lowlatency
+                type: string
               labels:
                 additionalProperties:
                   type: string
@@ -940,9 +961,3 @@ spec:
     served: true
     storage: true
     subresources: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/disks"
+	common "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/platform"
 )
 
@@ -105,6 +106,34 @@ var _ = Describe("Constructor utils for kind", func() {
 					got := FixDevicePath(tt.args.path, tt.args.host)
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 				}
+			})
+		})
+	})
+
+	Describe("Test IsDefaultServiceParameter", func() {
+		Context("When filtering default service parameters", func() {
+			It("should return true", func() {
+				tests := common.DefaultParameters
+				for _, test := range tests {
+					singleServiceParameter := ServiceParameterInfo{
+						Service:   test.Service,
+						Section:   test.Section,
+						ParamName: test.ParamName,
+					}
+					got := IsDefaultServiceParameter(&singleServiceParameter)
+					Expect(got).To(BeTrue())
+				}
+			})
+		})
+		Context("When filtering not default service parameters", func() {
+			It("should return false", func() {
+				singleServiceParameter := ServiceParameterInfo{
+					Service:   "foo",
+					Section:   "bar",
+					ParamName: "foobar",
+				}
+				got := IsDefaultServiceParameter(&singleServiceParameter)
+				Expect(got).To(BeFalse())
 			})
 		})
 	})

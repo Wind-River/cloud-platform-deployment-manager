@@ -41,8 +41,11 @@ type PlatformNetworkSpec struct {
 	// +kubebuilder:validation:Enum=mgmt;pxeboot;infra;oam;multicast;system-controller;cluster-host;cluster-pod;cluster-service;storage;admin;other
 	Type string `json:"type"`
 
-	// Subnet defines the IPv4 or IPv6 network address for the network
+	// Subnet defines the subdivision IPv4 or IPv6 network address for the network
 	Subnet string `json:"subnet"`
+
+	// FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+	FloatingAddress string `json:"floatingAddress,omitempty"`
 
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=128
@@ -81,7 +84,7 @@ type PlatformNetworkStatus struct {
 
 	// DeploymentScope defines whether the resource has been deployed
 	// on the initial setup or during an update.
-	// +kubebuilder:validation:Enum=bootstrap;principal
+	// +kubebuilder:validation:Enum=bootstrap;principal;Bootstrap;Principal;BOOTSTRAP;PRINCIPAL
 	// +optional
 	// +kubebuilder:default:=bootstrap
 	DeploymentScope string `json:"deploymentScope"`
@@ -111,8 +114,8 @@ type PlatformNetworkStatus struct {
 // attributes of a StarlingX system.  This is a composition of the following
 // StarlingX API endpoints.
 //
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
-//   https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
+//	https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools
 //
 // +deepequal-gen=false
 // +kubebuilder:subresource:status

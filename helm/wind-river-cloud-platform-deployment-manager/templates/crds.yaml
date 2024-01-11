@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: datanetworks.starlingx.windriver.com
 spec:
   conversion:
@@ -115,6 +115,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -143,19 +147,13 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: hostprofiles.starlingx.windriver.com
 spec:
   conversion:
@@ -368,6 +366,9 @@ spec:
                           - layer2
                           - layer2+3
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                       required:
                       - class
                       - members
@@ -442,6 +443,9 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
                           maximum: 128
@@ -515,6 +519,9 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                         vfCount:
                           description: VFCount defines the number of SRIOV virtual functions for this VF interface.
                           maximum: 256
@@ -586,6 +593,9 @@ spec:
                           - slave
                           - none
                           type: string
+                        uuid:
+                          description: The system assigned unique UUID value for the interface
+                          type: string
                         vid:
                           description: VID defines the VLAN ID value to be assigned to this VLAN interface.
                           maximum: 4095
@@ -599,6 +609,12 @@ spec:
                       type: object
                     type: array
                 type: object
+              kernel:
+                description: Kernel defines the kernel of the host
+                enum:
+                - standard
+                - lowlatency
+                type: string
               labels:
                 additionalProperties:
                   type: string
@@ -894,19 +910,13 @@ spec:
     served: true
     storage: true
     subresources: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: hosts.starlingx.windriver.com
 spec:
   conversion:
@@ -1182,6 +1192,9 @@ spec:
                               - layer2
                               - layer2+3
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                           required:
                           - class
                           - members
@@ -1256,6 +1269,9 @@ spec:
                               - slave
                               - none
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                             vfCount:
                               description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
                               maximum: 128
@@ -1329,6 +1345,9 @@ spec:
                               - slave
                               - none
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                             vfCount:
                               description: VFCount defines the number of SRIOV virtual functions for this VF interface.
                               maximum: 256
@@ -1400,6 +1419,9 @@ spec:
                               - slave
                               - none
                               type: string
+                            uuid:
+                              description: The system assigned unique UUID value for the interface
+                              type: string
                             vid:
                               description: VID defines the VLAN ID value to be assigned to this VLAN interface.
                               maximum: 4095
@@ -1413,6 +1435,12 @@ spec:
                           type: object
                         type: array
                     type: object
+                  kernel:
+                    description: Kernel defines the kernel of the host
+                    enum:
+                    - standard
+                    - lowlatency
+                    type: string
                   labels:
                     additionalProperties:
                       type: string
@@ -1734,6 +1762,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               hostProfileConfigurationUpdated:
                 description: Value for host profile configuration is updated or not
@@ -1772,19 +1804,13 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: platformnetworks.starlingx.windriver.com
 spec:
   conversion:
@@ -1881,6 +1907,9 @@ spec:
                 required:
                 - type
                 type: object
+              floatingAddress:
+                description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+                type: string
               gateway:
                 description: Gateway defines the nexthop gateway IP address if applicable
                 type: string
@@ -1889,7 +1918,7 @@ spec:
                 minimum: 1
                 type: integer
               subnet:
-                description: Subnet defines the IPv4 or IPv6 network address for the network
+                description: Subnet defines the subdivision IPv4 or IPv6 network address for the network
                 type: string
               type:
                 description: Type defines the intended usage of the network
@@ -1928,6 +1957,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -1959,19 +1992,13 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: ptpinstances.starlingx.windriver.com
 spec:
   conversion:
@@ -2053,6 +2080,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -2081,19 +2112,13 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: ptpinterfaces.starlingx.windriver.com
 spec:
   conversion:
@@ -2171,6 +2196,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
@@ -2199,19 +2228,13 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: systems.starlingx.windriver.com
 spec:
   conversion:
@@ -2494,6 +2517,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
@@ -2511,6 +2538,10 @@ spec:
               softwareVersion:
                 description: SoftwareVersion defines the current software version reported by the system API.
                 type: string
+              strategyApplied:
+                default: false
+                description: Strategy monitor status information for Day 2 operation
+                type: boolean
               strategyRequired:
                 default: not_required
                 description: Value for configuration is updated or not
@@ -2519,6 +2550,9 @@ spec:
                 - lock_required
                 - unlock_required
                 type: string
+              strategyRetryCount:
+                description: Strategy monitor retry count for Day 2 operation
+                type: integer
               systemMode:
                 description: SystemMode defines the current system mode reported by the system API.
                 type: string
@@ -2531,9 +2565,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

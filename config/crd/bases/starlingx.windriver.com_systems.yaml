@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: systems.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -349,6 +348,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the unique identifier assigned by the system.
@@ -371,6 +374,10 @@ spec:
                 description: SoftwareVersion defines the current software version
                   reported by the system API.
                 type: string
+              strategyApplied:
+                default: false
+                description: Strategy monitor status information for Day 2 operation
+                type: boolean
               strategyRequired:
                 default: not_required
                 description: Value for configuration is updated or not
@@ -379,6 +386,9 @@ spec:
                 - lock_required
                 - unlock_required
                 type: string
+              strategyRetryCount:
+                description: Strategy monitor retry count for Day 2 operation
+                type: integer
               systemMode:
                 description: SystemMode defines the current system mode reported by
                   the system API.
@@ -393,9 +403,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

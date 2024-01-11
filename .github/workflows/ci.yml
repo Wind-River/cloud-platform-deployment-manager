@@ -1,0 +1,43 @@
+name: Go test CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  go-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+        cache: false
+
+    - name: Test the commit
+      run: make test
+
+    - name: Build deployctl
+      run: make tools
+
+  golangci-lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+        cache: false
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.49
+        args: "-v --timeout 15m0s"

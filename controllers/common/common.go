@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -151,6 +152,8 @@ const (
 	ResourceDependency = "Dependency"
 )
 
+var logCommon = log.Log.WithName("commmon")
+
 func FormatStruct(obj interface{}) string {
 	buf, _ := json.Marshal(obj)
 	return string(buf)
@@ -267,7 +270,17 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Error(in, "validation error", "request", request)
 
-	case ErrSystemDependency, ErrResourceStatusDependency:
+	case ErrSystemDependency, ErrResourceConfigurationDependency:
+		// These errors are transient errors.  Resources must be configured
+		// properly before reconciling changes therefore we need to wait until
+		// they settle before continuing.
+		resetClient = false
+		result = RetryTransientError
+		err = nil
+
+		h.Error(in, "resource configuration error", "request", request)
+
+	case ErrResourceStatusDependency:
 		// These errors are transient errors.  Resources must be in stable
 		// states before reconciling changes therefore we need to wait until
 		// they settle before continuing.
@@ -275,7 +288,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryTransientError
 		err = nil
 
-		h.Error(in, "resource status error", "request", request)
+		h.Info("waiting for dependency status", "request", request)
 
 	case manager.ClientError, ErrUserDataError,
 		starlingxv1.ErrMissingSystemResource, ErrMissingKubernetesResource:
@@ -295,7 +308,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryNever
 		err = nil
 
-		h.Error(in, "waiting for host monitor", "request", request)
+		h.Info("waiting for host monitor to trigger another reconciliation", "request", request)
 
 	default:
 		resetClient = false
@@ -403,17 +416,19 @@ func GetDeltaString(spec interface{}, current interface{}, parameters map[string
 	return deltaString, nil
 }
 
-/* CollectDiffValues collects and returns the diff values from the given diff string.
- The function returns lines starting with '+' or '-' that represent the differences,
- and will provide the parent hierarchy for that line based on the given parameters.
+/*
+	CollectDiffValues collects and returns the diff values from the given diff string.
+	The function returns lines starting with '+' or '-' that represent the differences,
+	and will provide the parent hierarchy for that line based on the given parameters.
 
- Output example:
+	Output example:
 
 storage:
+
 	"filesystems":
+
 -		"size":		5,
 +		"size":		10,
-
 */
 func collectDiffValues(diff string, parameters map[string]interface{}) string {
 	var diffLines []string
@@ -434,8 +449,8 @@ removeDataTypes removes data types and specific interfaces from the given string
 The modified string with data types and specific interfaces removed.
 Example:
 
-  input: "float64(1500)"
-  output: "1500"
+	input: "float64(1500)"
+	output: "1500"
 */
 func removeDataTypes(line string) string {
 	// Define the regular expression to match and capture data types
@@ -487,6 +502,7 @@ func processLines(lines []string, parameters map[string]interface{}) strings.Bui
 //   - lines: A slice of strings representing the lines of the diff.
 //   - lineNumber: The index of the line being processed.
 //   - parameters: A map of resource properties with their corresponding values.
+//
 // Returns:
 //   - A string representing the hierarchy of the parent and sub-parameters, or "param_found" if the line represents a parameter itself.
 //     The hierarchy is constructed in the format: "parent:\n\t"sub-parameter":\n".
@@ -531,4 +547,28 @@ func searchParameters(lines []string, lineNumber int, parameters map[string]inte
 	}
 
 	return result
+}
+
+// Sync interface name for ethernet
+// When N3000 interface is used, it is possible to change name after unlocked.
+// This function is to copy interface name from current to profile if uuid is the same
+// to avoid configuration difference because of names.
+func SyncIFNameByUuid(profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec) {
+
+	if_current := current.Interfaces.Ethernet
+	if_profile := profile.Interfaces.Ethernet
+	for idx_current := range if_current {
+		info_current := if_current[idx_current].CommonInterfaceInfo
+		port_current := if_current[idx_current].Port.Name
+		for idx_profile := range if_profile {
+			info_profile := if_profile[idx_profile].CommonInterfaceInfo
+			if info_profile.UUID == info_current.UUID &&
+				info_profile.Name != info_current.Name {
+				logCommon.Info("Ethernet name sync", "profile", info_profile.Name,
+					"current", info_current.Name, "uuid", info_profile.UUID)
+				if_profile[idx_profile].CommonInterfaceInfo.Name = info_current.Name
+				if_profile[idx_profile].Port.Name = port_current
+			}
+		}
+	}
 }

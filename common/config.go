@@ -29,6 +29,7 @@ const (
 	DataNetwork       ReconcilerName = "dataNetwork"
 	Host              ReconcilerName = "host"
 	BMC               ReconcilerName = "host.bmc"
+	Kernel            ReconcilerName = "host.kernel"
 	Memory            ReconcilerName = "host.memory"
 	Processor         ReconcilerName = "host.processor"
 	Storage           ReconcilerName = "host.storage"
@@ -64,6 +65,7 @@ var reconcilerDefaultStates = map[ReconcilerName]bool{
 	DataNetwork:       true,
 	Host:              true,
 	BMC:               true,
+	Kernel:            true,
 	Memory:            true,
 	Processor:         true,
 	Storage:           true,

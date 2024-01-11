@@ -280,6 +280,9 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		return false
 	}
 
+	if in.UUID != other.UUID {
+		return false
+	}
 	if in.Name != other.Name {
 		return false
 	}
@@ -1413,6 +1416,9 @@ func (in *PlatformNetworkSpec) DeepEqual(other *PlatformNetworkSpec) bool {
 	if in.Subnet != other.Subnet {
 		return false
 	}
+	if in.FloatingAddress != other.FloatingAddress {
+		return false
+	}
 	if in.Prefix != other.Prefix {
 		return false
 	}
@@ -1774,6 +1780,16 @@ func (in *ProfileBaseAttributes) DeepEqual(other *ProfileBaseAttributes) bool {
 			return false
 		} else if in.HwSettle != nil {
 			if *in.HwSettle != *other.HwSettle {
+				return false
+			}
+		}
+	}
+
+	if in.Kernel != nil {
+		if (in.Kernel == nil) != (other.Kernel == nil) {
+			return false
+		} else if in.Kernel != nil {
+			if *in.Kernel != *other.Kernel {
 				return false
 			}
 		}
@@ -2426,6 +2442,12 @@ func (in *SystemStatus) DeepEqual(other *SystemStatus) bool {
 		return false
 	}
 	if in.Delta != other.Delta {
+		return false
+	}
+	if in.StrategyApplied != other.StrategyApplied {
+		return false
+	}
+	if in.StrategyRetryCount != other.StrategyRetryCount {
 		return false
 	}
 

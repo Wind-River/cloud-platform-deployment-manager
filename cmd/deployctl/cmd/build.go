@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package cmd
 
@@ -39,6 +39,8 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var noInterfaceDefaults bool
 	var normalizeConsole bool
 	var noCACertificates bool
+	var noDRBDLinkUtilization bool
+	var noFileSystems bool
 	var noServiceParams bool
 	var outputFile *os.File
 	var minimalConfig bool
@@ -169,11 +171,19 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	if minimalConfig {
 		noCACertificates = true
 		noDefaults = true
+		noDRBDLinkUtilization = true
+		noFileSystems = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
 		normalizeMTU = true
 		normalizeConsole = true
 		noServiceParams = true
+	}
+
+	if noDefaults {
+		noDRBDLinkUtilization = true
+		noFileSystems = true
+		noCACertificates = true
 	}
 
 	ao, err := manager.GetAuthOptionsFromEnv()
@@ -282,12 +292,20 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 
 	systemFilters := make([]build.SystemFilter, 0)
 
+	if noDRBDLinkUtilization {
+		systemFilters = append(systemFilters, build.NewDRBDLinkUtilizationFilter())
+	}
+
+	if noFileSystems {
+		systemFilters = append(systemFilters, build.NewFileSystemFilter())
+	}
+
 	if noCACertificates {
 		systemFilters = append(systemFilters, build.NewCACertificateFilter())
 	}
 
 	if noServiceParams {
-		systemFilters = append(systemFilters, build.NewServiceParametersSystemFilter())
+		systemFilters = append(systemFilters, build.NewNoServiceParametersSystemFilter())
 	}
 
 	if len(systemFilters) > 0 {
@@ -358,7 +376,7 @@ func init() {
 	collectCmd.Flags().StringP(OutputFileNameArg, "o", "deployment-config.yaml", "A destination path used for output.")
 	collectCmd.Flags().StringP(SystemNameArg, "s", "", "The name of the system to be created")
 	collectCmd.Flags().StringP(NamespaceNameArg, "n", "deployment", "The name of the namespace used to contain the system")
-	collectCmd.Flags().BoolP(NoDefaultsFilterArg, "f", false, "Enable/disable use of filters to remove unwanted fields")
+	collectCmd.Flags().BoolP(NoDefaultsFilterArg, "f", false, "Exclude all unwanted default fields for initial config")
 	collectCmd.Flags().Bool(NoCACertificatesFilterArg, false, "Exclude all trusted CA certificates from system instances")
 	collectCmd.Flags().Bool(NoMemoryFilterArg, false, "Exclude all memory configurations from profiles")
 	collectCmd.Flags().Bool(NoProcessorFilterArg, false, "Exclude all processor configurations from profiles")

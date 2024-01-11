@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package common
 
@@ -131,3 +131,35 @@ func RemoveString(slice []string, s string) (result []string) {
 	}
 	return
 }
+
+// DedupeSlice is a utility function that removes a duplicated element from
+// a slice.
+// TODO(yuxing): switch to generic comparable after switch to go 1.20 which
+// supports comparable.
+func DedupeSlice[T string | int](sliceList []T) []T {
+	dedupeMap := make(map[T]bool)
+	list := []T{}
+	for _, item := range sliceList {
+		if _, value := dedupeMap[item]; !value {
+			dedupeMap[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+/*
+func DedupeSlice[T comparable](sliceList []T) []T {
+    dedupeMap := make(map[T]bool)
+    list := []T{}
+
+    for _, item := range sliceList {
+        if _, value := dedupeMap[item]; !value {
+            dedupeMap[item] = true
+            list = append(list, item)
+        }
+    }
+
+    return list
+}
+*/

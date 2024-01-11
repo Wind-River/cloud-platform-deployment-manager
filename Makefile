@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2022 Wind River Systems, Inc.
+# Copyright(c) 2019-2023 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -60,7 +60,7 @@ HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
 DEEPCOPY_GEN_FILE=./api/v1/zz_generated.deepcopy.go
 
 .PHONY: all
-all: helm-ver-check test build tools helm-package docker-build examples
+all: helm-ver-check test golangci build tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -99,15 +99,14 @@ fmt: ## Run go fmt against code.
 	go fmt ./...
 
 golangci: golangci-lint ## Run the golangci-lint static analysis
-	$(GOLANGCI_LINT) run ./api/...
-	$(GOLANGCI_LINT) run ./controllers/...
+	$(GOLANGCI_LINT) run ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt golangci vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build
@@ -176,7 +175,7 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.8.0
+CONTROLLER_TOOLS_VERSION ?= v0.12.1
 GOLANGCI_LINT_VERSION ?= v1.49.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -260,6 +259,8 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
 	$(KUSTOMIZE) build examples/standard/hw-settle > examples/standard-hw-settle.yaml
 	$(KUSTOMIZE) build examples/storage/default > examples/storage.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/bootstrap > examples/storage-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/storage/day2-operation/principal > examples/storage-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-sx/default > examples/aio-sx.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-sx/https > examples/aio-sx-https.yaml
@@ -269,7 +270,12 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
 	$(KUSTOMIZE) build examples/aio-sx/hw-settle > examples/aio-sx-hw-settle.yaml
+	$(KUSTOMIZE) build examples/aio-sx/kernel > examples/aio-sx-kernel.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/bootstrap > examples/aio-sx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https > examples/aio-dx-https.yaml
 	$(KUSTOMIZE) build examples/aio-dx/https-with-cert-manager > examples/aio-dx-https-with-cert-manager.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/bootstrap > examples/aio-dx-day2-bootstrap.yaml
+	$(KUSTOMIZE) build examples/aio-dx/day2-operation/principal > examples/aio-dx-day2-principal.yaml

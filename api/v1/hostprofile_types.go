@@ -186,7 +186,8 @@ type OSDList []OSDInfo
 // GetClusterName returns the configured cluster name or the default if it
 // wasn't specified.
 // TODO(alegacy): this could be done with a defaulting webhook but it seems like
-//  overkill for so few cases where a default is necessary.
+//
+//	overkill for so few cases where a default is necessary.
 func (in *OSDInfo) GetClusterName() string {
 	if in.ClusterName == nil {
 		return clusters.CephClusterName
@@ -403,6 +404,10 @@ func StringsToPtpInterfaceItemList(items []string) PtpInterfaceItemList {
 // and inlined within each of the different interface type structures.
 // +deepequal-gen:ignore-nil-fields=true
 type CommonInterfaceInfo struct {
+	// The system assigned unique UUID value for the interface
+	// +optional
+	UUID string `json:"uuid"`
+
 	// Name defines the name of the interface to be configured.
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$
@@ -859,6 +864,11 @@ type ProfileBaseAttributes struct {
 	// +kubebuilder:validation:Pattern=^[0-9]+$
 	// +optional
 	HwSettle *string `json:"hwSettle,omitempty"`
+
+	// Kernel defines the kernel of the host
+	// +kubebuilder:validation:Enum=standard;lowlatency
+	// +optional
+	Kernel *string `json:"kernel,omitempty"`
 }
 
 // HostProfileSpec defines the desired state of HostProfile
@@ -1003,7 +1013,7 @@ func (in *HostProfileSpec) HasWorkerSubFunction() bool {
 // system API attributes and is the most complex part of the schema definition.
 // Refer the full list of API documentation here:
 //
-//   https://docs.starlingx.io/api-ref/stx-config/index.html
+//	https://docs.starlingx.io/api-ref/stx-config/index.html
 //
 // +deepequal-gen=false
 // +kubebuilder:printcolumn:name="base",type="string",JSONPath=".spec.base",description="The parent host profile."

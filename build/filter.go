@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
 
 package build
 
@@ -711,6 +711,45 @@ type SystemFilter interface {
 	Filter(system *v1.System, deployment *Deployment) error
 }
 
+// Filter for DRBD
+type DRBDLinkUtilizationFilter struct {
+}
+
+func NewDRBDLinkUtilizationFilter() *DRBDLinkUtilizationFilter {
+	return &DRBDLinkUtilizationFilter{}
+}
+
+func (in *DRBDLinkUtilizationFilter) Filter(system *v1.System, deployment *Deployment) error {
+	system.Spec.Storage.DRBD = nil
+	return nil
+}
+
+// Filter all filesystem types except backup and database
+type FileSystemFilter struct {
+}
+
+func NewFileSystemFilter() *FileSystemFilter {
+	return &FileSystemFilter{}
+}
+
+func (in *FileSystemFilter) Filter(system *v1.System, deployment *Deployment) error {
+	result := make([]v1.ControllerFileSystemInfo, 0)
+
+	for _, fs := range *system.Spec.Storage.FileSystems {
+		if fs.Name == "backup" || fs.Name == "database" || fs.Name == "instances" || fs.Name == "image-conversion" {
+			info := v1.ControllerFileSystemInfo{
+				Name: fs.Name,
+				Size: fs.Size,
+			}
+			result = append(result, info)
+		}
+	}
+	list := v1.ControllerFileSystemList(result)
+	system.Spec.Storage.FileSystems = &list
+
+	return nil
+}
+
 // CACertificateFilter defines a system filter that removes trusted CA
 // certificates from the configuration under the assumption that they were added
 // at bootstrap time rather than as a post install step.  This is being done
@@ -754,25 +793,25 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 type ServiceParameterFilter struct {
 }
 
+// Filter out the default service parameters
 func NewServiceParametersSystemFilter() *ServiceParameterFilter {
 	return &ServiceParameterFilter{}
 }
 
-func IsDefaultServiceParameter(sp *v1.ServiceParameterInfo) bool {
-	return true
-}
-
-func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployment) error {
+func (in *ServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
 	if system.Spec.ServiceParameters == nil {
 		return nil
 	}
 
 	result := make([]v1.ServiceParameterInfo, 0)
 	for _, sp := range *system.Spec.ServiceParameters {
-		// currently this skips everything
-		if IsDefaultServiceParameter(&sp) {
+
+		// If is a default service parameter, skip to add it
+		if v1.IsDefaultServiceParameter(&sp) {
 			continue
 		}
+
 		result = append(result, sp)
 	}
 
@@ -781,6 +820,110 @@ func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployme
 		system.Spec.ServiceParameters = &list
 	} else {
 		system.Spec.ServiceParameters = nil
+	}
+
+	return nil
+}
+
+type NoServiceParameterFilter struct {
+}
+
+// Fileter out all the service parameters
+func NewNoServiceParametersSystemFilter() *NoServiceParameterFilter {
+	return &NoServiceParameterFilter{}
+}
+
+func (in *NoServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
+	system.Spec.ServiceParameters = nil
+	return nil
+}
+
+// InterfaceRemoveUuidFilter defines a profile and host filter that removes
+// uuid values from interfaces.
+type InterfaceRemoveUuidFilter struct {
+	updates map[string]string
+}
+
+func NewInterfaceRemoveUuidFilter() *InterfaceRemoveUuidFilter {
+	return &InterfaceRemoveUuidFilter{}
+}
+
+func (in *InterfaceRemoveUuidFilter) Reset() {
+	in.updates = make(map[string]string)
+}
+
+func (in *InterfaceRemoveUuidFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
+	info.UUID = ""
+}
+
+func (in *InterfaceRemoveUuidFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+	// Check in profile
+	if profile.Spec.Interfaces == nil {
+		return nil
+	}
+
+	ethernet := profile.Spec.Interfaces.Ethernet
+	for idx := range ethernet {
+		in.CheckInterface(&ethernet[idx].CommonInterfaceInfo)
+	}
+
+	bonds := profile.Spec.Interfaces.Bond
+	for idx := range bonds {
+		in.CheckInterface(&bonds[idx].CommonInterfaceInfo)
+	}
+
+	vlans := profile.Spec.Interfaces.VLAN
+	for idx := range vlans {
+		in.CheckInterface(&vlans[idx].CommonInterfaceInfo)
+	}
+
+	vfs := profile.Spec.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
+	}
+
+	// Check in host override
+	if host.Spec.Overrides.Interfaces == nil {
+		return nil
+	}
+
+	ethernet = host.Spec.Overrides.Interfaces.Ethernet
+	for idx := range ethernet {
+		in.CheckInterface(&ethernet[idx].CommonInterfaceInfo)
+	}
+
+	bonds = host.Spec.Overrides.Interfaces.Bond
+	for idx := range bonds {
+		in.CheckInterface(&bonds[idx].CommonInterfaceInfo)
+	}
+
+	vlans = host.Spec.Overrides.Interfaces.VLAN
+	for idx := range vlans {
+		in.CheckInterface(&vlans[idx].CommonInterfaceInfo)
+	}
+
+	vfs = host.Spec.Overrides.Interfaces.VF
+	for idx := range vfs {
+		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
+	}
+	return nil
+}
+
+// HostKernelFilter defines a profile and host filter that removes
+// kernel values from interfaces.
+type HostKernelFilter struct {
+}
+
+func NewHostKernelFilter() *HostKernelFilter {
+	return &HostKernelFilter{}
+}
+
+func (in *HostKernelFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+
+	// filter kernel parameter from hostprofile for hosts that are not worker/compute nodes
+	if !profile.Spec.HasWorkerSubFunction() {
+		profile.Spec.Kernel = nil
 	}
 
 	return nil

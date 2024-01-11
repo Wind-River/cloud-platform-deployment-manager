@@ -1,0 +1,64 @@
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: storage-0
+  namespace: deployment
+status:
+  deploymentScope: "principal"
+spec:
+  profile: storage-profile
+  overrides:
+    bootMAC: STORAGE0-NEW-MAC
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: storage-1
+  namespace: deployment
+status:
+  deploymentScope: "principal"
+spec:
+  profile: storage-profile
+  overrides:
+    bootMAC: STORAGE1-NEW-MAC
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-0
+  namespace: deployment
+status:
+  deploymentScope: "principal"
+spec:
+  overrides:
+    bootMAC: COMPUTE0-NEW-MAC
+  profile: worker-profile
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+status:
+  deploymentScope: "principal"
+spec:
+  contact: info@windriver.com
+  description: Virtual Box Standard System
+  location: vbox
+  ntpServers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+  - 3.pool.ntp.org
+  storage:
+    backends:
+    - name: ceph-store
+      type: ceph
