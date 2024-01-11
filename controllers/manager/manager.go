@@ -48,7 +48,8 @@ const (
 )
 
 const (
-	OAMNetworkType = "oam"
+	OAMNetworkType   = "oam"
+	AdminNetworkType = "admin"
 )
 
 const (

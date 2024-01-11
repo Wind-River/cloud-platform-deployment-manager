@@ -1918,7 +1918,7 @@ func (r *HostReconciler) ReconcileRoutes(client *gophercloud.ServiceClient, inst
 	return nil
 }
 
-// ReconcileNetworking is responsible for reconciling the Memory configuration
+// ReconcileNetworking is responsible for reconciling the network configuration
 // of a host resource.
 func (r *HostReconciler) ReconcileNetworking(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	var err error
@@ -1996,12 +1996,6 @@ func (r *HostReconciler) ReconcileNetworking(client *gophercloud.ServiceClient, 
 
 	// Update/Add addresses
 	err = r.ReconcileAddresses(client, instance, profile, host)
-	if err != nil {
-		return err
-	}
-
-	// Update/Add routes
-	err = r.ReconcileRoutes(client, instance, profile, host)
 	if err != nil {
 		return err
 	}
