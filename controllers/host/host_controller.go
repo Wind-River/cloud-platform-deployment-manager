@@ -759,6 +759,12 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
+	// Update/Add routes
+	err = r.ReconcileRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	err = r.ReconcileFileSystemSizes(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -960,6 +966,12 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
+	if utils.IsReconcilerEnabled(utils.Route) {
+		if !in.Routes.DeepEqual(&other.Routes) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -1025,12 +1037,6 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 				return false
 			}
 		}
-
-		if utils.IsReconcilerEnabled(utils.Route) {
-			if !in.Routes.DeepEqual(&other.Routes) {
-				return false
-			}
-		}
 	}
 
 	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
@@ -1074,7 +1080,29 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			if principal {
-				instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
+					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
+					iface, found := host.FindInterfaceByName(ethInfo.Name)
+					if !found {
+						msg := fmt.Sprintf("unable to find interface: %s", ethInfo.Name)
+						return starlingxv1.NewMissingSystemResource(msg)
+					}
+
+					// We need to reconcile the interfaces to assign the admin network
+					_, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+					if err != nil {
+						return err
+					}
+
+					// The platformnetwork_controller will create the address pool and
+					// the network; the controller just needs to assign the network to
+					// the interface. If any other changes require lock/unlock, then it
+					// will do so afterward.
+					return nil
+				} else {
+					instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+					logHost.V(2).Info("set lock required")
+				}
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
@@ -1082,8 +1110,8 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 						common.FormatStruct(instance.Status))
 					return err
 				}
-				logHost.V(2).Info("set lock required")
 			}
+
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
@@ -1123,6 +1151,51 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 	}
 
 	return nil
+}
+
+// hasAdminNetworkChange checks whether the addition of "admin" to PlatformNetworks
+// within an existing (multi-netting) EthernetInfo is present in the given profile and
+// current InterfaceInfo instances.
+func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
+	if profileInterfaces == nil || currentInterfaces == nil {
+		return nil, false
+	}
+
+	for _, profileEth := range profileInterfaces.Ethernet {
+		logHost.V(2).Info("Profile Ethernet Name", "name", profileEth.Name)
+		currentEth := findEthernetInfoByName(currentInterfaces.Ethernet, profileEth.Name)
+		logHost.V(2).Info("Current ethernetinfo", "ethernet", currentEth)
+		if currentEth == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileEth.PlatformNetworks, currentEth.PlatformNetworks) {
+			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
+		}
+	}
+	return nil, false
+}
+
+// findEthernetInfoByName is a utility function to locate an EthernetInfo in a list
+// by its name.
+func findEthernetInfoByName(ethList []starlingxv1.EthernetInfo, name string) *starlingxv1.EthernetInfo {
+	for i := range ethList {
+		if ethList[i].Name == name {
+			return &ethList[i]
+		}
+	}
+	return nil
+}
+
+// containsAdminPlatformNetwork is a utility function to determine if "admin" has
+// been added to the PlatformNetworks list.
+func containsAdminPlatformNetwork(platformNetworks starlingxv1.PlatformNetworkItemList) bool {
+	for _, network := range platformNetworks {
+		if strings.ToLower(string(network)) == cloudManager.AdminNetworkType {
+			return true
+		}
+	}
+	return false
 }
 
 // statusUpdateRequired is a utility function which determines whether an update
