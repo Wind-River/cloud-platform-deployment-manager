@@ -1073,6 +1073,48 @@ var _ = Describe("Constructor utils for kind", func() {
 			})
 		})
 	})
+
+	Describe("Test parseCertificateInfo filtering certificates", func() {
+		Context("When non empty CertificateInfo is given with openstack_CA/openldap/docker_registry/ssl cert included", func() {
+			It("Populates the spec with CertificateInfo without the openstack_CA/openldap/docker_registry/ssl cert", func() {
+				spec := &SystemSpec{}
+				certificates := []certificates.Certificate{
+					{
+						Type:      "T1",
+						Signature: "hash1",
+					},
+					{
+						Type:      "openstack_ca",
+						Signature: "hash2",
+					},
+					{
+						Type:      "openldap",
+						Signature: "hash3",
+					},
+					{
+						Type:      "docker_registry",
+						Signature: "hash4",
+					},
+					{
+						Type:      "ssl",
+						Signature: "hash5",
+					},
+				}
+				certInfo := []CertificateInfo{
+					{
+						Type:      "T1",
+						Signature: "hash1",
+						Secret:    "T1-cert-secret-0",
+					},
+				}
+				want := CertificateList(certInfo)
+				err := parseCertificateInfo(spec, certificates)
+				Expect(err).To(BeNil())
+				Expect(*spec.Certificates).To(Equal(want))
+			})
+		})
+	})
+
 	Describe("Test parseMonitorInfo", func() {
 		Context("When one of the monitor hostname is same as host name", func() {
 			It("Sucessfully adds the monitor info to the profile spec", func() {

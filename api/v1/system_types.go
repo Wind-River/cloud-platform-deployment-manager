@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package v1
 
@@ -16,6 +16,7 @@ const (
 	OpenstackCACertificate = "openstack_ca"
 	DockerCertificate      = "docker_registry"
 	TPMCertificate         = "tpm_mode"
+	OpenLDAPCertificate    = "openldap"
 )
 
 const (
@@ -520,18 +521,4 @@ type SystemList struct {
 
 func init() {
 	SchemeBuilder.Register(&System{}, &SystemList{})
-}
-
-// HTTPSEnabled determine whether HTTPS needs to be enabled.  Rather than model
-// this attribute explicitly we determine the result dynamically.
-func (in *System) HTTPSEnabled() bool {
-	if in.Spec.Certificates != nil {
-		for _, c := range *in.Spec.Certificates {
-			if (c.Type == PlatformCertificate) || (c.Type == TPMCertificate) {
-				return true
-			}
-		}
-	}
-
-	return false
 }

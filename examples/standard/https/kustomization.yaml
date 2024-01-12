@@ -1,8 +1,0 @@
-bases:
-  - ../default
-
-resources:
-  - platform_certificate_secret.yaml
-
-patches:
-  - platform_certificate_patch.yaml

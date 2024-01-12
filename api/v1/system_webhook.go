@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package v1
 
@@ -142,6 +142,13 @@ func validateStorage(obj *System) error {
 func validateCertificates(obj *System) error {
 	if obj.Spec.Certificates != nil {
 		for _, c := range *obj.Spec.Certificates {
+			// Ignore certificates installed during bootstrap/initial unlock
+			// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
+			if c.Type == OpenstackCACertificate || c.Type == OpenLDAPCertificate ||
+				c.Type == DockerCertificate || c.Type == PlatformCertificate {
+				continue
+			}
+
 			secret := &corev1.Secret{}
 			secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.ObjectMeta.Namespace}
 			found := false

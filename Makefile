@@ -252,8 +252,6 @@ helm-package: helm-ver-check helm-lint
 examples: kustomize
 	$(KUSTOMIZE) build examples/standard/default > examples/standard.yaml
 	$(KUSTOMIZE) build examples/standard/vxlan > examples/standard-vxlan.yaml
-	$(KUSTOMIZE) build examples/standard/https > examples/standard-https.yaml
-	$(KUSTOMIZE) build examples/standard/https-with-cert-manager > examples/standard-https-with-cert-manager.yaml
 	$(KUSTOMIZE) build examples/standard/bond > examples/standard-bond.yaml
 	$(KUSTOMIZE) build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
@@ -263,8 +261,6 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/storage/day2-operation/principal > examples/storage-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-sx/default > examples/aio-sx.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
-	$(KUSTOMIZE) build examples/aio-sx/https > examples/aio-sx-https.yaml
-	$(KUSTOMIZE) build examples/aio-sx/https-with-cert-manager > examples/aio-sx-https-with-cert-manager.yaml
 	$(KUSTOMIZE) build examples/aio-sx/single-nic > examples/aio-sx-single-nic.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vf-rate-limit > examples/aio-sx-vf-rate-limit.yaml
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
@@ -275,7 +271,5 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
-	$(KUSTOMIZE) build examples/aio-dx/https > examples/aio-dx-https.yaml
-	$(KUSTOMIZE) build examples/aio-dx/https-with-cert-manager > examples/aio-dx-https-with-cert-manager.yaml
 	$(KUSTOMIZE) build examples/aio-dx/day2-operation/bootstrap > examples/aio-dx-day2-bootstrap.yaml
 	$(KUSTOMIZE) build examples/aio-dx/day2-operation/principal > examples/aio-dx-day2-principal.yaml
