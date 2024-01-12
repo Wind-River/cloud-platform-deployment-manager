@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -77,38 +77,6 @@ var _ = Describe("Datanetwork controller", func() {
 				err := k8sClient.Get(ctx, key, fetched)
 				return err == nil
 			}, timeout, interval).Should(BeFalse())
-		})
-	})
-	Describe("Test HTTPSEnabled function", func() {
-		Context("When certificate type is platform", func() {
-			It("should return true i.e https is enabled", func() {
-				in := &System{
-					Spec: SystemSpec{
-						Certificates: &CertificateList{
-							{
-								Type: PlatformCertificate,
-							},
-						},
-					},
-				}
-				out := in.HTTPSEnabled()
-				Expect(out).To(BeTrue())
-			})
-		})
-		Context("When certificate type is docekr_registry", func() {
-			It("should return false i.e https is disabled", func() {
-				in := &System{
-					Spec: SystemSpec{
-						Certificates: &CertificateList{
-							{
-								Type: DockerCertificate,
-							},
-						},
-					},
-				}
-				out := in.HTTPSEnabled()
-				Expect(out).To(BeFalse())
-			})
 		})
 	})
 	Describe("Test DeepEqual function", func() {

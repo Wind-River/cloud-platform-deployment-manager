@@ -349,8 +349,8 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test  CACertificateFilter", func() {
-		Context("When there is ssl_ca and openstack_ca type certificates are also present", func() {
-			It("filters out the ssl_ca and openstack_ca type certificates", func() {
+		Context("When there is ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates are also present", func() {
+			It("filters out the ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates", func() {
 				filter := &CACertificateFilter{}
 
 				// Create a test case with sample input
@@ -365,7 +365,16 @@ var _ = Describe("Test filters utilities:", func() {
 								Type: v1.OpenstackCACertificate, // this will be filtered out
 							},
 							{
-								Type: v1.DockerCertificate,
+								Type: v1.PlatformCertificate, // this will be filtered out
+							},
+							{
+								Type: v1.DockerCertificate, // this will be filtered out
+							},
+							{
+								Type: v1.OpenLDAPCertificate, // this will be filtered out
+							},
+							{
+								Type: v1.TPMCertificate,
 							},
 						},
 					},
@@ -380,7 +389,7 @@ var _ = Describe("Test filters utilities:", func() {
 				// Check if file systems have been filtered as expected
 				expectedFilteredCertificates := []v1.CertificateInfo{
 					{
-						Type: v1.DockerCertificate,
+						Type: v1.TPMCertificate,
 					},
 				}
 				list := v1.CertificateList(expectedFilteredCertificates)
