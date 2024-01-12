@@ -48,6 +48,10 @@ const (
 )
 
 const (
+	OAMNetworkType = "oam"
+)
+
+const (
 	StrategyNotRequired    = "not_required"
 	StrategyLockRequired   = "lock_required"
 	StrategyUnlockRequired = "unlock_required"
