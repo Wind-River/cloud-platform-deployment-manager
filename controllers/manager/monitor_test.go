@@ -363,6 +363,24 @@ func (m *Dummymanager) ListStrategyRequired() string {
 func (m *Dummymanager) UpdateConfigVersion() {
 
 }
+func (m *Dummymanager) GetHostUpdateRoutinesRunning() bool {
+	return false
+}
+func (m *Dummymanager) SetHostUpdateRoutinesRunning(b bool) {
+
+}
+func (m *Dummymanager) ReceiveHostStrategyUpdate() HostStrategyInfo {
+	return HostStrategyInfo{}
+}
+func (m *Dummymanager) SendHostStrategyUpdate(host_strategy HostStrategyInfo) error {
+	return nil
+}
+func (m *Dummymanager) ReceiveHostReconciliationTrigger() HostStrategyInfo {
+	return HostStrategyInfo{}
+}
+func (m *Dummymanager) SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error {
+	return nil
+}
 func (m *Dummymanager) GetConfigVersion() int {
 	return m.config_version
 }

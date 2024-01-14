@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -48,7 +49,10 @@ const (
 )
 
 const (
-	OAMNetworkType = "oam"
+	OAMNetworkType   = "oam"
+	MgmtNetworkType  = "mgmt"
+	AdminNetworkType = "admin"
+	MgmtAddrPoolName = "management"
 )
 
 const (
@@ -106,6 +110,12 @@ type CloudManager interface {
 	StartStrategyMonitor()
 	SetStrategyRetryCount(c int) error
 	GetStrategyRetryCount() (int, error)
+	SendHostStrategyUpdate(host_strategy HostStrategyInfo) error
+	ReceiveHostStrategyUpdate() HostStrategyInfo
+	SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error
+	ReceiveHostReconciliationTrigger() HostStrategyInfo
+	GetHostUpdateRoutinesRunning() bool
+	SetHostUpdateRoutinesRunning(b bool)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -170,13 +180,21 @@ type StrategyStatus struct {
 	MonitorStarted bool
 }
 
+type HostStrategyInfo struct {
+	StrategyRequired string
+	Host             hosts.Host
+}
+
 type PlatformManager struct {
 	manager.Manager
-	lock           sync.Mutex
-	systems        map[string]*SystemNamespace
-	monitors       map[string]*Monitor
-	strategyStatus *StrategyStatus
-	vimClient      *gophercloud.ServiceClient
+	lock                       sync.Mutex
+	systems                    map[string]*SystemNamespace
+	monitors                   map[string]*Monitor
+	strategyStatus             *StrategyStatus
+	vimClient                  *gophercloud.ServiceClient
+	HostStrategyUpdateChannel  chan HostStrategyInfo
+	HostReconciliationChannel  chan HostStrategyInfo
+	IsHostUpdateRoutineRunning bool
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -191,10 +209,13 @@ func NewStrategyStatus() *StrategyStatus {
 
 func NewPlatformManager(manager manager.Manager) CloudManager {
 	return &PlatformManager{
-		Manager:        manager,
-		systems:        make(map[string]*SystemNamespace),
-		monitors:       make(map[string]*Monitor),
-		strategyStatus: NewStrategyStatus(),
+		Manager:                    manager,
+		systems:                    make(map[string]*SystemNamespace),
+		monitors:                   make(map[string]*Monitor),
+		strategyStatus:             NewStrategyStatus(),
+		HostStrategyUpdateChannel:  make(chan HostStrategyInfo),
+		HostReconciliationChannel:  make(chan HostStrategyInfo),
+		IsHostUpdateRoutineRunning: false,
 	}
 }
 
@@ -441,6 +462,38 @@ func (m *PlatformManager) GetPlatformClient(namespace string) *gophercloud.Servi
 	}
 
 	return nil
+}
+
+func (m *PlatformManager) SendHostStrategyUpdate(host_strategy HostStrategyInfo) error {
+	m.HostStrategyUpdateChannel <- host_strategy
+	return nil
+}
+
+func (m *PlatformManager) ReceiveHostStrategyUpdate() HostStrategyInfo {
+	host_strategy := <-m.HostStrategyUpdateChannel
+	return host_strategy
+}
+
+func (m *PlatformManager) SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error {
+	m.HostReconciliationChannel <- host_strategy
+	return nil
+}
+
+func (m *PlatformManager) ReceiveHostReconciliationTrigger() HostStrategyInfo {
+	host_strategy := <-m.HostReconciliationChannel
+	return host_strategy
+}
+
+func (m *PlatformManager) GetHostUpdateRoutinesRunning() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	return m.IsHostUpdateRoutineRunning
+}
+
+func (m *PlatformManager) SetHostUpdateRoutinesRunning(b bool) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	m.IsHostUpdateRoutineRunning = true
 }
 
 // ResetPlatformClient deletes the instance of the platform manager for a
