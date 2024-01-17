@@ -756,7 +756,7 @@ func (r *PlatformNetworkReconciler) AIOSXHost(client *gophercloud.ServiceClient)
 					return nil, false, common.NewSystemDependency("Failed to get default system")
 				}
 
-				if default_system.SystemMode == fmt.Sprintf("%s", cloudManager.SystemModeSimplex) && strings.ToLower(default_system.SystemType) == fmt.Sprintf("%s", cloudManager.SystemTypeAllInOne) {
+				if default_system.SystemMode == "simplex" && strings.ToLower(default_system.SystemType) == "all-in-one" {
 					return &host, true, nil
 				}
 			}
@@ -907,7 +907,6 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 				}
 			}
 		} else if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-			// if update_pn {
 
 			if !(instance.Status.InSync && instance.Status.Reconciled) {
 				host, is_aiosx, err := r.AIOSXHost(client)
@@ -995,7 +994,6 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 				}
 			}
 
-			// }
 		}
 
 		if r.statusUpdateRequired(instance, oldStatus) {
