@@ -835,17 +835,19 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 			return err
 		}
 		if instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
-			inSync := !update_pn
-			if instance.Status.InSync != inSync {
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
+			if instance.Spec.Type == cloudManager.MgmtNetworkType || instance.Spec.Type == cloudManager.AdminNetworkType || instance.Spec.Type == cloudManager.OAMNetworkType {
+				inSync := !update_pn
+				if instance.Status.InSync != inSync {
+					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
+				}
+				instance.Status.InSync = inSync
+				instance.Status.Reconciled = inSync
+				err2 := r.Client.Status().Update(context.TODO(), instance)
+				if err2 != nil {
+					logPlatformNetwork.Error(err2, "failed to update platform network status")
+				}
+				return err2
 			}
-			instance.Status.InSync = inSync
-			instance.Status.Reconciled = inSync
-			err2 := r.Client.Status().Update(context.TODO(), instance)
-			if err2 != nil {
-				logPlatformNetwork.Error(err2, "failed to update platform network status")
-			}
-			return err2
 		} else if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if update_pn {
 				host, is_aiosx, err := r.AIOSXHost(client)
