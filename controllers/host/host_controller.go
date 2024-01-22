@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -2147,74 +2146,67 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return common.RetrySystemNotReady, nil
 	}
 
+	// The host update routine running on a new thread helps with the
+	// signalling of host strategy and network reconciliation updates
+	// from the platformnetwork controller to host controller.
 	if !r.CloudManager.GetHostUpdateRoutinesRunning() {
 		go func() {
 			for {
-				host_strategy := r.CloudManager.ReceiveHostStrategyUpdate()
-				host_instance := &starlingxv1.Host{}
-				host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
-				err = r.Client.Get(context.TODO(), host_namespace, host_instance)
-				if err != nil {
-					logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
-					continue
-				}
-
-				if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
-					host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
-					err := r.Client.Status().Update(context.TODO(), host_instance)
-					if err != nil {
-						logHost.Error(err, "Failed to update status %v", host_instance.Status)
-						continue
-					}
-				}
-
-				if !r.CloudManager.GetStrageySent() {
-					msg := fmt.Sprintf("Applying %s strategy on host %s", host_strategy.StrategyRequired, host_instance.Name)
-					logHost.Info(msg)
-					reconciled := host_instance.Status.Reconciled
-					strategy := host_instance.Status.StrategyRequired
-					r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host_strategy.Host.Personality, host_instance.Name, reconciled, strategy)
-					m := NewLockedDisabledHostMonitor(host_instance, host_strategy.Host.ID)
-					_ = r.CloudManager.StartMonitor(m, msg)
-				} else {
-					logHost.Info("Ignoring host strategy update, already sent.")
-				}
-
-			}
-		}()
-
-		go func() {
-			for {
-				host_strategy := r.CloudManager.ReceiveHostReconciliationTrigger()
-
-				for {
-					host_instance := &starlingxv1.Host{}
-					host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
-					err = r.Client.Get(context.TODO(), host_namespace, host_instance)
-					if err != nil {
-						logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
-						continue
-					}
-
-					if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
-						host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
-						err := r.Client.Status().Update(context.TODO(), host_instance)
+				select {
+				case host_strategy := <-r.CloudManager.GetHostStrategy():
+					if (host_strategy != cloudManager.HostStrategyInfo{}) {
+						host_instance := &starlingxv1.Host{}
+						host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
+						err = r.Client.Get(context.TODO(), host_namespace, host_instance)
 						if err != nil {
-							logHost.Error(err, "Failed to update resource for host namespace %v", host_namespace)
-							continue
+							logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
+						}
+
+						if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
+							host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
+							err := r.Client.Status().Update(context.TODO(), host_instance)
+							if err != nil {
+								logHost.Error(err, "Failed to update status %v", host_instance.Status)
+							}
+						}
+
+						if !r.CloudManager.GetStrageySent() {
+							msg := fmt.Sprintf("Applying %s strategy on host %s", host_strategy.StrategyRequired, host_instance.Name)
+							logHost.Info(msg)
+							reconciled := host_instance.Status.Reconciled
+							strategy := host_instance.Status.StrategyRequired
+							r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host_strategy.Host.Personality, host_instance.Name, reconciled, strategy)
+							m := NewLockedDisabledHostMonitor(host_instance, host_strategy.Host.ID)
+							_ = r.CloudManager.StartMonitor(m, msg)
+						} else {
+							logHost.Info("Ignoring host strategy update, already sent.")
 						}
 					}
+				case host_strategy := <-r.CloudManager.SignalHostReconciliation():
+					if (host_strategy != cloudManager.HostStrategyInfo{}) {
+						host_instance := &starlingxv1.Host{}
+						host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
+						err = r.Client.Get(context.TODO(), host_namespace, host_instance)
+						if err != nil {
+							logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
+						}
 
-					err = r.TriggerNetworkReconcilerAndUnlock(platformClient, host_instance)
-					if err != nil {
-						logHost.V(2).Info("Host reconciliation failed - trying again after 20 seconds")
-						time.Sleep(20 * time.Second)
-					} else {
-						break
+						if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
+							host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
+							err := r.Client.Status().Update(context.TODO(), host_instance)
+							if err != nil {
+								logHost.Error(err, "Failed to update resource for host namespace %v", host_namespace)
+							}
+						}
+
+						err = r.TriggerNetworkReconcilerAndUnlock(platformClient, host_instance)
+						if err == nil {
+							r.CloudManager.SetHostReconciliationStatus(true)
+						}
 					}
-
+				case <-r.CloudManager.StopHostRoutine():
+					return
 				}
-
 			}
 		}()
 		r.CloudManager.SetHostUpdateRoutinesRunning(true)

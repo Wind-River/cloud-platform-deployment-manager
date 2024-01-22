@@ -756,7 +756,9 @@ func (r *PlatformNetworkReconciler) AIOSXHost(client *gophercloud.ServiceClient)
 					return nil, false, common.NewSystemDependency("Failed to get default system")
 				}
 
-				if default_system.SystemMode == "simplex" && strings.ToLower(default_system.SystemType) == "all-in-one" {
+				default_system_mode := cloudManager.SystemMode(default_system.SystemMode)
+				default_system_type := cloudManager.SystemType(strings.ToLower(default_system.SystemType))
+				if default_system_mode == cloudManager.SystemModeSimplex && default_system_type == cloudManager.SystemTypeAllInOne {
 					return &host, true, nil
 				}
 			}
@@ -843,13 +845,14 @@ func (r *PlatformNetworkReconciler) UpdateInsyncStatus(client *gophercloud.Servi
 
 func (r *PlatformNetworkReconciler) TriggerHostNetworkReconciliation(inSync bool, nwk_type string, host *hosts.Host, strategy string) bool {
 	if inSync {
-		logPlatformNetwork.Info(fmt.Sprintf("PlatformNetwork reconciliation successful for %s. Triggering host reconciliation.", nwk_type))
-		host_strategy := cloudManager.HostStrategyInfo{
-			StrategyRequired: strategy,
-			Host:             *host,
+		if !r.CloudManager.GetHostReconciliationStatus() {
+			host_strategy := cloudManager.HostStrategyInfo{
+				StrategyRequired: strategy,
+				Host:             *host,
+			}
+			r.CloudManager.SignalHostReconciliation() <- host_strategy
+			return true
 		}
-		_ = r.CloudManager.SendHostReconciliationTrigger(host_strategy)
-		return true
 	}
 	return false
 }
@@ -875,6 +878,7 @@ func (r *PlatformNetworkReconciler) ReconcileAddressPoolAndNetwork(client *gophe
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
 func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (err error) {
+	var inSync bool
 	oldStatus := instance.Status.DeepCopy()
 
 	if instance.DeletionTimestamp.IsZero() {
@@ -883,8 +887,10 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 			return err
 		}
 		if instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
-			inSync := !update_pn
-			if instance.Spec.Type == cloudManager.MgmtNetworkType || instance.Spec.Type == cloudManager.OAMNetworkType || instance.Spec.Type == cloudManager.AdminNetworkType {
+			inSync = !update_pn
+			if instance.Spec.Type == cloudManager.MgmtNetworkType ||
+				instance.Spec.Type == cloudManager.OAMNetworkType ||
+				instance.Spec.Type == cloudManager.AdminNetworkType {
 				// Just check current config vs profile for networks of type mgmt, oam and admin
 				// Update instance.Status.InSync to false if there is a difference and vice-versa.
 				// instance.Status.Reconciled will always be set to true to avoid raising alarms in Day-1
@@ -907,7 +913,6 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 				}
 			}
 		} else if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-
 			if !(instance.Status.InSync && instance.Status.Reconciled) {
 				host, is_aiosx, err := r.AIOSXHost(client)
 				if err != nil {
@@ -919,50 +924,53 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 
 						if host.AdministrativeState == hosts.AdminLocked && host.OperationalStatus == hosts.OperDisabled {
 
-							inSync, err := r.ReconcileAddressPoolAndNetwork(client, instance)
-							if err != nil {
-								return err
+							if update_pn {
+								// Set HostReconciliation status to false since mgmt network reconfig
+								// impacts interface-network association.
+								// This status is used to later reconcile host networks.
+								r.CloudManager.SetHostReconciliationStatus(false)
+								inSync, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+								if err != nil {
+									return err
+								}
 							}
 
 							// Trigger network reconciliation from host controller due to deletion of
 							// interface-network-assignment caused by management address pool deletion.
-							nwk_reconcile_triggered := r.TriggerHostNetworkReconciliation(inSync, instance.Name, host, cloudManager.StrategyUnlockRequired)
-							if !nwk_reconcile_triggered {
-								return common.NewResourceConfigurationDependency("there was an error reconciling network configuration. will try again.")
+							if !r.CloudManager.GetHostReconciliationStatus() {
+								_ = r.TriggerHostNetworkReconciliation(inSync, instance.Name, host, cloudManager.StrategyUnlockRequired)
+								return common.NewResourceConfigurationDependency("Triggered host network reconciliation.")
 							}
 
 							return nil
-
 						} else {
 							host_strategy := cloudManager.HostStrategyInfo{
 								StrategyRequired: cloudManager.StrategyLockRequired,
 								Host:             *host,
 							}
-							_ = r.CloudManager.SendHostStrategyUpdate(host_strategy)
+							r.CloudManager.GetHostStrategy() <- host_strategy
 							return common.NewResourceConfigurationDependency("waiting for system to be in locked state before reconfiguring network")
 						}
-					} else if instance.Spec.Type == cloudManager.OAMNetworkType {
-
-						_, err := r.ReconcileAddressPoolAndNetwork(client, instance)
-						if err != nil {
-							return err
-						}
-
-						return nil
-
 					} else {
 
-						inSync, err := r.ReconcileAddressPoolAndNetwork(client, instance)
-						if err != nil {
-							return err
+						if update_pn {
+							// Set HostReconciliation status to false since admin network reconfig
+							// impacts interface-network association.
+							if instance.Spec.Type == cloudManager.AdminNetworkType {
+								r.CloudManager.SetHostReconciliationStatus(false)
+							}
+							inSync, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+							if err != nil {
+								return err
+							}
 						}
 
 						// Trigger network reconciliation from host controller due to deletion of
 						// interface-network-assignment caused by admin address pool deletion.
 						if instance.Spec.Type == cloudManager.AdminNetworkType {
-							nwk_reconcile_triggered := r.TriggerHostNetworkReconciliation(inSync, instance.Name, host, cloudManager.StrategyNotRequired)
-							if !nwk_reconcile_triggered {
-								return common.NewResourceConfigurationDependency("there was an error reconciling network configuration. will try again.")
+							if !r.CloudManager.GetHostReconciliationStatus() {
+								_ = r.TriggerHostNetworkReconciliation(inSync, instance.Name, host, cloudManager.StrategyNotRequired)
+								return common.NewResourceConfigurationDependency("Triggered host network reconciliation.")
 							}
 						}
 

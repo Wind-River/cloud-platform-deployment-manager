@@ -110,12 +110,14 @@ type CloudManager interface {
 	StartStrategyMonitor()
 	SetStrategyRetryCount(c int) error
 	GetStrategyRetryCount() (int, error)
-	SendHostStrategyUpdate(host_strategy HostStrategyInfo) error
-	ReceiveHostStrategyUpdate() HostStrategyInfo
-	SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error
-	ReceiveHostReconciliationTrigger() HostStrategyInfo
+	StopHostRoutine() chan bool
+	GetHostStrategy() chan HostStrategyInfo
+	SignalHostReconciliation() chan HostStrategyInfo
+	CloseHostRoutine()
 	GetHostUpdateRoutinesRunning() bool
 	SetHostUpdateRoutinesRunning(b bool)
+	GetHostReconciliationStatus() bool
+	SetHostReconciliationStatus(b bool)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -192,9 +194,11 @@ type PlatformManager struct {
 	monitors                   map[string]*Monitor
 	strategyStatus             *StrategyStatus
 	vimClient                  *gophercloud.ServiceClient
-	HostStrategyUpdate  chan HostStrategyInfo
-	HostReconciliation  chan HostStrategyInfo
+	HostStrategyUpdate         chan HostStrategyInfo
+	HostReconciliation         chan HostStrategyInfo
+	SignalHostRoutine          chan bool
 	IsHostUpdateRoutineRunning bool
+	HostReconciliationStatus   bool
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -213,8 +217,10 @@ func NewPlatformManager(manager manager.Manager) CloudManager {
 		systems:                    make(map[string]*SystemNamespace),
 		monitors:                   make(map[string]*Monitor),
 		strategyStatus:             NewStrategyStatus(),
-		HostStrategyUpdate:  make(chan HostStrategyInfo),
-		HostReconciliation:  make(chan HostStrategyInfo),
+		HostStrategyUpdate:         make(chan HostStrategyInfo),
+		HostReconciliation:         make(chan HostStrategyInfo),
+		HostReconciliationStatus:   true,
+		SignalHostRoutine:          make(chan bool),
 		IsHostUpdateRoutineRunning: false,
 	}
 }
@@ -464,37 +470,38 @@ func (m *PlatformManager) GetPlatformClient(namespace string) *gophercloud.Servi
 	return nil
 }
 
-// SendHostStrategyUpdate sends new "strategy required" update on a particular host
-// from platformnetwork controller to host controller, for the host controller to take action on it.
-// This is particularly used during the platform network reconfiguration of certain network types
-// on certain system types.
-func (m *PlatformManager) SendHostStrategyUpdate(host_strategy HostStrategyInfo) error {
-	m.HostStrategyUpdate <- host_strategy
-	return nil
+// StopHostRoutine returns channel through which host update goroutine
+// can be stopped.
+func (m *PlatformManager) StopHostRoutine() chan bool {
+	return m.SignalHostRoutine
 }
 
-// ReceiveHostStrategyUpdate receives new "strategy required" update on a particular host
-// from platformnetwork controller on host controller, for the host controller to take action on it.
-func (m *PlatformManager) ReceiveHostStrategyUpdate() HostStrategyInfo {
-	host_strategy := <-m.HostStrategyUpdate
-	return host_strategy
+// GetHostStrategy returns channel through which host strategy
+// updates can be communicated from other controllers.
+func (m *PlatformManager) GetHostStrategy() chan HostStrategyInfo {
+	return m.HostStrategyUpdate
 }
 
-// SendHostReconciliationTrigger sends network reconciliation trigger from host controller
-// after network is reconfigured by platform network controller and creates unlock strategy
-// if applicable.
-func (m *PlatformManager) SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error {
-	m.HostReconciliation <- host_strategy
-	return nil
+// SignalHostReconciliation returns channel through which host network
+// reconciliation is triggered from platformnetwork controller do fix
+// interface-network association.
+func (m *PlatformManager) SignalHostReconciliation() chan HostStrategyInfo {
+	return m.HostReconciliation
 }
 
-// ReceiveHostReconciliationTrigger receives signal from platform network controller and
-// triggers network reconciliation from host controller and creates unlock strategy based on
-// host strategy sent.
-// This will fix the interface network assignment post network reconfiguration.
-func (m *PlatformManager) ReceiveHostReconciliationTrigger() HostStrategyInfo {
-	host_strategy := <-m.HostReconciliation
-	return host_strategy
+// CloseHostRoutine closes channels associated with host updates
+// and host network reconciliation and signals shutdown of the goroutine itself.
+func (m *PlatformManager) CloseHostRoutine() {
+	if m.SignalHostRoutine != nil {
+		close(m.HostStrategyUpdate)
+		close(m.HostReconciliation)
+		m.HostStrategyUpdate = nil
+		m.HostReconciliation = nil
+
+		close(m.SignalHostRoutine)
+		m.SignalHostRoutine = nil
+		m.SetHostUpdateRoutinesRunning(false)
+	}
 }
 
 // GetHostUpdateRoutinesRunning helps determine if go routines that receive
@@ -512,6 +519,20 @@ func (m *PlatformManager) SetHostUpdateRoutinesRunning(b bool) {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 	m.IsHostUpdateRoutineRunning = b
+}
+
+// GetHostReconciliationStatus is used to get HostReconciliationStatus
+func (m *PlatformManager) GetHostReconciliationStatus() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	return m.HostReconciliationStatus
+}
+
+// SetHostReconciliationStatus is used to set HostReconciliationStatus
+func (m *PlatformManager) SetHostReconciliationStatus(b bool) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	m.HostReconciliationStatus = b
 }
 
 // ResetPlatformClient deletes the instance of the platform manager for a

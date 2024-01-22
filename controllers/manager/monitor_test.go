@@ -369,17 +369,23 @@ func (m *Dummymanager) GetHostUpdateRoutinesRunning() bool {
 func (m *Dummymanager) SetHostUpdateRoutinesRunning(b bool) {
 
 }
-func (m *Dummymanager) ReceiveHostStrategyUpdate() HostStrategyInfo {
-	return HostStrategyInfo{}
+func (m *Dummymanager) GetHostStrategy() chan HostStrategyInfo {
+	return make(chan HostStrategyInfo)
 }
-func (m *Dummymanager) SendHostStrategyUpdate(host_strategy HostStrategyInfo) error {
-	return nil
+func (m *Dummymanager) SignalHostReconciliation() chan HostStrategyInfo {
+	return make(chan HostStrategyInfo)
 }
-func (m *Dummymanager) ReceiveHostReconciliationTrigger() HostStrategyInfo {
-	return HostStrategyInfo{}
+func (m *Dummymanager) StopHostRoutine() chan bool {
+	return make(chan bool)
 }
-func (m *Dummymanager) SendHostReconciliationTrigger(host_strategy HostStrategyInfo) error {
-	return nil
+func (m *Dummymanager) CloseHostRoutine() {
+
+}
+func (m *Dummymanager) GetHostReconciliationStatus() bool {
+	return false
+}
+func (m *Dummymanager) SetHostReconciliationStatus(b bool) {
+
 }
 func (m *Dummymanager) GetConfigVersion() int {
 	return m.config_version
