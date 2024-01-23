@@ -333,6 +333,9 @@ func (m *Dummymanager) NotifySystemDependencies(namespace string) error {
 func (m *Dummymanager) NotifyResource(object client.Object) error {
 	return nil
 }
+func (m *Dummymanager) NotifyHostController(object client.Object, deleteKey bool) error {
+	return nil
+}
 func (m *Dummymanager) SetSystemReady(namespace string, value bool) {
 
 }
@@ -361,30 +364,6 @@ func (m *Dummymanager) ListStrategyRequired() string {
 	return ""
 }
 func (m *Dummymanager) UpdateConfigVersion() {
-
-}
-func (m *Dummymanager) GetHostUpdateRoutinesRunning() bool {
-	return false
-}
-func (m *Dummymanager) SetHostUpdateRoutinesRunning(b bool) {
-
-}
-func (m *Dummymanager) GetHostStrategy() chan HostStrategyInfo {
-	return make(chan HostStrategyInfo)
-}
-func (m *Dummymanager) SignalHostReconciliation() chan HostStrategyInfo {
-	return make(chan HostStrategyInfo)
-}
-func (m *Dummymanager) StopHostRoutine() chan bool {
-	return make(chan bool)
-}
-func (m *Dummymanager) CloseHostRoutine() {
-
-}
-func (m *Dummymanager) GetHostReconciliationStatus() bool {
-	return false
-}
-func (m *Dummymanager) SetHostReconciliationStatus(b bool) {
 
 }
 func (m *Dummymanager) GetConfigVersion() int {

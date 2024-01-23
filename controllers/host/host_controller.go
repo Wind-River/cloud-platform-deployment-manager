@@ -1679,8 +1679,15 @@ func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.S
 	}
 
 	if host.IsLockedDisabled() {
-		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+		if instance.Status.StrategyRequired != cloudManager.StrategyUnlockRequired {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				return err
+			}
+		}
 
+		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 		msg := "reconciled locked-disabled host. waiting for host to be unlocked"
 		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
 		_ = r.CloudManager.StartMonitor(m, msg)
@@ -1709,7 +1716,7 @@ func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, in
 
 			// The resource may have been deleted by the system or operator
 			// therefore continue and attempt to recreate it.
-			logHost.V(2).Info("resource no longer exists", "id", *id)
+			logHost.Info("resource no longer exists", "id", *id)
 
 			// Set host to nil, in case hosts.Get() returned a partially populated structure
 			host = nil
@@ -2146,70 +2153,19 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return common.RetrySystemNotReady, nil
 	}
 
-	// The host update routine running on a new thread helps with the
-	// signalling of host strategy and network reconciliation updates
-	// from the platformnetwork controller to host controller.
-	if !r.CloudManager.GetHostUpdateRoutinesRunning() {
-		go func() {
-			for {
-				select {
-				case host_strategy := <-r.CloudManager.GetHostStrategy():
-					if (host_strategy != cloudManager.HostStrategyInfo{}) {
-						host_instance := &starlingxv1.Host{}
-						host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
-						err = r.Client.Get(context.TODO(), host_namespace, host_instance)
-						if err != nil {
-							logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
-						}
-
-						if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
-							host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
-							err := r.Client.Status().Update(context.TODO(), host_instance)
-							if err != nil {
-								logHost.Error(err, "Failed to update status %v", host_instance.Status)
-							}
-						}
-
-						if !r.CloudManager.GetStrageySent() {
-							msg := fmt.Sprintf("Applying %s strategy on host %s", host_strategy.StrategyRequired, host_instance.Name)
-							logHost.Info(msg)
-							reconciled := host_instance.Status.Reconciled
-							strategy := host_instance.Status.StrategyRequired
-							r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host_strategy.Host.Personality, host_instance.Name, reconciled, strategy)
-							m := NewLockedDisabledHostMonitor(host_instance, host_strategy.Host.ID)
-							_ = r.CloudManager.StartMonitor(m, msg)
-						} else {
-							logHost.Info("Ignoring host strategy update, already sent.")
-						}
-					}
-				case host_strategy := <-r.CloudManager.SignalHostReconciliation():
-					if (host_strategy != cloudManager.HostStrategyInfo{}) {
-						host_instance := &starlingxv1.Host{}
-						host_namespace := types.NamespacedName{Namespace: request.NamespacedName.Namespace, Name: host_strategy.Host.Hostname}
-						err = r.Client.Get(context.TODO(), host_namespace, host_instance)
-						if err != nil {
-							logHost.Error(err, "Failed to get resource for host namespace %v", host_namespace)
-						}
-
-						if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
-							host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
-							err := r.Client.Status().Update(context.TODO(), host_instance)
-							if err != nil {
-								logHost.Error(err, "Failed to update resource for host namespace %v", host_namespace)
-							}
-						}
-
-						err = r.TriggerNetworkReconcilerAndUnlock(platformClient, host_instance)
-						if err == nil {
-							r.CloudManager.SetHostReconciliationStatus(true)
-						}
-					}
-				case <-r.CloudManager.StopHostRoutine():
-					return
-				}
+	// Handle reconciliation of interface network assignment after platform network reconfiguration
+	if _, present := instance.Annotations[cloudManager.ReconcileHostByPlatformNetwork]; present {
+		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance)
+		if err != nil {
+			return r.ReconcilerErrorHandler.HandleReconcilerError(request, common.NewResourceConfigurationDependency("host network reconciliation failed"))
+		} else {
+			// Delete the annotation after successful reconciliation of host networks
+			err = r.CloudManager.NotifyHostController(instance, true)
+			if err != nil {
+				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 			}
-		}()
-		r.CloudManager.SetHostUpdateRoutinesRunning(true)
+		}
+		return reconcile.Result{}, nil
 	}
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)

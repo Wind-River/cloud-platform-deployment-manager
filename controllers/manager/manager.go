@@ -39,8 +39,9 @@ const SystemEndpointSecretName = "system-endpoint"
 
 const (
 	// Defines annotation keys for resources.
-	NotificationCountKey = "deployment-manager/notifications"
-	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
+	NotificationCountKey           = "deployment-manager/notifications"
+	ReconcileHostByPlatformNetwork = "deployment-manager/reconcile-host-networking"
+	ReconcileAfterInSync           = "deployment-manager/reconcile-after-insync"
 )
 
 const (
@@ -48,6 +49,9 @@ const (
 	ScopePrincipal = "principal"
 )
 
+// TODO: Assign these consts in platform network controller instead.
+// Note that the AdminNetworkType is being referenced from host controller as well
+// as platform network controller.
 const (
 	OAMNetworkType   = "oam"
 	MgmtNetworkType  = "mgmt"
@@ -86,6 +90,7 @@ type CloudManager interface {
 	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
+	NotifyHostController(object client.Object, deleteKey bool) error
 	SetSystemReady(namespace string, value bool)
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
@@ -110,14 +115,6 @@ type CloudManager interface {
 	StartStrategyMonitor()
 	SetStrategyRetryCount(c int) error
 	GetStrategyRetryCount() (int, error)
-	StopHostRoutine() chan bool
-	GetHostStrategy() chan HostStrategyInfo
-	SignalHostReconciliation() chan HostStrategyInfo
-	CloseHostRoutine()
-	GetHostUpdateRoutinesRunning() bool
-	SetHostUpdateRoutinesRunning(b bool)
-	GetHostReconciliationStatus() bool
-	SetHostReconciliationStatus(b bool)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -189,16 +186,11 @@ type HostStrategyInfo struct {
 
 type PlatformManager struct {
 	manager.Manager
-	lock                       sync.Mutex
-	systems                    map[string]*SystemNamespace
-	monitors                   map[string]*Monitor
-	strategyStatus             *StrategyStatus
-	vimClient                  *gophercloud.ServiceClient
-	HostStrategyUpdate         chan HostStrategyInfo
-	HostReconciliation         chan HostStrategyInfo
-	SignalHostRoutine          chan bool
-	IsHostUpdateRoutineRunning bool
-	HostReconciliationStatus   bool
+	lock           sync.Mutex
+	systems        map[string]*SystemNamespace
+	monitors       map[string]*Monitor
+	strategyStatus *StrategyStatus
+	vimClient      *gophercloud.ServiceClient
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -213,15 +205,10 @@ func NewStrategyStatus() *StrategyStatus {
 
 func NewPlatformManager(manager manager.Manager) CloudManager {
 	return &PlatformManager{
-		Manager:                    manager,
-		systems:                    make(map[string]*SystemNamespace),
-		monitors:                   make(map[string]*Monitor),
-		strategyStatus:             NewStrategyStatus(),
-		HostStrategyUpdate:         make(chan HostStrategyInfo),
-		HostReconciliation:         make(chan HostStrategyInfo),
-		HostReconciliationStatus:   true,
-		SignalHostRoutine:          make(chan bool),
-		IsHostUpdateRoutineRunning: false,
+		Manager:        manager,
+		systems:        make(map[string]*SystemNamespace),
+		monitors:       make(map[string]*Monitor),
+		strategyStatus: NewStrategyStatus(),
 	}
 }
 
@@ -400,7 +387,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 // notifyController updates an annotation on a single controller to force it
 // to re-run its reconcile loop.
-func (m *PlatformManager) notifyController(object client.Object) error {
+func (m *PlatformManager) notifyController(object client.Object, annotationKey string, deleteKey bool) error {
 	key := client.ObjectKeyFromObject(object)
 
 	result := object.DeepCopyObject().(client.Object)
@@ -422,8 +409,12 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 		annotations = make(map[string]string)
 	}
 
-	count := getNextCount(annotations[NotificationCountKey])
-	annotations[NotificationCountKey] = count
+	if !deleteKey {
+		count := getNextCount(annotations[annotationKey])
+		annotations[annotationKey] = count
+	} else {
+		delete(annotations, annotationKey)
+	}
 
 	err = accessor.SetAnnotations(result, annotations)
 	if err != nil {
@@ -447,7 +438,11 @@ func (m *PlatformManager) NotifySystemDependencies(namespace string) error {
 }
 
 func (m *PlatformManager) NotifyResource(object client.Object) error {
-	return m.notifyController(object)
+	return m.notifyController(object, NotificationCountKey, false)
+}
+
+func (m *PlatformManager) NotifyHostController(object client.Object, deleteKey bool) error {
+	return m.notifyController(object, ReconcileHostByPlatformNetwork, deleteKey)
 }
 
 // GetKubernetesClient returns a reference to the Kubernetes client
@@ -468,71 +463,6 @@ func (m *PlatformManager) GetPlatformClient(namespace string) *gophercloud.Servi
 	}
 
 	return nil
-}
-
-// StopHostRoutine returns channel through which host update goroutine
-// can be stopped.
-func (m *PlatformManager) StopHostRoutine() chan bool {
-	return m.SignalHostRoutine
-}
-
-// GetHostStrategy returns channel through which host strategy
-// updates can be communicated from other controllers.
-func (m *PlatformManager) GetHostStrategy() chan HostStrategyInfo {
-	return m.HostStrategyUpdate
-}
-
-// SignalHostReconciliation returns channel through which host network
-// reconciliation is triggered from platformnetwork controller do fix
-// interface-network association.
-func (m *PlatformManager) SignalHostReconciliation() chan HostStrategyInfo {
-	return m.HostReconciliation
-}
-
-// CloseHostRoutine closes channels associated with host updates
-// and host network reconciliation and signals shutdown of the goroutine itself.
-func (m *PlatformManager) CloseHostRoutine() {
-	if m.SignalHostRoutine != nil {
-		close(m.HostStrategyUpdate)
-		close(m.HostReconciliation)
-		m.HostStrategyUpdate = nil
-		m.HostReconciliation = nil
-
-		close(m.SignalHostRoutine)
-		m.SignalHostRoutine = nil
-		m.SetHostUpdateRoutinesRunning(false)
-	}
-}
-
-// GetHostUpdateRoutinesRunning helps determine if go routines that receive
-// strategy updates and reconciliation trigger are running.
-// This is to ensure only one such instances should be running at any point of time.
-func (m *PlatformManager) GetHostUpdateRoutinesRunning() bool {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	return m.IsHostUpdateRoutineRunning
-}
-
-// SetHostUpdateRoutinesRunning is used to set IsHostUpdateRoutineRunning
-// depending upon the status of the go routines.
-func (m *PlatformManager) SetHostUpdateRoutinesRunning(b bool) {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	m.IsHostUpdateRoutineRunning = b
-}
-
-// GetHostReconciliationStatus is used to get HostReconciliationStatus
-func (m *PlatformManager) GetHostReconciliationStatus() bool {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	return m.HostReconciliationStatus
-}
-
-// SetHostReconciliationStatus is used to set HostReconciliationStatus
-func (m *PlatformManager) SetHostReconciliationStatus(b bool) {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	m.HostReconciliationStatus = b
 }
 
 // ResetPlatformClient deletes the instance of the platform manager for a
