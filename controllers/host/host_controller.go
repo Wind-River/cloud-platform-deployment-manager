@@ -1611,6 +1611,86 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	return nil
 }
 
+// TriggerNetworkReconcilerAndUnlock is used to trigger network reconciliation after making changes to platform network.
+// After successful reconciliation unlock-strategy is applied if the system is in locked state.
+func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
+	var host *hosts.Host
+	id := instance.Status.ID
+	if id != nil && *id != "" {
+		// This host was previously provisioned so check that it still exists
+		// as the same uuid value; otherwise it may have been deleted and
+		// re-added so we will need to deal with that scenario.
+		host, err = hosts.Get(client, *id).Extract()
+		if err != nil {
+			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+				err = perrors.Wrapf(err, "failed to get: %s", *id)
+				return err
+			}
+
+			// The resource may have been deleted by the system or operator
+			// therefore continue and attempt to recreate it.
+			logHost.Info("resource no longer exists", "id", *id)
+
+			// Set host to nil, in case hosts.Get() returned a partially populated structure
+			return common.NewSystemDependency(fmt.Sprintf("host with id %s does not exist", *id))
+		}
+	} else {
+		return common.NewSystemDependency("host id not found")
+	}
+
+	if !host.Stable() {
+		msg := "waiting for a stable state for existing host"
+		m := NewStableHostMonitor(instance, host.ID)
+		return r.CloudManager.StartMonitor(m, msg)
+	}
+
+	// Gather all host attributes so that they can be reused by various
+	// functions without needing to be re-queried each time.
+	hostInfo := v1info.HostInfo{}
+	err = hostInfo.PopulateHostInfo(client, host.ID)
+	if err != nil {
+		return err
+	}
+
+	// Get a fresh snapshot of the current hosts.  These are used to search for
+	// a matching host record if one is not already found as well as to
+	// determine when it is safe/allowed to configure new hosts or unlock
+	// existing hosts.
+	r.hosts, err = hosts.ListHosts(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list hosts")
+		return err
+	}
+
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildCompositeProfile(instance)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileNetworking(client, instance, profile, &hostInfo)
+	if err != nil {
+		return err
+	}
+
+	if host.IsLockedDisabled() {
+		if instance.Status.StrategyRequired != cloudManager.StrategyUnlockRequired {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				return err
+			}
+		}
+
+		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+		msg := "reconciled locked-disabled host. waiting for host to be unlocked"
+		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
+		_ = r.CloudManager.StartMonitor(m, msg)
+	}
+
+	return nil
+}
+
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
 func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
@@ -2066,6 +2146,21 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
+	}
+
+	// Handle reconciliation of interface network assignment after platform network reconfiguration
+	if _, present := instance.Annotations[cloudManager.ReconcileHostByPlatformNetwork]; present {
+		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance)
+		if err != nil {
+			return r.ReconcilerErrorHandler.HandleReconcilerError(request, common.NewResourceConfigurationDependency("host network reconciliation failed"))
+		} else {
+			// Delete the annotation after successful reconciliation of host networks
+			err = r.CloudManager.NotifyHostController(instance, true)
+			if err != nil {
+				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+			}
+		}
+		return reconcile.Result{}, nil
 	}
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)

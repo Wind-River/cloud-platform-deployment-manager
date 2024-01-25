@@ -1913,6 +1913,12 @@ spec:
                 required:
                 - type
                 type: object
+              controller0Address:
+                description: Controller0Address is the controller-0 IPv4 or IPv6 network address value.
+                type: string
+              controller1Address:
+                description: Controller1Address is the controller-1 IPv4 or IPv6 network address value.
+                type: string
               floatingAddress:
                 description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
                 type: string

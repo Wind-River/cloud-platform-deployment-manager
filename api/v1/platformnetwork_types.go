@@ -47,6 +47,12 @@ type PlatformNetworkSpec struct {
 	// FloatingAddress defines the floating IPv4 or IPv6 network address for the network
 	FloatingAddress string `json:"floatingAddress,omitempty"`
 
+	// Controller0Address is the controller-0 IPv4 or IPv6 network address value.
+	Controller0Address string `json:"controller0Address,omitempty"`
+
+	// Controller1Address is the controller-1 IPv4 or IPv6 network address value.
+	Controller1Address string `json:"controller1Address,omitempty"`
+
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=128
 	Prefix int `json:"prefix"`
