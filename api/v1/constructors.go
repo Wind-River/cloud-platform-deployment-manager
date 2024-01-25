@@ -1427,11 +1427,13 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 
 func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
-		Type:            network_type,
-		Subnet:          pool.Network,
-		FloatingAddress: pool.FloatingAddress,
-		Prefix:          pool.Prefix,
-		Gateway:         pool.Gateway,
+		Type:               network_type,
+		Subnet:             pool.Network,
+		FloatingAddress:    pool.FloatingAddress,
+		Controller0Address: pool.Controller0Address,
+		Controller1Address: pool.Controller1Address,
+		Prefix:             pool.Prefix,
+		Gateway:            pool.Gateway,
 		Allocation: AllocationInfo{
 			Type:  networks.AllocationOrderDynamic,
 			Order: &pool.Order,

@@ -1419,6 +1419,12 @@ func (in *PlatformNetworkSpec) DeepEqual(other *PlatformNetworkSpec) bool {
 	if in.FloatingAddress != other.FloatingAddress {
 		return false
 	}
+	if in.Controller0Address != other.Controller0Address {
+		return false
+	}
+	if in.Controller1Address != other.Controller1Address {
+		return false
+	}
 	if in.Prefix != other.Prefix {
 		return false
 	}
