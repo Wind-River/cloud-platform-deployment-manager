@@ -19,6 +19,15 @@ var _ = Describe("HostProfile controller", func() {
 		interval = time.Millisecond * 250
 	)
 
+	Context("Test SubFunctionFromString", func() {
+		It("", func() {
+			str := "randomString"
+			want := SubFunction(str)
+			got := SubFunctionFromString(str)
+			Expect(got).To(Equal(want))
+		})
+	})
+
 	Context("HostProfile with data", func() {
 		It("Should created successfully", func() {
 			ctx := context.Background()
