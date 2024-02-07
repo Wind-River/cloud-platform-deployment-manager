@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 )
 
 var _ = Describe("Profile utils", func() {
@@ -450,6 +451,67 @@ var _ = Describe("Profile utils", func() {
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 					Expect(got).NotTo(BeNil())
 					Expect(got.DeepEqual(tt.want)).To(BeTrue())
+				}
+			})
+		})
+	})
+
+	Describe("FixProfileAttributes", func() {
+		Context("with base profile spec data", func() {
+			It("should remove the base profile successfully", func() {
+				type args struct {
+					a    *starlingxv1.HostProfileSpec
+					b    *starlingxv1.HostProfileSpec
+					c    *starlingxv1.HostProfileSpec
+					info *v1info.HostInfo
+				}
+				base1 := "base-profile"
+				base2 := "base-profile"
+				tests := []struct {
+					name string
+					args args
+					want args
+				}{
+					{
+						name: "Profile has Base profile",
+						args: args{
+							a: &starlingxv1.HostProfileSpec{
+								Base: &base1,
+							},
+							b: &starlingxv1.HostProfileSpec{
+								Base: &base2,
+							},
+							c:    &starlingxv1.HostProfileSpec{},
+							info: &v1info.HostInfo{},
+						},
+						want: args{
+							a:    &starlingxv1.HostProfileSpec{},
+							b:    &starlingxv1.HostProfileSpec{},
+							c:    &starlingxv1.HostProfileSpec{},
+							info: &v1info.HostInfo{},
+						},
+					},
+					{
+						name: "Profile has no Base profile",
+						args: args{
+							a:    &starlingxv1.HostProfileSpec{},
+							b:    &starlingxv1.HostProfileSpec{},
+							c:    &starlingxv1.HostProfileSpec{},
+							info: &v1info.HostInfo{},
+						},
+						want: args{
+							a:    &starlingxv1.HostProfileSpec{},
+							b:    &starlingxv1.HostProfileSpec{},
+							c:    &starlingxv1.HostProfileSpec{},
+							info: &v1info.HostInfo{},
+						},
+					},
+				}
+				for _, tt := range tests {
+					FixProfileAttributes(tt.args.a, tt.args.b, tt.args.c, tt.args.info)
+					Expect(reflect.DeepEqual(tt.args.a, tt.want.a)).To(BeTrue())
+					Expect(reflect.DeepEqual(tt.args.b, tt.want.b)).To(BeTrue())
+					Expect(reflect.DeepEqual(tt.args.c, tt.want.c)).To(BeTrue())
 				}
 			})
 		})
