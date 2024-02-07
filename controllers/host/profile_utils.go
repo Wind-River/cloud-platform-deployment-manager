@@ -46,20 +46,26 @@ func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec, hostInfo *v1info
 	}
 
 	// To compare the interface Members we need to sort them
-	if b.Interfaces.Bond != nil {
+	if b.Interfaces != nil && b.Interfaces.Bond != nil {
 		for _, bondInfo := range b.Interfaces.Bond {
 			if bondInfo.Members != nil {
 				sort.Strings(bondInfo.Members)
 			}
 		}
 	}
-	if c.Interfaces.Bond != nil {
+	if b.Interfaces != nil && c.Interfaces.Bond != nil {
 		for _, bondInfo := range c.Interfaces.Bond {
 			if bondInfo.Members != nil {
 				sort.Strings(bondInfo.Members)
 			}
 		}
 	}
+
+	// If a hostprofile is composed based on a base profile, remove it to avoid
+	// delta between the final profile and the current config
+	a.Base = nil
+	b.Base = nil
+
 	FixProfileDevicePath(a, hostInfo)
 }
 
@@ -75,11 +81,11 @@ func FixProfileDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostI
 		a.BootDevice = &bootDevice
 	}
 
-	if a.Storage.OSDs != nil {
+	if a.Storage != nil && a.Storage.OSDs != nil {
 		FixOSDDevicePath(a, hostInfo)
 	}
 
-	if a.Storage.VolumeGroups != nil {
+	if a.Storage != nil && a.Storage.VolumeGroups != nil {
 		FixVolumeGroupPath(a, hostInfo)
 	}
 }
@@ -241,6 +247,27 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 
 	defaultCopy := DefaultHostProfile.DeepCopy()
 	return MergeProfiles(defaultCopy, current)
+}
+
+// BuildAndValidateCompositeProfile combines the methods of BuildCompositeProfile
+// and ValidateProfile, returns a combined profile which is validated
+func (r *HostReconciler) BuildAndValidateCompositeProfile(
+	host *starlingxv1.Host,
+) (*starlingxv1.HostProfileSpec, error) {
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildCompositeProfile(host)
+	if err != nil {
+		return nil, err
+	}
+
+	logHost.V(2).Info("composite profile is:", "name", host.Spec.Profile, "profile", profile)
+
+	err = r.ValidateProfile(host, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return profile, nil
 }
 
 // BuildCompositeProfile combines the default profile, the profile inheritance

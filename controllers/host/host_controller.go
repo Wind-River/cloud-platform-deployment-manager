@@ -1683,13 +1683,6 @@ func (r *HostReconciler) ReconcileResource(
 		return err
 	}
 
-	logHost.V(2).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
-
-	err = r.ValidateProfile(instance, profile)
-	if err != nil {
-		return err
-	}
-
 	if host == nil {
 		// This host either needs to be provisioned for the first time or we
 		// need to audit the list of hosts so that we can find one that already
@@ -1934,7 +1927,7 @@ func (r *HostReconciler) UpdateConfigStatus(
 
 		// Check if the HostProfile configuration is updated
 		hostProfile, err := r.GetHostProfile(instance.Namespace, instance.Spec.Profile)
-		if err != err {
+		if err != nil {
 			return err
 		}
 		if hostProfile != nil &&
@@ -1976,11 +1969,6 @@ func (r *HostReconciler) UpdateConfigStatus(
 					if hostProfile.Spec.Personality == nil &&
 						profile.Personality != nil {
 						hostProfile.Spec.Personality = profile.Personality
-					} else {
-						msg := fmt.Sprintf(
-							"Missing Personality of host in hostprofile %s",
-							hostProfile.Name)
-						return common.NewSystemDependency(msg)
 					}
 					r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
@@ -2070,7 +2058,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	}
 
 	// Build a composite profile based on the profile chain and host overrides
-	profile, err := r.BuildCompositeProfile(instance)
+	profile, err := r.BuildAndValidateCompositeProfile(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
