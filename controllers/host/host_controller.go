@@ -1613,7 +1613,11 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 
 // TriggerNetworkReconcilerAndUnlock is used to trigger network reconciliation after making changes to platform network.
 // After successful reconciliation unlock-strategy is applied if the system is in locked state.
-func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(
+	client *gophercloud.ServiceClient,
+	instance *starlingxv1.Host,
+	profile *starlingxv1.HostProfileSpec,
+) (err error) {
 	var host *hosts.Host
 	id := instance.Status.ID
 	if id != nil && *id != "" {
@@ -1662,12 +1666,6 @@ func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.S
 		return err
 	}
 
-	// Build a composite profile based on the profile chain and host overrides
-	profile, err := r.BuildCompositeProfile(instance)
-	if err != nil {
-		return err
-	}
-
 	err = r.ReconcileNetworking(client, instance, profile, &hostInfo)
 	if err != nil {
 		return err
@@ -1693,7 +1691,11 @@ func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.S
 
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
-func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) ReconcileResource(
+	client *gophercloud.ServiceClient,
+	instance *starlingxv1.Host,
+	profile *starlingxv1.HostProfileSpec,
+) (err error) {
 	var host *hosts.Host
 	var inSync bool
 
@@ -1756,12 +1758,6 @@ func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, in
 	r.hosts, err = hosts.ListHosts(client)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to list hosts")
-		return err
-	}
-
-	// Build a composite profile based on the profile chain and host overrides
-	profile, err := r.BuildCompositeProfile(instance)
-	if err != nil {
 		return err
 	}
 
@@ -1950,7 +1946,10 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // - Set ConfigurationUpdated true
 // - Set Reconciled false (since it is going to reconcile with new configuration)
 // Then reflect these values to cluster object
-func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) UpdateConfigStatus(
+	profile *starlingxv1.HostProfileSpec,
+	instance *starlingxv1.Host,
+) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -2052,6 +2051,15 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
+					if hostProfile.Spec.Personality == nil &&
+						profile.Personality != nil {
+						hostProfile.Spec.Personality = profile.Personality
+					} else {
+						msg := fmt.Sprintf(
+							"Missing Personality of host in hostprofile %s",
+							hostProfile.Name)
+						return common.NewSystemDependency(msg)
+					}
 					r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
@@ -2104,15 +2112,6 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	// Update scope from configuration
-	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance)
-	if err != nil {
-		logHost.Error(err, "unable to update scope")
-		return reconcile.Result{}, err
-	}
-	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
-
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any hosts that we have previously added.
@@ -2148,9 +2147,24 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return common.RetrySystemNotReady, nil
 	}
 
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildCompositeProfile(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Update scope from configuration
+	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(profile, instance)
+	if err != nil {
+		logHost.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
+
 	// Handle reconciliation of interface network assignment after platform network reconfiguration
 	if _, present := instance.Annotations[cloudManager.ReconcileHostByPlatformNetwork]; present {
-		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance)
+		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance, profile)
 		if err != nil {
 			return r.ReconcilerErrorHandler.HandleReconcilerError(request, common.NewResourceConfigurationDependency("host network reconciliation failed"))
 		} else {
@@ -2188,7 +2202,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		logHost.V(2).Info("not storage node or in ceph primary group. continue")
 	}
 
-	err = r.ReconcileResource(platformClient, instance)
+	err = r.ReconcileResource(platformClient, instance, profile)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
