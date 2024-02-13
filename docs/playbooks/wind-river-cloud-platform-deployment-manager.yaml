@@ -33,6 +33,9 @@
         wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
       when: deployment_config is defined
 
+    - set_fact:
+        manager_app_chart: "/usr/local/share/applications/helm/deployment-manager-*.tgz"
+
     - block:
       # Information to be used at final DM checks.
         - name: Get host name
@@ -302,17 +305,120 @@
         when: webhook_service_exists.rc == 0
 
       when: helmv3_installed and helmv3_dm_exists.rc == 0
+    
+    # Check dm-system app helm-chart
+    - name: Check DM system-app helm-chart present in /usr/local/share/applications/helm/
+      file:
+        path: {{ manager_app_chart }}
+        state: file
+      register: app_helm_chart_status
 
-    - name: Install Deployment Manager
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv3_installed
+    - block:
+      - name: Check helm-release for platform-deployment-manager
+        shell: helm ls -A | awk '{print $1}' | grep "deployment-manager"
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        ignore_errors: yes
+        register: helm_deployment_manager_release_status
 
-    # Install or Upgrade DM-Monitor
-    - name: "Install or Upgrade DM-monitor"
-      shell: "ansible-playbook {{ dm_monitor_playbook }}"
-      become: yes
-      ignore_errors: yes
-      when: dm_monitor_playbook
+      - name: Check helm-release for dm-monitor
+        shell: helm ls -A | awk '{print $1}' | grep "dm-monitor"
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        ignore_errors: yes
+        register: helm_dm_monitor_release_status
+
+      # backup of CRDs and uninstall of helm-based DM/DM-monitor
+      - block:
+        - name: Backup of CRDs
+          shell: kubectl get crds | grep starlingx| awk '{print $1}' | xargs -I {} sh -c 'echo ---;kubectl get {} -o yaml -A' >> crds_backup.yaml
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+    
+        # remove existing Helm based DM
+        - name: Uninstall helm-based DM-monitor 
+          shell: helm uninstall -n platform-deployment-manager dm-monitor
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+        
+        - name: Uninstall helm-based Deployment-Manager
+          shell: helm uninstall deployment-manager
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+        
+        - wait_for:
+          # Pause for an arbitrary amount of time to allow the
+          # platform-deployment-manager & dm-monitor pod to terminate.
+            timeout: 10
+            msg: Waiting for Uninstall deployment-manager
+
+        - name: Patching of CRDs
+          command: >- 
+            crds=$(kubectl get crd | grep starlingx | awk '{print $1}'); 
+            for crd in $crds; do echo "Patching resources under CRD $crd in deployment namespace"; 
+            resources=$(kubectl get $crd -n deployment --no-headers | awk '{print $1}'); 
+            for resource in $resources; do echo "Patching $resource"; 
+            kubectl patch $crd $resource --type=merge -p '{"metadata":{"finalizers":null}}' -n deployment; 
+            done; done
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+        when: (("deployment-manager" in helm_deployment_manager_release_status.stdout) or
+              ("dm-monitor" in helm_dm_monitor_release_status.stdout))
+        
+      # Get DM-app Status
+      - name: Get DM system-app Status
+        shell: system application-list | grep deployment-manager | awk '{ print $10 }'
+        register: app_status
+      
+      # remove existing DM system-app
+      - name: Remove DM system-app if app is applied or applied-failed
+        shell: system application-remove deployment-manager
+        when: (("applied" in app_status.stdout) or ("apply-failed" in app_status.stdout))
+      
+      # Get DM-app status after remove/uninstall
+      - name: Get the app-status after remove/uninstall
+        shell: system application-list | grep deployment-manager | awk '{ print $10 }'
+        register: app_status_new
+      
+      # Delete DM-app 
+      - name: Delete DM system-app if app is uploaded or upload-failed
+        shell: system application-delete deployment-manager
+        when: (("uploaded" in app_status_new.stdout) or ("upload-failed" in app_status_new.stdout))
+
+      # dm-system app upload/apply
+      - name: Upload Deployment Manager System App Helm Chart
+        shell: system application-upload {{ manager_app_chart }}
+
+      - wait_for:
+        # Pause for an arbitrary amount of time to allow the deployment
+        # manager app to be uploaded.
+          timeout: 6
+          msg: Waiting for the Deployment Manager App to be uploaded
+      
+      - name: Search Deployment Manager Upload Status
+        shell: system application-list | grep deployment-manager | awk '{ print $10 }'
+        register: app_upload_status
+
+      - name: Apply Deployment Manager System App
+        shell: system application-apply deployment-manager   
+        when: ("uploaded" in app_upload_status.stdout)
+
+      - wait_for:
+        # Pause for an arbitrary amount of time to allow the deployment
+        # manager app to be applied.
+          timeout: 80
+          msg: Waiting for the Deployment Manager App to be applied
+
+        # Apply CRDs only in migration  
+      - name: Apply CRDs after upload/apply
+        shell: kubectl apply -f crds_backup.yaml
+        environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+        when: (("deployment-manager" in helm_deployment_manager_release_status.stdout) or
+              ("dm-monitor" in helm_dm_monitor_release_status.stdout))
+
+      when: (app_helm_chart_status.stdout | length != 0)
 
     # Delete old Deployment Manager pod if it was reinstalled,
     # the pod to delete may already be terminated by helm
