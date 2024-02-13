@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package build
 
@@ -38,19 +38,21 @@ type Builder interface {
 	AddSystemFilters(filters []SystemFilter)
 	AddProfileFilters(filters []ProfileFilter)
 	AddHostFilters(filters []HostFilter)
+	AddPlatformNetworkFilters(filters []PlatformNetworkFilter)
 }
 
 // DeploymentBuilder is the concrete implementation of the builder interface
 // which is capable of building a full deployment model based on a running
 // system.
 type DeploymentBuilder struct {
-	client         *gophercloud.ServiceClient
-	namespace      string
-	name           string
-	progressWriter io.Writer
-	systemFilters  []SystemFilter
-	profileFilters []ProfileFilter
-	hostFilters    []HostFilter
+	client                 *gophercloud.ServiceClient
+	namespace              string
+	name                   string
+	progressWriter         io.Writer
+	systemFilters          []SystemFilter
+	profileFilters         []ProfileFilter
+	hostFilters            []HostFilter
+	platformNetworkFilters []PlatformNetworkFilter
 }
 
 var defaultSystemFilters = []SystemFilter{
@@ -169,6 +171,10 @@ func (db *DeploymentBuilder) AddProfileFilters(filters []ProfileFilter) {
 // on the deployment builder (if any).
 func (db *DeploymentBuilder) AddHostFilters(filters []HostFilter) {
 	db.hostFilters = append(db.hostFilters, filters...)
+}
+
+func (db *DeploymentBuilder) AddPlatformNetworkFilters(filters []PlatformNetworkFilter) {
+	db.platformNetworkFilters = append(db.platformNetworkFilters, filters...)
 }
 
 // Build is the main method which produces a deployment object based on a
@@ -561,12 +567,12 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		return err
 	}
 
-	nets := make([]*starlingxv1.PlatformNetwork, 0)
+	d.PlatformNetworks = make([]*starlingxv1.PlatformNetwork, 0)
 	always_generate_networks := []string{"storage", "mgmt", "oam", "admin"}
 	sort.Strings(always_generate_networks)
 	for _, p := range pools {
 		skip := false
-		network_type := networks.NetworkTypeOther
+		network := networks.Network{}
 		for _, n := range results {
 			if n.PoolUUID == p.ID {
 				// TODO(alegacy): for now we only support networks used for data
@@ -584,21 +590,27 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 				if index >= len(always_generate_networks) || always_generate_networks[index] != n.Type {
 					skip = true
 				}
-				network_type = n.Type
+				network = n
 				break
 			}
 		}
 
 		if !skip {
-			net, err := starlingxv1.NewPlatformNetwork(p.Name, db.namespace, p, network_type)
+			net, err := starlingxv1.NewPlatformNetwork(db.namespace, p, network)
 			if err != nil {
 				return err
 			}
-			nets = append(nets, net)
+			// We are executing platform network filters after appending because CoreNetworkFilter works on
+			// d.PlatformNetworks rather than individual PlatformNetwork resource.
+			// We are passing pointer to PlatformNetwork resource (net), hence, calling filterPlatformNetworks
+			// before or after append wouldn't make any difference and either way it would work.
+			d.PlatformNetworks = append(d.PlatformNetworks, net)
+			err = db.filterPlatformNetworks(net, d)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	d.PlatformNetworks = nets
 
 	return nil
 }
@@ -676,6 +688,17 @@ func isInterfaceInUse(ifname string, info *starlingxv1.InterfaceInfo) bool {
 func (db *DeploymentBuilder) filterHost(profile *starlingxv1.HostProfile, host *starlingxv1.Host, deployment *Deployment) error {
 	for _, f := range db.hostFilters {
 		err := f.Filter(profile, host, deployment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (db *DeploymentBuilder) filterPlatformNetworks(platform_network *starlingxv1.PlatformNetwork, deployment *Deployment) error {
+	for _, f := range db.platformNetworkFilters {
+		err := f.Filter(platform_network, deployment)
 		if err != nil {
 			return err
 		}

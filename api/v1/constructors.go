@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package v1
 
@@ -1425,9 +1425,13 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 	return &ptpInterface, nil
 }
 
-func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) (*PlatformNetworkSpec, error) {
+func NewPlatformNetworkSpec(pool addresspools.AddressPool, network networks.Network) (*PlatformNetworkSpec, error) {
+	allocation_type := networks.AllocationOrderDynamic
+	if !network.Dynamic {
+		allocation_type = networks.AllocationOrderStatic
+	}
 	spec := PlatformNetworkSpec{
-		Type:               network_type,
+		Type:               network.Type,
 		Subnet:             pool.Network,
 		FloatingAddress:    pool.FloatingAddress,
 		Controller0Address: pool.Controller0Address,
@@ -1435,7 +1439,7 @@ func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) 
 		Prefix:             pool.Prefix,
 		Gateway:            pool.Gateway,
 		Allocation: AllocationInfo{
-			Type:  networks.AllocationOrderDynamic,
+			Type:  allocation_type,
 			Order: &pool.Order,
 		},
 	}
@@ -1454,14 +1458,14 @@ func NewPlatformNetworkSpec(pool addresspools.AddressPool, network_type string) 
 	return &spec, nil
 }
 
-func NewPlatformNetwork(name string, namespace string, pool addresspools.AddressPool, network_type string) (*PlatformNetwork, error) {
+func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network networks.Network) (*PlatformNetwork, error) {
 	platformNetwork := PlatformNetwork{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
 			Kind:       KindPlatformNetwork,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      network.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ControllerToolsLabel: ControllerToolsVersion,
@@ -1469,7 +1473,7 @@ func NewPlatformNetwork(name string, namespace string, pool addresspools.Address
 		},
 	}
 
-	spec, err := NewPlatformNetworkSpec(pool, network_type)
+	spec, err := NewPlatformNetworkSpec(pool, network)
 	if err != nil {
 		return nil, err
 	}
