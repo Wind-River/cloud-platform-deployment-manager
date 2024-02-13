@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
 
 package build
 
@@ -43,6 +43,10 @@ var _ = Describe("Test Build utilities:", func() {
 		}
 		Expect(reflect.DeepEqual(
 			got.hostFilters, expectHostFilter)).To(BeTrue())
+
+		var expectPlatformNetworkFilters []PlatformNetworkFilter
+		Expect(reflect.DeepEqual(
+			got.platformNetworkFilters, expectPlatformNetworkFilters)).To(BeTrue())
 	})
 
 	Describe("Test parse incomplete secrets", func() {

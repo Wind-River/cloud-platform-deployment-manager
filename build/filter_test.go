@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
 
 package build
 
 import (
+	"reflect"
+
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
-	"reflect"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -97,4 +98,59 @@ var _ = Describe("Test filters utilities:", func() {
 			})
 		})
 	})
+
+	Describe("Test platform network filters", func() {
+		deployment := Deployment{}
+		deployment.PlatformNetworks = make([]*v1.PlatformNetwork, 0)
+		coreNetworkFilter := NewCoreNetworkFilter()
+		var get_platform_network = func(nwk_type string) *v1.PlatformNetwork {
+			gw := "10.10.10.1"
+			order := "random"
+			spec := v1.PlatformNetworkSpec{
+				Type:               nwk_type,
+				Subnet:             "10.10.10.0",
+				FloatingAddress:    "10.10.10.2",
+				Controller0Address: "10.10.10.3",
+				Controller1Address: "10.10.10.4",
+				Prefix:             24,
+				Gateway:            &gw,
+				Allocation: v1.AllocationInfo{
+					Type:  "dynamic",
+					Order: &order,
+					Ranges: []v1.AllocationRange{
+						v1.AllocationRange{
+							Start: "10.10.10.2",
+							End:   "10.10.10.50",
+						},
+					},
+				},
+			}
+			new_plat_nwk := v1.PlatformNetwork{}
+			new_plat_nwk.Spec = spec
+			return &new_plat_nwk
+		}
+		deployment.PlatformNetworks = []*v1.PlatformNetwork{
+			get_platform_network("oam"),
+			get_platform_network("mgmt"),
+			get_platform_network("admin"),
+			get_platform_network("storage")}
+
+		Context("when new core network filter", func() {
+			It("should return a CoreNetworkFilter", func() {
+				got := coreNetworkFilter
+				expect := CoreNetworkFilter{}
+				Expect(reflect.DeepEqual(got, &expect)).To(BeTrue())
+			})
+		})
+
+		Context("When core network filter is applied", func() {
+			It("deletes only oam/mgmt/admin platform networks", func() {
+				err := coreNetworkFilter.Filter(deployment.PlatformNetworks[0], &deployment)
+				Expect(err).To(BeNil())
+				Expect(len(deployment.PlatformNetworks)).To(Equal(1), "CoreNetworkFilter should not delete any platform networks other than oam/mgmt/admin")
+			})
+		})
+
+	})
+
 })

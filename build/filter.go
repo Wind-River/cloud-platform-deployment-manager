@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package build
 
@@ -453,6 +453,7 @@ const (
 	clusterIface   = "cluster0"
 	oamNetwork     = "oam"
 	oamIface       = "oam0"
+	adminNetwork   = "admin"
 )
 
 func (in *InterfaceNamingFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
@@ -721,6 +722,33 @@ func NewDRBDLinkUtilizationFilter() *DRBDLinkUtilizationFilter {
 
 func (in *DRBDLinkUtilizationFilter) Filter(system *v1.System, deployment *Deployment) error {
 	system.Spec.Storage.DRBD = nil
+	return nil
+}
+
+type PlatformNetworkFilter interface {
+	Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error
+}
+
+// Filter for PlatformNetworks
+// This will filter out platformnetworks of type oam, mgmt and admin
+type CoreNetworkFilter struct {
+}
+
+func NewCoreNetworkFilter() *CoreNetworkFilter {
+	return &CoreNetworkFilter{}
+}
+
+func (in *CoreNetworkFilter) Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error {
+	filtered_platform_networks := []*v1.PlatformNetwork{}
+	for _, pn := range deployment.PlatformNetworks {
+		if !(pn.Spec.Type == oamNetwork ||
+			pn.Spec.Type == mgmtNetwork ||
+			pn.Spec.Type == adminNetwork) {
+			filtered_platform_networks = append(filtered_platform_networks, pn)
+		}
+	}
+
+	deployment.PlatformNetworks = filtered_platform_networks
 	return nil
 }
 

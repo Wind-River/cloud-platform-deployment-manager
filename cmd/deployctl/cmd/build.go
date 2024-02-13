@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package cmd
 
@@ -40,6 +40,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 	var normalizeConsole bool
 	var noCACertificates bool
 	var noDRBDLinkUtilization bool
+	var noCorePlatformNetworks bool
 	var noFileSystems bool
 	var noServiceParams bool
 	var outputFile *os.File
@@ -172,6 +173,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		noCACertificates = true
 		noDefaults = true
 		noDRBDLinkUtilization = true
+		noCorePlatformNetworks = true
 		noFileSystems = true
 		noInterfaceDefaults = true
 		normalizeInterfaces = true
@@ -310,6 +312,16 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 
 	if len(systemFilters) > 0 {
 		builder.AddSystemFilters(systemFilters)
+	}
+
+	platformNetworkFilters := make([]build.PlatformNetworkFilter, 0)
+
+	if noCorePlatformNetworks {
+		platformNetworkFilters = append(platformNetworkFilters, build.NewCoreNetworkFilter())
+	}
+
+	if len(platformNetworkFilters) > 0 {
+		builder.AddPlatformNetworkFilters(platformNetworkFilters)
 	}
 
 	deployment, err := builder.Build()
