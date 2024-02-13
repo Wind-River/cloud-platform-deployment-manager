@@ -60,7 +60,7 @@ HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
 DEEPCOPY_GEN_FILE=./api/v1/zz_generated.deepcopy.go
 
 .PHONY: all
-all: helm-ver-check test build tools helm-package docker-build examples
+all: helm-ver-check test golangci build tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -99,15 +99,14 @@ fmt: ## Run go fmt against code.
 	go fmt ./...
 
 golangci: golangci-lint ## Run the golangci-lint static analysis
-	$(GOLANGCI_LINT) run ./api/...
-	$(GOLANGCI_LINT) run ./controllers/...
+	$(GOLANGCI_LINT) run ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt golangci vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build

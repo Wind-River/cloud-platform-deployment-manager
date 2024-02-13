@@ -418,6 +418,18 @@ func serviceparametersUpdateRequired(spec *starlingxv1.ServiceParameterInfo, p *
 	return serviceparametersOpts, result
 }
 
+// RefreshServiceParameterList updates the service parameters list in SystemInfo
+func (r *SystemReconciler) RefreshServiceParameterList(client *gophercloud.ServiceClient, instance *starlingxv1.System, info *v1info.SystemInfo) error {
+	result, err := serviceparameters.ListServiceParameters(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to refresh service parameters list")
+		return err
+	}
+	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
+	info.ServiceParameters = result
+	return nil
+}
+
 // ReconcileServiceParameters configures the system resources to align with the desired ServiceParameter state.
 func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) error {
 	if !utils.IsReconcilerEnabled(utils.ServiceParameters) {
@@ -466,19 +478,60 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 			updated = true
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
 		}
+	}
 
-		// Note: There is no support in the reconcile for DELETE of service parameters, since there are
-		// default service parameters setup by the system, that would complicate a reconcile.
+	// update the system object with the list of service params
+	if updated {
+		error := r.RefreshServiceParameterList(client, instance, info)
+		if error != nil {
+			return error
+		}
+	}
+
+	updated = false
+
+	for _, info_sp := range info.ServiceParameters {
+		found := false
+		for _, spec_sp := range *spec.ServiceParameters {
+			// A match occurs when service, section and paramname are equal
+			if info_sp.Service == spec_sp.Service &&
+				info_sp.Section == spec_sp.Section &&
+				info_sp.ParamName == spec_sp.ParamName {
+				// do nothing as it should be able to be updated by previous section
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Firstly check if it is a default service parameter as we are not
+			// deleting the default service parameters, this should not be happening
+			// as we delete the default parameters from spec in RemoveDefaultSystemSpecs
+			sp := starlingxv1.ServiceParameterInfo{
+				Service:   info_sp.Service,
+				Section:   info_sp.Section,
+				ParamName: info_sp.ParamName,
+			}
+			if starlingxv1.IsDefaultServiceParameter(&sp) {
+				msg := fmt.Sprintf("it is unsafe to delete default service parameters: %q %q %q", info_sp.Service, info_sp.Section, info_sp.ParamName)
+				return common.NewUserDataError(msg)
+			}
+
+			err := serviceparameters.Delete(client, info_sp.ID).ExtractErr()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "ServiceParameter %q %q %q has been created", info_sp.Service, info_sp.Section, info_sp.ParamName)
+		}
+
 	}
 	// update the system object with the list of service params
 	if updated {
-		result, err := serviceparameters.ListServiceParameters(client)
+		err := r.RefreshServiceParameterList(client, instance, info)
 		if err != nil {
-			err = perrors.Wrap(err, "failed to refresh service parameters list")
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
-		info.ServiceParameters = result
 	}
 
 	return nil
@@ -1048,6 +1101,8 @@ func (r *SystemReconciler) ReconcileSystem(client *gophercloud.ServiceClient, in
 
 	err = r.ReconcileSystemFinal(client, instance, spec, info)
 	if err != nil {
+		// Need to return true to unblock the other reconcilers to work with the
+		// system reconciler in parallel
 		return true, err
 	}
 
@@ -1287,11 +1342,11 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	ready, err := r.ReconcileSystem(client, instance, spec, &systemInfo)
 	inSync := err == nil
 
+	// Regardless of whether an error occurred, if the reconciling got
+	// far enough along to get the system in a state in which the other
+	// reconcilers can make progress than we need to mark the system as
+	// being ready. The error wil be returned in the end of this method.
 	if ready {
-		// Regardless of whether an error occurred, if the reconciling got
-		// far enough along to get the system in a state in which the other
-		// reconcilers can make progress than we need to mark the system as
-		// being ready.
 		if !r.CloudManager.GetSystemReady(instance.Namespace) {
 			// Set the system type which may be used by other reconcilers to make
 			// decisions about when to reconcile certain resources.
@@ -1305,13 +1360,13 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 				"system is now ready for other reconcilers")
 
-			err = r.CloudManager.NotifySystemDependencies(instance.Namespace)
-			if err != nil {
+			err2 := r.CloudManager.NotifySystemDependencies(instance.Namespace)
+			if err2 != nil {
 				// Revert to not-ready so that when we reconcile the system
 				// resource again we will push the change out to all other
 				// reconcilers again.
 				r.CloudManager.SetSystemReady(instance.Namespace, false)
-				return err
+				return err2
 			}
 		}
 	}
@@ -1319,10 +1374,10 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	if r.statusUpdateRequired(instance, systemInfo, inSync) {
 		logSystem.Info("updating status for system", "status", instance.Status)
 
-		err2 := r.Client.Status().Update(context.TODO(), instance)
-		if err2 != nil {
-			err2 = perrors.Wrap(err2, "failed to update system status")
-			return err2
+		err3 := r.Client.Status().Update(context.TODO(), instance)
+		if err3 != nil {
+			err3 = perrors.Wrap(err3, "failed to update system status")
+			return err3
 		}
 	}
 
@@ -1356,11 +1411,12 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
-					switch scope := status_config.Status.DeploymentScope; scope {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopeBootstrap
 					case cloudManager.ScopePrincipal:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopePrincipal
 					default:
 						err = fmt.Errorf("Unsupported DeploymentScope: %s",
 							status_config.Status.DeploymentScope)

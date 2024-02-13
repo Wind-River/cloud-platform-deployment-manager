@@ -333,6 +333,9 @@ func (m *Dummymanager) NotifySystemDependencies(namespace string) error {
 func (m *Dummymanager) NotifyResource(object client.Object) error {
 	return nil
 }
+func (m *Dummymanager) NotifyHostController(object client.Object, deleteKey bool) error {
+	return nil
+}
 func (m *Dummymanager) SetSystemReady(namespace string, value bool) {
 
 }

@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -65,6 +66,217 @@ var _ = Describe("Host controller", func() {
 			}, timeout, interval).Should(BeTrue())
 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{HostFinalizerName})
 			Expect(found).To(BeTrue())
+		})
+	})
+
+	Context("Admin network multi-netting creation - day2", func() {
+		Describe("hasAdminNetworkChange", func() {
+			It("Should detect admin network change", func() {
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
+				}
+
+				eth0Current := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{},
+					},
+				}
+
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Current},
+				}
+
+				expectedEthInfo := &starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						UUID:             "",
+						Name:             "eth0",
+						Class:            "",
+						MTU:              nil,
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						DataNetworks:     nil,
+						PTPRole:          nil,
+						PtpInterfaces:    nil,
+					},
+					VFCount:  nil,
+					VFDriver: nil,
+					Port: starlingxv1.EthernetPortInfo{
+						Name: "",
+					},
+					Lower: "",
+				}
+
+				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeTrue())
+				Expect(reflect.DeepEqual(ethInfo, expectedEthInfo)).To(BeTrue())
+			})
+
+			It("Should not detect admin network change different interface", func() {
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+					},
+				}
+
+				eth1Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth1",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile, eth1Profile},
+				}
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
+				}
+
+				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeFalse())
+				Expect(ethInfo).To(BeNil())
+			})
+
+			It("Should not detect admin network change w/o interface changes", func() {
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
+				}
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
+				}
+
+				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeFalse())
+				Expect(ethInfo).To(BeNil())
+			})
+
+			It("Should not detect admin network change with interface changes", func() {
+				eth0Current := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+					},
+				}
+
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "eth0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt, oam"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
+				}
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					Ethernet: []starlingxv1.EthernetInfo{eth0Current},
+				}
+
+				expectedEthInfo := &starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						UUID:             "",
+						Name:             "eth0",
+						Class:            "",
+						MTU:              nil,
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt, oam"},
+						DataNetworks:     nil,
+						PTPRole:          nil,
+						PtpInterfaces:    nil,
+					},
+					VFCount:  nil,
+					VFDriver: nil,
+					Port: starlingxv1.EthernetPortInfo{
+						Name: "",
+					},
+					Lower: "",
+				}
+
+				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeFalse())
+				Expect(reflect.DeepEqual(ethInfo, expectedEthInfo)).To(BeTrue())
+			})
+		})
+
+		Describe("findEthernetInfoByName", func() {
+			It("Should find EthernetInfo by name", func() {
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "eth0",
+					},
+				}
+				eth1Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "eth1",
+					},
+				}
+				ethList := []starlingxv1.EthernetInfo{
+					eth0Profile,
+					eth1Profile,
+				}
+				name := "eth1"
+
+				result := findEthernetInfoByName(ethList, name)
+
+				Expect(result).NotTo(BeNil())
+				Expect(result.Name).To(Equal(name))
+			})
+
+			It("Should not find EthernetInfo by name", func() {
+				eth0Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "eth0",
+					},
+				}
+				eth1Profile := starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name: "eth1",
+					},
+				}
+				ethList := []starlingxv1.EthernetInfo{
+					eth0Profile,
+					eth1Profile,
+				}
+				name := "eth2"
+
+				result := findEthernetInfoByName(ethList, name)
+
+				Expect(result).To(BeNil())
+			})
+		})
+
+		Describe("containsAdminPlatformNetwork", func() {
+			It("Should contain admin platform network", func() {
+				platformNetworks := starlingxv1.PlatformNetworkItemList{"admin"}
+				containsAdmin := containsAdminPlatformNetwork(platformNetworks)
+
+				Expect(containsAdmin).To(BeTrue())
+			})
+
+			It("Should not contain admin platform network", func() {
+				platformNetworks := starlingxv1.PlatformNetworkItemList{"management", "data"}
+				containsAdmin := containsAdminPlatformNetwork(platformNetworks)
+
+				Expect(containsAdmin).To(BeFalse())
+			})
 		})
 	})
 })

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package build
 
@@ -26,7 +26,7 @@ import (
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const yamlSeparator = "---\n"
@@ -38,19 +38,25 @@ type Builder interface {
 	AddSystemFilters(filters []SystemFilter)
 	AddProfileFilters(filters []ProfileFilter)
 	AddHostFilters(filters []HostFilter)
+	AddPlatformNetworkFilters(filters []PlatformNetworkFilter)
 }
 
 // DeploymentBuilder is the concrete implementation of the builder interface
 // which is capable of building a full deployment model based on a running
 // system.
 type DeploymentBuilder struct {
-	client         *gophercloud.ServiceClient
-	namespace      string
-	name           string
-	progressWriter io.Writer
-	systemFilters  []SystemFilter
-	profileFilters []ProfileFilter
-	hostFilters    []HostFilter
+	client                 *gophercloud.ServiceClient
+	namespace              string
+	name                   string
+	progressWriter         io.Writer
+	systemFilters          []SystemFilter
+	profileFilters         []ProfileFilter
+	hostFilters            []HostFilter
+	platformNetworkFilters []PlatformNetworkFilter
+}
+
+var defaultSystemFilters = []SystemFilter{
+	NewServiceParametersSystemFilter(),
 }
 
 var defaultHostFilters = []HostFilter{
@@ -61,6 +67,7 @@ var defaultHostFilters = []HostFilter{
 	NewBMAddressFilter(),
 	NewStorageMonitorFilter(),
 	NewInterfaceRemoveUuidFilter(),
+	NewHostKernelFilter(),
 }
 
 // NewDeploymentBuilder returns an instantiation of a deployment builder
@@ -71,7 +78,58 @@ func NewDeploymentBuilder(client *gophercloud.ServiceClient, namespace string, n
 		namespace:      namespace,
 		name:           name,
 		progressWriter: progressWriter,
+		systemFilters:  defaultSystemFilters,
 		hostFilters:    defaultHostFilters}
+}
+
+// parseIncompleteSecret is a convenience unitilty function to parse an incompleteSecret
+// from v1.Secret to IncompleteSecret to add the warning message to the data of
+// secret to request the action from users.
+func parseIncompleteSecret(secret *v1.Secret) *IncompleteSecret {
+	warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
+	if secret.Type == v1.SecretTypeTLS {
+		return &IncompleteSecret{
+			TypeMeta:   secret.TypeMeta,
+			ObjectMeta: secret.ObjectMeta,
+			Type:       secret.Type,
+			Data: map[string]string{
+				v1.TLSCertKey:              warningMsg,
+				v1.TLSPrivateKeyKey:        warningMsg,
+				v1.ServiceAccountRootCAKey: warningMsg,
+			},
+		}
+	}
+
+	if secret.Type == v1.SecretTypeBasicAuth {
+		return &IncompleteSecret{
+			TypeMeta:   secret.TypeMeta,
+			ObjectMeta: secret.ObjectMeta,
+			Type:       secret.Type,
+			Data: map[string]string{
+				v1.BasicAuthUsernameKey: string(secret.Data["username"]),
+				v1.BasicAuthPasswordKey: warningMsg,
+			},
+		}
+	}
+
+	// Return empty Data if the secret type is not listed above
+	return &IncompleteSecret{
+		TypeMeta:   secret.TypeMeta,
+		ObjectMeta: secret.ObjectMeta,
+		Type:       secret.Type,
+		Data: map[string]string{
+			"Fake Data": warningMsg,
+		},
+	}
+}
+
+// IncompleteSecret defines a struct that contains a warning message in the secret
+// data if the secret is incomplete
+type IncompleteSecret struct {
+	TypeMeta   metav1.TypeMeta
+	ObjectMeta metav1.ObjectMeta
+	Type       v1.SecretType
+	Data       map[string]string
 }
 
 // Deployment defines the structure used to store all of the details of a
@@ -80,7 +138,7 @@ func NewDeploymentBuilder(client *gophercloud.ServiceClient, namespace string, n
 type Deployment struct {
 	Namespace         v1.Namespace
 	Secrets           []*v1.Secret
-	IncompleteSecrets []*v1.Secret
+	IncompleteSecrets []*IncompleteSecret
 	System            starlingxv1.System
 	PlatformNetworks  []*starlingxv1.PlatformNetwork
 	DataNetworks      []*starlingxv1.DataNetwork
@@ -113,6 +171,10 @@ func (db *DeploymentBuilder) AddProfileFilters(filters []ProfileFilter) {
 // on the deployment builder (if any).
 func (db *DeploymentBuilder) AddHostFilters(filters []HostFilter) {
 	db.hostFilters = append(db.hostFilters, filters...)
+}
+
+func (db *DeploymentBuilder) AddPlatformNetworkFilters(filters []PlatformNetworkFilter) {
+	db.platformNetworkFilters = append(db.platformNetworkFilters, filters...)
 }
 
 // Build is the main method which produces a deployment object based on a
@@ -398,11 +460,11 @@ func NewEndpointSecretFromEnv(name string, namespace string) (*v1.Secret, error)
 	password := os.Getenv(manager.PasswordKey)
 
 	secret := v1.Secret{
-		TypeMeta: v12.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
 		},
-		ObjectMeta: v12.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -463,7 +525,8 @@ func (db *DeploymentBuilder) buildCertificateSecrets(d *Deployment) error {
 			if err != nil {
 				return err
 			}
-			d.IncompleteSecrets = append(d.IncompleteSecrets, cert)
+			incompleteSecret := parseIncompleteSecret(cert)
+			d.IncompleteSecrets = append(d.IncompleteSecrets, incompleteSecret)
 		}
 	}
 
@@ -504,12 +567,12 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		return err
 	}
 
-	nets := make([]*starlingxv1.PlatformNetwork, 0)
-	always_generate_networks := []string{"storage"}
+	d.PlatformNetworks = make([]*starlingxv1.PlatformNetwork, 0)
+	always_generate_networks := []string{"storage", "mgmt", "oam", "admin"}
 	sort.Strings(always_generate_networks)
 	for _, p := range pools {
 		skip := false
-		network_type := networks.NetworkTypeOther
+		network := networks.Network{}
 		for _, n := range results {
 			if n.PoolUUID == p.ID {
 				// TODO(alegacy): for now we only support networks used for data
@@ -527,21 +590,27 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 				if index >= len(always_generate_networks) || always_generate_networks[index] != n.Type {
 					skip = true
 				}
-				network_type = n.Type
+				network = n
 				break
 			}
 		}
 
 		if !skip {
-			net, err := starlingxv1.NewPlatformNetwork(p.Name, db.namespace, p, network_type)
+			net, err := starlingxv1.NewPlatformNetwork(db.namespace, p, network)
 			if err != nil {
 				return err
 			}
-			nets = append(nets, net)
+			// We are executing platform network filters after appending because CoreNetworkFilter works on
+			// d.PlatformNetworks rather than individual PlatformNetwork resource.
+			// We are passing pointer to PlatformNetwork resource (net), hence, calling filterPlatformNetworks
+			// before or after append wouldn't make any difference and either way it would work.
+			d.PlatformNetworks = append(d.PlatformNetworks, net)
+			err = db.filterPlatformNetworks(net, d)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	d.PlatformNetworks = nets
 
 	return nil
 }
@@ -619,6 +688,17 @@ func isInterfaceInUse(ifname string, info *starlingxv1.InterfaceInfo) bool {
 func (db *DeploymentBuilder) filterHost(profile *starlingxv1.HostProfile, host *starlingxv1.Host, deployment *Deployment) error {
 	for _, f := range db.hostFilters {
 		err := f.Filter(profile, host, deployment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (db *DeploymentBuilder) filterPlatformNetworks(platform_network *starlingxv1.PlatformNetwork, deployment *Deployment) error {
+	for _, f := range db.platformNetworkFilters {
+		err := f.Filter(platform_network, deployment)
 		if err != nil {
 			return err
 		}
@@ -714,7 +794,8 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 				// user is free to clone and modify the config on a per host
 				// basis if needed.
 				bmSecretGenerated = true
-				d.IncompleteSecrets = append(d.IncompleteSecrets, secret)
+				incompleteSecret := parseIncompleteSecret(secret)
+				d.IncompleteSecrets = append(d.IncompleteSecrets, incompleteSecret)
 			}
 		}
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package build
 
@@ -453,6 +453,7 @@ const (
 	clusterIface   = "cluster0"
 	oamNetwork     = "oam"
 	oamIface       = "oam0"
+	adminNetwork   = "admin"
 )
 
 func (in *InterfaceNamingFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
@@ -711,6 +712,72 @@ type SystemFilter interface {
 	Filter(system *v1.System, deployment *Deployment) error
 }
 
+// Filter for DRBD
+type DRBDLinkUtilizationFilter struct {
+}
+
+func NewDRBDLinkUtilizationFilter() *DRBDLinkUtilizationFilter {
+	return &DRBDLinkUtilizationFilter{}
+}
+
+func (in *DRBDLinkUtilizationFilter) Filter(system *v1.System, deployment *Deployment) error {
+	system.Spec.Storage.DRBD = nil
+	return nil
+}
+
+type PlatformNetworkFilter interface {
+	Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error
+}
+
+// Filter for PlatformNetworks
+// This will filter out platformnetworks of type oam, mgmt and admin
+type CoreNetworkFilter struct {
+}
+
+func NewCoreNetworkFilter() *CoreNetworkFilter {
+	return &CoreNetworkFilter{}
+}
+
+func (in *CoreNetworkFilter) Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error {
+	filtered_platform_networks := []*v1.PlatformNetwork{}
+	for _, pn := range deployment.PlatformNetworks {
+		if !(pn.Spec.Type == oamNetwork ||
+			pn.Spec.Type == mgmtNetwork ||
+			pn.Spec.Type == adminNetwork) {
+			filtered_platform_networks = append(filtered_platform_networks, pn)
+		}
+	}
+
+	deployment.PlatformNetworks = filtered_platform_networks
+	return nil
+}
+
+// Filter all filesystem types except backup and database
+type FileSystemFilter struct {
+}
+
+func NewFileSystemFilter() *FileSystemFilter {
+	return &FileSystemFilter{}
+}
+
+func (in *FileSystemFilter) Filter(system *v1.System, deployment *Deployment) error {
+	result := make([]v1.ControllerFileSystemInfo, 0)
+
+	for _, fs := range *system.Spec.Storage.FileSystems {
+		if fs.Name == "backup" || fs.Name == "database" || fs.Name == "instances" || fs.Name == "image-conversion" {
+			info := v1.ControllerFileSystemInfo{
+				Name: fs.Name,
+				Size: fs.Size,
+			}
+			result = append(result, info)
+		}
+	}
+	list := v1.ControllerFileSystemList(result)
+	system.Spec.Storage.FileSystems = &list
+
+	return nil
+}
+
 // CACertificateFilter defines a system filter that removes trusted CA
 // certificates from the configuration under the assumption that they were added
 // at bootstrap time rather than as a post install step.  This is being done
@@ -754,25 +821,25 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 type ServiceParameterFilter struct {
 }
 
+// Filter out the default service parameters
 func NewServiceParametersSystemFilter() *ServiceParameterFilter {
 	return &ServiceParameterFilter{}
 }
 
-func IsDefaultServiceParameter(sp *v1.ServiceParameterInfo) bool {
-	return true
-}
-
-func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployment) error {
+func (in *ServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
 	if system.Spec.ServiceParameters == nil {
 		return nil
 	}
 
 	result := make([]v1.ServiceParameterInfo, 0)
 	for _, sp := range *system.Spec.ServiceParameters {
-		// currently this skips everything
-		if IsDefaultServiceParameter(&sp) {
+
+		// If is a default service parameter, skip to add it
+		if v1.IsDefaultServiceParameter(&sp) {
 			continue
 		}
+
 		result = append(result, sp)
 	}
 
@@ -783,6 +850,20 @@ func (in *ServiceParameterFilter) Filter(system *v1.System, deployment *Deployme
 		system.Spec.ServiceParameters = nil
 	}
 
+	return nil
+}
+
+type NoServiceParameterFilter struct {
+}
+
+// Fileter out all the service parameters
+func NewNoServiceParametersSystemFilter() *NoServiceParameterFilter {
+	return &NoServiceParameterFilter{}
+}
+
+func (in *NoServiceParameterFilter) Filter(
+	system *v1.System, deployment *Deployment) error {
+	system.Spec.ServiceParameters = nil
 	return nil
 }
 
@@ -854,5 +935,24 @@ func (in *InterfaceRemoveUuidFilter) Filter(profile *v1.HostProfile, host *v1.Ho
 	for idx := range vfs {
 		in.CheckInterface(&vfs[idx].CommonInterfaceInfo)
 	}
+	return nil
+}
+
+// HostKernelFilter defines a profile and host filter that removes
+// kernel values from interfaces.
+type HostKernelFilter struct {
+}
+
+func NewHostKernelFilter() *HostKernelFilter {
+	return &HostKernelFilter{}
+}
+
+func (in *HostKernelFilter) Filter(profile *v1.HostProfile, host *v1.Host, deployment *Deployment) error {
+
+	// filter kernel parameter from hostprofile for hosts that are not worker/compute nodes
+	if !profile.Spec.HasWorkerSubFunction() {
+		profile.Spec.Kernel = nil
+	}
+
 	return nil
 }

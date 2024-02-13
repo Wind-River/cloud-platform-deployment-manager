@@ -12,11 +12,15 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/oamNetworks"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
+	hostController "github.com/wind-river/cloud-platform-deployment-manager/controllers/host"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,13 +88,85 @@ func compareRangeArrays(x, y [][]string) bool {
 	return len(x) == count
 }
 
+// oamUpdateRequired determines whether a oam network resource must
+// be updated to align with the stored value.  Only the updated fields are
+// include in the request options to minimum churn and to ease debugging.
+func oamUpdateRequired(instance *starlingxv1.PlatformNetwork, p *oamNetworks.OAMNetwork, r *PlatformNetworkReconciler) (opts oamNetworks.OAMNetworkOpts, result bool) {
+	var delta strings.Builder
+
+	spec := instance.Spec
+	instance_subnet := fmt.Sprintf("%s/%d", spec.Subnet, spec.Prefix)
+	if instance_subnet != p.OAMSubnet {
+		opts.OAMSubnet = &instance_subnet
+		delta.WriteString(fmt.Sprintf("\t+Subnet: %s\n", *opts.OAMSubnet))
+		result = true
+	}
+
+	if instance.Spec.Type != networks.NetworkTypeOther {
+		// TODO(alegacy): There is a sysinv bug in how the gateway address
+		//  gets registered in the database.  It doesn't have a "name" and
+		//  so causes an exception when a related route is added.
+		if spec.Gateway != nil && (p.OAMGatewayIP == nil || !strings.EqualFold(*spec.Gateway, *p.OAMGatewayIP)) {
+			opts.OAMGatewayIP = spec.Gateway
+			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.OAMGatewayIP))
+			result = true
+		}
+	}
+
+	if spec.FloatingAddress != "" && spec.FloatingAddress != p.OAMFloatingIP {
+		opts.OAMFloatingIP = &spec.FloatingAddress
+		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.OAMFloatingIP))
+		result = true
+	}
+
+	if spec.Controller0Address != "" && spec.Controller0Address != p.OAMC0IP {
+		opts.OAMC0IP = &spec.Controller0Address
+		delta.WriteString(fmt.Sprintf("\t+Controller0 Address: %s\n", *opts.OAMC0IP))
+		result = true
+	}
+
+	if spec.Controller1Address != "" && spec.Controller1Address != p.OAMC1IP {
+		opts.OAMC1IP = &spec.Controller1Address
+		delta.WriteString(fmt.Sprintf("\t+Controller1 Address: %s\n", *opts.OAMC1IP))
+		result = true
+	}
+
+	tempRange := [][]string{{p.OAMStartIP, p.OAMEndIP}}
+	if len(spec.Allocation.Ranges) > 0 {
+		ranges := makeRangeArray(spec.Allocation.Ranges)
+		if !compareRangeArrays(ranges, tempRange) {
+			opts.OAMStartIP = &ranges[0][0]
+			opts.OAMEndIP = &ranges[0][1]
+			delta.WriteString(fmt.Sprintf("\t+Start IP: %s\n", *opts.OAMStartIP))
+			delta.WriteString(fmt.Sprintf("\t+End IP: %s\n", *opts.OAMEndIP))
+			result = true
+		}
+	}
+	deltaString := delta.String()
+	if deltaString != "" {
+		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
+		logPlatformNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+	}
+
+	instance.Status.Delta = deltaString
+	err := r.Client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logPlatformNetwork.Info(fmt.Sprintf("failed to update oam status:  %s\n", err))
+	}
+	return opts, result
+}
+
 // poolUpdateRequired determines whether a system address pool resource must
 // be updated to align with the stored value.  Only the updated fields are
 // include in the request options to minimum churn and to ease debugging.
 func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.AddressPool, r *PlatformNetworkReconciler) (opts addresspools.AddressPoolOpts, result bool) {
 	var delta strings.Builder
-	if instance.Name != p.Name {
-		opts.Name = &instance.Name
+	// The address pool name for network type mgmt has to be 'management'
+	// and cannot be anything else. GetAddrPoolNameByNetworkType ensures
+	// pool name is as per the requirement. This is the limitation on sysinv.
+	poolName := r.GetAddrPoolNameByNetworkType(instance.Spec.Type, instance.Name)
+	if p.Name != poolName {
+		opts.Name = &poolName
 		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
 	}
@@ -105,6 +181,24 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 	if spec.Prefix != p.Prefix {
 		opts.Prefix = &spec.Prefix
 		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
+		result = true
+	}
+
+	if spec.FloatingAddress != "" && spec.FloatingAddress != p.FloatingAddress {
+		opts.FloatingAddress = &spec.FloatingAddress
+		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.FloatingAddress))
+		result = true
+	}
+
+	if spec.Controller0Address != "" && spec.Controller0Address != p.Controller0Address {
+		opts.Controller0Address = &spec.Controller0Address
+		delta.WriteString(fmt.Sprintf("\t+Controller0 Address: %s\n", *opts.Controller0Address))
+		result = true
+	}
+
+	if spec.Controller1Address != "" && spec.Controller1Address != p.Controller1Address {
+		opts.Controller1Address = &spec.Controller1Address
+		delta.WriteString(fmt.Sprintf("\t+Controller1 Address: %s\n", *opts.Controller1Address))
 		result = true
 	}
 
@@ -136,7 +230,7 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 	deltaString := delta.String()
 	if deltaString != "" {
 		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
-		logPlatformNetwork.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logPlatformNetwork.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 	}
 
 	instance.Status.Delta = deltaString
@@ -146,6 +240,15 @@ func poolUpdateRequired(instance *starlingxv1.PlatformNetwork, p *addresspools.A
 	}
 
 	return opts, result
+}
+
+// Address pool which will be used for network of mgmt type should use the name 'management'
+func (r *PlatformNetworkReconciler) GetAddrPoolNameByNetworkType(network_type string, pool_name string) string {
+	if network_type == cloudManager.MgmtNetworkType {
+		return cloudManager.MgmtAddrPoolName
+	} else {
+		return pool_name
+	}
 }
 
 // ReconcileNew is a method which handles reconciling a new data resource and
@@ -163,11 +266,25 @@ func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.
 		}
 	}
 
+	poolName := r.GetAddrPoolNameByNetworkType(instance.Spec.Type, instance.Name)
+
 	opts := addresspools.AddressPoolOpts{
-		Name:    &instance.Name,
+		Name:    &poolName,
 		Network: &instance.Spec.Subnet,
 		Prefix:  &instance.Spec.Prefix,
 		Order:   instance.Spec.Allocation.Order,
+	}
+
+	if instance.Spec.FloatingAddress != "" {
+		opts.FloatingAddress = &instance.Spec.FloatingAddress
+	}
+
+	if instance.Spec.Controller0Address != "" {
+		opts.Controller0Address = &instance.Spec.Controller0Address
+	}
+
+	if instance.Spec.Controller1Address != "" {
+		opts.Controller1Address = &instance.Spec.Controller1Address
 	}
 
 	if instance.Spec.Type != networks.NetworkTypeOther {
@@ -200,6 +317,45 @@ func (r *PlatformNetworkReconciler) ReconcileNewAddressPool(client *gophercloud.
 // ReconcileUpdated is a method which handles reconciling an existing data
 // resource and updates the corresponding system resource thru the system API to
 // match the desired state of the resource.
+func (r *PlatformNetworkReconciler) ReconcileUpdatedOAMNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, oam *oamNetworks.OAMNetwork) error {
+	if opts, ok := oamUpdateRequired(instance, oam, r); ok {
+		if instance.Status.Reconciled && r.StopAfterInSync() {
+			// Do not process any further changes once we have reached a
+			// synchronized state unless there is an annotation on the resource.
+			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
+				msg := common.NoChangesAfterReconciled
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				return common.NewChangeAfterInSync(msg)
+			} else {
+				logPlatformNetwork.Info(common.ChangedAllowedAfterReconciled)
+			}
+		}
+
+		if instance.Status.DeploymentScope != cloudManager.ScopePrincipal {
+			r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+				"unable to update OAM Network with deploymentScope = bootstrap")
+			return nil
+		}
+
+		// Update existing oam network
+		logPlatformNetwork.Info("updating oam network", "uuid", oam.UUID, "opts", opts)
+
+		result, err := oamNetworks.Update(client, oam.UUID, opts).Extract()
+		if err != nil {
+			err = perrors.Wrapf(err, "failed to update oam network: %+v", opts)
+			return err
+		}
+
+		*oam = *result
+
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+			"oam network has been updated")
+
+	}
+
+	return nil
+}
+
 func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if opts, ok := poolUpdateRequired(instance, pool, r); ok {
 		if instance.Status.Reconciled && r.StopAfterInSync() {
@@ -227,14 +383,15 @@ func (r *PlatformNetworkReconciler) ReconcileUpdatedAddressPool(client *gophercl
 
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 			"address pool has been updated")
+
 	}
 
 	return nil
 }
 
-// ReconcileNew is a method which handles reconciling a new data resource and
-// creates the corresponding system resource thru the system API.
-func (r *PlatformNetworkReconciler) ReconciledDeletedAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
+// DeleteAddressPool is a method which deletes a given address pool using
+// the address pool API.
+func (r *PlatformNetworkReconciler) DeleteAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, pool *addresspools.AddressPool) error {
 	if pool != nil {
 		// Unless it was already deleted go ahead and attempt to delete it.
 		err := addresspools.Delete(client, pool.ID).ExtractErr()
@@ -282,15 +439,26 @@ func (r *PlatformNetworkReconciler) FindExistingAddressPool(client *gophercloud.
 
 	} else {
 		// This network needs to be provisioned if it doesn't already exist.
-		results, err := addresspools.ListAddressPools(client)
+		addr_pools, err := addresspools.ListAddressPools(client)
 		if err != nil {
 			err = perrors.Wrap(err, "failed to list pools")
 			return nil, err
 		}
 
-		for _, p := range results {
-			if p.Name == instance.Name {
-				pool = &p
+		results, err := networks.ListNetworks(client)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to list networks")
+			return nil, err
+		}
+
+		for _, nwk := range results {
+			if nwk.Type == instance.Spec.Type {
+				for _, p := range addr_pools {
+					if p.ID == nwk.PoolUUID {
+						pool = &p
+						break
+					}
+				}
 				break
 			}
 		}
@@ -305,18 +473,40 @@ func (r *PlatformNetworkReconciler) FindExistingAddressPool(client *gophercloud.
 // resources.
 func (r *PlatformNetworkReconciler) ReconcileAddressPool(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) error {
 	pool, err := r.FindExistingAddressPool(client, instance)
+
 	if err != nil {
 		return err
 	}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName) {
-			return r.ReconciledDeletedAddressPool(client, instance, pool)
+			return r.DeleteAddressPool(client, instance, pool)
 		}
 
 	} else {
 		if pool == nil {
 			pool, err = r.ReconcileNewAddressPool(client, instance)
+		} else if instance.Spec.Type == cloudManager.MgmtNetworkType || instance.Spec.Type == cloudManager.AdminNetworkType {
+			// For network types mgmt and admin we cannot modify existing pool,
+			// we have to delete and recreate it instead.
+			if _, ok := poolUpdateRequired(instance, pool, r); ok {
+				err = r.DeleteAddressPool(client, instance, pool)
+				if err == nil {
+					pool, err = r.ReconcileNewAddressPool(client, instance)
+				}
+			}
+		} else if instance.Spec.Type == cloudManager.OAMNetworkType {
+			oamNetworkList, err := oamNetworks.ListNetworks(client)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to get oam network")
+				return err
+			}
+			oamNetwork := &oamNetworkList[0]
+			err = r.ReconcileUpdatedOAMNetwork(client, instance, oamNetwork)
+
+			if err != nil {
+				return err
+			}
 		} else {
 			err = r.ReconcileUpdatedAddressPool(client, instance, pool)
 		}
@@ -333,7 +523,7 @@ func (r *PlatformNetworkReconciler) ReconcileAddressPool(client *gophercloud.Ser
 }
 
 // plNetworkUpdateRequired determines whether a system network resource must be
-// updated to align with the stored value.  Only the updated fields are
+// updated to align with the stored value. Only the updated fields are
 // include in the request options to minimum churn and to ease debugging.
 func plNetworkUpdateRequired(instance *starlingxv1.PlatformNetwork, n *networks.Network) (opts networks.NetworkOpts, result bool) {
 	if instance.Name != n.Name {
@@ -372,6 +562,10 @@ func plNetworkUpdateRequired(instance *starlingxv1.PlatformNetwork, n *networks.
 func networkResourceRequired(instance *starlingxv1.PlatformNetwork) bool {
 	switch instance.Spec.Type {
 	case networks.NetworkTypeOther:
+		return false
+	case cloudManager.OAMNetworkType:
+		// return false because both network and address pool reconfiguration are
+		// handled by OAM API which is handled by ReconcileUpdatedOAMNetwork.
 		return false
 	default:
 		return true
@@ -546,46 +740,301 @@ func (r *PlatformNetworkReconciler) statusUpdateRequired(instance *starlingxv1.P
 	return !instance.Status.DeepEqual(status)
 }
 
-// ReconcileResource interacts with the system API in order to reconcile the
-// state of a data network with the state stored in the k8s database.
-func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (err error) {
+// Determine if the system type is All-in-one simplex, return the Host object if so.
+func (r *PlatformNetworkReconciler) isAIOSXHost(client *gophercloud.ServiceClient) (*hosts.Host, bool, error) {
+	all_hosts, err := hosts.ListHosts(client)
+	if err != nil {
+		return nil, false, common.NewSystemDependency("Failed to get host list")
+	}
+
+	default_system, err := system.GetDefaultSystem(client)
+	if err != nil {
+		return nil, false, common.NewSystemDependency("Failed to get default system")
+	}
+
+	default_system_mode := cloudManager.SystemMode(default_system.SystemMode)
+	default_system_type := cloudManager.SystemType(strings.ToLower(default_system.SystemType))
+
+	if default_system_mode == cloudManager.SystemModeSimplex && default_system_type == cloudManager.SystemTypeAllInOne {
+		return &all_hosts[0], true, nil
+	}
+
+	return nil, false, nil
+}
+
+func (r *PlatformNetworkReconciler) AddressPoolUpdateRequired(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (bool, error) {
+	pool, err := r.FindExistingAddressPool(client, instance)
+	if err != nil {
+		return false, err
+	} else if pool == nil {
+		return true, nil
+	}
+
+	if _, ok := poolUpdateRequired(instance, pool, r); ok {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (r *PlatformNetworkReconciler) NetworkUpdateRequired(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (bool, error) {
+	if instance.Spec.Type == cloudManager.OAMNetworkType {
+		oamNetworkList, err := oamNetworks.ListNetworks(client)
+		if err != nil {
+			return false, err
+		} else if len(oamNetworkList) == 0 {
+			return true, nil
+		} else {
+			oamNetwork := &oamNetworkList[0]
+			if _, ok := oamUpdateRequired(instance, oamNetwork, r); ok {
+				return true, nil
+			}
+		}
+	} else {
+		network, err := r.FindExistingNetwork(client, instance)
+		if err != nil {
+			return false, err
+		} else if network == nil {
+			return true, nil
+		}
+		if _, ok := plNetworkUpdateRequired(instance, network); ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// IsPlatformNetworkInSync determines if the applied platformnetwork config
+// is in sync with the running configuration on the system and returns the state.
+// It checks both address pool as well as network and returns false even if one is out of sync.
+func (r *PlatformNetworkReconciler) IsPlatformNetworkInSync(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (bool, error) {
+	pool_update_required, err := r.AddressPoolUpdateRequired(client, instance)
+	if err != nil {
+		err = common.NewSystemDependency("There was an error retrieving the address pool.")
+		return false, err
+	}
+
+	nwk_update_required, err := r.NetworkUpdateRequired(client, instance)
+	if err != nil {
+		err = common.NewSystemDependency("There was an error retrieving the network.")
+		return false, err
+	}
+
+	return !(pool_update_required || nwk_update_required), err
+}
+
+func (r *PlatformNetworkReconciler) UpdateInsyncStatus(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, oldStatus *starlingxv1.PlatformNetworkStatus) error {
+	if r.statusUpdateRequired(instance, oldStatus) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", instance.Status.InSync)
+		err2 := r.Client.Status().Update(context.TODO(), instance)
+		if err2 != nil {
+			logPlatformNetwork.Error(err2, "failed to update platform network status")
+			return err2
+		}
+	}
+	return nil
+}
+
+// This method will try to reconcile both address pool as well as the network
+// and update the instance status accordingly.
+func (r *PlatformNetworkReconciler) ReconcileAddressPoolAndNetwork(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork) (inSync bool, err error) {
 	oldStatus := instance.Status.DeepCopy()
 
+	err = r.ReconcileAddressPool(client, instance)
+	if err == nil {
+		if networkResourceRequired(instance) {
+			err = r.ReconcileNetwork(client, instance)
+		}
+	}
+
+	inSync = err == nil
+	instance.Status.InSync = inSync
+	instance.Status.Reconciled = inSync
+
+	err2 := r.UpdateInsyncStatus(client, instance, oldStatus)
+	if err2 != nil {
+		return inSync, err2
+	}
+
+	return inSync, err
+}
+
+// Returns poniter to instance of starlingxv1.Host which is used for creating
+// lock / unlock strategies & creating annotation for interface network reconciliation
+// against the host.
+func (r *PlatformNetworkReconciler) GetHostInstance(hostname string, request_namespace string) (*starlingxv1.Host, error) {
+	host_instance := &starlingxv1.Host{}
+	host_namespace := types.NamespacedName{Namespace: request_namespace, Name: hostname}
+	err := r.Client.Get(context.TODO(), host_namespace, host_instance)
+	if err != nil {
+		logPlatformNetwork.Error(err, "Failed to get host resource from namespace %v", host_namespace)
+	}
+	return host_instance, err
+}
+
+// This method handles strategy updates such as lock_required / unlock_required / not_required
+// for the given host.
+func (r *PlatformNetworkReconciler) HandleHostStrategyUpdates(host_strategy cloudManager.HostStrategyInfo, request_namespace string) (err error) {
+	host_instance, err := r.GetHostInstance(host_strategy.Host.Hostname, request_namespace)
+	if err != nil {
+		return err
+	}
+
+	if host_instance.Status.StrategyRequired != host_strategy.StrategyRequired {
+		host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
+		err := r.Client.Status().Update(context.TODO(), host_instance)
+		if err != nil {
+			logPlatformNetwork.Error(err, "Failed to update status %v", host_instance.Status)
+			return err
+		}
+	}
+
+	if !r.CloudManager.GetStrageySent() {
+		msg := fmt.Sprintf("Applying %s strategy on host %s", host_strategy.StrategyRequired, host_instance.Name)
+		logPlatformNetwork.Info(msg)
+		reconciled := host_instance.Status.Reconciled
+		strategy := host_instance.Status.StrategyRequired
+		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host_strategy.Host.Personality, host_instance.Name, reconciled, strategy)
+		m := hostController.NewLockedDisabledHostMonitor(host_instance, host_strategy.Host.ID)
+		_ = r.CloudManager.StartMonitor(m, msg)
+	}
+	return common.NewResourceConfigurationDependency("waiting for system to be in locked state before reconfiguring network")
+}
+
+// ReconcileResourceBootstrap is responsible for reconciling platform networks of scope bootstrap.
+// It will not attempt to reconcile if network type is one of (mgmt, oam, admin) but only set the
+// insync status by comparing running config vs profile. Also, for the three networks mentioned
+// above, the reconciliation status is always set to true irrespective of insync status to avoid
+// raising alarms during day-1 configuration.
+func (r *PlatformNetworkReconciler) ReconcileResourceBootstrap(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, is_in_sync bool) (err error) {
+	if instance.Spec.Type == cloudManager.MgmtNetworkType ||
+		instance.Spec.Type == cloudManager.OAMNetworkType ||
+		instance.Spec.Type == cloudManager.AdminNetworkType {
+		if instance.Status.InSync != is_in_sync {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", is_in_sync)
+		}
+		instance.Status.InSync = is_in_sync
+		instance.Status.Reconciled = true
+		err2 := r.Client.Status().Update(context.TODO(), instance)
+		if err2 != nil {
+			logPlatformNetwork.Error(err2, "failed to update platform network status")
+		}
+		return err2
+	} else {
+		// Try to reconcile rest of the networks and update the status accordingly.
+		if !is_in_sync {
+			_, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ReconcileResourcePrincipal is responsible for reconciling platform networks of scope principal.
+func (r *PlatformNetworkReconciler) ReconcileResourcePrincipal(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string, is_in_sync bool) (err error) {
+	if !(instance.Status.InSync && instance.Status.Reconciled) {
+		host, is_aiosx, err := r.isAIOSXHost(client)
+		if err != nil {
+			return err
+		}
+		if is_aiosx {
+			return r.ReconcileResourcePrincipalSimplex(client, instance, request_namespace, host)
+		} else {
+			return r.ReconcileResourcePrincipalMultinodes(client, instance, is_in_sync)
+		}
+	}
+	return nil
+}
+
+// ReconcileResourcePrincipalSimplex handles reconciliation of platform networks if the system
+// is all-in-one simplex.
+func (r *PlatformNetworkReconciler) ReconcileResourcePrincipalSimplex(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string, host *hosts.Host) (err error) {
+	logPlatformNetwork.Info("Proceeding with network reconfiguration on AIO-SX")
+	if instance.Spec.Type == cloudManager.MgmtNetworkType {
+
+		if host.AdministrativeState == hosts.AdminLocked && host.OperationalStatus == hosts.OperDisabled {
+
+			_, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+			if err != nil {
+				return err
+			}
+
+			// Trigger network reconciliation on host controller by creating annotation
+			// on host instance if the network type is management.
+			host_instance, err := r.GetHostInstance(host.Hostname, request_namespace)
+			if err != nil {
+				return err
+			}
+			return r.CloudManager.NotifyHostController(host_instance, false)
+		} else {
+			host_strategy := cloudManager.HostStrategyInfo{
+				StrategyRequired: cloudManager.StrategyLockRequired,
+				Host:             *host,
+			}
+			return r.HandleHostStrategyUpdates(host_strategy, request_namespace)
+		}
+	} else {
+
+		_, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+		if err != nil {
+			return err
+		}
+
+		// Trigger network reconciliation on host controller by creating annotation
+		// on host instance if the network type is admin.
+		if instance.Spec.Type == cloudManager.AdminNetworkType {
+			host_instance, err := r.GetHostInstance(host.Hostname, request_namespace)
+			if err != nil {
+				return err
+			}
+			return r.CloudManager.NotifyHostController(host_instance, false)
+		}
+
+	}
+
+	return nil
+}
+
+// ReconcileResourcePrincipalMultinodes handles reconciliation of platform networks if the system
+// is other than all-in-one simplex.
+func (r *PlatformNetworkReconciler) ReconcileResourcePrincipalMultinodes(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, is_in_sync bool) (err error) {
+	if instance.Spec.Type == cloudManager.MgmtNetworkType {
+		// Just compare current config vs profile, update instance.Status.InSync
+		// and instance.Status.Reconciled accordingly for mgmt network type.
+		instance.Status.InSync = is_in_sync
+		instance.Status.Reconciled = is_in_sync
+		err2 := r.Client.Status().Update(context.TODO(), instance)
+		if err2 != nil {
+			logPlatformNetwork.Error(err2, "failed to update platform network status")
+		}
+		return err2
+	} else {
+		// Try to reconcile rest of the networks and update the status accordingly.
+		_, err = r.ReconcileAddressPoolAndNetwork(client, instance)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ReconcileResource interacts with the system API in order to reconcile the
+// state of a data network with the state stored in the k8s database.
+func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string) (err error) {
+
 	if instance.DeletionTimestamp.IsZero() {
-		err = r.ReconcileAddressPool(client, instance)
-		if err == nil {
-			if networkResourceRequired(instance) {
-				err = r.ReconcileNetwork(client, instance)
-			}
+		is_in_sync, err := r.IsPlatformNetworkInSync(client, instance)
+		if err != nil {
+			return err
 		}
 
-		inSync := err == nil
-
-		if inSync != instance.Status.InSync {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
-		}
-
-		instance.Status.InSync = inSync
-
-		if !instance.Status.Reconciled {
-			// Record the fact that we have reached inSync at least once.
-			instance.Status.Reconciled = instance.Status.InSync
-		}
-
-		if instance.Status.Reconciled {
-			instance.Status.ConfigurationUpdated = false
-			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-			if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-				r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
-			}
-		}
-
-		if r.statusUpdateRequired(instance, oldStatus) {
-			err2 := r.Client.Status().Update(context.TODO(), instance)
-			if err2 != nil {
-				logPlatformNetwork.Error(err2, "failed to update platform network status")
-				return err2
-			}
+		if instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
+			return r.ReconcileResourceBootstrap(client, instance, is_in_sync)
+		} else if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+			return r.ReconcileResourcePrincipal(client, instance, request_namespace, is_in_sync)
 		}
 
 	} else {
@@ -640,11 +1089,12 @@ func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.Platfor
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
-					switch scope := status_config.Status.DeploymentScope; scope {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopeBootstrap
 					case cloudManager.ScopePrincipal:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopePrincipal
 					default:
 						err = fmt.Errorf("Unsupported DeploymentScope: %s",
 							status_config.Status.DeploymentScope)
@@ -735,7 +1185,6 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
-					r.CloudManager.SetResourceInfo(cloudManager.ResourcePlatformnetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
 			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
@@ -829,7 +1278,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return common.RetrySystemNotReady, nil
 	}
 
-	err = r.ReconcileResource(platformClient, instance)
+	err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}

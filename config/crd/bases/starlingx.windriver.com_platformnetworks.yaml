@@ -103,6 +103,18 @@ spec:
                 required:
                 - type
                 type: object
+              controller0Address:
+                description: Controller0Address is the controller-0 IPv4 or IPv6 network
+                  address value.
+                type: string
+              controller1Address:
+                description: Controller1Address is the controller-1 IPv4 or IPv6 network
+                  address value.
+                type: string
+              floatingAddress:
+                description: FloatingAddress defines the floating IPv4 or IPv6 network
+                  address for the network
+                type: string
               gateway:
                 description: Gateway defines the nexthop gateway IP address if applicable
                 type: string
@@ -111,8 +123,8 @@ spec:
                 minimum: 1
                 type: integer
               subnet:
-                description: Subnet defines the IPv4 or IPv6 network address for the
-                  network
+                description: Subnet defines the subdivision IPv4 or IPv6 network address
+                  for the network
                 type: string
               type:
                 description: Type defines the intended usage of the network
@@ -152,6 +164,10 @@ spec:
                 enum:
                 - bootstrap
                 - principal
+                - Bootstrap
+                - Principal
+                - BOOTSTRAP
+                - PRINCIPAL
                 type: string
               id:
                 description: ID defines the system assigned unique identifier.  This

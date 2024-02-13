@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -38,13 +39,24 @@ const SystemEndpointSecretName = "system-endpoint"
 
 const (
 	// Defines annotation keys for resources.
-	NotificationCountKey = "deployment-manager/notifications"
-	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
+	NotificationCountKey           = "deployment-manager/notifications"
+	ReconcileHostByPlatformNetwork = "deployment-manager/reconcile-host-networking"
+	ReconcileAfterInSync           = "deployment-manager/reconcile-after-insync"
 )
 
 const (
 	ScopeBootstrap = "bootstrap"
 	ScopePrincipal = "principal"
+)
+
+// TODO: Assign these consts in platform network controller instead.
+// Note that the AdminNetworkType is being referenced from host controller as well
+// as platform network controller.
+const (
+	OAMNetworkType   = "oam"
+	MgmtNetworkType  = "mgmt"
+	AdminNetworkType = "admin"
+	MgmtAddrPoolName = "management"
 )
 
 const (
@@ -78,6 +90,7 @@ type CloudManager interface {
 	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
+	NotifyHostController(object client.Object, deleteKey bool) error
 	SetSystemReady(namespace string, value bool)
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
@@ -164,6 +177,11 @@ type StrategyStatus struct {
 	StrategySent   bool
 	Namespace      string
 	MonitorStarted bool
+}
+
+type HostStrategyInfo struct {
+	StrategyRequired string
+	Host             hosts.Host
 }
 
 type PlatformManager struct {
@@ -369,7 +387,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 // notifyController updates an annotation on a single controller to force it
 // to re-run its reconcile loop.
-func (m *PlatformManager) notifyController(object client.Object) error {
+func (m *PlatformManager) notifyController(object client.Object, annotationKey string, deleteKey bool) error {
 	key := client.ObjectKeyFromObject(object)
 
 	result := object.DeepCopyObject().(client.Object)
@@ -391,8 +409,12 @@ func (m *PlatformManager) notifyController(object client.Object) error {
 		annotations = make(map[string]string)
 	}
 
-	count := getNextCount(annotations[NotificationCountKey])
-	annotations[NotificationCountKey] = count
+	if !deleteKey {
+		count := getNextCount(annotations[annotationKey])
+		annotations[annotationKey] = count
+	} else {
+		delete(annotations, annotationKey)
+	}
 
 	err = accessor.SetAnnotations(result, annotations)
 	if err != nil {
@@ -416,7 +438,11 @@ func (m *PlatformManager) NotifySystemDependencies(namespace string) error {
 }
 
 func (m *PlatformManager) NotifyResource(object client.Object) error {
-	return m.notifyController(object)
+	return m.notifyController(object, NotificationCountKey, false)
+}
+
+func (m *PlatformManager) NotifyHostController(object client.Object, deleteKey bool) error {
+	return m.notifyController(object, ReconcileHostByPlatformNetwork, deleteKey)
 }
 
 // GetKubernetesClient returns a reference to the Kubernetes client

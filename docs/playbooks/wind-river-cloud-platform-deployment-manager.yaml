@@ -4,6 +4,11 @@
   hosts: all
   gather_facts: false
   become: false
+
+  vars:
+    helmv2_installed: false
+    helmv3_installed: false
+
   tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
@@ -103,24 +108,24 @@
         - set_fact:
             helm_chart_overrides: "/usr/local/share/applications/overrides/wind-river-cloud-platform-deployment-manager-overrides-subcloud.yaml"
             manager_chart: "/usr/local/share/applications/helm/wind-river-cloud-platform-deployment-manager-*.tgz"
-          
+
         - name: Check if helm-chart file exists in subcloud
           shell: ls {{ manager_chart }}
           ignore_errors: yes
           register: helm_chart_file
-         
+
         - name: Check if helm-overrides file exists in subcloud
           stat:
             path: "{{ helm_chart_overrides }}"
           register: helm_chart_overrides_file
-          
+
         - name: Fail helm-chart and overrides not exists in subcloud
-          fail: 
+          fail:
             msg: "Helm-chart and overrides not exists in subcloud"
           when: (helm_chart_file.stdout | length == 0 or helm_chart_overrides_file.stat.exists == False)
 
         when: ("subcloud" in get_distributed_cloud_role.stdout and user_uploaded_artifacts is false)
-      
+
       - name: Clean download directory
         file:
           path: "{{ temp.path }}"
@@ -157,11 +162,17 @@
       ignore_errors: yes
       register: helmv2_releases
 
+    # Ansible returns error code 2 to helmv2_releases if helmv2-cli does not exist
+    - name: Check if helmv2-cli is installed
+      set_fact:
+        helmv2_installed: "{{ false if helmv2_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv2
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv2_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv2_dm_exists
+      when: helmv2_installed
 
     - name: Get list of releases in helmv3
       command: >-
@@ -171,15 +182,22 @@
       ignore_errors: yes
       register: helmv3_releases
 
+    # Ansible returns error code 2 to helmv3_releases if helmv3 does not exist
+    - name: Check if helmv3 is installed
+      set_fact:
+        helmv3_installed: "{{ false if helmv3_releases.rc == 2 else true }}"
+
     - name: Query for DM release in helmv3
       shell: |
         grep -iq '"name":"deployment-manager"' <<< {{ helmv3_releases.stdout_lines }}
       ignore_errors: yes
       register: helmv3_dm_exists
+      when: helmv3_installed
 
     - name: Set reconfig fact
       set_fact:
-        reconfig_flag: "{{ true if helmv2_dm_exists.rc == 0 or helmv3_dm_exists.rc == 0
+        reconfig_flag: "{{ true if (helmv2_installed and helmv2_dm_exists.rc == 0)
+                        or (helmv3_installed and helmv3_dm_exists.rc == 0)
                         else false }}"
 
     - name: Mark the bootstrap as finalized
@@ -188,6 +206,18 @@
         state: touch
       become: yes
       when: not reconfig_flag
+
+    - block:
+      - name: Search for the pod of the Deployment Manager
+        shell: |
+          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
+        environment:
+          KUBECONFIG: "/etc/kubernetes/admin.conf"
+        register: deployment_manager_pod_name
+
+      - debug:
+          msg: "{{ deployment_manager_pod_name.stdout }}"
+      when: reconfig_flag
 
     # Follow a different reinstallation procedure if DM is installed in helmv2
     - block:
@@ -226,7 +256,7 @@
         environment:
           KUBECONFIG: "/etc/kubernetes/admin.conf"
 
-      when: helmv2_dm_exists.rc == 0
+      when: helmv2_installed and helmv2_dm_exists.rc == 0
 
     # Remove v1 webhook and webhook service
     - block:
@@ -271,11 +301,11 @@
           KUBECONFIG: "/etc/kubernetes/admin.conf"
         when: webhook_service_exists.rc == 0
 
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed and helmv3_dm_exists.rc == 0
 
     - name: Install Deployment Manager
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv2_dm_exists.rc != 0
+      when: helmv3_installed
 
     # Install or Upgrade DM-Monitor
     - name: "Install or Upgrade DM-monitor"
@@ -284,26 +314,15 @@
       ignore_errors: yes
       when: dm_monitor_playbook
 
-    # Restart Deployment Manager if it was reinstalled
-    - block:
-      - name: Search for the pod of the Deployment Manager
-        shell: |
-          kubectl -n platform-deployment-manager get pods | grep platform-deployment-manager- | awk 'NR == 1 { print $1 }'
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        register: deployment_manager_pod_name
-
-      - debug:
-          msg: "{{ deployment_manager_pod_name.stdout }}"
-
-      - name: Restart Deployment Manager if reinstalled
-        command: >-
-          kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        when: deployment_manager_pod_name.stdout
-
-      when: reconfig_flag
+    # Delete old Deployment Manager pod if it was reinstalled,
+    # the pod to delete may already be terminated by helm
+    - name: Restart Deployment Manager if reinstalled
+      command: >-
+        kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
+      environment:
+        KUBECONFIG: "/etc/kubernetes/admin.conf"
+      when: deployment_manager_pod_name.stdout is defined and deployment_manager_pod_name.stdout
+      failed_when: false
 
     - name: Wait for Deployment Manager to be ready
       shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl wait --namespace=platform-deployment-manager --for=condition=Ready pods --selector control-plane=controller-manager --timeout=60s
@@ -349,6 +368,22 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
+        - name: Configure required region value for subcloud
+          block:
+          - name: Get subcloud region value from environment
+            shell: source /etc/platform/openrc; echo $OS_REGION_NAME
+            register: os_region_name_from_env
+
+          - name: Show subcloud region
+            debug:
+              msg:
+              - "Subcloud region value : {{os_region_name_from_env.stdout}}"
+
+          - name: Configure new subcloud region value
+            command: |
+              sed -i 's/^\(\s*OS_REGION_NAME:\).*/\1 {{ os_region_name_from_env.stdout }}/' {{ deploy_config }}
+          when: ("subcloud" in get_distributed_cloud_role.stdout)
+
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment
             # manager to come up and download its certificates.  It needs to
@@ -363,7 +398,7 @@
         #   deploymentScope:
         #    "principal"
         - name: Search for 'principal' scope in deploy_config
-          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:(?:\s*#.*)?\n)*\s*"principal"\s*' {{ deploy_config }}
+          command: grep -Pzo '\n\s*deploymentScope:\s*\n*(?:\s*#.*\n)*\s*(?:"principal"|"Principal"|"PRINCIPAL")\s*' {{ deploy_config }}
           changed_when: false
           failed_when: false
           register: scope_principal

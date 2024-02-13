@@ -73,3 +73,22 @@ spec:
     ranges:
       - start: fd00:0:0:2::2
         end: fd00:0:0:2::a
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: management
+  namespace: deployment
+spec:
+  allocation:
+    order: random
+    ranges:
+    - end: 192.168.204.254
+      start: 192.168.204.2
+    type: dynamic
+  floatingAddress: 192.168.204.2
+  prefix: 24
+  subnet: 192.168.204.0
+  type: mgmt

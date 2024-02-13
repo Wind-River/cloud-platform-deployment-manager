@@ -759,6 +759,12 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
+	// Update/Add routes
+	err = r.ReconcileRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	err = r.ReconcileFileSystemSizes(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -960,6 +966,12 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
+	if utils.IsReconcilerEnabled(utils.Route) {
+		if !in.Routes.DeepEqual(&other.Routes) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -1025,12 +1037,6 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 				return false
 			}
 		}
-
-		if utils.IsReconcilerEnabled(utils.Route) {
-			if !in.Routes.DeepEqual(&other.Routes) {
-				return false
-			}
-		}
 	}
 
 	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
@@ -1074,7 +1080,29 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			if principal {
-				instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
+					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
+					iface, found := host.FindInterfaceByName(ethInfo.Name)
+					if !found {
+						msg := fmt.Sprintf("unable to find interface: %s", ethInfo.Name)
+						return starlingxv1.NewMissingSystemResource(msg)
+					}
+
+					// We need to reconcile the interfaces to assign the admin network
+					_, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+					if err != nil {
+						return err
+					}
+
+					// The platformnetwork_controller will create the address pool and
+					// the network; the controller just needs to assign the network to
+					// the interface. If any other changes require lock/unlock, then it
+					// will do so afterward.
+					return nil
+				} else {
+					instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+					logHost.V(2).Info("set lock required")
+				}
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
@@ -1082,8 +1110,8 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 						common.FormatStruct(instance.Status))
 					return err
 				}
-				logHost.V(2).Info("set lock required")
 			}
+
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
@@ -1123,6 +1151,51 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 	}
 
 	return nil
+}
+
+// hasAdminNetworkChange checks whether the addition of "admin" to PlatformNetworks
+// within an existing (multi-netting) EthernetInfo is present in the given profile and
+// current InterfaceInfo instances.
+func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
+	if profileInterfaces == nil || currentInterfaces == nil {
+		return nil, false
+	}
+
+	for _, profileEth := range profileInterfaces.Ethernet {
+		logHost.V(2).Info("Profile Ethernet Name", "name", profileEth.Name)
+		currentEth := findEthernetInfoByName(currentInterfaces.Ethernet, profileEth.Name)
+		logHost.V(2).Info("Current ethernetinfo", "ethernet", currentEth)
+		if currentEth == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileEth.PlatformNetworks, currentEth.PlatformNetworks) {
+			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
+		}
+	}
+	return nil, false
+}
+
+// findEthernetInfoByName is a utility function to locate an EthernetInfo in a list
+// by its name.
+func findEthernetInfoByName(ethList []starlingxv1.EthernetInfo, name string) *starlingxv1.EthernetInfo {
+	for i := range ethList {
+		if ethList[i].Name == name {
+			return &ethList[i]
+		}
+	}
+	return nil
+}
+
+// containsAdminPlatformNetwork is a utility function to determine if "admin" has
+// been added to the PlatformNetworks list.
+func containsAdminPlatformNetwork(platformNetworks starlingxv1.PlatformNetworkItemList) bool {
+	for _, network := range platformNetworks {
+		if strings.ToLower(string(network)) == cloudManager.AdminNetworkType {
+			return true
+		}
+	}
+	return false
 }
 
 // statusUpdateRequired is a utility function which determines whether an update
@@ -1453,7 +1526,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 
 	if deltaString != "" {
-		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 		instance.Status.Delta = deltaString
 
 		err = r.Client.Status().Update(context.TODO(), instance)
@@ -1539,6 +1612,86 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	}
 
 	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "host has been deleted")
+
+	return nil
+}
+
+// TriggerNetworkReconcilerAndUnlock is used to trigger network reconciliation after making changes to platform network.
+// After successful reconciliation unlock-strategy is applied if the system is in locked state.
+func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
+	var host *hosts.Host
+	id := instance.Status.ID
+	if id != nil && *id != "" {
+		// This host was previously provisioned so check that it still exists
+		// as the same uuid value; otherwise it may have been deleted and
+		// re-added so we will need to deal with that scenario.
+		host, err = hosts.Get(client, *id).Extract()
+		if err != nil {
+			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+				err = perrors.Wrapf(err, "failed to get: %s", *id)
+				return err
+			}
+
+			// The resource may have been deleted by the system or operator
+			// therefore continue and attempt to recreate it.
+			logHost.Info("resource no longer exists", "id", *id)
+
+			// Set host to nil, in case hosts.Get() returned a partially populated structure
+			return common.NewSystemDependency(fmt.Sprintf("host with id %s does not exist", *id))
+		}
+	} else {
+		return common.NewSystemDependency("host id not found")
+	}
+
+	if !host.Stable() {
+		msg := "waiting for a stable state for existing host"
+		m := NewStableHostMonitor(instance, host.ID)
+		return r.CloudManager.StartMonitor(m, msg)
+	}
+
+	// Gather all host attributes so that they can be reused by various
+	// functions without needing to be re-queried each time.
+	hostInfo := v1info.HostInfo{}
+	err = hostInfo.PopulateHostInfo(client, host.ID)
+	if err != nil {
+		return err
+	}
+
+	// Get a fresh snapshot of the current hosts.  These are used to search for
+	// a matching host record if one is not already found as well as to
+	// determine when it is safe/allowed to configure new hosts or unlock
+	// existing hosts.
+	r.hosts, err = hosts.ListHosts(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list hosts")
+		return err
+	}
+
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildCompositeProfile(instance)
+	if err != nil {
+		return err
+	}
+
+	err = r.ReconcileNetworking(client, instance, profile, &hostInfo)
+	if err != nil {
+		return err
+	}
+
+	if host.IsLockedDisabled() {
+		if instance.Status.StrategyRequired != cloudManager.StrategyUnlockRequired {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				return err
+			}
+		}
+
+		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+		msg := "reconciled locked-disabled host. waiting for host to be unlocked"
+		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
+		_ = r.CloudManager.StartMonitor(m, msg)
+	}
 
 	return nil
 }
@@ -1771,11 +1924,12 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 			err := json.Unmarshal([]byte(config), &status_config)
 			if err == nil {
 				if status_config.Status.DeploymentScope != "" {
-					switch scope := status_config.Status.DeploymentScope; scope {
+					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
+					switch lowerCaseScope {
 					case cloudManager.ScopeBootstrap:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopeBootstrap
 					case cloudManager.ScopePrincipal:
-						deploymentScope = scope
+						deploymentScope = cloudManager.ScopePrincipal
 					default:
 						err = fmt.Errorf("Unsupported DeploymentScope: %s",
 							status_config.Status.DeploymentScope)
@@ -1997,6 +2151,21 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
+	}
+
+	// Handle reconciliation of interface network assignment after platform network reconfiguration
+	if _, present := instance.Annotations[cloudManager.ReconcileHostByPlatformNetwork]; present {
+		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance)
+		if err != nil {
+			return r.ReconcilerErrorHandler.HandleReconcilerError(request, common.NewResourceConfigurationDependency("host network reconciliation failed"))
+		} else {
+			// Delete the annotation after successful reconciliation of host networks
+			err = r.CloudManager.NotifyHostController(instance, true)
+			if err != nil {
+				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+			}
+		}
+		return reconcile.Result{}, nil
 	}
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)

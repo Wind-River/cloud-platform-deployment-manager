@@ -35,7 +35,7 @@ spec:
   mtu: 1500
   type: vlan
 status:
-  desploymentScope: bootstrap
+  deploymentScope: bootstrap
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: DataNetwork
@@ -175,4 +175,4 @@ spec:
     - name: ceph-store
       type: ceph
 status:
-  desploymentScope: bootstrap
+  deploymentScope: bootstrap

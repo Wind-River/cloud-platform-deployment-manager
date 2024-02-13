@@ -81,7 +81,7 @@ spec:
     bootMAC: COMPUTE0-NEW-MAC
   profile: worker-profile
 status:
-  desploymentScope: principal
+  deploymentScope: principal
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: Host
@@ -141,7 +141,7 @@ spec:
     bootMAC: STORAGE0-NEW-MAC
   profile: storage-profile
 status:
-  desploymentScope: principal
+  deploymentScope: principal
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: Host
@@ -155,7 +155,7 @@ spec:
     bootMAC: STORAGE1-NEW-MAC
   profile: storage-profile
 status:
-  desploymentScope: principal
+  deploymentScope: principal
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: HostProfile
@@ -283,4 +283,4 @@ spec:
     - name: ceph-store
       type: ceph
 status:
-  desploymentScope: principal
+  deploymentScope: principal
