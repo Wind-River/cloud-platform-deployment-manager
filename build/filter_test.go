@@ -282,283 +282,290 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test  fileSystemFilter", func() {
-		It("", func() {
-			filter := &FileSystemFilter{}
+		Context("When there is extra tye fs present", func() {
+			It("filters out the extra fs", func() {
+				filter := &FileSystemFilter{}
 
-			// Create a test case with sample input
-			system := &v1.System{
-				Spec: v1.SystemSpec{
-					Storage: &v1.SystemStorageInfo{
-						FileSystems: &v1.ControllerFileSystemList{
-							{ // Adding file systems for testing
-								Name: "backup",
-								Size: 100,
-							},
-							{
-								Name: "database",
-								Size: 200,
-							},
-							{
-								Name: "instances",
-								Size: 300,
-							},
-							{
-								Name: "image-conversion",
-								Size: 400,
-							},
-							{
-								Name: "extra", // this will be filtered out
-								Size: 500,
+				// Create a test case with sample input
+				system := &v1.System{
+					Spec: v1.SystemSpec{
+						Storage: &v1.SystemStorageInfo{
+							FileSystems: &v1.ControllerFileSystemList{
+								{ // Adding file systems for testing
+									Name: "backup",
+									Size: 100,
+								},
+								{
+									Name: "database",
+									Size: 200,
+								},
+								{
+									Name: "instances",
+									Size: 300,
+								},
+								{
+									Name: "image-conversion",
+									Size: 400,
+								},
+								{
+									Name: "extra", // this will be filtered out
+									Size: 500,
+								},
 							},
 						},
 					},
-				},
-			}
+				}
 
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(system, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(system, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if file systems have been filtered as expected
-			expectedFilteredFileSystems := []v1.ControllerFileSystemInfo{
-				{
-					Name: "backup",
-					Size: 100,
-				},
-				{
-					Name: "database",
-					Size: 200,
-				},
-				{
-					Name: "instances",
-					Size: 300,
-				},
-				{
-					Name: "image-conversion",
-					Size: 400,
-				},
-			}
-			list := v1.ControllerFileSystemList(expectedFilteredFileSystems)
-			Expect(&list).To(Equal(system.Spec.Storage.FileSystems))
+				// Check if file systems have been filtered as expected
+				expectedFilteredFileSystems := []v1.ControllerFileSystemInfo{
+					{
+						Name: "backup",
+						Size: 100,
+					},
+					{
+						Name: "database",
+						Size: 200,
+					},
+					{
+						Name: "instances",
+						Size: 300,
+					},
+					{
+						Name: "image-conversion",
+						Size: 400,
+					},
+				}
+				list := v1.ControllerFileSystemList(expectedFilteredFileSystems)
+				Expect(&list).To(Equal(system.Spec.Storage.FileSystems))
 
+			})
 		})
 	})
 
 	Describe("Test  CACertificateFilter", func() {
-		It("", func() {
-			filter := &CACertificateFilter{}
+		Context("When there is ssl_ca and openstack_ca type certificates are also present", func() {
+			It("filters out the ssl_ca and openstack_ca type certificates", func() {
+				filter := &CACertificateFilter{}
 
-			// Create a test case with sample input
-			system := &v1.System{
-				Spec: v1.SystemSpec{
-					Certificates: &v1.CertificateList{
+				// Create a test case with sample input
+				system := &v1.System{
+					Spec: v1.SystemSpec{
+						Certificates: &v1.CertificateList{
 
-						{ // Adding certificate info for testing
-							Type: v1.PlatformCACertificate, // this will be filtered out
-						},
-						{
-							Type: v1.OpenstackCACertificate, // this will be filtered out
-						},
-						{
-							Type: v1.DockerCertificate,
+							{ // Adding certificate info for testing
+								Type: v1.PlatformCACertificate, // this will be filtered out
+							},
+							{
+								Type: v1.OpenstackCACertificate, // this will be filtered out
+							},
+							{
+								Type: v1.DockerCertificate,
+							},
 						},
 					},
-				},
-			}
+				}
 
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(system, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(system, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if file systems have been filtered as expected
-			expectedFilteredCertificates := []v1.CertificateInfo{
-				{
-					Type: v1.DockerCertificate,
-				},
-			}
-			list := v1.CertificateList(expectedFilteredCertificates)
-			Expect(&list).To(Equal(system.Spec.Certificates))
+				// Check if file systems have been filtered as expected
+				expectedFilteredCertificates := []v1.CertificateInfo{
+					{
+						Type: v1.DockerCertificate,
+					},
+				}
+				list := v1.CertificateList(expectedFilteredCertificates)
+				Expect(&list).To(Equal(system.Spec.Certificates))
 
+			})
 		})
-
 	})
 
 	Describe("Test ServiceParameterFilter", func() {
-		It("It  excludes default service parameters", func() {
-			filter := &ServiceParameterFilter{}
+		Context("When spec has default service parameters", func() {
+			It("It excludes default service parameters", func() {
+				filter := &ServiceParameterFilter{}
 
-			// Create a test case with sample input
-			system := &v1.System{
-				Spec: v1.SystemSpec{
-					ServiceParameters: &v1.ServiceParameterList{
+				// Create a test case with sample input
+				system := &v1.System{
+					Spec: v1.SystemSpec{
+						ServiceParameters: &v1.ServiceParameterList{
 
-						{ // Adding certificate info for testing
-							Service:   utils.ServiceTypeIdentity,
-							Section:   utils.ServiceParamSectionIdentityConfig,
-							ParamName: utils.ServiceParamIdentityConfigTokenExpiration,
-						},
-						{
-							Service:   utils.ServiceTypePlatform,
-							Section:   utils.ServiceParamSectionPlatformMaintenance,
-							ParamName: utils.ServiceParamPlatMtceWorkerBootTimeout,
-						},
-						{
-							// this will be filtered out
-							Service:   "service",
-							Section:   "extra",
-							ParamName: "fake",
+							{ // Adding certificate info for testing
+								Service:   utils.ServiceTypeIdentity,
+								Section:   utils.ServiceParamSectionIdentityConfig,
+								ParamName: utils.ServiceParamIdentityConfigTokenExpiration,
+							},
+							{
+								Service:   utils.ServiceTypePlatform,
+								Section:   utils.ServiceParamSectionPlatformMaintenance,
+								ParamName: utils.ServiceParamPlatMtceWorkerBootTimeout,
+							},
+							{
+								// this will be filtered out
+								Service:   "service",
+								Section:   "extra",
+								ParamName: "fake",
+							},
 						},
 					},
-				},
-			}
+				}
 
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(system, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(system, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if file systems have been filtered as expected
-			expectedFilteredServiceParams := []v1.ServiceParameterInfo{
-				{
-					Service:   "service",
-					Section:   "extra",
-					ParamName: "fake",
-				},
-			}
-			list := v1.ServiceParameterList(expectedFilteredServiceParams)
-			Expect(list).To(Equal(*system.Spec.ServiceParameters))
+				// Check if file systems have been filtered as expected
+				expectedFilteredServiceParams := []v1.ServiceParameterInfo{
+					{
+						Service:   "service",
+						Section:   "extra",
+						ParamName: "fake",
+					},
+				}
+				list := v1.ServiceParameterList(expectedFilteredServiceParams)
+				Expect(list).To(Equal(*system.Spec.ServiceParameters))
+			})
 		})
 	})
 
 	Describe("Test InterfaceRemoveUuidFilter", func() {
-		It("", func() {
-			filter := &InterfaceRemoveUuidFilter{}
+		Context("When there exists Uuids in interface", func() {
+			It("Removes Uuid from interfaces", func() {
+				filter := &InterfaceRemoveUuidFilter{}
 
-			ethIn := v1.CommonInterfaceInfo{
-				UUID: "ethIn",
-				Name: "name",
-			}
-			bondsIn := v1.CommonInterfaceInfo{
-				UUID: "bondsIn",
-				Name: "name",
-			}
-			vlansIn := v1.CommonInterfaceInfo{
-				UUID: "vlansIn",
-				Name: "name",
-			}
-			vfsIn := v1.CommonInterfaceInfo{
-				UUID: "vfsIn",
-				Name: "name",
-			}
-			hEthIn := v1.CommonInterfaceInfo{
-				UUID: "ethIn",
-				Name: "name",
-			}
-			hBondsIn := v1.CommonInterfaceInfo{
-				UUID: "bondsIn",
-				Name: "name",
-			}
-			hVlansIn := v1.CommonInterfaceInfo{
-				UUID: "vlansIn",
-				Name: "name",
-			}
-			hVfsIn := v1.CommonInterfaceInfo{
-				UUID: "vfsIn",
-				Name: "name",
-			}
+				ethIn := v1.CommonInterfaceInfo{
+					UUID: "ethIn",
+					Name: "name",
+				}
+				bondsIn := v1.CommonInterfaceInfo{
+					UUID: "bondsIn",
+					Name: "name",
+				}
+				vlansIn := v1.CommonInterfaceInfo{
+					UUID: "vlansIn",
+					Name: "name",
+				}
+				vfsIn := v1.CommonInterfaceInfo{
+					UUID: "vfsIn",
+					Name: "name",
+				}
+				hEthIn := v1.CommonInterfaceInfo{
+					UUID: "ethIn",
+					Name: "name",
+				}
+				hBondsIn := v1.CommonInterfaceInfo{
+					UUID: "bondsIn",
+					Name: "name",
+				}
+				hVlansIn := v1.CommonInterfaceInfo{
+					UUID: "vlansIn",
+					Name: "name",
+				}
+				hVfsIn := v1.CommonInterfaceInfo{
+					UUID: "vfsIn",
+					Name: "name",
+				}
 
-			// Create a test case with sample input
-			h := &v1.Host{
-				Spec: v1.HostSpec{
-					Overrides: &v1.HostProfileSpec{
+				// Create a test case with sample input
+				h := &v1.Host{
+					Spec: v1.HostSpec{
+						Overrides: &v1.HostProfileSpec{
+							Interfaces: &v1.InterfaceInfo{
+								Ethernet: v1.EthernetList{
+									{
+										CommonInterfaceInfo: hEthIn,
+									},
+								},
+								VLAN: v1.VLANList{
+									{
+										CommonInterfaceInfo: hVlansIn,
+									},
+								},
+								Bond: v1.BondList{
+									{
+										CommonInterfaceInfo: hBondsIn,
+									},
+								},
+								VF: v1.VFList{
+									{
+										CommonInterfaceInfo: hVfsIn,
+									},
+								},
+							},
+						},
+					},
+				}
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
 						Interfaces: &v1.InterfaceInfo{
 							Ethernet: v1.EthernetList{
 								{
-									CommonInterfaceInfo: hEthIn,
+									CommonInterfaceInfo: ethIn,
 								},
 							},
 							VLAN: v1.VLANList{
 								{
-									CommonInterfaceInfo: hVlansIn,
+									CommonInterfaceInfo: vlansIn,
 								},
 							},
 							Bond: v1.BondList{
 								{
-									CommonInterfaceInfo: hBondsIn,
+									CommonInterfaceInfo: bondsIn,
 								},
 							},
 							VF: v1.VFList{
 								{
-									CommonInterfaceInfo: hVfsIn,
+									CommonInterfaceInfo: vfsIn,
 								},
 							},
 						},
 					},
-				},
-			}
-			hp := &v1.HostProfile{
-				Spec: v1.HostProfileSpec{
-					Interfaces: &v1.InterfaceInfo{
-						Ethernet: v1.EthernetList{
-							{
-								CommonInterfaceInfo: ethIn,
-							},
-						},
-						VLAN: v1.VLANList{
-							{
-								CommonInterfaceInfo: vlansIn,
-							},
-						},
-						Bond: v1.BondList{
-							{
-								CommonInterfaceInfo: bondsIn,
-							},
-						},
-						VF: v1.VFList{
-							{
-								CommonInterfaceInfo: vfsIn,
-							},
-						},
-					},
-				},
-			}
+				}
 
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(hp, h, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(hp, h, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if UUIDs  have been filtered as expected
-			for _, in := range hp.Spec.Interfaces.Ethernet {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range hp.Spec.Interfaces.VLAN {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range hp.Spec.Interfaces.VF {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range hp.Spec.Interfaces.Bond {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range h.Spec.Overrides.Interfaces.Ethernet {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range h.Spec.Overrides.Interfaces.VLAN {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range h.Spec.Overrides.Interfaces.VF {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
-			for _, in := range h.Spec.Overrides.Interfaces.Bond {
-				Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
-			}
+				// Check if UUIDs  have been filtered as expected
+				for _, in := range hp.Spec.Interfaces.Ethernet {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range hp.Spec.Interfaces.VLAN {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range hp.Spec.Interfaces.VF {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range hp.Spec.Interfaces.Bond {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range h.Spec.Overrides.Interfaces.Ethernet {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range h.Spec.Overrides.Interfaces.VLAN {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range h.Spec.Overrides.Interfaces.VF {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+				for _, in := range h.Spec.Overrides.Interfaces.Bond {
+					Expect(in.CommonInterfaceInfo.UUID).To(Equal(""))
+				}
+			})
 		})
 	})
 
@@ -615,140 +622,148 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test Filter of Controller0", func() {
-		It("", func() {
-			filter := &Controller0Filter{}
+		Context("When its controller-0", func() {
+			It("Filter from overrides", func() {
+				filter := &Controller0Filter{}
 
-			// Create a test case with sample input
-			dynamic := v1.ProvioningModeDynamic
-			static := v1.ProvioningModeStatic
-			bootMac := "01:02:03:04:05:06"
-			hp := &v1.HostProfile{}
-			h := &v1.Host{
-				Spec: v1.HostSpec{
-					Overrides: &v1.HostProfileSpec{
-						ProfileBaseAttributes: v1.ProfileBaseAttributes{
-							BootMAC:          &bootMac,
-							ProvisioningMode: &static,
+				// Create a test case with sample input
+				dynamic := v1.ProvioningModeDynamic
+				static := v1.ProvioningModeStatic
+				bootMac := "01:02:03:04:05:06"
+				hp := &v1.HostProfile{}
+				h := &v1.Host{
+					Spec: v1.HostSpec{
+						Overrides: &v1.HostProfileSpec{
+							ProfileBaseAttributes: v1.ProfileBaseAttributes{
+								BootMAC:          &bootMac,
+								ProvisioningMode: &static,
+							},
 						},
+						Match: &v1.MatchInfo{},
 					},
-					Match: &v1.MatchInfo{},
-				},
-			}
-			h.Name = hosts.Controller0
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				}
+				h.Name = hosts.Controller0
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(hp, h, deployment)
-			Expect(err).To(BeNil())
-			var nilAddr *string = nil
-			// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
-			Expect(h.Spec.Overrides.ProvisioningMode).To(Equal(&dynamic))
-			Expect(h.Spec.Match.BootMAC).To(Equal(&bootMac))
-			Expect(h.Spec.Overrides.BootMAC).To(Equal(nilAddr))
+				// Call the Filter method
+				err := filter.Filter(hp, h, deployment)
+				Expect(err).To(BeNil())
+				var nilAddr *string = nil
+				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
+				Expect(h.Spec.Overrides.ProvisioningMode).To(Equal(&dynamic))
+				Expect(h.Spec.Match.BootMAC).To(Equal(&bootMac))
+				Expect(h.Spec.Overrides.BootMAC).To(Equal(nilAddr))
+			})
 		})
 	})
 
 	Describe("Test Location Filter", func() {
-		It("", func() {
-			filter := &LocationFilter{}
+		Context("WHen the location is not nil", func() {
+			It("filters out location from host spec to overrrides", func() {
+				filter := &LocationFilter{}
 
-			// Create a test case with sample input
-			location := "A sample location"
-			hLoc := "host location"
-			hp := &v1.HostProfile{
-				Spec: v1.HostProfileSpec{
-					ProfileBaseAttributes: v1.ProfileBaseAttributes{
-						Location: &location,
-					},
-				},
-			}
-			h := &v1.Host{
-				Spec: v1.HostSpec{
-					Overrides: &v1.HostProfileSpec{
+				// Create a test case with sample input
+				location := "A sample location"
+				hLoc := "host location"
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
 						ProfileBaseAttributes: v1.ProfileBaseAttributes{
-							Location: &hLoc,
+							Location: &location,
 						},
 					},
-				},
-			}
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				}
+				h := &v1.Host{
+					Spec: v1.HostSpec{
+						Overrides: &v1.HostProfileSpec{
+							ProfileBaseAttributes: v1.ProfileBaseAttributes{
+								Location: &hLoc,
+							},
+						},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(hp, h, deployment)
-			Expect(err).To(BeNil())
-			var nilAddr *string = nil
-			// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
-			Expect(h.Spec.Overrides.Location).To(Equal(&location))
-			Expect(hp.Spec.Location).To(Equal(nilAddr))
+				// Call the Filter method
+				err := filter.Filter(hp, h, deployment)
+				Expect(err).To(BeNil())
+				var nilAddr *string = nil
+				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
+				Expect(h.Spec.Overrides.Location).To(Equal(&location))
+				Expect(hp.Spec.Location).To(Equal(nilAddr))
+			})
 		})
 	})
 	Describe("Test AddressFilter", func() {
-		It("", func() {
-			filter := &AddressFilter{}
+		Context("When the profile address exists", func() {
+			It("FIlters address from host spec to host overrides", func() {
+				filter := &AddressFilter{}
 
-			// Create a test case with sample input
-			profAddr := "profile address"
-			hp := &v1.HostProfile{
-				Spec: v1.HostProfileSpec{
-					Addresses: v1.AddressList{
-						{
-							Address: profAddr,
+				// Create a test case with sample input
+				profAddr := "profile address"
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Addresses: v1.AddressList{
+							{
+								Address: profAddr,
+							},
 						},
 					},
-				},
-			}
-			h := &v1.Host{
-				Spec: v1.HostSpec{
-					Overrides: &v1.HostProfileSpec{},
-				},
-			}
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				}
+				h := &v1.Host{
+					Spec: v1.HostSpec{
+						Overrides: &v1.HostProfileSpec{},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(hp, h, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(hp, h, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
-			var nilAddr v1.AddressList = nil
-			Expect(h.Spec.Overrides.Addresses[0].Address).To(Equal(profAddr))
-			Expect(hp.Spec.Addresses).To(Equal(nilAddr))
+				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
+				var nilAddr v1.AddressList = nil
+				Expect(h.Spec.Overrides.Addresses[0].Address).To(Equal(profAddr))
+				Expect(hp.Spec.Addresses).To(Equal(nilAddr))
+			})
 		})
 	})
 
 	Describe("Test BMAddressFilter", func() {
-		It("", func() {
-			filter := &BMAddressFilter{}
-			// Create a test case with sample input
-			profileAddr := "profile address"
+		Context("When  BoardManagement and Adress is not nil", func() {
+			It("filters BMAddress", func() {
+				filter := &BMAddressFilter{}
+				// Create a test case with sample input
+				profileAddr := "profile address"
 
-			hp := &v1.HostProfile{
-				Spec: v1.HostProfileSpec{
-					BoardManagement: &v1.BMInfo{
-						Address: &profileAddr,
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						BoardManagement: &v1.BMInfo{
+							Address: &profileAddr,
+						},
 					},
-				},
-			}
-			h := &v1.Host{
-				Spec: v1.HostSpec{
-					Overrides: &v1.HostProfileSpec{},
-				},
-			}
-			deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				}
+				h := &v1.Host{
+					Spec: v1.HostSpec{
+						Overrides: &v1.HostProfileSpec{},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 
-			// Call the Filter method
-			err := filter.Filter(hp, h, deployment)
-			Expect(err).To(BeNil())
+				// Call the Filter method
+				err := filter.Filter(hp, h, deployment)
+				Expect(err).To(BeNil())
 
-			// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
-			var nilAddr *string = nil
-			Expect(*h.Spec.Overrides.BoardManagement.Address).To(Equal(profileAddr))
-			Expect(hp.Spec.BoardManagement.Address).To(Equal(nilAddr))
+				// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
+				var nilAddr *string = nil
+				Expect(*h.Spec.Overrides.BoardManagement.Address).To(Equal(profileAddr))
+				Expect(hp.Spec.BoardManagement.Address).To(Equal(nilAddr))
+			})
 		})
 	})
 
 	Describe("Test StorageMonitorFilter", func() {
 		Context("When volumeGrps,OSDS,Fs are  nil", func() {
-			It("", func() {
+			It("filters profile spec storage", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
 				size := 1
@@ -791,7 +806,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test StorageMonitorFilter", func() {
 		Context("When volumeGrps,OSDS,Fs are not nil", func() {
-			It("", func() {
+			It("doesnt filters profile spec storage ", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
 				size := 1
@@ -835,8 +850,8 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test LoopbackInterfaceFilter", func() {
-		Context("When volumeGrps,OSDS,Fs are not nil", func() {
-			It("", func() {
+		Context("Whenthere is a loopback iterface also present", func() {
+			It("Filters the loopback interface", func() {
 				filter := &LoopbackInterfaceFilter{}
 				// Create a test case with sample input
 
@@ -867,14 +882,48 @@ var _ = Describe("Test filters utilities:", func() {
 				err := filter.Filter(hp, h, deployment)
 				Expect(err).To(BeNil())
 
-				// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
-
 				lbList := make([]v1.EthernetInfo, 0)
 				lbList = append(lbList, ethLb)
 				lbLists := v1.EthernetList(lbList)
 				Expect(h.Spec.Overrides.Interfaces.Ethernet).To(Equal(lbLists))
-
 				Expect(hp.Spec.Interfaces.Ethernet).To(Equal(list))
+			})
+		})
+	})
+
+	//TBD: should try other cases for this func InterfaceUnusedFilter
+	Describe("Test InterfaceUnusedFilter", func() {
+		Context("When profile interfaces is used", func() {
+			It("returns the same interface because of the absence of unused interfaces", func() {
+				filter := &InterfaceUnusedFilter{}
+				// Create a test case with sample input
+
+				ethIn := &v1.InterfaceInfo{
+					Ethernet: v1.EthernetList{},
+				}
+				ethIn.Ethernet = make([]v1.EthernetInfo, 0)
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Interfaces: &v1.InterfaceInfo{
+							Ethernet: v1.EthernetList{},
+						},
+					},
+				}
+				var ethInf v1.EthernetInfo
+				ethInf.Name = "EthName"
+
+				hp.Spec.Interfaces.Ethernet = append(hp.Spec.Interfaces.Ethernet, ethInf)
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+
+				ethList := make([]v1.EthernetInfo, 0)
+				ethList = append(ethList, ethInf)
+				ethLists := v1.EthernetList(ethList)
+				Expect(hp.Spec.Interfaces.Ethernet).To(Equal(ethLists))
 			})
 		})
 	})

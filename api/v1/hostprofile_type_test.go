@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,9 +19,42 @@ var _ = Describe("HostProfile controller", func() {
 		timeout  = time.Second * 10
 		interval = time.Millisecond * 250
 	)
+	Context("Test GetClusterName with clusterName not nil", func() {
+		It("gives cluserName of OSDInfo", func() {
+			name := "ClusterName"
+			in := &OSDInfo{
+				ClusterName: &name,
+			}
+			want := name
+			got := in.GetClusterName()
+			Expect(got).To(Equal(want))
+		})
+	})
+
+	Context("Test GetClusterName with clusterName  nil", func() {
+		It("gives cluserName as CephClusterName", func() {
+
+			in := &OSDInfo{
+				ClusterName: nil,
+			}
+			want := clusters.CephClusterName
+			got := in.GetClusterName()
+			Expect(got).To(Equal(want))
+		})
+	})
+
+	Context("Test StringsToPtpInstanceItemList", func() {
+		It("It gives PtpInstanceItemList from input string array", func() {
+			strArr := []string{"random1", "random2"}
+			want := []PtpInstanceItem{"random1", "random2"}
+			wantList := PtpInstanceItemList(want)
+			got := StringsToPtpInstanceItemList(strArr)
+			Expect(got).To(Equal(wantList))
+		})
+	})
 
 	Context("Test SubFunctionFromString", func() {
-		It("", func() {
+		It("Gives subfunction from string", func() {
 			str := "randomString"
 			want := SubFunction(str)
 			got := SubFunctionFromString(str)
