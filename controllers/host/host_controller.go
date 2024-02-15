@@ -694,7 +694,8 @@ const MinimumEnabledControllerNodesForNonController = 2
 func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	state := profile.AdministrativeState
 	if state == nil || *state == host.AdministrativeState ||
-		instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+		instance.Status.DeploymentScope == cloudManager.ScopePrincipal ||
+		instance.Status.StrategyRequired != cloudManager.StrategyNotRequired {
 		// No action required.
 		return nil
 	}
@@ -1064,8 +1065,17 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, current *starlingxv1.HostProfileSpec, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	principal := false
+	// Other than day2 changes to host resource VIM strategy on host could be updated
+	// by the platform network reconciler to perform management network reconfiguration.
+	// During management network reconfig, strategy_required is set to 'true' so that
+	// host reconciler can fix broken interface-network association and unlock the host.
+	strategy_required := false
 	if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 		principal = true
+	}
+
+	if instance.Status.StrategyRequired != cloudManager.StrategyNotRequired {
+		strategy_required = true
 	}
 
 	if host.IsUnlockedEnabled() {
@@ -1079,7 +1089,7 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 		}
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
-			if principal {
+			if principal || strategy_required {
 				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
 					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
 					iface, found := host.FindInterfaceByName(ethInfo.Name)
@@ -1127,8 +1137,12 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			logHost.Info("no disabled attribute changes required")
 		}
 
+		if r.CloudManager.IsPlatformNetworkReconciling() {
+			return common.NewResourceConfigurationDependency("waiting for platform networks to reconcile")
+		}
+
 		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
-			if principal {
+			if principal || strategy_required {
 				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
 				logHost.V(2).Info("set unlock required: day2 operation. There are unlocked attributes")
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
@@ -1616,84 +1630,6 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	return nil
 }
 
-// TriggerNetworkReconcilerAndUnlock is used to trigger network reconciliation after making changes to platform network.
-// After successful reconciliation unlock-strategy is applied if the system is in locked state.
-func (r *HostReconciler) TriggerNetworkReconcilerAndUnlock(
-	client *gophercloud.ServiceClient,
-	instance *starlingxv1.Host,
-	profile *starlingxv1.HostProfileSpec,
-) (err error) {
-	var host *hosts.Host
-	id := instance.Status.ID
-	if id != nil && *id != "" {
-		// This host was previously provisioned so check that it still exists
-		// as the same uuid value; otherwise it may have been deleted and
-		// re-added so we will need to deal with that scenario.
-		host, err = hosts.Get(client, *id).Extract()
-		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
-				err = perrors.Wrapf(err, "failed to get: %s", *id)
-				return err
-			}
-
-			// The resource may have been deleted by the system or operator
-			// therefore continue and attempt to recreate it.
-			logHost.Info("resource no longer exists", "id", *id)
-
-			// Set host to nil, in case hosts.Get() returned a partially populated structure
-			return common.NewSystemDependency(fmt.Sprintf("host with id %s does not exist", *id))
-		}
-	} else {
-		return common.NewSystemDependency("host id not found")
-	}
-
-	if !host.Stable() {
-		msg := "waiting for a stable state for existing host"
-		m := NewStableHostMonitor(instance, host.ID)
-		return r.CloudManager.StartMonitor(m, msg)
-	}
-
-	// Gather all host attributes so that they can be reused by various
-	// functions without needing to be re-queried each time.
-	hostInfo := v1info.HostInfo{}
-	err = hostInfo.PopulateHostInfo(client, host.ID)
-	if err != nil {
-		return err
-	}
-
-	// Get a fresh snapshot of the current hosts.  These are used to search for
-	// a matching host record if one is not already found as well as to
-	// determine when it is safe/allowed to configure new hosts or unlock
-	// existing hosts.
-	r.hosts, err = hosts.ListHosts(client)
-	if err != nil {
-		err = perrors.Wrap(err, "failed to list hosts")
-		return err
-	}
-
-	err = r.ReconcileNetworking(client, instance, profile, &hostInfo)
-	if err != nil {
-		return err
-	}
-
-	if host.IsLockedDisabled() {
-		if instance.Status.StrategyRequired != cloudManager.StrategyUnlockRequired {
-			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
-			err = r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				return err
-			}
-		}
-
-		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
-		msg := "reconciled locked-disabled host. waiting for host to be unlocked"
-		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
-		_ = r.CloudManager.StartMonitor(m, msg)
-	}
-
-	return nil
-}
-
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
 func (r *HostReconciler) ReconcileResource(
@@ -2154,21 +2090,6 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
-
-	// Handle reconciliation of interface network assignment after platform network reconfiguration
-	if _, present := instance.Annotations[cloudManager.ReconcileHostByPlatformNetwork]; present {
-		err = r.TriggerNetworkReconcilerAndUnlock(platformClient, instance, profile)
-		if err != nil {
-			return r.ReconcilerErrorHandler.HandleReconcilerError(request, common.NewResourceConfigurationDependency("host network reconciliation failed"))
-		} else {
-			// Delete the annotation after successful reconciliation of host networks
-			err = r.CloudManager.NotifyHostController(instance, true)
-			if err != nil {
-				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
-			}
-		}
-		return reconcile.Result{}, nil
-	}
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)
 	if err != nil {
