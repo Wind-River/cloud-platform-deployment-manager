@@ -57,6 +57,17 @@ var _ = Describe("Common utils", func() {
 			})
 		})
 	})
+
+	Describe("Test removeDataTypes function", func() {
+		Context("When the constant of dataType float64 is given", func() {
+			It("It returns the constant without dataType", func() {
+				input1 := "float64(1500)"
+				expected1 := "1500"
+				out1 := removeDataTypes(input1)
+				Expect(out1).To(Equal(expected1))
+			})
+		})
+	})
 })
 
 type DummyLogSink struct {
