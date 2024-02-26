@@ -513,8 +513,8 @@
             - "administrative state: {{administrative_state}}"
 
       when:
-        - deploy_config
         - initial_deploy
+        - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
         - "'unlocked' not in current_administrativestate.stdout"
 
@@ -797,7 +797,7 @@
 
       when:
         - initial_deploy
-        - deploy_config
+        - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
         - "'unlocked' not in current_administrativestate.stdout"
         - "'unlocked' in administrative_state"
