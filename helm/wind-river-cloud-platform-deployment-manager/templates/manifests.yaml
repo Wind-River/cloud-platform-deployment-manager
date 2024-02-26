@@ -502,6 +502,8 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
+        "helm.sh/hook": "pre-upgrade, pre-install"
+        "helm.sh/hook-delete-policy": "before-hook-creation"
       labels:
         control-plane: controller-manager
     spec:
@@ -617,6 +619,8 @@ kind: MutatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
+    "helm.sh/hook": "pre-upgrade, pre-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
   name: {{ .Values.namespace }}-mutating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
@@ -765,6 +769,8 @@ kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
+    "helm.sh/hook": "pre-upgrade, pre-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
   name: {{ .Values.namespace }}-validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
