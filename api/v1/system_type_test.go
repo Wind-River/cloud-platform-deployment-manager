@@ -79,4 +79,130 @@ var _ = Describe("Datanetwork controller", func() {
 			}, timeout, interval).Should(BeFalse())
 		})
 	})
+	Describe("Test HTTPSEnabled function", func() {
+		Context("When certificate type is platform", func() {
+			It("should return true i.e https is enabled", func() {
+				in := &System{
+					Spec: SystemSpec{
+						Certificates: &CertificateList{
+							{
+								Type: PlatformCertificate,
+							},
+						},
+					},
+				}
+				out := in.HTTPSEnabled()
+				Expect(out).To(BeTrue())
+			})
+		})
+		Context("When certificate type is docekr_registry", func() {
+			It("should return false i.e https is disabled", func() {
+				in := &System{
+					Spec: SystemSpec{
+						Certificates: &CertificateList{
+							{
+								Type: DockerCertificate,
+							},
+						},
+					},
+				}
+				out := in.HTTPSEnabled()
+				Expect(out).To(BeFalse())
+			})
+		})
+	})
+	Describe("Test DeepEqual function", func() {
+		Context("When both type and secret are same but signature is different in 2 entities", func() {
+			It("Returns true", func() {
+				other := &CertificateInfo{
+					Type:   "ssl",
+					Secret: "secret",
+				}
+				in := &CertificateInfo{
+					Signature: "",
+					Type:      "ssl",
+					Secret:    "secret",
+				}
+				out := in.DeepEqual(other)
+				Expect(out).To(BeTrue())
+			})
+		})
+		Context("When type, secret  and signature are same in 2 entities", func() {
+			It("Returns true", func() {
+				other := &CertificateInfo{
+					Type:      "ssl",
+					Secret:    "secret",
+					Signature: "signature",
+				}
+				in := &CertificateInfo{
+					Signature: "signature",
+					Type:      "ssl",
+					Secret:    "secret",
+				}
+				out := in.DeepEqual(other)
+				Expect(out).To(BeTrue())
+			})
+		})
+	})
+	Describe("Test IsKeyEqual function", func() {
+		Context("When both type and secret are same but signature is different in 2 entities", func() {
+			It("Returns true", func() {
+				x := CertificateInfo{
+					Type:   "ssl",
+					Secret: "secret",
+				}
+				in := CertificateInfo{
+					Signature: "",
+					Type:      "ssl",
+					Secret:    "secret",
+				}
+				out := in.IsKeyEqual(x)
+				Expect(out).To(BeTrue())
+			})
+		})
+		Context("When type, secret  and signature are same in 2 entities", func() {
+			It("Returns true", func() {
+				x := CertificateInfo{
+					Signature: "signature",
+					Type:      "ssl",
+					Secret:    "secret",
+				}
+				in := CertificateInfo{
+					Signature: "signature",
+					Type:      "ssl",
+					Secret:    "secret",
+				}
+				out := in.IsKeyEqual(x)
+				Expect(out).To(BeTrue())
+			})
+		})
+	})
+	Describe("Test DNSServerListToStrings function", func() {
+		Context("When list of 2 DNSservers are given", func() {
+			It("String array of the given DNSservers is returned", func() {
+				item1 := DNSServer("DNSServer")
+				item2 := DNSServer("DNSServer1")
+				list := make([]DNSServer, 0)
+				list = append(list, item1, item2)
+				items := DNSServerList(list)
+				exp := []string{"DNSServer", "DNSServer1"}
+				out := DNSServerListToStrings(items)
+				Expect(out).To(Equal(exp))
+			})
+		})
+	})
+	Describe("Test NTPServerListToStrings function", func() {
+		Context("When list of 2 NTPservers are given", func() {
+			It("String array of the given NTPservers is returned", func() {
+				item1 := NTPServer("NTPServer")
+				item2 := NTPServer("NTPServer1")
+				list := make([]NTPServer, 0)
+				list = append(list, item1, item2)
+				items := NTPServerList(list)
+				exp := []string{"NTPServer", "NTPServer1"}
+				out := NTPServerListToStrings(items)
+				Expect(out).To(Equal(exp))
+			})
+		})
+	})
 })
