@@ -39,9 +39,8 @@ const SystemEndpointSecretName = "system-endpoint"
 
 const (
 	// Defines annotation keys for resources.
-	NotificationCountKey           = "deployment-manager/notifications"
-	ReconcileHostByPlatformNetwork = "deployment-manager/reconcile-host-networking"
-	ReconcileAfterInSync           = "deployment-manager/reconcile-after-insync"
+	NotificationCountKey = "deployment-manager/notifications"
+	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
 )
 
 const (
@@ -90,7 +89,6 @@ type CloudManager interface {
 	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
-	NotifyHostController(object client.Object, deleteKey bool) error
 	SetSystemReady(namespace string, value bool)
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
@@ -115,6 +113,8 @@ type CloudManager interface {
 	StartStrategyMonitor()
 	SetStrategyRetryCount(c int) error
 	GetStrategyRetryCount() (int, error)
+	IsPlatformNetworkReconciling() bool
+	SetPlatformNetworkReconciling(status bool)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -186,11 +186,12 @@ type HostStrategyInfo struct {
 
 type PlatformManager struct {
 	manager.Manager
-	lock           sync.Mutex
-	systems        map[string]*SystemNamespace
-	monitors       map[string]*Monitor
-	strategyStatus *StrategyStatus
-	vimClient      *gophercloud.ServiceClient
+	lock                            sync.Mutex
+	systems                         map[string]*SystemNamespace
+	monitors                        map[string]*Monitor
+	strategyStatus                  *StrategyStatus
+	vimClient                       *gophercloud.ServiceClient
+	PlatformNetworkReconcilerStatus bool
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -439,10 +440,6 @@ func (m *PlatformManager) NotifySystemDependencies(namespace string) error {
 
 func (m *PlatformManager) NotifyResource(object client.Object) error {
 	return m.notifyController(object, NotificationCountKey, false)
-}
-
-func (m *PlatformManager) NotifyHostController(object client.Object, deleteKey bool) error {
-	return m.notifyController(object, ReconcileHostByPlatformNetwork, deleteKey)
 }
 
 // GetKubernetesClient returns a reference to the Kubernetes client
@@ -786,6 +783,18 @@ func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
 		}
 	}
 	return m.vimClient
+}
+
+func (m *PlatformManager) IsPlatformNetworkReconciling() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	return m.PlatformNetworkReconcilerStatus
+}
+
+func (m *PlatformManager) SetPlatformNetworkReconciling(status bool) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	m.PlatformNetworkReconcilerStatus = status
 }
 
 // GcCreate is wrapper function for systemconfigupdate Create

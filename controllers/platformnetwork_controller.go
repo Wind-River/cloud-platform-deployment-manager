@@ -901,6 +901,28 @@ func (r *PlatformNetworkReconciler) HandleHostStrategyUpdates(host_strategy clou
 	return common.NewResourceConfigurationDependency("waiting for system to be in locked state before reconfiguring network")
 }
 
+// UpdateHostReconciledStatus sets the Host reconciliation status of the controller to false
+// so that host reconciliation is triggered to fix broken interface-network association due
+// to deletion and re-creation of address pools and networks.
+func (r *PlatformNetworkReconciler) UpdateHostReconciledStatus(host_name string, request_namespace string, is_reconciled bool) (err error) {
+	host_instance, err := r.GetHostInstance(host_name, request_namespace)
+	if err != nil {
+		return common.NewResourceConfigurationDependency(fmt.Sprintf("Failed to obtain host instance: %s/%s", host_name, request_namespace))
+	}
+
+	if host_instance.Status.Reconciled != is_reconciled {
+		host_instance.Status.Reconciled = is_reconciled
+		err := r.Client.Status().Update(context.TODO(), host_instance)
+		if err != nil {
+			logPlatformNetwork.Error(err, "Failed to update status %v", host_instance.Status)
+			return common.NewResourceConfigurationDependency(
+				fmt.Sprintf("Failed to update %s/%s host instance reconciliation status to '%v'", host_name, request_namespace, host_instance.Status.Reconciled))
+		}
+	}
+
+	return nil
+}
+
 // ReconcileResourceBootstrap is responsible for reconciling platform networks of scope bootstrap.
 // It will not attempt to reconcile if network type is one of (mgmt, oam, admin) but only set the
 // insync status by comparing running config vs profile. Also, for the three networks mentioned
@@ -961,13 +983,9 @@ func (r *PlatformNetworkReconciler) ReconcileResourcePrincipalSimplex(client *go
 				return err
 			}
 
-			// Trigger network reconciliation on host controller by creating annotation
-			// on host instance if the network type is management.
-			host_instance, err := r.GetHostInstance(host.Hostname, request_namespace)
-			if err != nil {
-				return err
-			}
-			return r.CloudManager.NotifyHostController(host_instance, false)
+			// Set host instance reconciliation status to false so that
+			// host controller reconciles interface network assignment of mgmt network.
+			return r.UpdateHostReconciledStatus(host.Hostname, request_namespace, false)
 		} else {
 			host_strategy := cloudManager.HostStrategyInfo{
 				StrategyRequired: cloudManager.StrategyLockRequired,
@@ -982,14 +1000,10 @@ func (r *PlatformNetworkReconciler) ReconcileResourcePrincipalSimplex(client *go
 			return err
 		}
 
-		// Trigger network reconciliation on host controller by creating annotation
-		// on host instance if the network type is admin.
+		// Set host instance reconciliation status to false so that
+		// host controller reconciles interface network assignment of admin network.
 		if instance.Spec.Type == cloudManager.AdminNetworkType {
-			host_instance, err := r.GetHostInstance(host.Hostname, request_namespace)
-			if err != nil {
-				return err
-			}
-			return r.CloudManager.NotifyHostController(host_instance, false)
+			return r.UpdateHostReconciledStatus(host.Hostname, request_namespace, false)
 		}
 
 	}
@@ -1278,10 +1292,19 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return common.RetrySystemNotReady, nil
 	}
 
+	// SetPlatformNetworkReconciling(true) so that host reconciler waits for platform
+	// network reconciler to complete its reconciliation before Host reconciler
+	// propagates unlock_required strategy update.
+	r.CloudManager.SetPlatformNetworkReconciling(true)
+
 	err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
+
+	// SetPlatformNetworkReconciling(false) if platform network reconciliation is successful.
+	// This would allow Host reconciler to send unlock_required strategy update.
+	r.CloudManager.SetPlatformNetworkReconciling(false)
 
 	return ctrl.Result{}, nil
 }
