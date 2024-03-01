@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package controllers
 
@@ -867,7 +867,7 @@ func (r *PlatformNetworkReconciler) GetHostInstance(hostname string, request_nam
 	host_namespace := types.NamespacedName{Namespace: request_namespace, Name: hostname}
 	err := r.Client.Get(context.TODO(), host_namespace, host_instance)
 	if err != nil {
-		logPlatformNetwork.Error(err, "Failed to get host resource from namespace %v", host_namespace)
+		logPlatformNetwork.Error(err, "Failed to get host resource from namespace")
 	}
 	return host_instance, err
 }
@@ -884,7 +884,7 @@ func (r *PlatformNetworkReconciler) HandleHostStrategyUpdates(host_strategy clou
 		host_instance.Status.StrategyRequired = host_strategy.StrategyRequired
 		err := r.Client.Status().Update(context.TODO(), host_instance)
 		if err != nil {
-			logPlatformNetwork.Error(err, "Failed to update status %v", host_instance.Status)
+			logPlatformNetwork.Error(err, "Failed to update status")
 			return err
 		}
 	}
@@ -914,7 +914,7 @@ func (r *PlatformNetworkReconciler) UpdateHostReconciledStatus(host_name string,
 		host_instance.Status.Reconciled = is_reconciled
 		err := r.Client.Status().Update(context.TODO(), host_instance)
 		if err != nil {
-			logPlatformNetwork.Error(err, "Failed to update status %v", host_instance.Status)
+			logPlatformNetwork.Error(err, "Failed to update status")
 			return common.NewResourceConfigurationDependency(
 				fmt.Sprintf("Failed to update %s/%s host instance reconciliation status to '%v'", host_name, request_namespace, host_instance.Status.Reconciled))
 		}
@@ -1243,7 +1243,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 			return reconcile.Result{}, nil
 		}
 
-		logPlatformNetwork.Error(err, "unable to read object: %v", request)
+		logPlatformNetwork.Error(err, "unable to read object")
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}

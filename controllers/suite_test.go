@@ -20,7 +20,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/gophercloud/gophercloud"
+	th "github.com/gophercloud/gophercloud/testhelper"
+	gcClient "github.com/gophercloud/gophercloud/testhelper/client"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers/host"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -28,10 +33,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var cfg *rest.Config
+var k8sManager ctrl.Manager
 var k8sClient client.Client
 var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
+var masterT *testing.T
 
 const (
 	timeout  = time.Second * 60
@@ -39,14 +46,18 @@ const (
 )
 
 func TestControllers(t *testing.T) {
+	masterT = t
 	RegisterFailHandler(Fail)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
 		"Controller Suite",
 		[]Reporter{printer.NewlineReporter{}})
+
 }
 
 var _ = BeforeSuite(func() {
+	th.SetupHTTP()
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
@@ -72,7 +83,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme.Scheme,
 		MetricsBindAddress: "0",
 	})
@@ -87,6 +98,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	// HostProfile
 	err = (&HostProfileReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	// Host
+	err = (&host.HostReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
@@ -110,6 +127,12 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
+	tMgr := cloudManager.GetInstance(k8sManager)
+	f := func(namespace string) *gophercloud.ServiceClient {
+		return gcClient.ServiceClient()
+	}
+	tMgr.SetGetPlatformClient(f)
+
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)
@@ -118,6 +141,7 @@ var _ = BeforeSuite(func() {
 }, 60)
 
 var _ = AfterSuite(func() {
+	th.TeardownHTTP()
 	cancel()
 	By("tearing down the test environment")
 	Eventually(func() bool {
