@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
 
 package manager
 
@@ -445,4 +445,10 @@ func (m *Dummymanager) GcDelete(c *gophercloud.ServiceClient) (r systemconfigupd
 	m.strategyDeleted = true
 	re := systemconfigupdate.DeleteResult{}
 	return re
+}
+func (m *Dummymanager) SetDefaultGetPlatformClient() {
+
+}
+func (m *Dummymanager) SetGetPlatformClient(f func(namespace string) *gophercloud.ServiceClient) {
+
 }
