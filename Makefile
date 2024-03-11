@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2023 Wind River Systems, Inc.
+# Copyright(c) 2019-2024 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -17,7 +17,7 @@ HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
 # Parameters for deployctl tool
 GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG := WRCP_22.12-wrs.13    # version needs to be specified here
+GIT_LAST_TAG := WRCP_22.12-wrs.14    # version needs to be specified here
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
