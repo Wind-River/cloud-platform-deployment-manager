@@ -1491,6 +1491,8 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	// parsed in the constructor, move this process after it.
 	FixProfileAttributes(defaults, profile, current, &hostInfo)
 
+	FillEmptyUuidbyName(defaults, current)
+
 	// TODO(alegacy): Need to move ProvisioningMode out of the profile or
 	//  find a way to populate it into profiles generated from the running
 	//  configuration.
@@ -1499,7 +1501,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {
 		logHost.Info("Sync interface name")
-		common.SyncIFNameByUuid(profile, current)
+		SyncIFNameByUuid(profile, current)
 	}
 
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
