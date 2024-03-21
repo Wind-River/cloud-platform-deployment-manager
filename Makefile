@@ -17,7 +17,7 @@ HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
 # Parameters for deployctl tool
 GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG := WRCP_22.12-wrs.14    # version needs to be specified here
+GIT_LAST_TAG := WRCP_22.12-wrs.15    # version needs to be specified here
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 APP_MODULE := "github.com/wind-river/cloud-platform-deployment-manager"
