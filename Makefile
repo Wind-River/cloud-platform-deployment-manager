@@ -28,7 +28,7 @@ DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitHead=${GIT_HEAD}
 DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitBranch=${GIT_BRANCH}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
+ENVTEST_K8S_VERSION = 1.26
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -177,6 +177,7 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.12.1
 GOLANGCI_LINT_VERSION ?= v1.49.0
+SETPUP_ENVTEST_VERSION ?= release-0.16
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 GOLANGCI_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"
@@ -196,7 +197,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETPUP_ENVTEST_VERSION)
 
 .PHONY: deepequal-gen
 deepequal-gen: $(DEEPEQUAL_GEN) ## Download deepequal-gen locally if necessary.
