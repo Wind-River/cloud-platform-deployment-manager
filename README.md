@@ -147,21 +147,13 @@ found within the listed files.
  mkdir -p /tmp/wind-river-cloud-platform-deployment-manager/system
  kustomize build examples/standard/default  > /tmp/wind-river-cloud-platform-deployment-manager/system/standard.yaml
  kustomize build examples/standard/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-vxlan.yaml
- kustomize build examples/standard/https > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-https.yaml
  kustomize build examples/standard/bond > /tmp/wind-river-cloud-platform-deployment-manager/system/standard-bond.yaml
  kustomize build examples/storage/default  > /tmp/wind-river-cloud-platform-deployment-manager/system/storage.yaml
  kustomize build examples/aio-sx/default > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx.yaml
  kustomize build examples/aio-sx/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx-vxlan.yaml
- kustomize build examples/aio-sx/https > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-sx-https.yaml
  kustomize build examples/aio-dx/default > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx.yaml
  kustomize build examples/aio-dx/vxlan > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx-vxlan.yaml
- kustomize build examples/aio-dx/https > /tmp/wind-river-cloud-platform-deployment-manager/system/aio-dx-https.yaml
  ```
-
-***Note***: the HTTPS examples must be edited to add X.509 certificates and
-keys that are appropriate for your environment.  Follow the instructions
-provided in the ```deployctl``` tool section related to HTTPS and BMC.
-
 
 ***Note***: The examples provided assume a certain hardware configuration and
 may need to be modified to work in your environment.  For instance, it is

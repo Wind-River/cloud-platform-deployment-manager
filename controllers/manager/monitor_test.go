@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
 
 package manager
 
@@ -333,9 +333,6 @@ func (m *Dummymanager) NotifySystemDependencies(namespace string) error {
 func (m *Dummymanager) NotifyResource(object client.Object) error {
 	return nil
 }
-func (m *Dummymanager) NotifyHostController(object client.Object, deleteKey bool) error {
-	return nil
-}
 func (m *Dummymanager) SetSystemReady(namespace string, value bool) {
 
 }
@@ -407,7 +404,12 @@ func (m *Dummymanager) SetStrategyRetryCount(c int) error {
 func (m *Dummymanager) GetStrategyRetryCount() (int, error) {
 	return m.retryCount, nil
 }
+func (m *Dummymanager) IsPlatformNetworkReconciling() bool {
+	return false
+}
+func (m *Dummymanager) SetPlatformNetworkReconciling(status bool) {
 
+}
 func (m *Dummymanager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
 	if len(m.gcShow) == 0 {
 		err := errors.New("test: no info available")
@@ -443,4 +445,10 @@ func (m *Dummymanager) GcDelete(c *gophercloud.ServiceClient) (r systemconfigupd
 	m.strategyDeleted = true
 	re := systemconfigupdate.DeleteResult{}
 	return re
+}
+func (m *Dummymanager) SetDefaultGetPlatformClient() {
+
+}
+func (m *Dummymanager) SetGetPlatformClient(f func(namespace string) *gophercloud.ServiceClient) {
+
 }

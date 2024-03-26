@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package system
 
@@ -52,6 +52,7 @@ import (
 var logSystem = log.Log.WithName("controller").WithName("system")
 
 const SystemControllerName = "system-controller"
+const RestAPIcertName = "system-restapi-gui-certificate"
 
 var _ reconcile.Reconciler = &SystemReconciler{}
 
@@ -84,51 +85,38 @@ func InstallCertificate(filename string, data []byte) error {
 	return nil
 }
 
-// installRootCertificates examines the list of certificates to be configured
-// against the system and for any platform certificates found it will install
-// the corresponding CA certificate into the system certificate path.  Since
-// all controllers need to spawn clients to communicate with the system API
-// this approach was used rather than to pass the certificates directly to the
-// gophercloud API since that would require several additional steps by each
-// controller to load the certificates from the system secret.
+// installRootCertificates installs RestAPI/GUI RCA certificate into the system
+// certificate path. Since all controllers need to spawn clients to communicate
+// with the system API this approach was used rather than to pass the
+// certificates directly to the gophercloud API since that would require several
+// additional steps by each controller to load the certificates from the system
+// secret.
 func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System) error {
-	if instance.Spec.Certificates == nil {
-		return nil
+	secret := v1.Secret{}
+	secretName := types.NamespacedName{Namespace: instance.Namespace, Name: RestAPIcertName}
+	err := r.Client.Get(context.TODO(), secretName, &secret)
+	if err != nil {
+		return err
 	}
 
-	for _, c := range *instance.Spec.Certificates {
-		if c.Type != starlingxv1.PlatformCertificate {
-			// We only interact with the platform API therefore we do not need
-			// to install any other CA certificate locally.
-			continue
-		}
-
-		secret := v1.Secret{}
-		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
-		err := r.Client.Get(context.TODO(), secretName, &secret)
-		if err != nil {
-			return err
-		}
-
-		var caBytes []byte
-		var ok bool
-		numRetries := 30
-		for iter := 0; iter < numRetries; iter++ {
-			caBytes, ok = secret.Data[starlingxv1.SecretCaCertKey]
-			if !ok {
-				logSystem.Info("Platform certificate CA not ready/available", "name", c.Secret)
-				time.Sleep(5 * time.Second)
-			} else {
-				logSystem.Info("Platform certificate CA ready!")
-				break
-			}
-		}
+	var caBytes []byte
+	var ok bool
+	numRetries := 30
+	for iter := 0; iter < numRetries; iter++ {
+		caBytes, ok = secret.Data[starlingxv1.SecretCaCertKey]
 		if !ok {
-			logSystem.Info("Continuing deployment without a CA certificate", "name", c.Secret)
-			continue
+			logSystem.Info("Platform certificate CA not ready/available", "name", RestAPIcertName)
+			time.Sleep(5 * time.Second)
+		} else {
+			logSystem.Info("Platform certificate CA ready!")
+			break
 		}
+	}
 
-		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, c.Secret)
+	if !ok {
+		logSystem.Info("Continuing deployment without a CA certificate", "name", RestAPIcertName)
+	} else {
+		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, RestAPIcertName)
 		err = InstallCertificate(filename, caBytes)
 		if err != nil {
 			logSystem.Error(err, "failed to install root certificate")
@@ -692,12 +680,6 @@ func systemUpdateRequired(instance *starlingxv1.System, spec *starlingxv1.System
 		opts.Longitude = spec.Longitude
 	}
 
-	if instance.HTTPSEnabled() != s.Capabilities.HTTPSEnabled {
-		result = true
-		value := strconv.FormatBool(instance.HTTPSEnabled())
-		opts.HTTPSEnabled = &value
-	}
-
 	if spec.VSwitchType != nil && *spec.VSwitchType != s.Capabilities.VSwitchType {
 		result = true
 		opts.VSwitchType = spec.VSwitchType
@@ -746,12 +728,6 @@ func (r *SystemReconciler) HTTPSRequiredForCertificates() bool {
 
 func (r *SystemReconciler) PrivateKeyTranmissionAllowed(client *gophercloud.ServiceClient, info *v1info.SystemInfo) error {
 	if r.HTTPSRequiredForCertificates() {
-		if !info.Capabilities.HTTPSEnabled {
-			// Do not send private key information in the clear.
-			msg := "it is unsafe to install certificates while HTTPS is disabled"
-			return common.NewSystemDependency(msg)
-		}
-
 		if strings.HasPrefix(client.Endpoint, cloudManager.HTTPPrefix) {
 			// If HTTPS is enabled and we are still using an HTTPPrefix then either
 			// the endpoint hasn't been switched over yet, or the user is trying
@@ -1242,6 +1218,15 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 	}
 
 	for _, c := range *instance.Spec.Certificates {
+		// Ignore certificates installed during bootstrap/initial unlock
+		// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
+		if c.Type == starlingxv1.OpenstackCACertificate || c.Type == starlingxv1.DockerCertificate ||
+			c.Type == starlingxv1.PlatformCertificate || c.Type == starlingxv1.OpenLDAPCertificate {
+			logSystem.Info("Ignoring certificate created at bootstrap and managed by the system.",
+				"secret", c.Secret, "type", c.Type)
+			continue
+		}
+
 		secret := v1.Secret{}
 
 		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
@@ -1289,7 +1274,12 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 		}
 		result = append(result, certificate)
 	}
+
+	if len(result) == 0 {
+		result = nil
+	}
 	*instance.Spec.Certificates = result
+
 	return nil
 }
 

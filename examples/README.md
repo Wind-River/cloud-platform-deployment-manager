@@ -12,12 +12,11 @@ that a base configuration can be modified or refined for a different system
 configuration type without needing to repeat the entire configuration multiple
 times.  For example, the ```standard/default``` directory contains a deployment
 configuration for a regular 2+2 standard system.  The configuration does not
-include any HTTPS configuration nor any VxLAN data networks or Bond interface
-configurations.  Separate Kustomize directories are provided to enable
-modifications of the ```standard/default``` configuration for those special 
-configurations.  That is ```standard/vxlan``` provides an overlay which sets up
-VxLAN data network rather than the default VLAN data networks, and 
-```standard/https``` modifies the standard system to include HTTPS certificates.
+include any VxLAN data networks or Bond interface configurations.  Separate
+Kustomize directories are provided to enable modifications of the
+```standard/default``` configuration for those special configurations. That is,
+```standard/vxlan``` provides an overlay which sets up VxLAN data network
+rather than the default VLAN data networks.
 
 The Kustomize configurations can be rendered to their final form using the 
 following commands:
@@ -27,16 +26,13 @@ export EXAMPLES=/tmp/wind-river-cloud-platform-deployment-manager
 mkdir -p ${EXAMPLES}
 kustomize build examples/standard/default  > ${EXAMPLES}/standard.yaml
 kustomize build examples/standard/vxlan > ${EXAMPLES}/standard-vxlan.yaml
-kustomize build examples/standard/https > ${EXAMPLES}/standard-https.yaml
 kustomize build examples/standard/bond > ${EXAMPLES}/standard-bond.yaml
 kustomize build examples/storage/default > ${EXAMPLES}/storage.yaml
 kustomize build examples/aio-sx/default > ${EXAMPLES}/aio-sx.yaml
 kustomize build examples/aio-sx/vxlan > ${EXAMPLES}/aio-sx-vxlan.yaml
-kustomize build examples/aio-sx/https > ${EXAMPLES}/aio-sx-https.yaml
 kustomize build examples/aio-sx/geo-location > ${EXAMPLES}/aio-sx-geo-location.yaml
 kustomize build examples/aio-dx/default > ${EXAMPLES}/aio-dx.yaml
 kustomize build examples/aio-dx/vxlan > ${EXAMPLES}/aio-dx-vxlan.yaml
-kustomize build examples/aio-dx/https > ${EXAMPLES}/aio-dx-https.yaml
 ```
 
 The rendered examples will not have valid values for any host MAC addresses
