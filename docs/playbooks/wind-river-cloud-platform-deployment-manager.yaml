@@ -717,30 +717,81 @@
 
             when: waiting_after_reboot.failed
 
-          # After reboot, wait some time for resources to be reconciled.
-          # If we have all of them reconciled, playbook won't fail.
-          # This task is getting the last column as RECONCILED status value
-          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
-          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
-          - name: Retrieve kubectl resources reconciled status
-            shell: >-
-              (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
-               kubectl -n deployment get hosts "{{ get_host_name.stdout}}") |
-               awk '$NF ~ /^false/ {print}'
+          - name: Set retries to check resource reconciled status for simplex
+            set_fact:
+              host_reconcile_retries: 80
+
+          - name: Check number of hosts from deployment namespace
+            shell: kubectl get hosts -n deployment |  grep -v NAME  | wc -l
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: hosts_count
+            until: hosts_count.stdout != 0
+            retries: 20
+            delay: 30
+            failed_when: false
+
+          - name: Fail to get hosts from cluster
+            fail:
+              msg: "Failed to get host resource from cluster."
+            when: hosts_count.stdout == 0
+
+          - name: Wait for subcloud hosts available if not simplex
+            block:
+            - name: Set system type for monitor the deloyment
+              set_fact:
+                host_offline_retries: >
+                  {{ 60 if hosts_count.stdout | int == 2 else 120 }}
+                host_reconcile_retries: >
+                  {{ 120 if  hosts_count.stdout | int == 2 else 240 }}
+
+            - name: Get offline hosts if not simplex
+              shell: >
+                kubectl get hosts -o custom-columns='NAME:.metadata.name,
+                OPERATIONAL:.status.availabilityStatus' -n deployment |
+                awk '$NF ~ /offline/ {print}'
+              environment:
+                KUBECONFIG: "/etc/kubernetes/admin.conf"
+              register: get_offline_hosts
+              until: >
+                (get_offline_hosts.stdout == "" and
+                get_offline_hosts.stderr == "")
+              retries: "{{ host_offline_retries }}"
+              delay: 60
+              failed_when: false
+
+            - name: Fail if any host remain offline
+              fail:
+                msg: >
+                  Host remain offline: {{ get_offline_hosts.stdout }}
+              when: get_offline_hosts.stdout != ""
+            when: hosts_count.stdout != "1"
+
+          # After reboot, wait for resource reconciliation. This ensures the
+          # playbook doesn't fail if resources are properly reconciled.
+          - name: Get not reconciled resource
+            shell: >
+              (kubectl get systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces
+              -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
+              -n deployment;
+              kubectl -n deployment get hosts "{{ get_host_name.stdout }}" -o
+              custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled') |
+              awk '$NF ~ /^false/ {print}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: get_unrecon_status_post
-            until: (get_unrecon_status_post.stdout == "" and get_unrecon_status_post.stderr == "")
-            retries: 80
-            delay: 25
+            until: >
+              (get_unrecon_status_post.stdout == "" and
+              get_unrecon_status_post.stderr == "")
+            retries: "{{ host_reconcile_retries }}"
+            delay: 30
             ignore_errors: yes
 
-          - name: fail if previous task failed
+          - name: Fail if fail to get resource reconciled status
             fail:
               msg:
                 - "Unexpected failure while waiting for reconciled resources"
                 - "{{get_unrecon_status_post.stderr}}"
-            register: unexpected_failure
             when: (get_unrecon_status_post.stderr != "")
 
           # Get pod name to retrieve the logs after unlock

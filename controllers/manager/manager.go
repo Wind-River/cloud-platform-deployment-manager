@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package manager
 
@@ -85,6 +85,8 @@ const (
 type CloudManager interface {
 	ResetPlatformClient(namespace string) error
 	GetPlatformClient(namespace string) *gophercloud.ServiceClient
+	SetGetPlatformClient(f func(namespace string) *gophercloud.ServiceClient)
+	SetDefaultGetPlatformClient()
 	GetKubernetesClient() client.Client
 	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
@@ -192,6 +194,7 @@ type PlatformManager struct {
 	strategyStatus                  *StrategyStatus
 	vimClient                       *gophercloud.ServiceClient
 	PlatformNetworkReconcilerStatus bool
+	GetPlatformClientImpl           func(namespace string) *gophercloud.ServiceClient
 }
 
 func NewStrategyStatus() *StrategyStatus {
@@ -454,12 +457,25 @@ func (m *PlatformManager) GetPlatformClient(namespace string) *gophercloud.Servi
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
-	// Look for an existing client
-	if obj, ok := m.systems[namespace]; ok {
-		return obj.client
+	return m.GetPlatformClientImpl(namespace)
+	// Refer SetDefaultGetPlatformClient for default implementation of this function.
+}
+
+func (m *PlatformManager) SetGetPlatformClient(f func(namespace string) *gophercloud.ServiceClient) {
+	m.GetPlatformClientImpl = f
+}
+
+func (m *PlatformManager) SetDefaultGetPlatformClient() {
+	f := func(namespace string) *gophercloud.ServiceClient {
+		// Look for an existing client
+		if obj, ok := m.systems[namespace]; ok {
+			return obj.client
+		}
+
+		return nil
 	}
 
-	return nil
+	m.GetPlatformClientImpl = f
 }
 
 // ResetPlatformClient deletes the instance of the platform manager for a
@@ -824,6 +840,7 @@ var once sync.Once
 func GetInstance(mgr manager.Manager) CloudManager {
 	once.Do(func() {
 		instance = NewPlatformManager(mgr)
+		instance.SetDefaultGetPlatformClient()
 	})
 
 	return instance
