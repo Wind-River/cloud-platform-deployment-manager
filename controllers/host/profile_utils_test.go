@@ -662,4 +662,351 @@ var _ = Describe("Profile utils", func() {
 			})
 		})
 	})
+
+	Describe("Test SyncIFNameByUuid", func() {
+		Context("When uuid is the same", func() {
+			It("Should copy interface name from current to profile", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "ProfEthName",
+									UUID: "EthUUID",
+								},
+								Port: starlingxv1.EthernetPortInfo{},
+							},
+						},
+					},
+				}
+				ethPortName := "EthPortName"
+				currEthName := "CurrEthName"
+				current := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: currEthName,
+									UUID: "EthUUID",
+								},
+								Port: starlingxv1.EthernetPortInfo{
+									Name: ethPortName,
+								},
+							},
+						},
+					},
+				}
+				SyncIFNameByUuid(profile, current)
+				Expect(profile.Interfaces.Ethernet[0].Port.Name).To(Equal(ethPortName))
+				Expect(profile.Interfaces.Ethernet[0].CommonInterfaceInfo.Name).
+					To(Equal(currEthName))
+
+			})
+		})
+		Context("if uuid is not same", func() {
+			It("Should not copy interface name from current to profile", func() {
+				profPortName := "profPortName"
+				profEthName := "profEthName"
+				profile := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: profEthName,
+									UUID: "EthUUID1",
+								},
+								Port: starlingxv1.EthernetPortInfo{
+									Name: profPortName,
+								},
+							},
+						},
+					},
+				}
+				currPortName := "EthPortName"
+				currEthName := "CurrEthName"
+				current := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: currEthName,
+									UUID: "EthUUID",
+								},
+								Port: starlingxv1.EthernetPortInfo{
+									Name: currPortName,
+								},
+							},
+						},
+					},
+				}
+				SyncIFNameByUuid(profile, current)
+				Expect(profile.Interfaces.Ethernet[0].Port.Name).To(Equal(profPortName))
+				Expect(profile.Interfaces.Ethernet[0].CommonInterfaceInfo.Name).
+					To(Equal(profEthName))
+
+			})
+		})
+	})
+
+	Describe("Test FillEmptyUuidbyName", func() {
+		Context("When name is the same", func() {
+			It("Should copy interface uuid from current to profile", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+					},
+				}
+				current := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar1",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar2",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar3",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar4",
+								},
+							},
+						},
+					},
+				}
+				FillEmptyUuidbyName(profile, current)
+				Expect(
+					profile.Interfaces.VF[0].CommonInterfaceInfo.UUID,
+				).To(Equal("bar3"))
+				Expect(
+					profile.Interfaces.Bond[0].CommonInterfaceInfo.UUID,
+				).To(Equal("bar2"))
+				Expect(
+					profile.Interfaces.VLAN[0].CommonInterfaceInfo.UUID,
+				).To(Equal("bar4"))
+				Expect(
+					profile.Interfaces.Ethernet[0].CommonInterfaceInfo.UUID,
+				).To(Equal("bar1"))
+			})
+		})
+		Context("if name is not same", func() {
+			It("Should not copy interface uuid from current to profile", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "",
+								},
+							},
+						},
+					},
+				}
+				current := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar2",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar3",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar4",
+								},
+							},
+						},
+					},
+				}
+				SyncIFNameByUuid(profile, current)
+				Expect(profile.Interfaces.Ethernet[0].CommonInterfaceInfo.UUID).
+					To(Equal(""))
+				Expect(profile.Interfaces.Bond[0].CommonInterfaceInfo.UUID).
+					To(Equal(""))
+				Expect(profile.Interfaces.VF[0].CommonInterfaceInfo.UUID).
+					To(Equal(""))
+				Expect(profile.Interfaces.VLAN[0].CommonInterfaceInfo.UUID).
+					To(Equal(""))
+			})
+		})
+		Context("if uuid is not empty, that is the normal case", func() {
+			It("the profile's uuid should not be updated", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar2",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar3",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo",
+									UUID: "bar4",
+								},
+							},
+						},
+					},
+				}
+				current := &starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar",
+								},
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar2",
+								},
+							},
+						},
+						VF: starlingxv1.VFList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar3",
+								},
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name: "foo2",
+									UUID: "bar4",
+								},
+							},
+						},
+					},
+				}
+				SyncIFNameByUuid(profile, current)
+				Expect(profile.Interfaces.Ethernet[0].CommonInterfaceInfo.UUID).
+					To(Equal("bar"))
+				Expect(profile.Interfaces.Bond[0].CommonInterfaceInfo.UUID).
+					To(Equal("bar2"))
+				Expect(profile.Interfaces.VF[0].CommonInterfaceInfo.UUID).
+					To(Equal("bar3"))
+				Expect(profile.Interfaces.VLAN[0].CommonInterfaceInfo.UUID).
+					To(Equal("bar4"))
+			})
+		})
+	})
 })
