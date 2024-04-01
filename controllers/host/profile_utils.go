@@ -19,7 +19,10 @@ import (
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var logProfileUtils = log.Log.WithName("profile-utils")
 
 // MergeProfiles invokes the mergo.Merge API with our desired modifiers.
 func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileSpec, error) {
@@ -46,20 +49,26 @@ func FixProfileAttributes(a, b, c *starlingxv1.HostProfileSpec, hostInfo *v1info
 	}
 
 	// To compare the interface Members we need to sort them
-	if b.Interfaces.Bond != nil {
+	if b.Interfaces != nil && b.Interfaces.Bond != nil {
 		for _, bondInfo := range b.Interfaces.Bond {
 			if bondInfo.Members != nil {
 				sort.Strings(bondInfo.Members)
 			}
 		}
 	}
-	if c.Interfaces.Bond != nil {
+	if b.Interfaces != nil && c.Interfaces.Bond != nil {
 		for _, bondInfo := range c.Interfaces.Bond {
 			if bondInfo.Members != nil {
 				sort.Strings(bondInfo.Members)
 			}
 		}
 	}
+
+	// If a hostprofile is composed based on a base profile, remove it to avoid
+	// delta between the final profile and the current config
+	a.Base = nil
+	b.Base = nil
+
 	FixProfileDevicePath(a, hostInfo)
 }
 
@@ -75,11 +84,11 @@ func FixProfileDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostI
 		a.BootDevice = &bootDevice
 	}
 
-	if a.Storage.OSDs != nil {
+	if a.Storage != nil && a.Storage.OSDs != nil {
 		FixOSDDevicePath(a, hostInfo)
 	}
 
-	if a.Storage.VolumeGroups != nil {
+	if a.Storage != nil && a.Storage.VolumeGroups != nil {
 		FixVolumeGroupPath(a, hostInfo)
 	}
 }
@@ -241,6 +250,27 @@ func (r *HostReconciler) mergeProfileChain(namespace string, current *starlingxv
 
 	defaultCopy := DefaultHostProfile.DeepCopy()
 	return MergeProfiles(defaultCopy, current)
+}
+
+// BuildAndValidateCompositeProfile combines the methods of BuildCompositeProfile
+// and ValidateProfile, returns a combined profile which is validated
+func (r *HostReconciler) BuildAndValidateCompositeProfile(
+	host *starlingxv1.Host,
+) (*starlingxv1.HostProfileSpec, error) {
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildCompositeProfile(host)
+	if err != nil {
+		return nil, err
+	}
+
+	logHost.V(2).Info("composite profile is:", "name", host.Spec.Profile, "profile", profile)
+
+	err = r.ValidateProfile(host, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return profile, nil
 }
 
 // BuildCompositeProfile combines the default profile, the profile inheritance
@@ -519,4 +549,129 @@ func (r *HostReconciler) ValidateProfile(host *starlingxv1.Host, profile *starli
 	}
 
 	return nil
+}
+
+// Sync interface name for ethernet
+// When N3000 interface is used, it is possible to change name after unlocked.
+// This function is to copy interface name from current to profile if uuid is the same
+// to avoid configuration difference because of names.
+func SyncIFNameByUuid(
+	profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec,
+) {
+	if profile == nil || current == nil {
+		return
+	}
+
+	if_current := current.Interfaces.Ethernet
+	if_profile := profile.Interfaces.Ethernet
+	for idx_current := range if_current {
+		info_current := if_current[idx_current].CommonInterfaceInfo
+		port_current := if_current[idx_current].Port.Name
+		for idx_profile := range if_profile {
+			info_profile := if_profile[idx_profile].CommonInterfaceInfo
+			if info_profile.UUID == info_current.UUID &&
+				info_profile.Name != info_current.Name {
+				logProfileUtils.Info(
+					"Ethernet name sync", "profile", info_profile.Name,
+					"current", info_current.Name, "uuid", info_profile.UUID)
+				if_profile[idx_profile].CommonInterfaceInfo.Name = info_current.Name
+				if_profile[idx_profile].Port.Name = port_current
+				break
+			}
+		}
+	}
+}
+
+// FillEmptyUuidbyName fills the empty uuid by its name. Normally, the uuids can
+// be searched from the system and merged to the default profile.
+func FillEmptyUuidbyName(
+	profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec,
+) {
+	if profile == nil || current == nil {
+		return
+	}
+
+	// update ethernet
+	eth_current := current.Interfaces.Ethernet
+	eth_profile := profile.Interfaces.Ethernet
+	for idx_profile := range eth_profile {
+		info_profile := eth_profile[idx_profile].CommonInterfaceInfo
+		profile_uuid := info_profile.UUID
+		if profile_uuid == "" || profile == nil {
+			for idx_current := range eth_current {
+				info_current := eth_current[idx_current].CommonInterfaceInfo
+				if info_current.Name == info_profile.Name {
+					logProfileUtils.Info(
+						"Empty IF UUID filled", "profile", info_profile.Name,
+						"current", info_current.Name, "uuid", info_current.UUID)
+					eth_profile[idx_profile].CommonInterfaceInfo.UUID =
+						info_current.UUID
+					break
+				}
+			}
+		}
+	}
+
+	// update vlan
+	vlan_current := current.Interfaces.VLAN
+	vlan_profile := profile.Interfaces.VLAN
+	for idx_profile := range vlan_profile {
+		info_profile := vlan_profile[idx_profile].CommonInterfaceInfo
+		profile_uuid := info_profile.UUID
+		if profile_uuid == "" || profile == nil {
+			for idx_current := range vlan_current {
+				info_current := vlan_current[idx_current].CommonInterfaceInfo
+				if info_current.Name == info_profile.Name {
+					logProfileUtils.Info(
+						"Empty IF UUID filled", "profile", info_profile.Name,
+						"current", info_current.Name, "uuid", info_current.UUID)
+					vlan_profile[idx_profile].CommonInterfaceInfo.UUID =
+						info_current.UUID
+					break
+				}
+			}
+		}
+	}
+
+	// update bond
+	bond_current := current.Interfaces.Bond
+	bond_profile := profile.Interfaces.Bond
+	for idx_profile := range bond_profile {
+		info_profile := bond_profile[idx_profile].CommonInterfaceInfo
+		profile_uuid := info_profile.UUID
+		if profile_uuid == "" || profile == nil {
+			for idx_current := range bond_current {
+				info_current := bond_current[idx_current].CommonInterfaceInfo
+				if info_current.Name == info_profile.Name {
+					logProfileUtils.Info(
+						"Empty IF UUID filled", "profile", info_profile.Name,
+						"current", info_current.Name, "uuid", info_current.UUID)
+					bond_profile[idx_profile].CommonInterfaceInfo.UUID =
+						info_current.UUID
+					break
+				}
+			}
+		}
+	}
+
+	// update VF
+	vf_current := current.Interfaces.VF
+	vf_profile := profile.Interfaces.VF
+	for idx_profile := range vf_profile {
+		info_profile := vf_profile[idx_profile].CommonInterfaceInfo
+		profile_uuid := info_profile.UUID
+		if profile_uuid == "" || profile == nil {
+			for idx_current := range vf_current {
+				info_current := vf_current[idx_current].CommonInterfaceInfo
+				if info_current.Name == info_profile.Name {
+					logProfileUtils.Info(
+						"Empty IF UUID filled", "profile", info_profile.Name,
+						"current", info_current.Name, "uuid", info_current.UUID)
+					vf_profile[idx_profile].CommonInterfaceInfo.UUID =
+						info_current.UUID
+					break
+				}
+			}
+		}
+	}
 }

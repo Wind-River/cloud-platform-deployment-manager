@@ -103,7 +103,7 @@ To re-apply a new set of overrides to an existing installation the Helm upgrade
 command can simply be re-executed.
 
 ```
-helm upgrade --install deployment-manager --values deployment-manager-overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-8.tgz
+helm upgrade --install deployment-manager --values deployment-manager-overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
 ```
 
 ## Enabling version API interaction logs

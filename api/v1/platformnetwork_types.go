@@ -38,11 +38,14 @@ type AllocationInfo struct {
 // PlatformNetworkSpec defines the desired state of PlatformNetwork
 type PlatformNetworkSpec struct {
 	// Type defines the intended usage of the network
-	// +kubebuilder:validation:Enum=mgmt;pxeboot;infra;oam;multicast;system-controller;cluster-host;cluster-pod;cluster-service;storage;other
+	// +kubebuilder:validation:Enum=mgmt;pxeboot;infra;oam;multicast;system-controller;cluster-host;cluster-pod;cluster-service;storage;admin;other
 	Type string `json:"type"`
 
-	// Subnet defines the IPv4 or IPv6 network address for the network
+	// Subnet defines the subdivision IPv4 or IPv6 network address for the network
 	Subnet string `json:"subnet"`
+
+	// FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+	FloatingAddress string `json:"floatingAddress,omitempty"`
 
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=128

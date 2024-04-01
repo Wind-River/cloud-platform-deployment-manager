@@ -759,6 +759,12 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
+	// Update/Add routes
+	err = r.ReconcileRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	err = r.ReconcileFileSystemSizes(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -955,6 +961,12 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
+	if utils.IsReconcilerEnabled(utils.Route) {
+		if !in.Routes.DeepEqual(&other.Routes) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -1020,12 +1032,6 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 				return false
 			}
 		}
-
-		if utils.IsReconcilerEnabled(utils.Route) {
-			if !in.Routes.DeepEqual(&other.Routes) {
-				return false
-			}
-		}
 	}
 
 	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
@@ -1069,7 +1075,29 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			if principal {
-				instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
+					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
+					iface, found := host.FindInterfaceByName(ethInfo.Name)
+					if !found {
+						msg := fmt.Sprintf("unable to find interface: %s", ethInfo.Name)
+						return starlingxv1.NewMissingSystemResource(msg)
+					}
+
+					// We need to reconcile the interfaces to assign the admin network
+					_, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+					if err != nil {
+						return err
+					}
+
+					// The platformnetwork_controller will create the address pool and
+					// the network; the controller just needs to assign the network to
+					// the interface. If any other changes require lock/unlock, then it
+					// will do so afterward.
+					return nil
+				} else {
+					instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+					logHost.V(2).Info("set lock required")
+				}
 				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 				err := r.Client.Status().Update(context.TODO(), instance)
 				if err != nil {
@@ -1077,8 +1105,8 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 						common.FormatStruct(instance.Status))
 					return err
 				}
-				logHost.V(2).Info("set lock required")
 			}
+
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
@@ -1118,6 +1146,51 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 	}
 
 	return nil
+}
+
+// hasAdminNetworkChange checks whether the addition of "admin" to PlatformNetworks
+// within an existing (multi-netting) EthernetInfo is present in the given profile and
+// current InterfaceInfo instances.
+func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
+	if profileInterfaces == nil || currentInterfaces == nil {
+		return nil, false
+	}
+
+	for _, profileEth := range profileInterfaces.Ethernet {
+		logHost.V(2).Info("Profile Ethernet Name", "name", profileEth.Name)
+		currentEth := findEthernetInfoByName(currentInterfaces.Ethernet, profileEth.Name)
+		logHost.V(2).Info("Current ethernetinfo", "ethernet", currentEth)
+		if currentEth == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileEth.PlatformNetworks, currentEth.PlatformNetworks) {
+			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
+		}
+	}
+	return nil, false
+}
+
+// findEthernetInfoByName is a utility function to locate an EthernetInfo in a list
+// by its name.
+func findEthernetInfoByName(ethList []starlingxv1.EthernetInfo, name string) *starlingxv1.EthernetInfo {
+	for i := range ethList {
+		if ethList[i].Name == name {
+			return &ethList[i]
+		}
+	}
+	return nil
+}
+
+// containsAdminPlatformNetwork is a utility function to determine if "admin" has
+// been added to the PlatformNetworks list.
+func containsAdminPlatformNetwork(platformNetworks starlingxv1.PlatformNetworkItemList) bool {
+	for _, network := range platformNetworks {
+		if strings.ToLower(string(network)) == cloudManager.AdminNetworkType {
+			return true
+		}
+	}
+	return false
 }
 
 // statusUpdateRequired is a utility function which determines whether an update
@@ -1418,6 +1491,8 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	// parsed in the constructor, move this process after it.
 	FixProfileAttributes(defaults, profile, current, &hostInfo)
 
+	FillEmptyUuidbyName(defaults, current)
+
 	// TODO(alegacy): Need to move ProvisioningMode out of the profile or
 	//  find a way to populate it into profiles generated from the running
 	//  configuration.
@@ -1426,7 +1501,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {
 		logHost.Info("Sync interface name")
-		common.SyncIFNameByUuid(profile, current)
+		SyncIFNameByUuid(profile, current)
 	}
 
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
@@ -1540,7 +1615,11 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
-func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) ReconcileResource(
+	client *gophercloud.ServiceClient,
+	instance *starlingxv1.Host,
+	profile *starlingxv1.HostProfileSpec,
+) (err error) {
 	var host *hosts.Host
 	var inSync bool
 
@@ -1603,19 +1682,6 @@ func (r *HostReconciler) ReconcileResource(client *gophercloud.ServiceClient, in
 	r.hosts, err = hosts.ListHosts(client)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to list hosts")
-		return err
-	}
-
-	// Build a composite profile based on the profile chain and host overrides
-	profile, err := r.BuildCompositeProfile(instance)
-	if err != nil {
-		return err
-	}
-
-	logHost.V(2).Info("composite profile is:", "name", instance.Spec.Profile, "profile", profile)
-
-	err = r.ValidateProfile(instance, profile)
-	if err != nil {
 		return err
 	}
 
@@ -1797,7 +1863,10 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // - Set ConfigurationUpdated true
 // - Set Reconciled false (since it is going to reconcile with new configuration)
 // Then reflect these values to cluster object
-func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err error) {
+func (r *HostReconciler) UpdateConfigStatus(
+	profile *starlingxv1.HostProfileSpec,
+	instance *starlingxv1.Host,
+) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -1860,7 +1929,7 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 
 		// Check if the HostProfile configuration is updated
 		hostProfile, err := r.GetHostProfile(instance.Namespace, instance.Spec.Profile)
-		if err != err {
+		if err != nil {
 			return err
 		}
 		if hostProfile != nil &&
@@ -1899,6 +1968,10 @@ func (r *HostReconciler) UpdateConfigStatus(instance *starlingxv1.Host) (err err
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
+					if hostProfile.Spec.Personality == nil &&
+						profile.Personality != nil {
+						hostProfile.Spec.Personality = profile.Personality
+					}
 					r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, *hostProfile.Spec.Personality, instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
@@ -1951,15 +2024,6 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	// Update scope from configuration
-	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance)
-	if err != nil {
-		logHost.Error(err, "unable to update scope")
-		return reconcile.Result{}, err
-	}
-	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
-
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any hosts that we have previously added.
@@ -1995,6 +2059,21 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return common.RetrySystemNotReady, nil
 	}
 
+	// Build a composite profile based on the profile chain and host overrides
+	profile, err := r.BuildAndValidateCompositeProfile(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Update scope from configuration
+	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(profile, instance)
+	if err != nil {
+		logHost.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
+
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -2020,7 +2099,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		logHost.V(2).Info("not storage node or in ceph primary group. continue")
 	}
 
-	err = r.ReconcileResource(platformClient, instance)
+	err = r.ReconcileResource(platformClient, instance, profile)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}

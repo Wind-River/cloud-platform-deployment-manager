@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2023 Wind River Systems, Inc.
+# Copyright(c) 2019-2024 Wind River Systems, Inc.
 apiVersion: v1
 appVersion: "1.0"
 description: A Helm chart for the Deployment Manager
 name: wind-river-cloud-platform-deployment-manager
-version: 2.0.10-8
+version: 2.0.10-10
 icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png

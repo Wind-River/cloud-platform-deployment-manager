@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2023 Wind River Systems, Inc.
+# Copyright(c) 2021-2024 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -194,11 +194,17 @@
       register: helmv3_dm_exists
       when: helmv3_installed
 
-    - name: Set reconfig fact
+    - name: Check nfv-vim.dor_complete flag
+      stat:
+        path: /var/run/.nfv-vim.dor_complete
+      register: dor_complete_file
+
+    - name: Set reconfiguration related facts
       set_fact:
         reconfig_flag: "{{ true if (helmv2_installed and helmv2_dm_exists.rc == 0)
                         or (helmv3_installed and helmv3_dm_exists.rc == 0)
                         else false }}"
+        initial_deploy: "{{ false if dor_complete_file.stat.exists else true }}"
 
     - name: Mark the bootstrap as finalized
       file:
@@ -368,22 +374,20 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
-         # Configure required region value for subcloud
-        - name: Get subcloud region value from environment
-          shell: source /etc/platform/openrc; echo $OS_REGION_NAME
-          register: os_region_name_from_env
+        - name: Configure required region value for subcloud
+          block:
+          - name: Get subcloud region value from environment
+            shell: source /etc/platform/openrc; echo $OS_REGION_NAME
+            register: os_region_name_from_env
 
-        - name: Show subcloud region
-          debug:
-            msg:
-            - "Subcloud region value : {{os_region_name_from_env.stdout}}"
+          - name: Show subcloud region
+            debug:
+              msg:
+              - "Subcloud region value : {{os_region_name_from_env.stdout}}"
 
-        - name: Configure new subcloud region value
-          lineinfile:
-            path: "{{deploy_config}}"
-            regexp: 'OS_REGION_NAME'
-            line: "  OS_REGION_NAME: {{os_region_name_from_env.stdout}}"
-            state: present
+          - name: Configure new subcloud region value
+            command: |
+              sed -i 's/^\(\s*OS_REGION_NAME:\).*/\1 {{ os_region_name_from_env.stdout }}/' {{ deploy_config }}
           when: ("subcloud" in get_distributed_cloud_role.stdout)
 
         - wait_for:
@@ -508,14 +512,18 @@
             msg:
             - "administrative state: {{administrative_state}}"
 
-      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
-             and "unlocked" not in current_administrativestate.stdout)
+      when:
+        - initial_deploy
+        - deploy_config is defined
+        - "'subcloud' in get_distributed_cloud_role.stdout"
+        - "'unlocked' not in current_administrativestate.stdout"
+
 
       # Main verification block.
       # Behavior:
       # This block waits until the host unlock is triggered.
       # - If the unlock is not triggered after a certain time, it might indicate DM failures.
-      #   In this case, it proceeds to the 'get failure information' block to collect details 
+      #   In this case, it proceeds to the 'get failure information' block to collect details
       #   about the potential cause.
       # - If the unlock process is in progress, it proceeds to the 'unlock verifications' block.
       #   Here, it waits for the host's port to be closed and then reopened. Following that, it checks
@@ -709,30 +717,81 @@
 
             when: waiting_after_reboot.failed
 
-          # After reboot, wait some time for resources to be reconciled.
-          # If we have all of them reconciled, playbook won't fail.
-          # This task is getting the last column as RECONCILED status value
-          # TODO(ecandotti): Modify this block to not retrieve the last column, but instead recognize the column number for RECONCILED in each resource.
-          # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
-          - name: Retrieve kubectl resources reconciled status
-            shell: >-
-              (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
-               kubectl -n deployment get hosts "{{ get_host_name.stdout}}") |
-               awk '$NF ~ /^false/ {print}'
+          - name: Set retries to check resource reconciled status for simplex
+            set_fact:
+              host_reconcile_retries: 80
+
+          - name: Check number of hosts from deployment namespace
+            shell: kubectl get hosts -n deployment |  grep -v NAME  | wc -l
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: hosts_count
+            until: hosts_count.stdout != 0
+            retries: 20
+            delay: 30
+            failed_when: false
+
+          - name: Fail to get hosts from cluster
+            fail:
+              msg: "Failed to get host resource from cluster."
+            when: hosts_count.stdout == 0
+
+          - name: Wait for subcloud hosts available if not simplex
+            block:
+            - name: Set system type for monitor the deloyment
+              set_fact:
+                host_offline_retries: >
+                  {{ 60 if hosts_count.stdout | int == 2 else 120 }}
+                host_reconcile_retries: >
+                  {{ 120 if  hosts_count.stdout | int == 2 else 240 }}
+
+            - name: Get offline hosts if not simplex
+              shell: >
+                kubectl get hosts -o custom-columns='NAME:.metadata.name,
+                OPERATIONAL:.status.availabilityStatus' -n deployment |
+                awk '$NF ~ /offline/ {print}'
+              environment:
+                KUBECONFIG: "/etc/kubernetes/admin.conf"
+              register: get_offline_hosts
+              until: >
+                (get_offline_hosts.stdout == "" and
+                get_offline_hosts.stderr == "")
+              retries: "{{ host_offline_retries }}"
+              delay: 60
+              failed_when: false
+
+            - name: Fail if any host remain offline
+              fail:
+                msg: >
+                  Host remain offline: {{ get_offline_hosts.stdout }}
+              when: get_offline_hosts.stdout != ""
+            when: hosts_count.stdout != "1"
+
+          # After reboot, wait for resource reconciliation. This ensures the
+          # playbook doesn't fail if resources are properly reconciled.
+          - name: Get not reconciled resource
+            shell: >
+              (kubectl get systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces
+              -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
+              -n deployment;
+              kubectl -n deployment get hosts "{{ get_host_name.stdout }}" -o
+              custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled') |
+              awk '$NF ~ /^false/ {print}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: get_unrecon_status_post
-            until: (get_unrecon_status_post.stdout == "" and get_unrecon_status_post.stderr == "")
-            retries: 80
-            delay: 25
+            until: >
+              (get_unrecon_status_post.stdout == "" and
+              get_unrecon_status_post.stderr == "")
+            retries: "{{ host_reconcile_retries }}"
+            delay: 30
             ignore_errors: yes
 
-          - name: fail if previous task failed
+          - name: Fail if fail to get resource reconciled status
             fail:
               msg:
                 - "Unexpected failure while waiting for reconciled resources"
                 - "{{get_unrecon_status_post.stderr}}"
-            register: unexpected_failure
             when: (get_unrecon_status_post.stderr != "")
 
           # Get pod name to retrieve the logs after unlock
@@ -787,6 +846,9 @@
           when: ("Unlocking" in get_show_task_status.stdout
                  and get_unrecon_status_post.stdout != "")
 
-      when: (deploy_config is defined and "subcloud" in get_distributed_cloud_role.stdout
-             and "unlocked" not in current_administrativestate.stdout
-             and "unlocked" in administrative_state)
+      when:
+        - initial_deploy
+        - deploy_config is defined
+        - "'subcloud' in get_distributed_cloud_role.stdout"
+        - "'unlocked' not in current_administrativestate.stdout"
+        - "'unlocked' in administrative_state"

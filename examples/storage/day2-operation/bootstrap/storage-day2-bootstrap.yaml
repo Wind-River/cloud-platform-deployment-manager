@@ -6,7 +6,7 @@ metadata:
   name: storage-0
   namespace: deployment
 status:
-  desploymentScope: "bootstrap"
+  deploymentScope: "bootstrap"
 spec:
   profile: storage-profile
   overrides:
@@ -20,7 +20,7 @@ metadata:
   name: storage-1
   namespace: deployment
 status:
-  desploymentScope: "bootstrap"
+  deploymentScope: "bootstrap"
 spec:
   profile: storage-profile
   overrides:
@@ -34,7 +34,7 @@ metadata:
   name: compute-0
   namespace: deployment
 status:
-  desploymentScope: "bootstrap"
+  deploymentScope: "bootstrap"
 spec:
   overrides:
     bootMAC: COMPUTE0MAC
@@ -48,7 +48,7 @@ metadata:
   name: vbox
   namespace: deployment
 status:
-  desploymentScope: "bootstrap"
+  deploymentScope: "bootstrap"
 spec:
   contact: info@windriver.com
   description: Virtual Box Standard System
