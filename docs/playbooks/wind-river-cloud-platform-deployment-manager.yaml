@@ -33,6 +33,9 @@
         wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
       when: deployment_config is defined
 
+    - set_fact:
+        manager_app_chart: "/usr/local/share/applications/helm/deployment-manager-*.tgz"    
+
     - block:
       # Information to be used at final DM checks.
         - name: Get host name
@@ -309,16 +312,61 @@
 
       when: helmv3_installed and helmv3_dm_exists.rc == 0
 
-    - name: Install Deployment Manager
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv3_installed
+    # DM system app check, upload/apply helm-chart
+    - block:  
+        # Check dm-system app helm-chart
+       - name: Check DM system-app helm-chart present in /usr/local/share/applications/helm/
+         shell: ls {{ manager_app_chart }}
+         ignore_errors: yes
+         register: app_helm_chart_status
 
-    # Install or Upgrade DM-Monitor
-    - name: "Install or Upgrade DM-monitor"
-      shell: "ansible-playbook {{ dm_monitor_playbook }}"
-      become: yes
-      ignore_errors: yes
-      when: dm_monitor_playbook
+       - name: Fail DM system app helm-chart does not exists
+         fail:
+           msg: "DM system app helm-chart does not exists in /usr/local/share/applications/helm/"
+         when: (app_helm_chart_status.stdout | length == 0)
+   
+       - block:
+          # dm-system app upload/apply
+         - name: Upload Deployment Manager System App Helm Chart
+           shell: source /etc/platform/openrc; system application-upload {{ manager_app_chart }}
+
+         - wait_for:
+           # Pause for an arbitrary amount of time to allow the deployment
+           # manager app to be uploaded.
+             timeout: 6
+             msg: Waiting for the Deployment Manager App to be uploaded
+      
+         - name: Search Deployment Manager Upload Status
+           shell: source /etc/platform/openrc; system application-list | grep deployment-manager | awk '{ print $10 }'
+           register: app_upload_status
+
+         - name: Fail DM system app upload fails
+           fail:
+             msg: "The upload of DM system app has failed."
+           when: ("upload-failed" in app_upload_status.stdout)
+
+         - name: Apply Deployment Manager System App
+           shell: source /etc/platform/openrc; system application-apply deployment-manager   
+           when: ("uploaded" in app_upload_status.stdout)
+
+         - wait_for:
+           # Pause for an arbitrary amount of time to allow the deployment
+           # manager app to be applied.
+             timeout: 80
+             msg: Waiting for the Deployment Manager App to be applied
+
+         - name: Search Deployment Manager Apply Status
+           shell: source /etc/platform/openrc; system application-list | grep deployment-manager | awk '{ print $10 }'
+           register: app_apply_status
+
+         - name: Fail DM system app apply fails
+           fail:
+             msg: "The apply of DM system app has failed."
+           when: ("apply-failed" in app_apply_status.stdout)
+
+         when: (app_helm_chart_status.stdout | length != 0)
+
+      when: not reconfig_flag
 
     # Delete old Deployment Manager pod if it was reinstalled,
     # the pod to delete may already be terminated by helm
