@@ -309,17 +309,6 @@
 
       when: helmv3_installed and helmv3_dm_exists.rc == 0
 
-    - name: Install Deployment Manager
-      shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-      when: helmv3_installed
-
-    # Install or Upgrade DM-Monitor
-    - name: "Install or Upgrade DM-monitor"
-      shell: "ansible-playbook {{ dm_monitor_playbook }}"
-      become: yes
-      ignore_errors: yes
-      when: dm_monitor_playbook
-
     # Delete old Deployment Manager pod if it was reinstalled,
     # the pod to delete may already be terminated by helm
     - name: Restart Deployment Manager if reinstalled
