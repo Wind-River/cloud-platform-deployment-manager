@@ -1075,16 +1075,16 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			if principal {
-				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
-					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
-					iface, found := host.FindInterfaceByName(ethInfo.Name)
+				if interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
+					logHost.Info("Has admin network multi-netting changes", "interface", interfaceName)
+					iface, found := host.FindInterfaceByName(interfaceName)
 					if !found {
-						msg := fmt.Sprintf("unable to find interface: %s", ethInfo.Name)
+						msg := fmt.Sprintf("unable to find interface: %s", interfaceName)
 						return starlingxv1.NewMissingSystemResource(msg)
 					}
 
 					// We need to reconcile the interfaces to assign the admin network
-					_, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+					_, err := r.ReconcileInterfaceNetworks(client, instance, *commonInterfaceInfo, *iface, host)
 					if err != nil {
 						return err
 					}
@@ -1149,13 +1149,25 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 }
 
 // hasAdminNetworkChange checks whether the addition of "admin" to PlatformNetworks
-// within an existing (multi-netting) EthernetInfo is present in the given profile and
-// current InterfaceInfo instances.
-func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
+// within an existing (multi-netting) EthernetInfo, VLANInfo and BondInfo is present
+// in the given profile and current InterfaceInfo instances.
+func hasAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (string, *starlingxv1.CommonInterfaceInfo, bool) {
 	if profileInterfaces == nil || currentInterfaces == nil {
-		return nil, false
+		return "", nil, false
 	}
 
+	if ethInfo, hasChange := hasEthernetAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return ethInfo.Name, &ethInfo.CommonInterfaceInfo, true
+	} else if VLANInfo, hasChange := hasVLANAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return VLANInfo.Name, &VLANInfo.CommonInterfaceInfo, true
+	} else if BondInfo, hasChange := hasBondAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return BondInfo.Name, &BondInfo.CommonInterfaceInfo, true
+	} else {
+		return "", nil, false
+	}
+}
+
+func hasEthernetAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
 	for _, profileEth := range profileInterfaces.Ethernet {
 		logHost.V(2).Info("Profile Ethernet Name", "name", profileEth.Name)
 		currentEth := findEthernetInfoByName(currentInterfaces.Ethernet, profileEth.Name)
@@ -1168,6 +1180,41 @@ func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, current
 			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
 		}
 	}
+
+	return nil, false
+}
+
+func hasVLANAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.VLANInfo, bool) {
+	for _, profileVLAN := range profileInterfaces.VLAN {
+		logHost.V(2).Info("Profile VLAN Name", "name", profileVLAN.Name)
+		currentVLAN := findVLANInfoByName(currentInterfaces.VLAN, profileVLAN.Name)
+		logHost.V(2).Info("Current VLANInfo", "VLAN", currentVLAN)
+		if currentVLAN == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileVLAN.PlatformNetworks, currentVLAN.PlatformNetworks) {
+			return &profileVLAN, containsAdminPlatformNetwork(*profileVLAN.PlatformNetworks)
+		}
+	}
+
+	return nil, false
+}
+
+func hasBondAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.BondInfo, bool) {
+	for _, profileBond := range profileInterfaces.Bond {
+		logHost.V(2).Info("Profile Bond Name", "name", profileBond.Name)
+		currentBond := findBondInfoByName(currentInterfaces.Bond, profileBond.Name)
+		logHost.V(2).Info("Current bondinfo", "bond", currentBond)
+		if currentBond == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileBond.PlatformNetworks, currentBond.PlatformNetworks) {
+			return &profileBond, containsAdminPlatformNetwork(*profileBond.PlatformNetworks)
+		}
+	}
+
 	return nil, false
 }
 
@@ -1177,6 +1224,26 @@ func findEthernetInfoByName(ethList []starlingxv1.EthernetInfo, name string) *st
 	for i := range ethList {
 		if ethList[i].Name == name {
 			return &ethList[i]
+		}
+	}
+	return nil
+}
+
+// findVLANInfoByName is a utility function to locate an VLANInfo in a list by its name.
+func findVLANInfoByName(VLANList []starlingxv1.VLANInfo, name string) *starlingxv1.VLANInfo {
+	for i := range VLANList {
+		if VLANList[i].Name == name {
+			return &VLANList[i]
+		}
+	}
+	return nil
+}
+
+// findBondInfoByName is a utility function to locate an BondInfo in a list by its name.
+func findBondInfoByName(bondList []starlingxv1.BondInfo, name string) *starlingxv1.BondInfo {
+	for i := range bondList {
+		if bondList[i].Name == name {
+			return &bondList[i]
 		}
 	}
 	return nil

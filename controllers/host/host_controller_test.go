@@ -113,10 +113,99 @@ var _ = Describe("Host controller", func() {
 					Lower: "",
 				}
 
-				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
 
 				Expect(hasChange).To(BeTrue())
-				Expect(reflect.DeepEqual(ethInfo, expectedEthInfo)).To(BeTrue())
+				Expect(reflect.DeepEqual(*commonInterfaceInfo, expectedEthInfo.CommonInterfaceInfo)).To(BeTrue())
+				Expect(interfaceName).To(Equal("eth0"))
+			})
+
+			It("Should detect VLAN admin network change", func() {
+				vlan0Profile := starlingxv1.VLANInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "vlan0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					VLAN: []starlingxv1.VLANInfo{vlan0Profile},
+				}
+
+				vlan0Current := starlingxv1.VLANInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "vlan0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{},
+					},
+				}
+
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					VLAN: []starlingxv1.VLANInfo{vlan0Current},
+				}
+
+				expectedVLANInfo := &starlingxv1.VLANInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						UUID:             "",
+						Name:             "vlan0",
+						Class:            "",
+						MTU:              nil,
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						DataNetworks:     nil,
+						PTPRole:          nil,
+						PtpInterfaces:    nil,
+					},
+					VID: 1,
+				}
+
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeTrue())
+				Expect(reflect.DeepEqual(*commonInterfaceInfo, expectedVLANInfo.CommonInterfaceInfo)).To(BeTrue())
+				Expect(interfaceName).To(Equal("vlan0"))
+			})
+
+			It("Should detect Bond admin network change", func() {
+				mgmt0Profile := starlingxv1.BondInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "mgmt0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
+					},
+				}
+
+				profileInterfaces := &starlingxv1.InterfaceInfo{
+					Bond: []starlingxv1.BondInfo{mgmt0Profile},
+				}
+
+				mgmt0Current := starlingxv1.BondInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:             "mgmt0",
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+					},
+				}
+
+				currentInterfaces := &starlingxv1.InterfaceInfo{
+					Bond: []starlingxv1.BondInfo{mgmt0Current},
+				}
+
+				expectedBondInfo := &starlingxv1.BondInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						UUID:             "",
+						Name:             "mgmt0",
+						Class:            "",
+						MTU:              nil,
+						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
+						DataNetworks:     nil,
+						PTPRole:          nil,
+						PtpInterfaces:    nil,
+					},
+					Members: []string{"enp0s8", "enp0s8"},
+				}
+
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+
+				Expect(hasChange).To(BeTrue())
+				Expect(reflect.DeepEqual(*commonInterfaceInfo, expectedBondInfo.CommonInterfaceInfo)).To(BeTrue())
+				Expect(interfaceName).To(Equal("mgmt0"))
 			})
 
 			It("Should not detect admin network change different interface", func() {
@@ -141,10 +230,11 @@ var _ = Describe("Host controller", func() {
 					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
 				}
 
-				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
 
 				Expect(hasChange).To(BeFalse())
-				Expect(ethInfo).To(BeNil())
+				Expect(commonInterfaceInfo).To(BeNil())
+				Expect(interfaceName).To(Equal(""))
 			})
 
 			It("Should not detect admin network change w/o interface changes", func() {
@@ -162,10 +252,11 @@ var _ = Describe("Host controller", func() {
 					Ethernet: []starlingxv1.EthernetInfo{eth0Profile},
 				}
 
-				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
 
 				Expect(hasChange).To(BeFalse())
-				Expect(ethInfo).To(BeNil())
+				Expect(commonInterfaceInfo).To(BeNil())
+				Expect(interfaceName).To(Equal(""))
 			})
 
 			It("Should not detect admin network change with interface changes", func() {
@@ -190,29 +281,11 @@ var _ = Describe("Host controller", func() {
 					Ethernet: []starlingxv1.EthernetInfo{eth0Current},
 				}
 
-				expectedEthInfo := &starlingxv1.EthernetInfo{
-					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
-						UUID:             "",
-						Name:             "eth0",
-						Class:            "",
-						MTU:              nil,
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt, oam"},
-						DataNetworks:     nil,
-						PTPRole:          nil,
-						PtpInterfaces:    nil,
-					},
-					VFCount:  nil,
-					VFDriver: nil,
-					Port: starlingxv1.EthernetPortInfo{
-						Name: "",
-					},
-					Lower: "",
-				}
-
-				ethInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
+				interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profileInterfaces, currentInterfaces)
 
 				Expect(hasChange).To(BeFalse())
-				Expect(reflect.DeepEqual(ethInfo, expectedEthInfo)).To(BeTrue())
+				Expect(commonInterfaceInfo).To(BeNil())
+				Expect(interfaceName).To(Equal(""))
 			})
 		})
 
