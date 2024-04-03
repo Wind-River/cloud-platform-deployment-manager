@@ -37,8 +37,8 @@ system.starlingx.windriver.com/sample-system   duplex   standard   20.06     tru
 ```
 
 ## Looking at logs of the currently running Pod
-The logs from the currently running Pod can be queried using the following 
-command.  The "-f" argument follows the log stream much like the Linux "tail" 
+The logs from the currently running Pod can be queried using the following
+command.  The "-f" argument follows the log stream much like the Linux "tail"
 command.
 ```
 kubectl -n platform-deployment-manager logs platform-deployment-manager-[uid] -f
@@ -46,11 +46,11 @@ kubectl -n platform-deployment-manager logs platform-deployment-manager-[uid] -f
 
 ## Looking at logs of the previously running Pod
 If the Pod crashes, is deleted, or restarts the logs from the previous
-instantiation of the Pod are kept and can be accessed with the "-p" argument.  
-But, if the Pod restarts multiple time the logs from the preceding 
+instantiation of the Pod are kept and can be accessed with the "-p" argument.
+But, if the Pod restarts multiple time the logs from the preceding
 instantiations are lost unless the platform is configured with a more advance
 data collection mechanism.
- 
+
 ```
 kubectl -n platform-deployment-manager logs platform-deployment-manager-[uid] -p
 ```
@@ -99,11 +99,11 @@ manager:
     pullPolicy: IfNotPresent
 ```
 
-To re-apply a new set of overrides to an existing installation the Helm upgrade 
+To re-apply a new set of overrides to an existing installation the Helm upgrade
 command can simply be re-executed.
 
 ```
-helm upgrade --install deployment-manager --values deployment-manager-overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
+helm upgrade --install deployment-manager --values deployment-manager-overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz
 ```
 
 ## Enabling version API interaction logs
@@ -132,7 +132,7 @@ stringData:
   OS_REGION_NAME: RegionOne
   OS_DEBUG: True
 type: Opaque
-``` 
+```
 
 ***Note:*** The OS_DEBUG value is parsed using standard Go libraries therefore
 the value used must be understood as a boolean by ```strconv.ParseBool``` which
@@ -144,7 +144,7 @@ DM is sub-divided into smaller "sub-reconciler" entities that can be selectively
 enabled/disabled for debugging purposes.  This functionality does not provide
 much usefulness for customer deployments but has been useful on occasion to
 isolate problematic parts of the system so that the DM does not try to reconcile
-its data.  
+its data. 
 
 The DM consumes a ConfigMap at runtime which can contain individual boolean
 values that control the state of each reconciler.  Any changes to the ConfigMap

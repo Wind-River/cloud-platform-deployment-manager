@@ -53,9 +53,9 @@ according to the state specified in the deployment configuration model.
 
 ### Hardware Requirements
 
-The Deployment Manager supports two different host provisioning modes.  The 
-provisioning mode of a host is controlled by the ```provisioningMode``` host 
-profile schema attribute which can be one of two values. 
+The Deployment Manager supports two different host provisioning modes.  The
+provisioning mode of a host is controlled by the ```provisioningMode``` host
+profile schema attribute which can be one of two values.
 
 + Dynamic
 + Static
@@ -622,7 +622,7 @@ when accessing the temporary installation IP address when it is no longer valid.
 For debug purposes, it is possible to log all API requests between the
 Deployment Manager and the StarlinX system API.  To enable this functionality
 the OS_DEBUG attribute must be a string representation of a boolean value.  At
-the time of writing this document those values are "1", "t", "T", "true", 
+the time of writing this document those values are "1", "t", "T", "true",
 "TRUE", and "True".
 
 ```yaml
@@ -651,14 +651,14 @@ To use the built image to install the Deployment Manager onto a StarlingX system
 it must either be tagged and pushed to a private Docker Registry (i.e., using
 docker tag + docker push) or exported to an archive that can be used to load the
 image directly into the StarlingX local private Docker Registry (i.e., using
-docker save + docker load).  For more information on how to manipulate Docker 
+docker save + docker load).  For more information on how to manipulate Docker
 images please refer to Docker documentation.  The following subsections provide
 example commands to publish and use a custom Deployment Manager image.  Actual
 commands may vary based on your local environment.
 
 ### Pushing The Image To A Private Registry
 
-The following commands tag a custom image and pushes it to a private Docker 
+The following commands tag a custom image and pushes it to a private Docker
 registry.  This private image can later be accessed from the StarlingX system
 if the Deployment Manager is configured to pull its image from this private
 Docker registry rather than the default local Docker registry.
@@ -677,7 +677,7 @@ directly into the StarlingX local Docker registry.
 
 ```bash
 export OFFLINE_IMAGE_PATH="/some/path/to/images"
-docker tag wind-river/cloud-platform-deployment-manager:latest wind-river/cloud-platform-deployment-manager:v2.0.10-10
+docker tag wind-river/cloud-platform-deployment-manager:latest wind-river/cloud-platform-deployment-manager:v2.0.10-11
 docker save wind-river/cloud-platform-deployment-manager | gzip >  ${OFFLINE_IMAGE_PATH}/wind-river-cloud-platform-deployment-manager-images.tgz
 ```
 
@@ -702,12 +702,12 @@ A pre-built copy of the Deployment Manager Helm chart can be downloaded from
 this repo at the following location.  Alternatively, it can be accessed
 directly from the cloned repo in the ```docs/charts``` directory.
 
-https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
+https://github.com/Wind-River/wind-river-cloud-platform-deployment-manager/raw/master/docs/charts/wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz
 
 It can be deployed using the following command.
 
 ```bash
-helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
+helm upgrade --install deployment-manager wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz
 ```
 
 If any configuration values need to be overridden at installation time then a
@@ -716,7 +716,7 @@ further details on managing and deploying Helm charts please refer to Helm
 documentation for more information.
 
 ```bash
-helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
+helm upgrade --install deployment-manager --values overrides.yaml wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz
 ```
 
 The default Helm chart assumes that the Deployment Manager image is present in
@@ -732,7 +732,7 @@ image location can be overridden to specify a private URL using the following
 syntax assuming that the private registry is hosted at "your.registry.org".
 
 ```bash
-helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz
+helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz
 ```
 
 
@@ -820,7 +820,7 @@ more detailed information on how to set playbook variables and how to run
 playbooks please refer to the Ansible documentation.
 
 ```bash
-$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.10-10.tgz" -e @ansible-overrides.yaml
+$ ansible-playbook docs/playbooks/wind-river-cloud-platform-deployment-manager-playbook.yaml -e "deployment_manager_chart==/some/other/path/wind-river-cloud-platform-deployment-manager-2.0.10-11.tgz" -e @ansible-overrides.yaml
 ```
 
 The system deployment configuration file must be specified using the
