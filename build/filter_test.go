@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -933,6 +934,223 @@ var _ = Describe("Test filters utilities:", func() {
 				ethList = append(ethList, ethInf)
 				ethLists := v1.EthernetList(ethList)
 				Expect(hp.Spec.Interfaces.Ethernet).To(Equal(ethLists))
+			})
+		})
+	})
+	Describe("Test MemoryDefaultsFilter", func() {
+		Context("When Func is platform,pagecount is 0 and other func is vswitch,pagecount is 1", func() {
+			It("Should omit func platform and vswitch in profile memory", func() {
+				filter := &MemoryDefaultsFilter{}
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Memory: v1.MemoryNodeList{
+							{
+								Node: 1,
+								Functions: v1.MemoryFunctionList{
+									{
+										Function:  "platform",
+										PageSize:  "4KB",
+										PageCount: 0,
+									},
+									{
+										Function:  "vswitch",
+										PageSize:  "4KB",
+										PageCount: 1,
+									},
+									{
+										Function:  "vm",
+										PageSize:  "4KB",
+										PageCount: 2,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				nodes := v1.MemoryNodeList{
+					{
+						Node: 1,
+						Functions: v1.MemoryFunctionList{
+							{
+								Function:  "vm",
+								PageSize:  "4KB",
+								PageCount: 2,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Memory).To(Equal(nodes))
+			})
+		})
+	})
+	Describe("Test ProcessorDefaultsFilter", func() {
+		Context("When personality is controller", func() {
+			It("Should ignore platform func in processors", func() {
+				filter := &ProcessorDefaultsFilter{}
+				personality := hosts.PersonalityController
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						ProfileBaseAttributes: v1.ProfileBaseAttributes{
+							Personality: &personality,
+						},
+						Processors: v1.ProcessorNodeList{
+							{
+								Node: 1,
+								Functions: v1.ProcessorFunctionList{
+									{
+										Function: cpus.CPUFunctionPlatform,
+										Count:    2,
+									},
+									{
+										Function: "vm",
+										Count:    3,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				expNodes := v1.ProcessorNodeList{
+					{
+						Node: 1,
+						Functions: v1.ProcessorFunctionList{
+							{
+								Function: "vm",
+								Count:    3,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(Equal(expNodes))
+			})
+		})
+		Context("When personality is worker", func() {
+			It("Should ignore platform func in processors", func() {
+				filter := &ProcessorDefaultsFilter{}
+				personality := hosts.PersonalityWorker
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						ProfileBaseAttributes: v1.ProfileBaseAttributes{
+							Personality: &personality,
+						},
+						Processors: v1.ProcessorNodeList{
+							{
+								Node: 1,
+								Functions: v1.ProcessorFunctionList{
+									{
+										Function: cpus.CPUFunctionPlatform,
+										Count:    1,
+									},
+									{
+										Function: "vswitch",
+										Count:    1,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				expNodes := v1.ProcessorNodeList{
+					{
+						Node: 1,
+						Functions: v1.ProcessorFunctionList{
+							{
+								Function: "vswitch",
+								Count:    1,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(Equal(expNodes))
+			})
+		})
+	})
+	Describe("Test ProcessorClearAllFilter", func() {
+		Context("When processors is not nil", func() {
+			It("Removes all processor configurations", func() {
+				filter := &ProcessorClearAllFilter{}
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Processors: v1.ProcessorNodeList{},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(BeNil())
+			})
+		})
+	})
+	Describe("Test VolumeGroupFilter", func() {
+		Context("When there is volume group that is in blacklist", func() {
+			It("Removes volume group i.e present in blacklist", func() {
+				filter := &VolumeGroupFilter{
+					Blacklist: []string{"vg1", "vg2"},
+				}
+				lvmType := "thin"
+				size := 1
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Storage: &v1.ProfileStorageInfo{
+							VolumeGroups: &v1.VolumeGroupList{
+								{
+									Name:    "vg1",
+									LVMType: &lvmType,
+								},
+								{
+									Name:    "vg3",
+									LVMType: &lvmType,
+									PhysicalVolumes: v1.PhysicalVolumeList{
+										{
+											Type: "disk",
+											Path: "/a/b/c",
+											Size: &size,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				expVgs := v1.VolumeGroupList{
+					{
+
+						Name:    "vg3",
+						LVMType: &lvmType,
+						PhysicalVolumes: v1.PhysicalVolumeList{
+							{
+								Type: "disk",
+								Path: "/a/b/c",
+								Size: &size,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(*hp.Spec.Storage.VolumeGroups).To(Equal(expVgs))
 			})
 		})
 	})
