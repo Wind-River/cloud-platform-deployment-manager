@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: datanetworks.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -35,18 +35,23 @@ spec:
     schema:
       openAPIV3Schema:
         description: "DataNetworks defines the attributes that represent the data
-          network level attributes of a StarlingX system.  This is a composition of
-          the following StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
+          network level\nattributes of a StarlingX system.  This is a composition
+          of the following\nStarlingX API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -54,12 +59,14 @@ spec:
             description: DataNetworkSpec defines the desired state of DataNetwork
             properties:
               description:
-                description: Description defines a user define description which explains
-                  the purpose of the data network.
+                description: |-
+                  Description defines a user define description which explains the purpose
+                  of the data network.
                 type: string
               mtu:
-                description: MTU defines the maximum transmit unit for any virtual
-                  network derived from this data network.
+                description: |-
+                  MTU defines the maximum transmit unit for any virtual network derived
+                  from this data network.
                 maximum: 9216
                 minimum: 576
                 type: integer
@@ -76,20 +83,21 @@ spec:
                   network.
                 properties:
                   endpointMode:
-                    description: EndpointMode defines the endpoint port learning mode
-                      for the data network network.  The dynamic mode allows the virtual
-                      network to use multicast addressing when transmitting a packet
-                      to an unknown endpoint to dynamically discover that node's VTEP
-                      IP address.   The static mode requires that all VTEP IP addresses
-                      be programmed into the virtual switch in advance and any packets
-                      destined to an unknown endpoint are dropped.
+                    description: |-
+                      EndpointMode defines the endpoint port learning mode for the data network
+                      network.  The dynamic mode allows the virtual network to use multicast
+                      addressing when transmitting a packet to an unknown endpoint to
+                      dynamically discover that node's VTEP IP address.   The static mode
+                      requires that all VTEP IP addresses be programmed into the virtual switch
+                      in advance and any packets destined to an unknown endpoint are dropped.
                     enum:
                     - static
                     - dynamic
                     type: string
                   multicastGroup:
-                    description: MulticastGroup defines the multicast IP address to
-                      be used for the data network.
+                    description: |-
+                      MulticastGroup defines the multicast IP address to be used for the data
+                      network.
                     type: string
                   ttl:
                     description: TTL defines the time-to-live value to assign to the
@@ -98,9 +106,10 @@ spec:
                     minimum: 1
                     type: integer
                   udpPortNumber:
-                    description: UDPPortNumber defines the UDP protocol number to
-                      be used for the data network.  The IANA or Legacy port number
-                      values can be used.
+                    description: |-
+                      UDPPortNumber defines the UDP protocol number to be used for the data
+                      network.  The IANA or Legacy port
+                      number values can be used.
                     enum:
                     - 4789
                     - 8472
@@ -120,8 +129,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been
-                  deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -131,23 +141,25 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This
-                  will only exist once this resource has been provisioned into the
-                  system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value
-                  will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the host has been successfully
-                  reconciled at least once.  If further changes are made they will
-                  be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the host has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
