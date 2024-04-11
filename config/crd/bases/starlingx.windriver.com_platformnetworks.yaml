@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: platformnetworks.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -43,19 +43,23 @@ spec:
     schema:
       openAPIV3Schema:
         description: "PlatformNetwork defines the attributes that represent the network
-          level attributes of a StarlingX system.  This is a composition of the following
-          StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+          level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX
+          API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -67,16 +71,18 @@ spec:
                   the network
                 properties:
                   order:
-                    description: Order defines whether host address are allocation
-                      randomly or sequential from the available pool or addresses.
+                    description: |-
+                      Order defines whether host address are allocation randomly or sequential
+                      from the available pool or addresses.
                     enum:
                     - sequential
                     - random
                     type: string
                   ranges:
-                    description: Ranges defines the pools from which host addresses
-                      are allocated.   If omitted addresses the entire network address
-                      space is considered available.
+                    description: |-
+                      Ranges defines the pools from which host addresses are allocated.   If
+                      omitted addresses the entire network
+                      address space is considered available.
                     items:
                       description: AllocationRange defines the start and end address
                         for an allocation range
@@ -94,8 +100,9 @@ spec:
                       type: object
                     type: array
                   type:
-                    description: Type defines whether network addresses are allocated
-                      dynamically or statically.
+                    description: |-
+                      Type defines whether network addresses are allocated dynamically or
+                      statically.
                     enum:
                     - static
                     - dynamic
@@ -159,8 +166,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been
-                  deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -170,29 +178,31 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This
-                  will only exist once this resource has been provisioned into the
-                  system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value
-                  will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               poolUUID:
-                description: PoolUUID defines the system assigned unique identifier
-                  that is represents the networks underlying address pool resource.  This
-                  will only exist once this resource has been provisioned into the
-                  system.
+                description: |-
+                  PoolUUID defines the system assigned unique identifier that is represents
+                  the networks underlying address pool resource.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               reconciled:
-                description: Reconciled defines whether the network has been successfully
-                  reconciled at least once.  If further changes are made they will
-                  be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the network has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
