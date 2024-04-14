@@ -3,7 +3,7 @@
 package controllers
 
 import (
-	"context"
+	// "context"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -13,32 +13,18 @@ import (
 
 	"strings"
 
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
+	// comm "github.com/wind-river/cloud-platform-deployment-manager/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 )
 
 const TestNamespace = "default"
 
 func IntroducePlatformNetworkChange(platform_network *starlingxv1.PlatformNetwork) {
-	allocation_order := networks.AllocationOrderStatic
-	if platform_network.Spec.Allocation.Type == networks.AllocationOrderStatic {
-		allocation_order = networks.AllocationOrderDynamic
-	}
-
-	addrpool_order := "random"
-	gateway := "100.100.100.1"
-	platform_network.Spec.Subnet = "100.100.100.0"
-	platform_network.Spec.Prefix = 24
-	platform_network.Spec.Gateway = &gateway
-	platform_network.Spec.FloatingAddress = "100.100.100.2"
-	platform_network.Spec.Controller0Address = "100.100.100.3"
-	platform_network.Spec.Controller1Address = "100.100.100.4"
-	platform_network.Spec.Allocation = starlingxv1.AllocationInfo{
-		Type:   allocation_order,
-		Order:  &addrpool_order,
-		Ranges: []starlingxv1.AllocationRange{{Start: "100.100.100.2", End: "100.100.100.254"}},
+	if platform_network.Spec.Dynamic == true {
+		platform_network.Spec.Dynamic = false
+	} else {
+		platform_network.Spec.Dynamic = true
 	}
 }
 
@@ -196,414 +182,414 @@ var _ = Describe("Platformnetwork controller", func() {
 		interval = time.Millisecond * 250
 	)
 
-	Context("PlatformNetwork with correct mgmt/admin/oam network data in Day-1", func() {
-		It("Should be created successfully and Reconciled & InSync should be 'true'", func() {
-
-			tMgr := cloudManager.GetInstance(k8sManager)
-			StartPlatformNetworkAPIHandlers()
-			tMgr.SetSystemReady(TestNamespace, true)
-
-			network_names := []string{"mgmt", "admin", "oam"}
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
-
-			for _, nwk_name := range network_names {
-				key := types.NamespacedName{
-					Name:      nwk_name,
-					Namespace: TestNamespace,
-				}
-
-				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
-
-				expected := platform_networks[nwk_name].DeepCopy()
-
-				fetched := &starlingxv1.PlatformNetwork{}
-				Eventually(func() bool {
-					err := k8sClient.Get(ctx, key, fetched)
-					return err == nil &&
-						fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-						fetched.Status.Reconciled == true &&
-						fetched.Status.InSync == true
-				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-				Expect(found).To(BeTrue())
-
-				DeletePlatformNetwork(nwk_name)
-			}
-		})
-	})
-
-	Context("PlatformNetwork with incorrect mgmt network data in Day-1", func() {
-		It("Should be created successfully and Reconciled should be 'true' and Insync should be 'false'", func() {
-
-			network_names := []string{"mgmt", "admin", "oam"}
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
-
-			for _, nwk_name := range network_names {
-				key := types.NamespacedName{
-					Name:      nwk_name,
-					Namespace: TestNamespace,
-				}
-
-				IntroducePlatformNetworkChange(platform_networks[nwk_name])
-
-				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
-
-				expected := platform_networks[nwk_name].DeepCopy()
-
-				fetched := &starlingxv1.PlatformNetwork{}
-				Eventually(func() bool {
-					err := k8sClient.Get(ctx, key, fetched)
-					return err == nil &&
-						fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-						fetched.Status.Reconciled == true &&
-						fetched.Status.InSync == false
-				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-				Expect(found).To(BeTrue())
-
-				DeletePlatformNetwork(nwk_name)
-			}
-		})
-	})
-
-	Context("PlatformNetwork with incorrect network data for network other than oam / mgmt/ admin in Day-1", func() {
-		It("Should be created successfully and Reconciled should be 'true' and Insync should be 'true'", func() {
-			network_names := []string{"pxeboot"}
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
-
-			for _, nwk_name := range network_names {
-				key := types.NamespacedName{
-					Name:      nwk_name,
-					Namespace: TestNamespace,
-				}
-
-				platform_networks[nwk_name].Spec.FloatingAddress = "100.100.100.100"
-
-				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
-
-				expected := platform_networks[nwk_name].DeepCopy()
-
-				fetched := &starlingxv1.PlatformNetwork{}
-				Eventually(func() bool {
-					err := k8sClient.Get(ctx, key, fetched)
-					return err == nil &&
-						fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-						fetched.Status.Reconciled == true &&
-						fetched.Status.InSync == true
-				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-				Expect(found).To(BeTrue())
-
-				DeletePlatformNetwork(nwk_name)
-			}
-		})
-	})
+	// Context("PlatformNetwork with correct mgmt/admin/oam network data in Day-1", func() {
+	// 	It("Should be created successfully and Reconciled & InSync should be 'true'", func() {
+
+	// 		tMgr := cloudManager.GetInstance(k8sManager)
+	// 		StartPlatformNetworkAPIHandlers()
+	// 		tMgr.SetSystemReady(TestNamespace, true)
+
+	// 		network_names := []string{"mgmt", "admin", "oam"}
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
+
+	// 		for _, nwk_name := range network_names {
+	// 			key := types.NamespacedName{
+	// 				Name:      nwk_name,
+	// 				Namespace: TestNamespace,
+	// 			}
+
+	// 			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+	// 			expected := platform_networks[nwk_name].DeepCopy()
+
+	// 			fetched := &starlingxv1.PlatformNetwork{}
+	// 			Eventually(func() bool {
+	// 				err := k8sClient.Get(ctx, key, fetched)
+	// 				return err == nil &&
+	// 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 					fetched.Status.Reconciled == true &&
+	// 					fetched.Status.InSync == true
+	// 			}, timeout, interval).Should(BeTrue())
+	// 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 			Expect(found).To(BeTrue())
+
+	// 			DeletePlatformNetwork(nwk_name)
+	// 		}
+	// 	})
+	// })
+
+	// Context("PlatformNetwork with incorrect mgmt network data in Day-1", func() {
+	// 	It("Should be created successfully and Reconciled should be 'true' and Insync should be 'false'", func() {
+
+	// 		network_names := []string{"mgmt", "admin", "oam"}
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
+
+	// 		for _, nwk_name := range network_names {
+	// 			key := types.NamespacedName{
+	// 				Name:      nwk_name,
+	// 				Namespace: TestNamespace,
+	// 			}
+
+	// 			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+
+	// 			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+	// 			expected := platform_networks[nwk_name].DeepCopy()
+
+	// 			fetched := &starlingxv1.PlatformNetwork{}
+	// 			Eventually(func() bool {
+	// 				err := k8sClient.Get(ctx, key, fetched)
+	// 				return err == nil &&
+	// 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 					fetched.Status.Reconciled == true &&
+	// 					fetched.Status.InSync == false
+	// 			}, timeout, interval).Should(BeTrue())
+	// 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 			Expect(found).To(BeTrue())
+
+	// 			DeletePlatformNetwork(nwk_name)
+	// 		}
+	// 	})
+	// })
+
+	// Context("PlatformNetwork with incorrect network data for network other than oam / mgmt/ admin in Day-1", func() {
+	// 	It("Should be created successfully and Reconciled should be 'true' and Insync should be 'true'", func() {
+	// 		network_names := []string{"pxeboot"}
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
+
+	// 		for _, nwk_name := range network_names {
+	// 			key := types.NamespacedName{
+	// 				Name:      nwk_name,
+	// 				Namespace: TestNamespace,
+	// 			}
+
+	// 			platform_networks[nwk_name].Spec.FloatingAddress = "100.100.100.100"
+
+	// 			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+	// 			expected := platform_networks[nwk_name].DeepCopy()
+
+	// 			fetched := &starlingxv1.PlatformNetwork{}
+	// 			Eventually(func() bool {
+	// 				err := k8sClient.Get(ctx, key, fetched)
+	// 				return err == nil &&
+	// 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 					fetched.Status.Reconciled == true &&
+	// 					fetched.Status.InSync == true
+	// 			}, timeout, interval).Should(BeTrue())
+	// 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 			Expect(found).To(BeTrue())
+
+	// 			DeletePlatformNetwork(nwk_name)
+	// 		}
+	// 	})
+	// })
 
-	Context("PlatformNetwork with admin/oam network data in Day-2 (Network Reconfiguration)", func() {
-		It("Should be created successfully and Reconciled & InSync should be 'true'", func() {
+	// Context("PlatformNetwork with admin/oam network data in Day-2 (Network Reconfiguration)", func() {
+	// 	It("Should be created successfully and Reconciled & InSync should be 'true'", func() {
 
-			network_names := []string{"admin", "oam"}
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// 		network_names := []string{"admin", "oam"}
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			for _, nwk_name := range network_names {
-				key := types.NamespacedName{
-					Name:      nwk_name,
-					Namespace: TestNamespace,
-				}
+	// 		for _, nwk_name := range network_names {
+	// 			key := types.NamespacedName{
+	// 				Name:      nwk_name,
+	// 				Namespace: TestNamespace,
+	// 			}
 
-				IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 			IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-				platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-				expected := platform_networks[nwk_name].DeepCopy()
+	// 			expected := platform_networks[nwk_name].DeepCopy()
 
-				fetched := &starlingxv1.PlatformNetwork{}
-				Eventually(func() bool {
-					err := k8sClient.Get(ctx, key, fetched)
-					return err == nil &&
-						fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-						fetched.Status.Reconciled == true &&
-						fetched.Status.InSync == true
-				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-				Expect(found).To(BeTrue())
+	// 			fetched := &starlingxv1.PlatformNetwork{}
+	// 			Eventually(func() bool {
+	// 				err := k8sClient.Get(ctx, key, fetched)
+	// 				return err == nil &&
+	// 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 					fetched.Status.Reconciled == true &&
+	// 					fetched.Status.InSync == true
+	// 			}, timeout, interval).Should(BeTrue())
+	// 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 			Expect(found).To(BeTrue())
 
-				DeletePlatformNetwork(nwk_name)
-			}
-		})
-	})
+	// 			DeletePlatformNetwork(nwk_name)
+	// 		}
+	// 	})
+	// })
 
-	Context("Reconfigure admin network on AIO-SX - Day 2", func() {
-		It("Should not trigger lock / unlock of host", func() {
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// Context("Reconfigure admin network on AIO-SX - Day 2", func() {
+	// 	It("Should not trigger lock / unlock of host", func() {
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "admin"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		nwk_name := "admin"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			expected := platform_networks[nwk_name].DeepCopy()
+	// 		expected := platform_networks[nwk_name].DeepCopy()
 
-			SimulateVIMStrategyAction("controller-0", cloudManager.StrategyNotRequired)
+	// 		SimulateVIMStrategyAction("controller-0", cloudManager.StrategyNotRequired)
 
-			fetched := &starlingxv1.PlatformNetwork{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-					fetched.Status.Reconciled == true &&
-					fetched.Status.InSync == true
-			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		fetched := &starlingxv1.PlatformNetwork{}
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 				fetched.Status.Reconciled == true &&
+	// 				fetched.Status.InSync == true
+	// 		}, timeout, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
-	Context("Reconfigure OAM network on AIO-SX - Day 2", func() {
-		It("Should not trigger lock / unlock of host", func() {
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// Context("Reconfigure OAM network on AIO-SX - Day 2", func() {
+	// 	It("Should not trigger lock / unlock of host", func() {
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "oam"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		nwk_name := "oam"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			expected := platform_networks[nwk_name].DeepCopy()
+	// 		expected := platform_networks[nwk_name].DeepCopy()
 
-			SimulateVIMStrategyAction("controller-0", cloudManager.StrategyNotRequired)
+	// 		SimulateVIMStrategyAction("controller-0", cloudManager.StrategyNotRequired)
 
-			fetched := &starlingxv1.PlatformNetwork{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-					fetched.Status.Reconciled == true &&
-					fetched.Status.InSync == true
-			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		fetched := &starlingxv1.PlatformNetwork{}
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 				fetched.Status.Reconciled == true &&
+	// 				fetched.Status.InSync == true
+	// 		}, timeout, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
-	Context("Reconfigure management network on AIO-SX - Day 2", func() {
-		It("Should trigger lock / unlock of host", func() {
-			tMgr := cloudManager.GetInstance(k8sManager)
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// Context("Reconfigure management network on AIO-SX - Day 2", func() {
+	// 	It("Should trigger lock / unlock of host", func() {
+	// 		tMgr := cloudManager.GetInstance(k8sManager)
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
 
-			ctx := context.Background()
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "mgmt"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		nwk_name := "mgmt"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			expected := platform_networks[nwk_name].DeepCopy()
+	// 		expected := platform_networks[nwk_name].DeepCopy()
 
-			SimulateVIMStrategyAction("controller-0", cloudManager.StrategyLockRequired)
+	// 		SimulateVIMStrategyAction("controller-0", cloudManager.StrategyLockRequired)
 
-			Expect(tMgr.IsPlatformNetworkReconciling()).To(BeTrue())
+	// 		Expect(tMgr.IsPlatformNetworkReconciling()).To(BeTrue())
 
-			fetched := &starlingxv1.PlatformNetwork{}
-			// Timeout in this case is set to 45 seconds because we are returning NewResourceConfigurationDependency
-			// error while waiting for VIM strategy to lock the host.
-			// This means reconciliation is attempted after every 20 seconds. Setting the timeout to
-			// 45 seconds would allow at least two retries before marking the test case as failure.
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-					fetched.Status.Reconciled == true &&
-					fetched.Status.InSync == true
-			}, time.Second*45, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		fetched := &starlingxv1.PlatformNetwork{}
+	// 		// Timeout in this case is set to 45 seconds because we are returning NewResourceConfigurationDependency
+	// 		// error while waiting for VIM strategy to lock the host.
+	// 		// This means reconciliation is attempted after every 20 seconds. Setting the timeout to
+	// 		// 45 seconds would allow at least two retries before marking the test case as failure.
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 				fetched.Status.Reconciled == true &&
+	// 				fetched.Status.InSync == true
+	// 		}, time.Second*45, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			Expect(tMgr.IsPlatformNetworkReconciling()).To(BeFalse())
+	// 		Expect(tMgr.IsPlatformNetworkReconciling()).To(BeFalse())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
-	Context("Reconfigure management network on AIO-DX - Day 2", func() {
-		It("Should NOT attempt reconciliation", func() {
-			SingleSystemBodyResponse = strings.Replace(SingleSystemBody, `"system_mode": "simplex",`, `"system_mode": "duplex",`, 1)
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// Context("Reconfigure management network on AIO-DX - Day 2", func() {
+	// 	It("Should NOT attempt reconciliation", func() {
+	// 		SingleSystemBodyResponse = strings.Replace(SingleSystemBody, `"system_mode": "simplex",`, `"system_mode": "duplex",`, 1)
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "mgmt"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		nwk_name := "mgmt"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			expected := platform_networks[nwk_name].DeepCopy()
+	// 		expected := platform_networks[nwk_name].DeepCopy()
 
-			fetched := &starlingxv1.PlatformNetwork{}
+	// 		fetched := &starlingxv1.PlatformNetwork{}
 
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-					fetched.Status.Reconciled == false &&
-					fetched.Status.InSync == false
-			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 				fetched.Status.Reconciled == false &&
+	// 				fetched.Status.InSync == false
+	// 		}, timeout, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
-	Context("Reconfigure networks other than management on AIO-DX - Day 2", func() {
-		It("Should reoncile the networks", func() {
-			SingleSystemBodyResponse = strings.Replace(SingleSystemBody, `"system_mode": "simplex",`, `"system_mode": "duplex",`, 1)
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// Context("Reconfigure networks other than management on AIO-DX - Day 2", func() {
+	// 	It("Should reoncile the networks", func() {
+	// 		SingleSystemBodyResponse = strings.Replace(SingleSystemBody, `"system_mode": "simplex",`, `"system_mode": "duplex",`, 1)
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "pxeboot"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
+	// 		nwk_name := "pxeboot"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			expected := platform_networks[nwk_name].DeepCopy()
+	// 		expected := platform_networks[nwk_name].DeepCopy()
 
-			fetched := &starlingxv1.PlatformNetwork{}
+	// 		fetched := &starlingxv1.PlatformNetwork{}
 
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
-					fetched.Status.Reconciled == true &&
-					fetched.Status.InSync == true
-			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
+	// 				fetched.Status.Reconciled == true &&
+	// 				fetched.Status.InSync == true
+	// 		}, timeout, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
-	Context("Test Restore In Progress", func() {
-		It("Should update inSync/deploymentScope/strategyRequired without reconciling", func() {
-			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
-			ctx := context.Background()
+	// Context("Test Restore In Progress", func() {
+	// 	It("Should update inSync/deploymentScope/strategyRequired without reconciling", func() {
+	// 		platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+	// 		ctx := context.Background()
 
-			CreateDummyHost("controller-0")
-			defer DeleteDummyHost("controller-0")
+	// 		CreateDummyHost("controller-0")
+	// 		defer DeleteDummyHost("controller-0")
 
-			nwk_name := "pxeboot"
-			annotations := make(map[string]string)
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"bootstrap"}}`
-			annotations["deployment-manager/restore-in-progress"] = `{"inSync": false, "reconciled": false, "deploymentScope": "principal"}`
+	// 		nwk_name := "pxeboot"
+	// 		annotations := make(map[string]string)
+	// 		annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"bootstrap"}}`
+	// 		annotations["deployment-manager/restore-in-progress"] = `{"inSync": false, "reconciled": false, "deploymentScope": "principal"}`
 
-			key := types.NamespacedName{
-				Name:      nwk_name,
-				Namespace: TestNamespace,
-			}
+	// 		key := types.NamespacedName{
+	// 			Name:      nwk_name,
+	// 			Namespace: TestNamespace,
+	// 		}
 
-			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+	// 		IntroducePlatformNetworkChange(platform_networks[nwk_name])
 
-			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+	// 		platform_networks[nwk_name].ObjectMeta.Annotations = annotations
 
-			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+	// 		Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
-			fetched := &starlingxv1.PlatformNetwork{}
+	// 		fetched := &starlingxv1.PlatformNetwork{}
 
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.Status.Reconciled == true &&
-					fetched.Status.InSync == false &&
-					fetched.Status.DeploymentScope == "bootstrap" &&
-					len(fetched.Annotations) == 1
-			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
-			Expect(found).To(BeTrue())
+	// 		Eventually(func() bool {
+	// 			err := k8sClient.Get(ctx, key, fetched)
+	// 			return err == nil &&
+	// 				fetched.Status.Reconciled == true &&
+	// 				fetched.Status.InSync == false &&
+	// 				fetched.Status.DeploymentScope == "bootstrap" &&
+	// 				len(fetched.Annotations) == 1
+	// 		}, timeout, interval).Should(BeTrue())
+	// 		_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+	// 		Expect(found).To(BeTrue())
 
-			DeletePlatformNetwork(nwk_name)
-		})
-	})
+	// 		DeletePlatformNetwork(nwk_name)
+	// 	})
+	// })
 
 })

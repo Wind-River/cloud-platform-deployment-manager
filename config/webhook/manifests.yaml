@@ -10,6 +10,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-starlingx-windriver-com-v1-addresspool
+  failurePolicy: Fail
+  name: maddresspool.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - addresspools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-starlingx-windriver-com-v1-host
   failurePolicy: Fail
   name: mhost.kb.io
@@ -130,6 +150,26 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: validating-webhook-configuration
 webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-addresspool
+  failurePolicy: Fail
+  name: vaddresspool.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - addresspools
+  sideEffects: None
 - admissionReviewVersions:
   - v1
   clientConfig:
