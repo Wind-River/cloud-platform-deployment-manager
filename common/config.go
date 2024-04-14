@@ -26,74 +26,78 @@ type ReconcilerName string
 
 // Defines the current list of supported reconcilers and sub-reconcilers.
 const (
-	DataNetwork       ReconcilerName = "dataNetwork"
-	Host              ReconcilerName = "host"
-	BMC               ReconcilerName = "host.bmc"
-	Kernel            ReconcilerName = "host.kernel"
-	Memory            ReconcilerName = "host.memory"
-	Processor         ReconcilerName = "host.processor"
-	Storage           ReconcilerName = "host.storage"
-	FileSystemTypes   ReconcilerName = "host.storage.fileSystemTypes"
-	FileSystemSizes   ReconcilerName = "host.storage.fileSystemSizes"
-	StorageMonitor    ReconcilerName = "host.storage.monitor"
-	OSD               ReconcilerName = "host.storage.osd"
-	Partition         ReconcilerName = "host.storage.partition"
-	PhysicalVolume    ReconcilerName = "host.storage.physicalVolume"
-	VolumeGroup       ReconcilerName = "host.storage.volumeGroup"
-	Networking        ReconcilerName = "host.networking"
-	Address           ReconcilerName = "host.networking.address"
-	Interface         ReconcilerName = "host.networking.interface"
-	Route             ReconcilerName = "host.networking.route"
-	HostProfile       ReconcilerName = "hostProfile"
-	PlatformNetwork   ReconcilerName = "platformNetwork"
-	System            ReconcilerName = "system"
-	Certificate       ReconcilerName = "system.certificate"
-	DNS               ReconcilerName = "system.dns"
-	DRBD              ReconcilerName = "system.drbd"
-	SystemFileSystems ReconcilerName = "system.filesystems"
-	License           ReconcilerName = "system.license"
-	NTP               ReconcilerName = "system.ntp"
-	PTP               ReconcilerName = "system.ptp"
-	Backends          ReconcilerName = "system.storage.backend"
-	ServiceParameters ReconcilerName = "system.serviceParameters"
-	PTPInstance       ReconcilerName = "ptpInstance"
-	PTPInterface      ReconcilerName = "ptpInterface"
+	DataNetwork         ReconcilerName = "dataNetwork"
+	Host                ReconcilerName = "host"
+	BMC                 ReconcilerName = "host.bmc"
+	Kernel              ReconcilerName = "host.kernel"
+	Memory              ReconcilerName = "host.memory"
+	Processor           ReconcilerName = "host.processor"
+	Storage             ReconcilerName = "host.storage"
+	FileSystemTypes     ReconcilerName = "host.storage.fileSystemTypes"
+	FileSystemSizes     ReconcilerName = "host.storage.fileSystemSizes"
+	StorageMonitor      ReconcilerName = "host.storage.monitor"
+	OSD                 ReconcilerName = "host.storage.osd"
+	Partition           ReconcilerName = "host.storage.partition"
+	PhysicalVolume      ReconcilerName = "host.storage.physicalVolume"
+	VolumeGroup         ReconcilerName = "host.storage.volumeGroup"
+	Networking          ReconcilerName = "host.networking"
+	Address             ReconcilerName = "host.networking.address"
+	Interface           ReconcilerName = "host.networking.interface"
+	Route               ReconcilerName = "host.networking.route"
+	HostPlatformNetwork ReconcilerName = "host.platformnetwork"
+	HostProfile         ReconcilerName = "hostProfile"
+	PlatformNetwork     ReconcilerName = "platformNetwork"
+	AddressPool         ReconcilerName = "addressPool"
+	System              ReconcilerName = "system"
+	Certificate         ReconcilerName = "system.certificate"
+	DNS                 ReconcilerName = "system.dns"
+	DRBD                ReconcilerName = "system.drbd"
+	SystemFileSystems   ReconcilerName = "system.filesystems"
+	License             ReconcilerName = "system.license"
+	NTP                 ReconcilerName = "system.ntp"
+	PTP                 ReconcilerName = "system.ptp"
+	Backends            ReconcilerName = "system.storage.backend"
+	ServiceParameters   ReconcilerName = "system.serviceParameters"
+	PTPInstance         ReconcilerName = "ptpInstance"
+	PTPInterface        ReconcilerName = "ptpInterface"
 )
 
 // reconcilerDefaultStates is the default state of each reconciler.
 var reconcilerDefaultStates = map[ReconcilerName]bool{
-	DataNetwork:       true,
-	Host:              true,
-	BMC:               true,
-	Kernel:            true,
-	Memory:            true,
-	Processor:         true,
-	Storage:           true,
-	FileSystemTypes:   true,
-	FileSystemSizes:   true,
-	StorageMonitor:    true,
-	OSD:               true,
-	Partition:         true,
-	PhysicalVolume:    true,
-	VolumeGroup:       true,
-	Networking:        true,
-	Address:           true,
-	Interface:         true,
-	Route:             true,
-	HostProfile:       true,
-	PlatformNetwork:   true,
-	System:            true,
-	Certificate:       true,
-	DNS:               true,
-	DRBD:              true,
-	SystemFileSystems: true,
-	License:           true,
-	NTP:               true,
-	PTP:               true,
-	Backends:          true,
-	ServiceParameters: true,
-	PTPInstance:       true,
-	PTPInterface:      true,
+	DataNetwork:         true,
+	Host:                true,
+	BMC:                 true,
+	Kernel:              true,
+	Memory:              true,
+	Processor:           true,
+	Storage:             true,
+	FileSystemTypes:     true,
+	FileSystemSizes:     true,
+	StorageMonitor:      true,
+	OSD:                 true,
+	Partition:           true,
+	PhysicalVolume:      true,
+	VolumeGroup:         true,
+	Networking:          true,
+	Address:             true,
+	Interface:           true,
+	Route:               true,
+	HostPlatformNetwork: true,
+	HostProfile:         true,
+	PlatformNetwork:     true,
+	AddressPool:         true,
+	System:              true,
+	Certificate:         true,
+	DNS:                 true,
+	DRBD:                true,
+	SystemFileSystems:   true,
+	License:             true,
+	NTP:                 true,
+	PTP:                 true,
+	Backends:            true,
+	ServiceParameters:   true,
+	PTPInstance:         true,
+	PTPInterface:        true,
 }
 
 // OptionName is the type alias that represents the path for a reconciler
