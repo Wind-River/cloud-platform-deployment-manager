@@ -3,15 +3,11 @@
 package controllers
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
-	th "github.com/gophercloud/gophercloud/testhelper"
-	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
+// th "github.com/gophercloud/gophercloud/testhelper"
+// starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+// cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+// "net/http"
 )
 
 const AddrPoolListBody = `
@@ -319,165 +315,165 @@ const DummyOAMUpdateResponse = `
 var HostsListBodyResponse string
 var SingleSystemBodyResponse string
 
-func HandleAddressPoolRequests(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, AddrPoolListBody)
-	case http.MethodPost:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
-	case http.MethodPatch:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
-	case http.MethodDelete:
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-	}
-}
+// func HandleAddressPoolRequests(w http.ResponseWriter, r *http.Request) {
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, AddrPoolListBody)
+// 	case http.MethodPost:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
+// 	case http.MethodPatch:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
+// 	case http.MethodDelete:
+// 		w.WriteHeader(http.StatusNoContent)
+// 	default:
+// 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func AddressPoolAPIS() {
-	th.Mux.HandleFunc("/addrpools", HandleAddressPoolRequests)
-}
+// func AddressPoolAPIS() {
+// 	th.Mux.HandleFunc("/addrpools", HandleAddressPoolRequests)
+// }
 
-func HandleNetworkRequests(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, NetworkListBody)
-	case http.MethodPost:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
-	case http.MethodPatch:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
-	case http.MethodDelete:
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-	}
-}
+// func HandleNetworkRequests(w http.ResponseWriter, r *http.Request) {
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, NetworkListBody)
+// 	case http.MethodPost:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, DummyNetworkUpdateResponse)
+// 	case http.MethodPatch:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, DummyNetworkUpdateResponse)
+// 	case http.MethodDelete:
+// 		w.WriteHeader(http.StatusNoContent)
+// 	default:
+// 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func NetworkAPIS() {
-	th.Mux.HandleFunc("/networks", HandleNetworkRequests)
-}
+// func NetworkAPIS() {
+// 	th.Mux.HandleFunc("/networks", HandleNetworkRequests)
+// }
 
-func HandleOAMNetworkRequests(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, OAMNetworkListBody)
-	case http.MethodPatch:
-		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyOAMUpdateResponse)
-	case http.MethodDelete:
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-	}
-}
+// func HandleOAMNetworkRequests(w http.ResponseWriter, r *http.Request) {
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, OAMNetworkListBody)
+// 	case http.MethodPatch:
+// 		w.Header().Add("Content-Type", "application/json")
+// 		fmt.Fprint(w, DummyOAMUpdateResponse)
+// 	case http.MethodDelete:
+// 		w.WriteHeader(http.StatusNoContent)
+// 	default:
+// 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func OAMNetworkAPIS() {
-	th.Mux.HandleFunc("/iextoam", HandleOAMNetworkRequests)
-}
+// func OAMNetworkAPIS() {
+// 	th.Mux.HandleFunc("/iextoam", HandleOAMNetworkRequests)
+// }
 
-func HandleSystemRequests(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	switch r.Method {
-	case http.MethodGet:
-		fmt.Fprint(w, SingleSystemBodyResponse)
-	default:
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-	}
-}
+// func HandleSystemRequests(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Add("Content-Type", "application/json")
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		fmt.Fprint(w, SingleSystemBodyResponse)
+// 	default:
+// 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func SystemAPIS() {
-	th.Mux.HandleFunc("/isystems", HandleSystemRequests)
-}
+// func SystemAPIS() {
+// 	th.Mux.HandleFunc("/isystems", HandleSystemRequests)
+// }
 
-func HandleHostRequests(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	switch r.Method {
-	case http.MethodGet:
-		fmt.Fprint(w, HostsListBodyResponse)
-	default:
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-	}
-}
+// func HandleHostRequests(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Add("Content-Type", "application/json")
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		fmt.Fprint(w, HostsListBodyResponse)
+// 	default:
+// 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func HostAPIS() {
-	th.Mux.HandleFunc("/ihosts", HandleHostRequests)
-}
+// func HostAPIS() {
+// 	th.Mux.HandleFunc("/ihosts", HandleHostRequests)
+// }
 
-func GetPlatformNetworksFromFixtures(namespace string) map[string]*starlingxv1.PlatformNetwork {
-	PlatformNetworks := make(map[string]*starlingxv1.PlatformNetwork)
+// func GetPlatformNetworksFromFixtures(namespace string) map[string]*starlingxv1.PlatformNetwork {
+// 	PlatformNetworks := make(map[string]*starlingxv1.PlatformNetwork)
 
-	var Networks struct {
-		NetworkList []networks.Network `json:"networks"`
-	}
-	var AddressPools struct {
-		AddressPoolList []addresspools.AddressPool `json:"addrpools"`
-	}
+// 	var Networks struct {
+// 		NetworkList []networks.Network `json:"networks"`
+// 	}
+// 	var AddressPools struct {
+// 		AddressPoolList []addresspools.AddressPool `json:"addrpools"`
+// 	}
 
-	_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
-	_ = json.Unmarshal([]byte(AddrPoolListBody), &AddressPools)
+// 	_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
+// 	_ = json.Unmarshal([]byte(AddrPoolListBody), &AddressPools)
 
-	for _, network := range Networks.NetworkList {
-		allocation_order := networks.AllocationOrderDynamic
-		if !network.Dynamic {
-			allocation_order = networks.AllocationOrderStatic
-		}
+// 	for _, network := range Networks.NetworkList {
+// 		allocation_order := networks.AllocationOrderDynamic
+// 		if !network.Dynamic {
+// 			allocation_order = networks.AllocationOrderStatic
+// 		}
 
-		for _, addrpool := range AddressPools.AddressPoolList {
-			if network.PoolUUID == addrpool.ID {
-				PlatformNetworks[network.Type] = &starlingxv1.PlatformNetwork{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      network.Name,
-						Namespace: namespace,
-					},
-					Spec: starlingxv1.PlatformNetworkSpec{
-						Type:    network.Type,
-						Subnet:  addrpool.Network,
-						Prefix:  addrpool.Prefix,
-						Gateway: addrpool.Gateway,
-						Allocation: starlingxv1.AllocationInfo{
-							Type:   allocation_order,
-							Order:  &addrpool.Order,
-							Ranges: []starlingxv1.AllocationRange{{Start: addrpool.Ranges[0][0], End: addrpool.Ranges[0][1]}},
-						},
-						FloatingAddress:    addrpool.FloatingAddress,
-						Controller0Address: addrpool.Controller0Address,
-						Controller1Address: addrpool.Controller1Address,
-					},
-				}
-			}
-		}
-	}
+// 		for _, addrpool := range AddressPools.AddressPoolList {
+// 			if network.PoolUUID == addrpool.ID {
+// 				PlatformNetworks[network.Type] = &starlingxv1.PlatformNetwork{
+// 					ObjectMeta: metav1.ObjectMeta{
+// 						Name:      network.Name,
+// 						Namespace: namespace,
+// 					},
+// 					Spec: starlingxv1.PlatformNetworkSpec{
+// 						Type:    network.Type,
+// 						Subnet:  addrpool.Network,
+// 						Prefix:  addrpool.Prefix,
+// 						Gateway: addrpool.Gateway,
+// 						Allocation: starlingxv1.AllocationInfo{
+// 							Type:   allocation_order,
+// 							Order:  &addrpool.Order,
+// 							Ranges: []starlingxv1.AllocationRange{{Start: addrpool.Ranges[0][0], End: addrpool.Ranges[0][1]}},
+// 						},
+// 						FloatingAddress:    addrpool.FloatingAddress,
+// 						Controller0Address: addrpool.Controller0Address,
+// 						Controller1Address: addrpool.Controller1Address,
+// 					},
+// 				}
+// 			}
+// 		}
+// 	}
 
-	return PlatformNetworks
-}
+// 	return PlatformNetworks
+// }
 
-func StartPlatformNetworkAPIHandlers() {
-	HostsListBodyResponse = HostsListBody
-	SingleSystemBodyResponse = SingleSystemBody
-	AddressPoolAPIS()
-	NetworkAPIS()
-	OAMNetworkAPIS()
-	SystemAPIS()
-	HostAPIS()
+// func StartPlatformNetworkAPIHandlers() {
+// 	HostsListBodyResponse = HostsListBody
+// 	SingleSystemBodyResponse = SingleSystemBody
+// 	AddressPoolAPIS()
+// 	NetworkAPIS()
+// 	OAMNetworkAPIS()
+// 	SystemAPIS()
+// 	HostAPIS()
 
-	var Networks struct {
-		NetworkList []networks.Network `json:"networks"`
-	}
-	_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
+// 	var Networks struct {
+// 		NetworkList []networks.Network `json:"networks"`
+// 	}
+// 	_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
 
-	for _, network := range Networks.NetworkList {
-		if network.Type == cloudManager.OAMNetworkType {
-			th.Mux.HandleFunc("/iextoam/"+network.UUID, HandleOAMNetworkRequests)
-		} else {
-			th.Mux.HandleFunc("/networks/"+network.UUID, HandleNetworkRequests)
-		}
-		th.Mux.HandleFunc("/addrpools/"+network.PoolUUID, HandleAddressPoolRequests)
-	}
-}
+// 	for _, network := range Networks.NetworkList {
+// 		if network.Type == cloudManager.OAMNetworkType {
+// 			th.Mux.HandleFunc("/iextoam/"+network.UUID, HandleOAMNetworkRequests)
+// 		} else {
+// 			th.Mux.HandleFunc("/networks/"+network.UUID, HandleNetworkRequests)
+// 		}
+// 		th.Mux.HandleFunc("/addrpools/"+network.PoolUUID, HandleAddressPoolRequests)
+// 	}
+// }
