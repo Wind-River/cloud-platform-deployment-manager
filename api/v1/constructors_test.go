@@ -427,18 +427,8 @@ var _ = Describe("Constructor utils for kind", func() {
 					Type:    "mgmt",
 				}
 				expSpec := PlatformNetworkSpec{
-					Type:               "mgmt",
-					Subnet:             "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Allocation: AllocationInfo{
-						Type:   networks.AllocationOrderStatic,
-						Order:  &pool.Order,
-						Ranges: ranges,
-					},
+					Type:    "mgmt",
+					Dynamic: false,
 				}
 				pnSpec, err := NewPlatformNetworkSpec(pool, network)
 				Expect(err).To(BeNil())
@@ -484,18 +474,8 @@ var _ = Describe("Constructor utils for kind", func() {
 					Type:    "mgmt",
 				}
 				expSpec := PlatformNetworkSpec{
-					Type:               "mgmt",
-					Subnet:             "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Allocation: AllocationInfo{
-						Type:   networks.AllocationOrderStatic,
-						Order:  &pool.Order,
-						Ranges: ranges,
-					},
+					Type:    "mgmt",
+					Dynamic: false,
 				}
 				expPn := PlatformNetwork{
 					TypeMeta: metav1.TypeMeta{
@@ -514,6 +494,70 @@ var _ = Describe("Constructor utils for kind", func() {
 				pn, err := NewPlatformNetwork(namespace, pool, network)
 				Expect(err).To(BeNil())
 				Expect(*pn).To(Equal(expPn))
+			})
+		})
+	})
+
+	Describe("Test NewAddressPool", func() {
+		Context("When gophercloud's addresspools.AddressPool is input", func() {
+			It("should return starlingxv1.AddressPool spec", func() {
+				namespace := "NameSpace"
+				subnet := "192.168.204.0"
+				floating_address := "192.168.204.2"
+				controller0_address := "192.168.204.3"
+				controller1_address := "192.168.204.4"
+				gateway := "192.168.204.1"
+				range_start := "192.168.204.2"
+				range_end := "192.168.204.254"
+				allocation_order := "random"
+
+				poolRanges := make([][]string, 1)
+				poolRanges[0] = []string{range_start, range_end}
+
+				pool := addresspools.AddressPool{
+					Name:               "mgmt",
+					Network:            "192.168.204.0",
+					FloatingAddress:    floating_address,
+					Controller0Address: controller0_address,
+					Controller1Address: controller1_address,
+					Prefix:             24,
+					Gateway:            &gateway,
+					Order:              allocation_order,
+					Ranges:             poolRanges,
+				}
+
+				expSpec := AddressPoolSpec{
+					Subnet:             subnet,
+					FloatingAddress:    &floating_address,
+					Controller0Address: &controller0_address,
+					Controller1Address: &controller1_address,
+					Prefix:             24,
+					Gateway:            &gateway,
+					Allocation: AllocationInfo{
+						Order:  &allocation_order,
+						Ranges: []AllocationRange{{Start: range_start, End: range_end}},
+					},
+				}
+
+				expAddrPool := AddressPool{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: APIVersion,
+						Kind:       KindAddressPool,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      pool.Name,
+						Namespace: namespace,
+						Labels: map[string]string{
+							ControllerToolsLabel: ControllerToolsVersion,
+						},
+					},
+					Spec: expSpec,
+				}
+
+				ap, err := NewAddressPool(namespace, pool)
+				Expect(err).To(BeNil())
+				Expect(*ap).To(Equal(expAddrPool))
+
 			})
 		})
 	})
