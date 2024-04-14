@@ -1590,6 +1590,11 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		SyncIFNameByUuid(profile, current)
 	}
 
+	err = r.ReconcilePlatformNetworks(client, instance, profile, &hostInfo)
+	if err != nil {
+		return err
+	}
+
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 	if inSync {
 		logHost.V(2).Info("no changes between composite profile and current configuration")

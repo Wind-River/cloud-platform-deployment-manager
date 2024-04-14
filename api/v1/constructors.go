@@ -60,6 +60,7 @@ const (
 	KindHost            = "Host"
 	KindHostProfile     = "HostProfile"
 	KindPlatformNetwork = "PlatformNetwork"
+	KindAddressPool     = "AddressPool"
 	KindDataNetwork     = "DataNetwork"
 	KindSystem          = "System"
 	KindPTPInstance     = "PtpInstance"
@@ -1432,34 +1433,10 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 }
 
 func NewPlatformNetworkSpec(pool addresspools.AddressPool, network networks.Network) (*PlatformNetworkSpec, error) {
-	allocation_type := networks.AllocationOrderDynamic
-	if !network.Dynamic {
-		allocation_type = networks.AllocationOrderStatic
-	}
 	spec := PlatformNetworkSpec{
-		Type:               network.Type,
-		Subnet:             pool.Network,
-		FloatingAddress:    pool.FloatingAddress,
-		Controller0Address: pool.Controller0Address,
-		Controller1Address: pool.Controller1Address,
-		Prefix:             pool.Prefix,
-		Gateway:            pool.Gateway,
-		Allocation: AllocationInfo{
-			Type:  allocation_type,
-			Order: &pool.Order,
-		},
+		Type:    network.Type,
+		Dynamic: network.Dynamic,
 	}
-
-	ranges := make([]AllocationRange, 0)
-	for _, r := range pool.Ranges {
-		obj := AllocationRange{
-			Start: r[0],
-			End:   r[1],
-		}
-		ranges = append(ranges, obj)
-	}
-
-	spec.Allocation.Ranges = ranges
 
 	return &spec, nil
 }
@@ -1487,6 +1464,59 @@ func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network
 	spec.DeepCopyInto(&platformNetwork.Spec)
 
 	return &platformNetwork, nil
+}
+
+func NewAddressPoolSpec(pool addresspools.AddressPool) (*AddressPoolSpec, error) {
+
+	spec := AddressPoolSpec{
+		Subnet:             pool.Network,
+		FloatingAddress:    &pool.FloatingAddress,
+		Controller0Address: &pool.Controller0Address,
+		Controller1Address: &pool.Controller1Address,
+		Prefix:             pool.Prefix,
+		Gateway:            pool.Gateway,
+		Allocation: AllocationInfo{
+			Order: &pool.Order,
+		},
+	}
+
+	ranges := make([]AllocationRange, 0)
+	for _, r := range pool.Ranges {
+		obj := AllocationRange{
+			Start: r[0],
+			End:   r[1],
+		}
+		ranges = append(ranges, obj)
+	}
+
+	spec.Allocation.Ranges = ranges
+
+	return &spec, nil
+}
+
+func NewAddressPool(namespace string, pool addresspools.AddressPool) (*AddressPool, error) {
+	addressPool := AddressPool{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: APIVersion,
+			Kind:       KindAddressPool,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pool.Name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ControllerToolsLabel: ControllerToolsVersion,
+			},
+		},
+	}
+
+	spec, err := NewAddressPoolSpec(pool)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.DeepCopyInto(&addressPool.Spec)
+
+	return &addressPool, nil
 }
 
 // IsDefaultServiceParameter returns if a service parameter is a default.

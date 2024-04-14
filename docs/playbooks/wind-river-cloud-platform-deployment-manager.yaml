@@ -698,7 +698,7 @@
           # playbook doesn't fail if resources are properly reconciled.
           - name: Get not reconciled resource
             shell: >
-              (kubectl get systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces
+              (kubectl get systems,datanetworks,platformnetworks,addresspools,ptpinstances,ptpinterfaces
               -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
               -n deployment;
               kubectl -n deployment get hosts "{{ get_host_name.stdout }}" -o
