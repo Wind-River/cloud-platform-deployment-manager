@@ -1520,6 +1520,18 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 	return nil
 }
 
+// Filter out certificates with type other than "ssl_ca"
+func clean_deprecated_certificates(certs starlingxv1.CertificateList) starlingxv1.CertificateList {
+	originalLength := len(certs)
+	filteredCerts := make([]starlingxv1.CertificateInfo, 0, originalLength)
+	for _, cert := range certs {
+		if cert.Type == starlingxv1.PlatformCACertificate {
+			filteredCerts = append(filteredCerts, cert)
+		}
+	}
+	return filteredCerts
+}
+
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
@@ -1593,6 +1605,24 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	// Update scope from configuration
 	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
+
+	// Filter out certificates with type other than "ssl_ca"
+	if instance.Spec.Certificates != nil {
+		originalLength := len(*instance.Spec.Certificates)
+		filteredCerts := clean_deprecated_certificates(*instance.Spec.Certificates)
+
+		// Update the instance if any certificates were removed
+		if len(filteredCerts) != originalLength {
+			logSystem.Info("Removed certificates with all other deprecated types except ssl_ca", "system", instance.Name)
+			*instance.Spec.Certificates = starlingxv1.CertificateList(filteredCerts)
+			err = r.Client.Update(ctx, instance)
+			if err != nil {
+				logSystem.Error(err, "Failed to update System instance after removing certificates")
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
 		logSystem.Error(err, "unable to update scope")

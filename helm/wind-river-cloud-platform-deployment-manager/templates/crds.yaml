@@ -3000,12 +3000,7 @@ spec:
                     type:
                       description: Type represents the intended usage of the certificate
                       enum:
-                      - ssl
                       - ssl_ca
-                      - openstack
-                      - openstack_ca
-                      - docker_registry
-                      - tpm_mode
                       type: string
                   required:
                   - secret
