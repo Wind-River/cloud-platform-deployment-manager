@@ -374,21 +374,23 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
-        - name: Configure required region value for subcloud
+        - name: Configure required region value if not systemcontroller
           block:
-          - name: Get subcloud region value from environment
+          - name: Get region name from environment
             shell: source /etc/platform/openrc; echo $OS_REGION_NAME
             register: os_region_name_from_env
 
-          - name: Show subcloud region
+          - name: Show region name
             debug:
               msg:
-              - "Subcloud region value : {{os_region_name_from_env.stdout}}"
+              - "System region name : {{os_region_name_from_env.stdout}}"
 
-          - name: Configure new subcloud region value
+          - name: Configure the region name in the deploy config
             command: |
               sed -i 's/^\(\s*OS_REGION_NAME:\).*/\1 {{ os_region_name_from_env.stdout }}/' {{ deploy_config }}
-          when: ("subcloud" in get_distributed_cloud_role.stdout)
+          when: >
+            (get_distributed_cloud_role.stdout is not defined) or
+            get_distributed_cloud_role.stdout != "systemcontroller"
 
         - wait_for:
             # Pause for an arbitrary amount of time to allow the deployment

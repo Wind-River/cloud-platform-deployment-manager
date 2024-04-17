@@ -145,7 +145,7 @@ type MemoryNodeList []MemoryNodeInfo
 
 // JournalInfo defines attributes of an OSD journal device.
 type JournalInfo struct {
-	// Location defines	the OSD device path to be used as the Journal OSD for
+	// Location defines the OSD device path to be used as the Journal OSD for
 	// this logical device.
 	// +kubebuilder:validation:MaxLength=255
 	Location string `json:"location"`
@@ -977,10 +977,9 @@ type HostProfileSpec struct {
 	Interfaces *InterfaceInfo `json:"interfaces,omitempty"`
 
 	// Addresses defines the list of addresses to be configured against this
-	// host.  Addresses are specific to a single host therefore they should only
+	// host. Addresses are specific to a single host therefore they should only
 	// be specified if this profile is only going to be used to configure a
-	// single
-	// host.
+	// single host.
 	Addresses AddressList `json:"addresses,omitempty"`
 
 	// Routes defines the list of routes to be configured against this host.

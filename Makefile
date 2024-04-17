@@ -60,7 +60,7 @@ HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
 DEEPCOPY_GEN_FILE=./api/v1/zz_generated.deepcopy.go
 
 .PHONY: all
-all: helm-ver-check test golangci build tools helm-package docker-build examples
+all: helm-ver-check test build tools helm-package docker-build examples
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -98,9 +98,6 @@ generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, Dee
 fmt: ## Run go fmt against code.
 	go fmt ./...
 
-golangci: golangci-lint ## Run the golangci-lint static analysis
-	$(GOLANGCI_LINT) run ./...
-
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
@@ -112,7 +109,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build
-build: generate fmt golangci vet ## Build manager binary.
+build: generate fmt vet ## Build manager binary.
 	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
 
 .PHONY: tools
@@ -171,16 +168,13 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 DEEPEQUAL_GEN ?= $(LOCALBIN)/deepequal-gen
-GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.12.1
-GOLANGCI_LINT_VERSION ?= v1.49.0
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
 SETPUP_ENVTEST_VERSION ?= release-0.16
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
-GOLANGCI_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -204,10 +198,6 @@ deepequal-gen: $(DEEPEQUAL_GEN) ## Download deepequal-gen locally if necessary.
 $(DEEPEQUAL_GEN): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install github.com/wind-river/deepequal-gen@latest
 
-.PHONY: golangci-lint
-golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
-$(GOLANGCI_LINT): $(LOCALBIN)
-	curl -sSfL $(GOLANGCI_INSTALL_SCRIPT) | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
 
 # Build the builder image
 builder-build:
