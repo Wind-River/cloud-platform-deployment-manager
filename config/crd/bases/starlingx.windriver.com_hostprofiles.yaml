@@ -50,10 +50,9 @@ spec:
               addresses:
                 description: |-
                   Addresses defines the list of addresses to be configured against this
-                  host.  Addresses are specific to a single host therefore they should only
+                  host. Addresses are specific to a single host therefore they should only
                   be specified if this profile is only going to be used to configure a
-                  single
-                  host.
+                  single host.
                 items:
                   description: AddressInfo defines the attributes specific to a single
                     address.
@@ -961,8 +960,9 @@ spec:
                             OSD device.
                           properties:
                             location:
-                              description: "Location defines\tthe OSD device path
-                                to be used as the Journal OSD for\nthis logical device."
+                              description: |-
+                                Location defines the OSD device path to be used as the Journal OSD for
+                                this logical device.
                               maxLength: 255
                               type: string
                             size:
