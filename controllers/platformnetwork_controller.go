@@ -1254,13 +1254,14 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		if err := r.RestorePlatformNetworkStatus(instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := r.ClearAnnotation(instance); err != nil {
+		if err := r.ClearRestoreInProgress(instance); err != nil {
 			return reconcile.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation {
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
 		return ctrl.Result{}, nil
 	}
 
@@ -1351,7 +1352,7 @@ func (r *PlatformNetworkReconciler) checkRestoreInProgress(instance *starlingxv1
 	return false
 }
 
-// Update status and clear annotation
+// Update status
 func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starlingxv1.PlatformNetwork) error {
 	annotation := instance.GetObjectMeta().GetAnnotations()
 	config, ok := annotation[cloudManager.RestoreInProgress]
@@ -1362,35 +1363,10 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 			if restoreStatus.InSync != nil {
 				instance.Status.InSync = *restoreStatus.InSync
 			}
-			if restoreStatus.Reconciled != nil {
-				instance.Status.Reconciled = *restoreStatus.Reconciled
-			}
-			if restoreStatus.DeploymentScope != nil {
-				if strings.ToLower(*restoreStatus.DeploymentScope) == "bootstrap" ||
-					strings.ToLower(*restoreStatus.DeploymentScope) == "principal" {
-					instance.Status.DeploymentScope = *restoreStatus.DeploymentScope
-				} else {
-					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Invalid deploymentScope value '%s', scope will be set to boostrap", *restoreStatus.DeploymentScope)
-					instance.Status.DeploymentScope = "bootstrap"
-				}
-			} else {
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "The 'deploymentScope' is not specified, assuming 'bootstrap' scope.")
-				instance.Status.DeploymentScope = "bootstrap"
-			}
-			if restoreStatus.StrategyRequired != nil {
-				if *restoreStatus.StrategyRequired == "not_required" ||
-					*restoreStatus.StrategyRequired == "lock_required" ||
-					*restoreStatus.StrategyRequired == "unlock_required" {
-					instance.Status.StrategyRequired = *restoreStatus.StrategyRequired
-				} else {
-					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Invalid strategyRequired value '%s', it will be set to 'not_required'", *restoreStatus.StrategyRequired)
-					instance.Status.StrategyRequired = "not_required"
-				}
-			} else {
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "The 'strategyRequired' is not specified, assuming 'not_required'.")
-				instance.Status.StrategyRequired = "not_required"
-			}
+			instance.Status.Reconciled = true
 			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
 			err = r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
 				log_err_msg := fmt.Sprintf(
@@ -1412,8 +1388,11 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 }
 
 // Clear annotation RestoreInProgress
-func (r *PlatformNetworkReconciler) ClearAnnotation(instance *starlingxv1.PlatformNetwork) error {
+func (r *PlatformNetworkReconciler) ClearRestoreInProgress(instance *starlingxv1.PlatformNetwork) error {
 	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName)
+	}
 	err := r.Client.Update(context.TODO(), instance)
 	if err != nil {
 		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' platform network resource after removing '%s' annotation during restoration.",

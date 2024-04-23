@@ -199,10 +199,7 @@ type PlatformManager struct {
 }
 
 type RestoreStatus struct {
-	InSync           *bool   `json:"inSync"`
-	Reconciled       *bool   `json:"reconciled"`
-	DeploymentScope  *string `json:"deploymentScope"`
-	StrategyRequired *string `json:"strategyRequired"`
+	InSync *bool `json:"inSync"`
 }
 
 func NewStrategyStatus() *StrategyStatus {

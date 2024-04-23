@@ -2110,6 +2110,22 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' host resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestoreHostStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
+		return ctrl.Result{}, nil
+	}
+
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any hosts that we have previously added.
@@ -2149,6 +2165,23 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	profile, err := r.BuildAndValidateCompositeProfile(instance)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	// Restore the host status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' host resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestoreHostStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
+		return ctrl.Result{}, nil
 	}
 
 	// Update scope from configuration
@@ -2208,4 +2241,62 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.Host{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *HostReconciler) checkRestoreInProgress(instance *starlingxv1.Host) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *HostReconciler) RestoreHostStatus(instance *starlingxv1.Host) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update host status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for host resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *HostReconciler) ClearRestoreInProgress(instance *starlingxv1.Host) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, HostFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, HostFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' host resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }
