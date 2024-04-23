@@ -1248,6 +1248,18 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, err
 	}
 
+	// Restore the PlatformNetwork status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' PlatformNetwork resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestorePlatformNetworkStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearAnnotation(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
 	// Update scope from configuration
 	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
@@ -1324,4 +1336,63 @@ func (r *PlatformNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PlatformNetwork{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *PlatformNetworkReconciler) checkRestoreInProgress(instance *starlingxv1.PlatformNetwork) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status and clear annotation
+func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starlingxv1.PlatformNetwork) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			if restoreStatus.Reconciled != nil {
+				instance.Status.Reconciled = *restoreStatus.Reconciled
+			}
+			if restoreStatus.DeploymentScope != nil {
+				if strings.ToLower(*restoreStatus.DeploymentScope) == "bootstrap" ||
+					strings.ToLower(*restoreStatus.DeploymentScope) == "principal" {
+					instance.Status.DeploymentScope = *restoreStatus.DeploymentScope
+				} else {
+					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Invalid deploymentScope value '%s', scope will be set to boostrap", *restoreStatus.DeploymentScope)
+					instance.Status.DeploymentScope = "bootstrap"
+				}
+			}
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update platform network status while restoring '%s' platform network resource.", instance.Name))
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for PlatformNetwork resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *PlatformNetworkReconciler) ClearAnnotation(instance *starlingxv1.PlatformNetwork) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' platform network resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }
