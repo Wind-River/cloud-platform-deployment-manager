@@ -361,7 +361,7 @@ func (r *PlatformNetworkReconciler) checkRestoreInProgress(instance *starlingxv1
 	return false
 }
 
-// Update status and clear annotation
+// Update status
 func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starlingxv1.PlatformNetwork) error {
 	annotation := instance.GetObjectMeta().GetAnnotations()
 	config, ok := annotation[cloudManager.RestoreInProgress]
@@ -394,8 +394,11 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 }
 
 // Clear annotation RestoreInProgress
-func (r *PlatformNetworkReconciler) ClearAnnotation(instance *starlingxv1.PlatformNetwork) error {
+func (r *PlatformNetworkReconciler) ClearRestoreInProgress(instance *starlingxv1.PlatformNetwork) error {
 	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName)
+	}
 	err := r.Client.Update(context.TODO(), instance)
 	if err != nil {
 		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' platform network resource after removing '%s' annotation during restoration.",
