@@ -146,6 +146,7 @@ func validateCertificates(obj *System) error {
 			// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
 			if c.Type == OpenstackCACertificate || c.Type == OpenLDAPCertificate ||
 				c.Type == DockerCertificate || c.Type == PlatformCertificate {
+				systemlog.Info("unexpected certificate", "type", c.Type)
 				continue
 			}
 
