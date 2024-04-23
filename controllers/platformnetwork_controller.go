@@ -1257,7 +1257,11 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		if err := r.ClearAnnotation(instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation {
+		return ctrl.Result{}, nil
 	}
 
 	// Update scope from configuration
@@ -1369,10 +1373,31 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Invalid deploymentScope value '%s', scope will be set to boostrap", *restoreStatus.DeploymentScope)
 					instance.Status.DeploymentScope = "bootstrap"
 				}
+			} else {
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "The 'deploymentScope' is not specified, assuming 'bootstrap' scope.")
+				instance.Status.DeploymentScope = "bootstrap"
 			}
+			if restoreStatus.StrategyRequired != nil {
+				if *restoreStatus.StrategyRequired == "not_required" ||
+					*restoreStatus.StrategyRequired == "lock_required" ||
+					*restoreStatus.StrategyRequired == "unlock_required" {
+					instance.Status.StrategyRequired = *restoreStatus.StrategyRequired
+				} else {
+					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Invalid strategyRequired value '%s', it will be set to 'not_required'", *restoreStatus.StrategyRequired)
+					instance.Status.StrategyRequired = "not_required"
+				}
+			} else {
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "The 'strategyRequired' is not specified, assuming 'not_required'.")
+				instance.Status.StrategyRequired = "not_required"
+			}
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 			err = r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
-				return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update platform network status while restoring '%s' platform network resource.", instance.Name))
+				log_err_msg := fmt.Sprintf(
+					"Failed to update platform network status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
 			} else {
 				StatusUpdate := fmt.Sprintf("Status updated for PlatformNetwork resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
 					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
