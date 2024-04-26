@@ -2000,5 +2000,14 @@ func (r *HostReconciler) ReconcileNetworking(client *gophercloud.ServiceClient, 
 		return err
 	}
 
+	// Update/Add routes
+	// Although routes can be reconciled on runtime, it is preferred to have it
+	// reconciled before the enabling the host to make the route available once
+	// the host is enabled.
+	err = r.ReconcileRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

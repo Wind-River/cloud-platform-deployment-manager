@@ -1038,6 +1038,12 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 				return false
 			}
 		}
+
+		if utils.IsReconcilerEnabled(utils.Route) {
+			if !in.Routes.DeepEqual(&other.Routes) {
+				return false
+			}
+		}
 	}
 
 	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
