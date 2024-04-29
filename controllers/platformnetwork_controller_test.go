@@ -11,11 +11,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"strings"
+
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
-	"strings"
 )
 
 const TestNamespace = "default"
@@ -556,6 +557,47 @@ var _ = Describe("Platformnetwork controller", func() {
 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion &&
 					fetched.Status.Reconciled == true &&
 					fetched.Status.InSync == true
+			}, timeout, interval).Should(BeTrue())
+			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+			Expect(found).To(BeTrue())
+
+			DeletePlatformNetwork(nwk_name)
+		})
+	})
+
+	Context("Test Restore In Progress", func() {
+		It("Should update inSync/deploymentScope/strategyRequired without reconciling", func() {
+			platform_networks := GetPlatformNetworksFromFixtures(TestNamespace)
+			ctx := context.Background()
+
+			CreateDummyHost("controller-0")
+			defer DeleteDummyHost("controller-0")
+
+			nwk_name := "pxeboot"
+			annotations := make(map[string]string)
+			annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"bootstrap"}}`
+			annotations["deployment-manager/restore-in-progress"] = `{"inSync": false, "reconciled": false, "deploymentScope": "principal"}`
+
+			key := types.NamespacedName{
+				Name:      nwk_name,
+				Namespace: TestNamespace,
+			}
+
+			IntroducePlatformNetworkChange(platform_networks[nwk_name])
+
+			platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+
+			Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+			fetched := &starlingxv1.PlatformNetwork{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, fetched)
+				return err == nil &&
+					fetched.Status.Reconciled == true &&
+					fetched.Status.InSync == false &&
+					fetched.Status.DeploymentScope == "bootstrap" &&
+					len(fetched.Annotations) == 1
 			}, timeout, interval).Should(BeTrue())
 			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
 			Expect(found).To(BeTrue())

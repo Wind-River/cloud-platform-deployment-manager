@@ -41,6 +41,7 @@ const (
 	// Defines annotation keys for resources.
 	NotificationCountKey = "deployment-manager/notifications"
 	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
+	RestoreInProgress    = "deployment-manager/restore-in-progress"
 )
 
 const (
@@ -195,6 +196,10 @@ type PlatformManager struct {
 	vimClient                       *gophercloud.ServiceClient
 	PlatformNetworkReconcilerStatus bool
 	GetPlatformClientImpl           func(namespace string) *gophercloud.ServiceClient
+}
+
+type RestoreStatus struct {
+	InSync *bool `json:"inSync"`
 }
 
 func NewStrategyStatus() *StrategyStatus {
