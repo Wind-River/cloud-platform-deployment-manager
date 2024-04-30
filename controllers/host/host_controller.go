@@ -2122,7 +2122,8 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	}
 
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
+		instance.Status.Reconciled &&
+		instance.Status.DeploymentScope == "bootstrap" {
 		return ctrl.Result{}, nil
 	}
 
@@ -2165,23 +2166,6 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	profile, err := r.BuildAndValidateCompositeProfile(instance)
 	if err != nil {
 		return reconcile.Result{}, err
-	}
-
-	// Restore the host status
-	if r.checkRestoreInProgress(instance) {
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' host resource status without doing actual reconciliation", instance.Name)
-		if err := r.RestoreHostStatus(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := r.ClearRestoreInProgress(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
-		return ctrl.Result{}, nil
 	}
 
 	// Update scope from configuration
