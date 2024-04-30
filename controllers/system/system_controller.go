@@ -1558,11 +1558,23 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 		if platformClient == nil {
 			// Create the platform client without notifying other controllers
-			_, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
+			platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
 			if err != nil {
 				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 			}
 		}
+
+		systemInfo := v1info.SystemInfo{}
+		err = systemInfo.PopulateSystemInfo(platformClient)
+		if err != nil {
+			return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		}
+		value := strings.ToLower(systemInfo.System.SystemType)
+		r.CloudManager.SetSystemType(instance.Namespace, cloudManager.SystemType(value))
+
+		// This allows other controllers to reconcile next time
+		// a configuration is applied.
+		r.CloudManager.SetSystemReady(instance.Namespace, true)
 
 		if err := r.RestoreSystemStatus(instance); err != nil {
 			return reconcile.Result{}, err
