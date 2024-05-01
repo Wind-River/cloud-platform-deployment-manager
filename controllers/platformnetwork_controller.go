@@ -67,26 +67,42 @@ func (r *PlatformNetworkReconciler) UpdateInsyncStatus(client *gophercloud.Servi
 	return nil
 }
 
-// ReconcileResource interacts with the system API in order to reconcile the
-// state of a data network with the state stored in the k8s database.
-// TODO(sriram-gn): Fetch active controller's host instance and set
+// Fetch active controller's host instance and set
 // Reconciled/Insync to false only if Generation != ObservedGeneration.
+// Note that for deletion we are just cleaning up the finalizer and we
+// are not specifically deleting network object on the system.
 func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
-		host_instance := &starlingxv1.Host{}
-		host_namespace := types.NamespacedName{Namespace: instance.Namespace, Name: "controller-0"}
-		err := r.Client.Get(context.TODO(), host_namespace, host_instance)
-		if err != nil {
-			logAddressPool.Error(err, "Failed to get host resource from namespace")
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
+			if err != nil {
+				msg := "failed to get active host"
+				logPlatformNetwork.Error(err, msg)
+				return common.NewUserDataError(msg)
+			}
+
+			host_instance.Status.InSync = false
+			host_instance.Status.Reconciled = false
+			err = r.Client.Status().Update(context.TODO(), host_instance)
+			if err != nil {
+				msg := fmt.Sprintf("Failed to update '%s' host instance status", host_instance.Name)
+				logPlatformNetwork.Error(err, msg)
+				return common.NewResourceConfigurationDependency(msg)
+			}
+
+			// Set Generation = ObservedGeneration only when active
+			// host controller is successfully notified.
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				msg := fmt.Sprintf(
+					"Failed to update '%s' platformnetwork instance observed generation, attempting retry.",
+					instance.Name)
+				logPlatformNetwork.Error(err, msg)
+				return common.NewResourceConfigurationDependency(msg)
+			}
 		}
 
-		host_instance.Status.InSync = false
-		host_instance.Status.Reconciled = false
-		err = r.Client.Status().Update(context.TODO(), host_instance)
-		if err != nil {
-			logAddressPool.Error(err, "Failed to update status")
-			return err
-		}
 		return nil
 	} else {
 		// Remove the finalizer so the kubernetes delete operation can
@@ -97,7 +113,7 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 		}
 	}
 
-	return err
+	return nil
 }
 
 // StopAfterInSync determines whether the reconciler should continue processing
@@ -179,11 +195,6 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
 			}
 		}
-		// if instance.Spec.NetworkType == "mgmt" {
-		// 	instance.Spec.NetworkType = "oam"
-		// 	instance.Spec.IPAllocationType = "static"
-		// }
-		logPlatformNetwork.Info(fmt.Sprintf("%+v", instance))
 		return r.Client.Update(context.TODO(), instance)
 	})
 	if err != nil {
@@ -221,9 +232,7 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 					instance.Status.Reconciled = false
 				}
 			}
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 		}
-		logPlatformNetwork.Info(fmt.Sprintf("%+v", instance))
 		return r.Client.Status().Update(context.TODO(), instance)
 	})
 
@@ -251,7 +260,6 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 	logPlatformNetwork = logPlatformNetwork.WithName(request.NamespacedName.String())
 	defer func() { logPlatformNetwork = savedLog }()
 
-	logPlatformNetwork.Info("Triggered Reconcile AddressPool")
 	// Fetch the DataNetwork instance
 	instance := &starlingxv1.PlatformNetwork{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
@@ -328,19 +336,17 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return common.RetrySystemNotReady, nil
 	}
 
-	// SetPlatformNetworkReconciling(true) so that host reconciler waits for platform
-	// network reconciler to complete its reconciliation before Host reconciler
-	// propagates unlock_required strategy update.
-	r.CloudManager.SetPlatformNetworkReconciling(true)
+	if !r.CloudManager.IsNotifyingActiveHost() {
+		r.CloudManager.SetNotifyingActiveHost(true)
+		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
+		r.CloudManager.SetNotifyingActiveHost(false)
+	} else {
+		err = common.NewHostNotifyError("waiting to notify active host")
+	}
 
-	err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
-
-	// SetPlatformNetworkReconciling(false) if platform network reconciliation is successful.
-	// This would allow Host reconciler to send unlock_required strategy update.
-	r.CloudManager.SetPlatformNetworkReconciling(false)
 
 	return ctrl.Result{}, nil
 }
@@ -385,7 +391,6 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 			instance.Status.Reconciled = true
 			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 			instance.Status.DeploymentScope = "bootstrap"
-			instance.Status.StrategyRequired = "not_required"
 			err = r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
 				log_err_msg := fmt.Sprintf(

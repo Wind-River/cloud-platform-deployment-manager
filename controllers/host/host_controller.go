@@ -139,6 +139,20 @@ const (
 	passwordKey = "password"
 )
 
+func (r *HostReconciler) IsActiveHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, request_namespace string) (bool, error) {
+	host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
+	if err != nil {
+		msg := "failed to get active host"
+		return false, common.NewUserDataError(msg)
+	}
+
+	if host_instance.Name == instance.Name {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // getBMPasswordCredentials is a utility to retrieve the host's board management
 // credentials from the information stored in the specified secret.
 func (r *HostReconciler) getBMPasswordCredentials(namespace string, name string) (username, password string, err error) {
@@ -1143,10 +1157,6 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			logHost.Info("no disabled attribute changes required")
 		}
 
-		if r.CloudManager.IsPlatformNetworkReconciling() {
-			return common.NewResourceConfigurationDependency("waiting for platform networks to reconcile")
-		}
-
 		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
 			if principal || strategy_required {
 				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
@@ -1492,10 +1502,10 @@ func (r *HostReconciler) StopAfterInSync() bool {
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
 // existing host.
-func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host) error {
+func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host, request_namespace string) error {
 	var defaults *starlingxv1.HostProfileSpec
 	var current *starlingxv1.HostProfileSpec
-
+	var platform_network_subreconciler_errs []error
 	if !host.Stable() {
 		msg := "waiting for a stable state for existing host"
 		m := NewStableHostMonitor(instance, host.ID)
@@ -1596,9 +1606,44 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		SyncIFNameByUuid(profile, current)
 	}
 
-	err = r.ReconcilePlatformNetworks(client, instance, profile, &hostInfo)
+	is_active_host, err := r.IsActiveHost(client, instance, request_namespace)
 	if err != nil {
 		return err
+	}
+
+	if is_active_host {
+		system_info, err := r.CloudManager.GetSystemInfo(request_namespace, client)
+		if err != nil {
+			msg := "failed to get active host"
+			return common.NewUserDataError(msg)
+		}
+
+		// Only reconcile platform networks in active controller reconciliation
+		// loops to prevent concurrency issues.
+		// Also within active controller prevent potential concurrent reconciliation
+		// if IsPlatformNetworkReconciling.
+		if !r.CloudManager.IsPlatformNetworkReconciling() {
+			r.CloudManager.SetPlatformNetworkReconciling(true)
+
+			// Do not allow notifying active host until ReconcilePlatformNetworks
+			// is completed, this is to prevent unnecessary status update conflicts
+			// in addrpools and platform network resources.
+			r.CloudManager.SetNotifyingActiveHost(true)
+
+			platform_network_subreconciler_errs = r.ReconcilePlatformNetworks(client, instance, profile, &hostInfo, system_info)
+
+			r.CloudManager.SetPlatformNetworkReconciling(false)
+			r.CloudManager.SetNotifyingActiveHost(false)
+
+			if len(platform_network_subreconciler_errs) != 0 {
+				err_msg := "there were errors during platform network reconciliation"
+				return common.NewPlatformNetworkReconciliationError(err_msg)
+			}
+
+		} else {
+			err_msg := "waiting for platform network reconciled."
+			return common.NewPlatformNetworkReconciliationError(err_msg)
+		}
 	}
 
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
@@ -1716,7 +1761,7 @@ func (r *HostReconciler) ReconcileResource(
 	client *gophercloud.ServiceClient,
 	instance *starlingxv1.Host,
 	profile *starlingxv1.HostProfileSpec,
-) (err error) {
+	request_namespace string) (err error) {
 	var host *hosts.Host
 	var inSync bool
 
@@ -1793,7 +1838,10 @@ func (r *HostReconciler) ReconcileResource(
 	}
 
 	// Check that the current configuration of a host matches the desired state.
-	err = r.ReconcileExistingHost(client, instance, profile, host)
+	// This also captures errors from platform network subreconciler separately
+	// thus enabling conditional handling of certain errors coming from
+	// platform network subreconciler in future.
+	err = r.ReconcileExistingHost(client, instance, profile, host, request_namespace)
 
 	inSync = err == nil
 	oldInSync := instance.Status.InSync
@@ -2213,7 +2261,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		logHost.V(2).Info("not storage node or in ceph primary group. continue")
 	}
 
-	err = r.ReconcileResource(platformClient, instance, profile)
+	err = r.ReconcileResource(platformClient, instance, profile, request.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
