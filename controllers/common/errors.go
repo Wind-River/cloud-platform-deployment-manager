@@ -79,6 +79,21 @@ type ChangeAfterReconciled struct {
 	BaseError
 }
 
+// PlatformNetworkReconciliationError defines an error to be used when reconciliation
+// of platform network / address pool resources fail and the reconciliation request
+// needs to be requeued.
+type PlatformNetworkReconciliationError struct {
+	BaseError
+}
+
+// HostNotifyError defines an error to be used when active host controller
+// is already being notified while the address pool / platform network
+// reconciler attempts to notify.
+// Reconciliation request can be requeued immediately for such instances.
+type HostNotifyError struct {
+	BaseError
+}
+
 // NewSystemDependency defines a constructor for the ErrSystemDependency error
 // type.
 func NewSystemDependency(msg string) error {
@@ -123,4 +138,16 @@ func NewHTTPSClientRequired(msg string) error {
 // type.
 func NewChangeAfterInSync(msg string) error {
 	return ChangeAfterReconciled{BaseError{msg}}
+}
+
+// NewPlatformNetworkReconciliationError defines a constructor for the
+// PlatformNetworkReconciliationError error type.
+func NewPlatformNetworkReconciliationError(msg string) error {
+	return PlatformNetworkReconciliationError{BaseError{msg}}
+}
+
+// NewHostNotifyError defines a constructor for the
+// HostNotifyError error type.
+func NewHostNotifyError(msg string) error {
+	return HostNotifyError{BaseError{msg}}
 }
