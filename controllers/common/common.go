@@ -382,6 +382,24 @@ func (in *EventLogger) WarningEvent(object runtime.Object, reason string, messag
 	in.event(object, v1.EventTypeWarning, 1, reason, messageFmt, args...)
 }
 
+// removes unnecessary certs
+func FilterCertsFromSpec(spec *starlingxv1.SystemSpec) {
+	result := make([]starlingxv1.CertificateInfo, 0)
+	for _, c := range *spec.Certificates {
+		if c.Type == starlingxv1.PlatformCertificate || c.Type == starlingxv1.OpenstackCACertificate ||
+			c.Type == starlingxv1.DockerCertificate || c.Type == starlingxv1.OpenLDAPCertificate {
+			continue
+		}
+		result = append(result, c)
+	}
+	if len(result) > 0 {
+		list := starlingxv1.CertificateList(result)
+		spec.Certificates = &list
+	} else {
+		spec.Certificates = nil
+	}
+}
+
 func GetDeltaString(spec interface{}, current interface{}, parameters map[string]interface{}) (string, error) {
 
 	specBytes, err := json.Marshal(spec)

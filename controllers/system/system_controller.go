@@ -1033,6 +1033,9 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 
 	logSystem.Info("current is:", "values", current)
 
+	//filters certs except ssl_ca from spec
+	common.FilterCertsFromSpec(spec)
+
 	deltaString, err := common.GetDeltaString(current, spec, common.SystemProperties)
 	if err != nil {
 		logSystem.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
