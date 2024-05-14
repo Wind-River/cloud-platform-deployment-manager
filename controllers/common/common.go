@@ -149,6 +149,7 @@ const (
 	ResourceDeleted    = "Deleted"
 	ResourceWait       = "Wait"
 	ResourceDependency = "Dependency"
+	ResourceNotified   = "Notified"
 )
 
 func FormatStruct(obj interface{}) string {
