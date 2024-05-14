@@ -4,7 +4,7 @@ package controllers
 
 import (
 	// "context"
-	"time"
+	// "time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -177,10 +177,10 @@ func SimulateVIMStrategyAction(hostname string, expect_strategy string) {
 
 var _ = Describe("Platformnetwork controller", func() {
 
-	const (
-		timeout  = time.Second * 10
-		interval = time.Millisecond * 250
-	)
+	// const (
+	// 	timeout  = time.Second * 10
+	// 	interval = time.Millisecond * 250
+	// )
 
 	// Context("PlatformNetwork with correct mgmt/admin/oam network data in Day-1", func() {
 	// 	It("Should be created successfully and Reconciled & InSync should be 'true'", func() {
