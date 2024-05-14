@@ -67,13 +67,15 @@ func (r *PlatformNetworkReconciler) UpdateInsyncStatus(client *gophercloud.Servi
 	return nil
 }
 
-// Fetch active controller's host instance and set
-// Reconciled/Insync to false only if Generation != ObservedGeneration.
+// Fetch active controller's host instance and increment annotation value of
+// deployment-manager/notifications only if Generation != ObservedGeneration
+// or there is a deploymentScope change.
 // Note that for deletion we are just cleaning up the finalizer and we
 // are not specifically deleting network object on the system.
-func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string) (err error) {
+func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string, scope_updated bool) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation ||
+			scope_updated {
 			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
 			if err != nil {
 				msg := "failed to get active host"
@@ -81,14 +83,17 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 				return common.NewUserDataError(msg)
 			}
 
-			host_instance.Status.InSync = false
-			host_instance.Status.Reconciled = false
-			err = r.Client.Status().Update(context.TODO(), host_instance)
+			err = r.CloudManager.NotifyResource(host_instance)
 			if err != nil {
-				msg := fmt.Sprintf("Failed to update '%s' host instance status", host_instance.Name)
+				msg := fmt.Sprintf("Failed to notify '%s' active host instance", host_instance.Name)
 				logPlatformNetwork.Error(err, msg)
 				return common.NewResourceConfigurationDependency(msg)
 			}
+
+			r.ReconcilerEventLogger.NormalEvent(host_instance,
+				common.ResourceNotified,
+				"Host has been notified due to '%s' platformnetwork update.",
+				instance.Name)
 
 			// Set Generation = ObservedGeneration only when active
 			// host controller is successfully notified.
@@ -160,6 +165,29 @@ func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.Platfor
 		}
 	}
 	return deploymentScope, nil
+}
+
+// UpdateDeploymentScope function is used to update the deployment scope when
+// Generation is same as ObservedGeneration.
+// Otherwise UpdateConfigStatus will update the deployment scope.
+func (r *PlatformNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.PlatformNetwork) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logPlatformNetwork.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logPlatformNetwork.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
 }
 
 // Update deploymentScope and ReconcileAfterInSync in instance
@@ -250,6 +278,7 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
 func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	var scope_updated bool
 	_ = log.FromContext(ctx)
 
 	// To reduce the repitition of adding the resource name to every log we
@@ -289,14 +318,23 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled {
-		return ctrl.Result{}, nil
+
+		// Update the deploymentScope if necessary when Generation is same
+		// as ObservedGeneration and instance is reconciled.
+		err, scope_updated = r.UpdateDeploymentScope(instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		} else if !scope_updated {
+			return ctrl.Result{}, nil
+		}
 	}
 
-	// Update scope from configuration
+	// Update scope from configuration when Generation is different from
+	// ObservedGeneration or the object is not reconciled yet.
 	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logPlatformNetwork.Error(err, "unable to update scope")
+		logPlatformNetwork.Error(err, "unable to update scope when generation is different from observed generation.")
 		return reconcile.Result{}, err
 	}
 	logPlatformNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -338,7 +376,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	if !r.CloudManager.IsNotifyingActiveHost() {
 		r.CloudManager.SetNotifyingActiveHost(true)
-		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
+		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace, scope_updated)
 		r.CloudManager.SetNotifyingActiveHost(false)
 	} else {
 		err = common.NewHostNotifyError("waiting to notify active host")
