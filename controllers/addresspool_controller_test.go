@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2024 Wind River Systems, Inc. */
 package controllers
 
 import (
@@ -13,40 +13,56 @@ import (
 	"time"
 )
 
-var _ = Describe("Platformnetwork controller", func() {
+var _ = Describe("AddressPool controller", func() {
 	const (
 		timeout  = time.Second * 10
 		interval = time.Millisecond * 250
 	)
 
-	Context("PlatformNetwork with data", func() {
+	Context("AddressPool with data", func() {
 		It("Should created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",
 				Namespace: "default",
 			}
-			created := &starlingxv1.PlatformNetwork{
+
+			floating_address := "10.10.10.2"
+			allocation_order := "random"
+			spec := starlingxv1.AddressPoolSpec{
+				Subnet:             "10.10.10.0",
+				FloatingAddress:    &floating_address,
+				Controller0Address: &floating_address,
+				Controller1Address: &floating_address,
+				Prefix:             24,
+				Gateway:            &floating_address,
+				Allocation: starlingxv1.AllocationInfo{
+					Order: &allocation_order,
+				},
+			}
+
+			spec.Allocation.Ranges = []starlingxv1.AllocationRange{starlingxv1.AllocationRange{
+				Start: floating_address,
+				End:   floating_address,
+			}}
+
+			created := &starlingxv1.AddressPool{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
 				},
-				Spec: starlingxv1.PlatformNetworkSpec{
-					Type:                   "mgmt",
-					Dynamic:                true,
-					AssociatedAddressPools: []string{"management-ipv4", "management-ipv6"},
-				}}
+				Spec: spec}
 			Expect(k8sClient.Create(ctx, created)).To(Succeed())
 
 			expected := created.DeepCopy()
 
-			fetched := &starlingxv1.PlatformNetwork{}
+			fetched := &starlingxv1.AddressPool{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, fetched)
 				return err == nil &&
 					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion
 			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PlatformNetworkFinalizerName})
+			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{AddressPoolFinalizerName})
 			Expect(found).To(BeTrue())
 		})
 	})
