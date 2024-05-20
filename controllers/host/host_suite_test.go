@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+// /* SPDX-License-Identifier: Apache-2.0 */
+// /* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package host
 
@@ -10,6 +10,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	"github.com/wind-river/cloud-platform-deployment-manager/controllers"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -18,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -73,6 +73,26 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Setup reconciler
+	// HostProfile
+	err = (&controllers.HostProfileReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	//AddressPool
+	err = (&controllers.AddressPoolReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	// PlatformNetwork
+	err = (&controllers.PlatformNetworkReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
 	// Host
 	err = (&HostReconciler{
 		Client: k8sManager.GetClient(),

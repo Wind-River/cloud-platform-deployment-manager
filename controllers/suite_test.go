@@ -24,7 +24,6 @@ import (
 	th "github.com/gophercloud/gophercloud/testhelper"
 	gcClient "github.com/gophercloud/gophercloud/testhelper/client"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	"github.com/wind-river/cloud-platform-deployment-manager/controllers/host"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	//+kubebuilder:scaffold:imports
 )
@@ -96,29 +95,29 @@ var _ = BeforeSuite(func() {
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	// HostProfile
-	err = (&HostProfileReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// Host
-	err = (&host.HostReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// PlatformNetwork
-	err = (&PlatformNetworkReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	// AddressPool
-	err = (&AddressPoolReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
+	// // HostProfile
+	// err = (&HostProfileReconciler{
+	// 	Client: k8sManager.GetClient(),
+	// 	Scheme: k8sManager.GetScheme(),
+	// }).SetupWithManager(k8sManager)
+	// Expect(err).ToNot(HaveOccurred())
+	// // Host
+	// err = (&host.HostReconciler{
+	// 	Client: k8sManager.GetClient(),
+	// 	Scheme: k8sManager.GetScheme(),
+	// }).SetupWithManager(k8sManager)
+	// Expect(err).ToNot(HaveOccurred())
+	// // PlatformNetwork
+	// err = (&PlatformNetworkReconciler{
+	// 	Client: k8sManager.GetClient(),
+	// 	Scheme: k8sManager.GetScheme(),
+	// }).SetupWithManager(k8sManager)
+	// // AddressPool
+	// err = (&AddressPoolReconciler{
+	// 	Client: k8sManager.GetClient(),
+	// 	Scheme: k8sManager.GetScheme(),
+	// }).SetupWithManager(k8sManager)
+	// Expect(err).ToNot(HaveOccurred())
 	// PtpInstance
 	err = (&PtpInstanceReconciler{
 		Client: k8sManager.GetClient(),
