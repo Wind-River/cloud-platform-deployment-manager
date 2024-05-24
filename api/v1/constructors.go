@@ -1432,16 +1432,17 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 	return &ptpInterface, nil
 }
 
-func NewPlatformNetworkSpec(pool addresspools.AddressPool, network networks.Network) (*PlatformNetworkSpec, error) {
+func NewPlatformNetworkSpec(associatedAddressPools []string, network networks.Network) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
-		Type:    network.Type,
-		Dynamic: network.Dynamic,
+		Type:                   network.Type,
+		Dynamic:                network.Dynamic,
+		AssociatedAddressPools: associatedAddressPools,
 	}
 
 	return &spec, nil
 }
 
-func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network networks.Network) (*PlatformNetwork, error) {
+func NewPlatformNetwork(namespace string, associatedAddressPools []string, network networks.Network) (*PlatformNetwork, error) {
 	platformNetwork := PlatformNetwork{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
@@ -1456,7 +1457,7 @@ func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network
 		},
 	}
 
-	spec, err := NewPlatformNetworkSpec(pool, network)
+	spec, err := NewPlatformNetworkSpec(associatedAddressPools, network)
 	if err != nil {
 		return nil, err
 	}
