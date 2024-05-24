@@ -230,21 +230,35 @@ var _ = Describe("Test filters utilities:", func() {
 	Describe("Test platform network filters", func() {
 		deployment := Deployment{}
 		deployment.PlatformNetworks = make([]*v1.PlatformNetwork, 0)
+		deployment.AddressPools = make([]*v1.AddressPool, 0)
 		coreNetworkFilter := NewCoreNetworkFilter()
-		var get_platform_network = func(nwk_type string) *v1.PlatformNetwork {
+		var get_platform_network = func(nwk_type string, associatedAddressPools []string) *v1.PlatformNetwork {
 			spec := v1.PlatformNetworkSpec{
-				Type: nwk_type,
+				Type:                   nwk_type,
+				AssociatedAddressPools: associatedAddressPools,
 			}
 			new_plat_nwk := v1.PlatformNetwork{}
 			new_plat_nwk.Spec = spec
 			return &new_plat_nwk
 		}
-		deployment.PlatformNetworks = []*v1.PlatformNetwork{
-			get_platform_network("oam"),
-			get_platform_network("mgmt"),
-			get_platform_network("admin"),
-			get_platform_network("storage")}
-
+		var get_associated_address_pool = func(pool_name string) *v1.AddressPool {
+			spec := v1.AddressPoolSpec{
+				Subnet: "192.168.11.32",
+			}
+			new_address_pool := v1.AddressPool{}
+			new_address_pool.Name = pool_name
+			new_address_pool.Spec = spec
+			return &new_address_pool
+		}
+		network_types := []string{"oam", "mgmt", "admin", "storage"}
+		ip_families := []string{"ipv4", "ipv6"}
+		for _, net_type := range network_types {
+			associated_pools := []string{net_type + "-ipv4", net_type + "-ipv6"}
+			deployment.PlatformNetworks = append(deployment.PlatformNetworks, get_platform_network(net_type, associated_pools))
+			for _, ip_family := range ip_families {
+				deployment.AddressPools = append(deployment.AddressPools, get_associated_address_pool(net_type+"-"+ip_family))
+			}
+		}
 		Context("when new core network filter", func() {
 			It("should return a CoreNetworkFilter", func() {
 				got := coreNetworkFilter
@@ -258,6 +272,7 @@ var _ = Describe("Test filters utilities:", func() {
 				err := coreNetworkFilter.Filter(deployment.PlatformNetworks[0], &deployment)
 				Expect(err).To(BeNil())
 				Expect(len(deployment.PlatformNetworks)).To(Equal(1), "CoreNetworkFilter should not delete any platform networks other than oam/mgmt/admin")
+				Expect(len(deployment.AddressPools)).To(Equal(2))
 			})
 		})
 
