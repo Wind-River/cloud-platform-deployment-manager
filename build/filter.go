@@ -740,24 +740,15 @@ func NewCoreNetworkFilter() *CoreNetworkFilter {
 
 func (in *CoreNetworkFilter) Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error {
 	filtered_platform_networks := []*v1.PlatformNetwork{}
-	filtered_address_pools := []*v1.AddressPool{}
 	for _, pn := range deployment.PlatformNetworks {
 		if !(pn.Spec.Type == oamNetwork ||
 			pn.Spec.Type == mgmtNetwork ||
 			pn.Spec.Type == adminNetwork) {
 			filtered_platform_networks = append(filtered_platform_networks, pn)
-			for _, name := range pn.Spec.AssociatedAddressPools {
-				for _, pool := range deployment.AddressPools {
-					if name == pool.Name {
-						filtered_address_pools = append(filtered_address_pools, pool)
-					}
-				}
-			}
 		}
 	}
 
 	deployment.PlatformNetworks = filtered_platform_networks
-	deployment.AddressPools = filtered_address_pools
 	return nil
 }
 
