@@ -5,7 +5,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -14,6 +13,7 @@ import (
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -56,40 +56,27 @@ func (r *AddressPoolReconciler) UpdateInsyncStatus(client *gophercloud.ServiceCl
 	return nil
 }
 
-// Fetch active controller's host instance and set
+// ReconcileResource interacts with the system API in order to reconcile the
+// state of a data network with the state stored in the k8s database.
+// TODO(sriram-gn): Fetch active controller's host instance and set
 // Reconciled/Insync to false only if Generation != ObservedGeneration.
-// Note that for deletion we are just cleaning up the finalizer and we
-// are not specifically deleting addresspool object on the system.
 func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.AddressPool, request_namespace string) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
-			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
-			if err != nil {
-				msg := "failed to get active host"
-				return common.NewUserDataError(msg)
-			}
-
-			host_instance.Status.InSync = false
-			host_instance.Status.Reconciled = false
-			err = r.Client.Status().Update(context.TODO(), host_instance)
-			if err != nil {
-				msg := fmt.Sprintf("Failed to update '%s' host instance status", host_instance.Name)
-				logAddressPool.Error(err, msg)
-				return common.NewResourceConfigurationDependency(msg)
-			}
-
-			// Set Generation = ObservedGeneration only when active
-			// host controller is successfully notified.
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-			err = r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				msg := fmt.Sprintf(
-					"Failed to update '%s' addresspool instance observed generation, attempting retry.",
-					instance.Name)
-				logAddressPool.Error(err, msg)
-				return common.NewResourceConfigurationDependency(msg)
-			}
+		host_instance := &starlingxv1.Host{}
+		host_namespace := types.NamespacedName{Namespace: instance.Namespace, Name: "controller-0"}
+		err := r.Client.Get(context.TODO(), host_namespace, host_instance)
+		if err != nil {
+			logAddressPool.Error(err, "Failed to get host resource from namespace")
 		}
+
+		host_instance.Status.InSync = false
+		host_instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), host_instance)
+		if err != nil {
+			logAddressPool.Error(err, "Failed to update status")
+			return err
+		}
+		return nil
 	} else {
 		// Remove the finalizer so the kubernetes delete operation can
 		// continue.
@@ -99,7 +86,7 @@ func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceCli
 		}
 	}
 
-	return nil
+	return err
 }
 
 // Reconcile reads that state of the cluster for a AddressPool object and makes changes based on the state read
@@ -167,14 +154,7 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return common.RetrySystemNotReady, nil
 	}
 
-	if !r.CloudManager.IsNotifyingActiveHost() {
-		r.CloudManager.SetNotifyingActiveHost(true)
-		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
-		r.CloudManager.SetNotifyingActiveHost(false)
-	} else {
-		err = common.NewHostNotifyError("waiting to notify active host")
-	}
-
+	err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}

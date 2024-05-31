@@ -10,7 +10,6 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -352,12 +351,6 @@ func (m *Dummymanager) StartMonitor(monitor *Monitor, message string) error {
 func (m *Dummymanager) CancelMonitor(object client.Object) {
 
 }
-func (m *Dummymanager) GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error) {
-	return nil, nil
-}
-func (m *Dummymanager) GetSystemInfo(namespace string, client *gophercloud.ServiceClient) (*SystemInfo, error) {
-	return nil, nil
-}
 func (m *Dummymanager) SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string) {
 
 }
@@ -415,12 +408,6 @@ func (m *Dummymanager) IsPlatformNetworkReconciling() bool {
 	return false
 }
 func (m *Dummymanager) SetPlatformNetworkReconciling(status bool) {
-
-}
-func (m *Dummymanager) IsNotifyingActiveHost() bool {
-	return false
-}
-func (m *Dummymanager) SetNotifyingActiveHost(status bool) {
 
 }
 func (m *Dummymanager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {

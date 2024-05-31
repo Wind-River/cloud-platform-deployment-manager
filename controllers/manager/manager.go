@@ -9,10 +9,8 @@ import (
 	"strconv"
 	"sync"
 
-	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -24,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"strings"
 )
 
 var log = logf.Log.WithName("manager")
@@ -56,12 +53,10 @@ const (
 // Note that the AdminNetworkType is being referenced from host controller as well
 // as platform network controller.
 const (
-	OAMNetworkType         = "oam"
-	MgmtNetworkType        = "mgmt"
-	AdminNetworkType       = "admin"
-	MgmtAddrPoolName       = "management"
-	PXEBootNetworkType     = "pxeboot"
-	ClusterHostNetworkType = "cluster-host"
+	OAMNetworkType   = "oam"
+	MgmtNetworkType  = "mgmt"
+	AdminNetworkType = "admin"
+	MgmtAddrPoolName = "management"
 )
 
 const (
@@ -103,8 +98,6 @@ type CloudManager interface {
 	GetSystemType(namespace string) SystemType
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object client.Object)
-	GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error)
-	GetSystemInfo(namespace string, client *gophercloud.ServiceClient) (*SystemInfo, error)
 
 	// Strategy related methods
 	SetResourceInfo(resourcetype string, personality string, resourcename string, reconciled bool, required string)
@@ -125,8 +118,6 @@ type CloudManager interface {
 	GetStrategyRetryCount() (int, error)
 	IsPlatformNetworkReconciling() bool
 	SetPlatformNetworkReconciling(status bool)
-	IsNotifyingActiveHost() bool
-	SetNotifyingActiveHost(status bool)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -155,11 +146,6 @@ type SystemNamespace struct {
 	client     *gophercloud.ServiceClient
 	ready      bool
 	systemType SystemType
-}
-
-type SystemInfo struct {
-	SystemType SystemType
-	SystemMode SystemMode
 }
 
 // Strategy related consts and defines
@@ -209,7 +195,6 @@ type PlatformManager struct {
 	strategyStatus                  *StrategyStatus
 	vimClient                       *gophercloud.ServiceClient
 	PlatformNetworkReconcilerStatus bool
-	NotifyActiveHostStatus          bool
 	GetPlatformClientImpl           func(namespace string) *gophercloud.ServiceClient
 }
 
@@ -358,9 +343,6 @@ var systemDependencies = []schema.GroupVersionKind{
 		Kind:    v1.KindPlatformNetwork},
 	{Group: v1.Group,
 		Version: v1.Version,
-		Kind:    v1.KindAddressPool},
-	{Group: v1.Group,
-		Version: v1.Version,
 		Kind:    v1.KindDataNetwork},
 	{Group: v1.Group,
 		Version: v1.Version,
@@ -387,7 +369,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 		for _, obj := range objects.Items {
 			switch obj.GetKind() {
-			case v1.KindHost, v1.KindHostProfile, v1.KindPlatformNetwork, v1.KindAddressPool, v1.KindDataNetwork, v1.KindPTPInstance, v1.KindPTPInterface:
+			case v1.KindHost, v1.KindHostProfile, v1.KindPlatformNetwork, v1.KindDataNetwork, v1.KindPTPInstance, v1.KindPTPInterface:
 				annotations := obj.GetAnnotations()
 				if annotations == nil {
 					annotations = make(map[string]string)
@@ -609,61 +591,6 @@ func (m *PlatformManager) CancelMonitor(object client.Object) {
 		monitor.Stop()
 		delete(m.monitors, key)
 	}
-}
-
-func (m *PlatformManager) GetSystemInfo(namespace string, client *gophercloud.ServiceClient) (*SystemInfo, error) {
-	system_info := &SystemInfo{}
-
-	default_system, err := system.GetDefaultSystem(client)
-	if err != nil {
-		log.Error(err, "failed to query host list")
-		return system_info, err
-	}
-
-	if default_system.SystemMode == "" || default_system.SystemType == "" {
-		err_msg := "Expected values for both 'system_mode' and 'system_type' from system API"
-		err = perrors.New(err_msg)
-		log.Error(err, "unexpected API response")
-		return system_info, err
-	}
-
-	system_info.SystemMode = SystemMode(strings.ToLower(default_system.SystemMode))
-	system_info.SystemType = SystemType(strings.ToLower(default_system.SystemType))
-
-	return system_info, nil
-
-}
-
-func (m *PlatformManager) GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error) {
-	host_instance := &v1.Host{}
-
-	host_list, err := hosts.ListHosts(client)
-	if err != nil {
-		log.Error(err, "failed to query host list")
-		return host_instance, err
-	}
-
-	for _, host := range host_list {
-		if host.Capabilities.Personality != nil {
-			if *host.Capabilities.Personality == "Controller-Active" {
-				host_namespace := types.NamespacedName{Namespace: namespace, Name: host.Hostname}
-				err = m.GetClient().Get(context.TODO(), host_namespace, host_instance)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("failed to fetch host instance: %s", host.Hostname))
-					return host_instance, err
-				}
-				break
-			}
-		}
-	}
-
-	if host_instance.Name == "" {
-		err = perrors.New("None of the controllers are active at this point")
-		return host_instance, err
-	}
-
-	return host_instance, nil
-
 }
 
 func (m *PlatformManager) StartStrategyMonitor() {
@@ -889,18 +816,6 @@ func (m *PlatformManager) SetPlatformNetworkReconciling(status bool) {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 	m.PlatformNetworkReconcilerStatus = status
-}
-
-func (m *PlatformManager) IsNotifyingActiveHost() bool {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	return m.NotifyActiveHostStatus
-}
-
-func (m *PlatformManager) SetNotifyingActiveHost(status bool) {
-	m.lock.Lock()
-	defer func() { m.lock.Unlock() }()
-	m.NotifyActiveHostStatus = status
 }
 
 // GcCreate is wrapper function for systemconfigupdate Create
