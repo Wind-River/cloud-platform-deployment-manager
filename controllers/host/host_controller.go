@@ -2011,7 +2011,7 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 	return deploymentScope, nil
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
@@ -2021,6 +2021,8 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // - Set ConfigurationUpdated true
 // - Set Reconciled false (since it is going to reconcile with new configuration)
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *HostReconciler) UpdateConfigStatus(
 	profile *starlingxv1.HostProfileSpec,
 	instance *starlingxv1.Host,
@@ -2033,18 +2035,12 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if err != nil {
 			return err
 		}
-		logHost.V(2).Info("update config before", "instance", instance)
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -2070,14 +2066,6 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if err != nil {
 			return err
 		}
-		logHost.V(2).Info("update status before", "instance", instance)
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -2198,11 +2186,19 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
 		instance.Status.DeploymentScope == "bootstrap" &&
 		!platformnetwork_update_required {
-		return ctrl.Result{}, nil
+
+		if !scope_updated {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	if instance.DeletionTimestamp.IsZero() {
@@ -2246,11 +2242,11 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
+	// Update ReconciledAfterInSync and ObservedGeneration
 	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(profile, instance)
 	if err != nil {
-		logHost.Error(err, "unable to update scope")
+		logHost.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -2454,6 +2450,32 @@ func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_i
 	m := NewLockedDisabledHostMonitor(host_instance, host_id)
 	return r.CloudManager.StartMonitor(m, msg)
 
+}
+
+// UpdateDeploymentScope function is used to update the deployment scope.
+func (r *HostReconciler) UpdateDeploymentScope(instance *starlingxv1.Host) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logHost.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	// Set default value for StrategyRequired otherwise status update will fail.
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logHost.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
 }
 
 // SetupWithManager sets up the controller with the Manager.
