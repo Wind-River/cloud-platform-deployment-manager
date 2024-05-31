@@ -286,20 +286,6 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		err = nil
 
 		h.Info("waiting for dependency status", "request", request)
-	case HostNotifyError:
-		resetClient = false
-		result = RetryImmediate
-		err = nil
-		h.V(2).Info("waiting to notify active host controller", "request", request)
-
-	case PlatformNetworkReconciliationError:
-		// This error is related to failure of platform network reconciliation
-		// which is most likely a transient error condition.
-		resetClient = false
-		result = RetryTransientError
-		err = nil
-
-		h.Info("waiting to reconcile platform networks", "request", request)
 
 	case manager.ClientError, ErrUserDataError,
 		starlingxv1.ErrMissingSystemResource, ErrMissingKubernetesResource:

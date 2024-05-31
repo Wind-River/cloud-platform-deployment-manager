@@ -4,8 +4,6 @@
 package common
 
 import (
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
-	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"net"
 	"regexp"
 )
@@ -165,72 +163,3 @@ func DedupeSlice[T comparable](sliceList []T) []T {
     return list
 }
 */
-
-func NormalizeIPv6(address string) string {
-	var ret_ip string
-	ip := net.ParseIP(address)
-	if ip == nil {
-		// The address doesn't seem to be valid IPv6.
-		// Returning the address as is because semantic checks are
-		// beyond the scope of this function.
-		// Use it with along with "IsIPv6" function instead.
-		return address
-	}
-	ret_ip = ip.String()
-	return ret_ip
-}
-
-// IsIPAddressSame compares two addresses and returns
-// true when IP addresses are same and false when they
-// are not the same.
-func IsIPAddressSame(ip1 string, ip2 string) bool {
-	if ip1 != "" && IsIPv6(ip1) {
-		// Normalization of IP address is required in case of
-		// IPv6 due to different notations that could be employed.
-		// Example: fcff:1::0 is same as fcff:1:0:0:0::0 but string
-		// comparison would fail if IPs are not normalized.
-		ip1 = NormalizeIPv6(ip1)
-	}
-
-	if ip2 != "" && IsIPv6(ip2) {
-		ip2 = NormalizeIPv6(ip2)
-	}
-
-	return ip1 == ip2
-}
-
-func GetSystemAddrPoolByUUID(addrpool_list []addresspools.AddressPool, addrpool_uuid string) *addresspools.AddressPool {
-	for _, addrpool := range addrpool_list {
-		if addrpool.ID == addrpool_uuid {
-			return &addrpool
-		}
-	}
-	return nil
-}
-
-func GetSystemAddrPoolByName(addrpool_list []addresspools.AddressPool, addrpool_name string) *addresspools.AddressPool {
-	for _, addrpool := range addrpool_list {
-		if addrpool.Name == addrpool_name {
-			return &addrpool
-		}
-	}
-	return nil
-}
-
-func GetSystemNetworkByUUID(network_list []networks.Network, network_uuid string) *networks.Network {
-	for _, network := range network_list {
-		if network.UUID == network_uuid {
-			return &network
-		}
-	}
-	return nil
-}
-
-func GetSystemNetworkByName(network_list []networks.Network, network_name string) *networks.Network {
-	for _, network := range network_list {
-		if network.Name == network_name {
-			return &network
-		}
-	}
-	return nil
-}
