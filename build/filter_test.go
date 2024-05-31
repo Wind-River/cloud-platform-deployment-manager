@@ -232,8 +232,26 @@ var _ = Describe("Test filters utilities:", func() {
 		deployment.PlatformNetworks = make([]*v1.PlatformNetwork, 0)
 		coreNetworkFilter := NewCoreNetworkFilter()
 		var get_platform_network = func(nwk_type string) *v1.PlatformNetwork {
+			gw := "10.10.10.1"
+			order := "random"
 			spec := v1.PlatformNetworkSpec{
-				Type: nwk_type,
+				Type:               nwk_type,
+				Subnet:             "10.10.10.0",
+				FloatingAddress:    "10.10.10.2",
+				Controller0Address: "10.10.10.3",
+				Controller1Address: "10.10.10.4",
+				Prefix:             24,
+				Gateway:            &gw,
+				Allocation: v1.AllocationInfo{
+					Type:  "dynamic",
+					Order: &order,
+					Ranges: []v1.AllocationRange{
+						v1.AllocationRange{
+							Start: "10.10.10.2",
+							End:   "10.10.10.50",
+						},
+					},
+				},
 			}
 			new_plat_nwk := v1.PlatformNetwork{}
 			new_plat_nwk.Spec = spec

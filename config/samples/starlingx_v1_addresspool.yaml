@@ -1,6 +1,0 @@
-apiVersion: starlingx.windriver.com/v1
-kind: AddressPool
-metadata:
-  name: addresspool-sample
-spec:
-  # TODO(user): Add fields here

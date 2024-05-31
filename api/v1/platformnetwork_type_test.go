@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -19,22 +19,30 @@ var _ = Describe("Platformnetwork controller", func() {
 		interval = time.Millisecond * 250
 	)
 
-	Context("PlatformNetwork with all data", func() {
-		It("Should be created successfully", func() {
+	Context("PlatformNetwork with data", func() {
+		It("Should created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",
 				Namespace: "default",
 			}
+			order := "sequential"
 			created := &PlatformNetwork{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
 				},
 				Spec: PlatformNetworkSpec{
-					Type:                   "mgmt",
-					Dynamic:                true,
-					AssociatedAddressPools: []string{"mgmt-ipv4", "mgmt-ipv6"},
+					Type:   "mgmt",
+					Subnet: "1.2.3.0",
+					Prefix: 24,
+					Allocation: AllocationInfo{
+						Type:  "static",
+						Order: &order,
+						Ranges: []AllocationRange{
+							{Start: "1.2.3.10", End: "1.2.3.49"},
+							{Start: "1.2.3.129", End: "1.2.3.139"}},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, created)).Should(Succeed())
@@ -62,87 +70,6 @@ var _ = Describe("Platformnetwork controller", func() {
 				err := k8sClient.Get(ctx, key, fetched)
 				return err == nil
 			}, timeout, interval).Should(BeFalse())
-		})
-	})
-
-	Context("Create PlatformNetwork Without NetworkType", func() {
-		It("Should fail", func() {
-			ctx := context.Background()
-			created := &PlatformNetwork{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				Spec: PlatformNetworkSpec{
-					Type:                   "dynamic",
-					AssociatedAddressPools: []string{"mgmt-ipv4", "mgmt-ipv6"},
-				},
-			}
-			Expect(k8sClient.Create(ctx, created)).ShouldNot(Succeed())
-		})
-	})
-
-	Context("Create PlatformNetwork Without Dynamic", func() {
-		It("PlatformNetwork.Spec.Dynamic should be false", func() {
-			ctx := context.Background()
-			created := &PlatformNetwork{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				Spec: PlatformNetworkSpec{
-					Type:                   "mgmt",
-					AssociatedAddressPools: []string{"mgmt-ipv4", "mgmt-ipv6"},
-				},
-			}
-			Expect(k8sClient.Create(ctx, created)).Should(Succeed())
-
-			fetched := &PlatformNetwork{}
-			key := types.NamespacedName{
-				Name:      "foo",
-				Namespace: "default",
-			}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-			Expect(fetched.Spec.Dynamic).To(BeFalse())
-
-		})
-	})
-
-	Context("Create PlatformNetwork Without AssociatedAddressPools", func() {
-		It("Should fail", func() {
-			ctx := context.Background()
-			created := &PlatformNetwork{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				Spec: PlatformNetworkSpec{
-					Type:    "mgmt",
-					Dynamic: true,
-				},
-			}
-			Expect(k8sClient.Create(ctx, created)).ShouldNot(Succeed())
-		})
-	})
-
-	Context("Create PlatformNetwork With Random NetworkType", func() {
-		It("Should fail", func() {
-			ctx := context.Background()
-			created := &PlatformNetwork{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				Spec: PlatformNetworkSpec{
-					Type:                   "abc",
-					Dynamic:                false,
-					AssociatedAddressPools: []string{"mgmt-ipv4", "mgmt-ipv6"},
-				},
-			}
-			Expect(k8sClient.Create(ctx, created)).ShouldNot(Succeed())
 		})
 	})
 })
