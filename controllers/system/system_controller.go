@@ -1424,11 +1424,13 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 	return deploymentScope, nil
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -1438,17 +1440,12 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -1472,15 +1469,6 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 		if err != nil {
 			return err
 		}
-
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -1597,13 +1585,21 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
 		platformClient != nil {
-		return ctrl.Result{}, nil
+
+		if !scope_updated {
+			return ctrl.Result{}, nil
+		}
 	}
 
-	// Update scope from configuration
+	// Update ReconciledAfterInSync and ObservedGeneration
 	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
 
 	// Filter out certificates with type other than "ssl_ca"
@@ -1625,7 +1621,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logSystem.Error(err, "unable to update scope")
+		logSystem.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -1670,6 +1666,32 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// UpdateDeploymentScope function is used to update the deployment scope.
+func (r *SystemReconciler) UpdateDeploymentScope(instance *starlingxv1.System) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logSystem.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	// Set default value for StrategyRequired otherwise status update will fail.
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logSystem.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
 }
 
 // SetupWithManager sets up the controller with the Manager.

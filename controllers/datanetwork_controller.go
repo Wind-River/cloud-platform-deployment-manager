@@ -402,11 +402,13 @@ func (r *DataNetworkReconciler) GetScopeConfig(instance *starlingxv1.DataNetwork
 	return deploymentScope, nil
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNetwork) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -416,17 +418,12 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logDataNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -451,14 +448,6 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 		if err != nil {
 			return err
 		}
-
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logDataNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -536,15 +525,22 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation && instance.Status.Reconciled {
-		return ctrl.Result{}, nil
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation && instance.Status.Reconciled {
+		if !scope_updated {
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// Update ReconciledAfterInSync and ObservedGeneration
 	logDataNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logDataNetwork.Error(err, "unable to update scope")
+		logDataNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logDataNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -590,6 +586,32 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// UpdateDeploymentScope function is used to update the deployment scope.
+func (r *DataNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.DataNetwork) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logDataNetwork.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	// Set default value for StrategyRequired otherwise status update will fail.
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logDataNetwork.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
 }
 
 // SetupWithManager sets up the controller with the Manager.

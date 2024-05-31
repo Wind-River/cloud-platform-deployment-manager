@@ -167,9 +167,7 @@ func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.Platfor
 	return deploymentScope, nil
 }
 
-// UpdateDeploymentScope function is used to update the deployment scope when
-// Generation is same as ObservedGeneration.
-// Otherwise UpdateConfigStatus will update the deployment scope.
+// UpdateDeploymentScope function is used to update the deployment scope.
 func (r *PlatformNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.PlatformNetwork) (error, bool) {
 	scope, err := r.GetScopeConfig(instance)
 	if err != nil {
@@ -190,11 +188,13 @@ func (r *PlatformNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.
 	return nil, false
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.PlatformNetwork) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -204,17 +204,12 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPlatformNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -238,14 +233,6 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 		if err != nil {
 			return err
 		}
-
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPlatformNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Check if the configuration is updated
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
@@ -314,25 +301,24 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	err, scope_updated = r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled {
 
-		// Update the deploymentScope if necessary when Generation is same
-		// as ObservedGeneration and instance is reconciled.
-		err, scope_updated = r.UpdateDeploymentScope(instance)
-		if err != nil {
-			return reconcile.Result{}, err
-		} else if !scope_updated {
+		if !scope_updated {
 			return ctrl.Result{}, nil
 		}
 	}
 
-	// Update scope from configuration when Generation is different from
-	// ObservedGeneration or the object is not reconciled yet.
+	// Update ReconciledAfterInSync and ObservedGeneration.
 	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logPlatformNetwork.Error(err, "unable to update scope when generation is different from observed generation.")
+		logPlatformNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
 		return reconcile.Result{}, err
 	}
 	logPlatformNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
