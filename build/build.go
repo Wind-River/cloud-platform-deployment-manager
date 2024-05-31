@@ -609,7 +609,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		index := sort.SearchStrings(always_generate_networks, n.Type)
 		if index < len(always_generate_networks) && always_generate_networks[index] == n.Type {
 			// With "--minimal-config", Exports platform networks / address pools belonging to only storage network
-			// Without "--minimal-config", Exports all address pools and platform networks belongs to any of storage, admin, mgmt, oam networks
+			// Without "--minimal-config", Exports all address pools and platform networks belongs to any of storage, admin, mgm , oam networks
 			associated_address_pools = db.GetAssociatedAddressPools(n.Name, networkAddrPools, pools)
 			for _, pools := range associated_address_pools {
 				associated_pools_name = append(associated_pools_name, pools.Name)
@@ -617,7 +617,6 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 				if err != nil {
 					return err
 				}
-				d.AddressPools = append(d.AddressPools, addressPool)
 			}
 			net, err := starlingxv1.NewPlatformNetwork(db.namespace, associated_pools_name, n)
 			if err != nil {
@@ -628,6 +627,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 			// We are passing pointer to PlatformNetwork resource (net), hence, calling filterPlatformNetworks
 			// before or after append wouldn't make any difference and either way it would work.
 			d.PlatformNetworks = append(d.PlatformNetworks, net)
+			d.AddressPools = append(d.AddressPools, addressPool)
 			err = db.filterPlatformNetworks(net, d)
 			if err != nil {
 				return err

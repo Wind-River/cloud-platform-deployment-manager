@@ -56,41 +56,27 @@ func (r *AddressPoolReconciler) UpdateInsyncStatus(client *gophercloud.ServiceCl
 	return nil
 }
 
-// Fetch active controller's host instance and increment annotation value of
-// deployment-manager/notifications only if Generation != ObservedGeneration
-// or there is a deploymentScope change.
+// Fetch active controller's host instance and set
+// Reconciled/Insync to false only if Generation != ObservedGeneration.
 // Note that for deletion we are just cleaning up the finalizer and we
 // are not specifically deleting addresspool object on the system.
 func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.AddressPool, request_namespace string) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
-			if instance.Status.Reconciled {
-				instance.Status.Reconciled = false
-				err = r.Client.Status().Update(context.TODO(), instance)
-				if err != nil {
-					msg := fmt.Sprintf("Failed to reset reconciled status of the addresspool '%s'", instance.Name)
-					logAddressPool.Error(err, msg)
-					return common.NewResourceConfigurationDependency(msg)
-				}
-			}
-
 			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
 			if err != nil {
 				msg := "failed to get active host"
 				return common.NewUserDataError(msg)
 			}
 
-			err = r.CloudManager.NotifyResource(host_instance)
+			host_instance.Status.InSync = false
+			host_instance.Status.Reconciled = false
+			err = r.Client.Status().Update(context.TODO(), host_instance)
 			if err != nil {
-				msg := fmt.Sprintf("Failed to notify '%s' active host instance", host_instance.Name)
+				msg := fmt.Sprintf("Failed to update '%s' host instance status", host_instance.Name)
 				logAddressPool.Error(err, msg)
 				return common.NewResourceConfigurationDependency(msg)
 			}
-
-			r.ReconcilerEventLogger.NormalEvent(host_instance,
-				common.ResourceNotified,
-				"Host has been notified due to '%s' addresspool update.",
-				instance.Name)
 
 			// Set Generation = ObservedGeneration only when active
 			// host controller is successfully notified.
