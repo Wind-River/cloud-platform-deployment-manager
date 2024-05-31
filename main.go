@@ -102,13 +102,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "PlatformNetwork")
 		os.Exit(1)
 	}
-	if err = (&controllers.AddressPoolReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AddressPool")
-		os.Exit(1)
-	}
 	if err = (&controllers.PtpInstanceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -144,10 +137,6 @@ func main() {
 	}
 	if err = (&starlingxv1.PlatformNetwork{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "PlatformNetwork")
-		os.Exit(1)
-	}
-	if err = (&starlingxv1.AddressPool{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "AddressPool")
 		os.Exit(1)
 	}
 	if err = (&starlingxv1.PtpInstance{}).SetupWebhookWithManager(mgr); err != nil {

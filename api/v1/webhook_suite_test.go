@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package v1
 
@@ -98,9 +98,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&PlatformNetwork{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = (&AddressPool{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&PtpInstance{}).SetupWebhookWithManager(mgr)

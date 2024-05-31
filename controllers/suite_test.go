@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
 
 package controllers
 
@@ -110,11 +110,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	// PlatformNetwork
 	err = (&PlatformNetworkReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	// AddressPool
-	err = (&AddressPoolReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
