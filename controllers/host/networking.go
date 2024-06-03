@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package host
 
@@ -648,7 +648,7 @@ func hasIPv4StaticAddresses(info starlingxv1.CommonInterfaceInfo, profile *starl
 // has any configured static addresses.
 func hasIPv6StaticAddresses(info starlingxv1.CommonInterfaceInfo, profile *starlingxv1.HostProfileSpec) bool {
 	for _, addrInfo := range profile.Addresses {
-		if utils.IsIPv4(addrInfo.Address) {
+		if utils.IsIPv6(addrInfo.Address) {
 			if addrInfo.Interface == info.Name {
 				return true
 			}
