@@ -1,3 +1,4 @@
+
 apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
 metadata:
@@ -6,16 +7,27 @@ metadata:
   name: group0-data0v4
   namespace: deployment
 spec:
+  associatedAddressPools:
+  - group0-data0v4-pool
+  dynamic: true
   type: other
-  subnet: 192.168.57.0
-  prefix: 24
-  gateway: 192.168.57.1
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0v4-pool
+  namespace: deployment
+spec:
   allocation:
-    type: dynamic
     order: random
     ranges:
-      - start: 192.168.57.2
-        end: 192.168.57.10
+    - end: 192.168.57.10
+      start: 192.168.57.2
+  gateway: 192.168.57.1
+  prefix: 24
+  subnet: 192.168.57.0
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
@@ -25,16 +37,27 @@ metadata:
   name: group0-data1v4
   namespace: deployment
 spec:
+  associatedAddressPools:
+  - group0-data1v4-pool
+  dynamic: true
   type: other
-  subnet: 192.168.58.0
-  prefix: 24
-  gateway: 192.168.58.1
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data1v4-pool
+  namespace: deployment
+spec:
   allocation:
-    type: dynamic
     order: sequential
     ranges:
-      - start: 192.168.58.2
-        end: 192.168.58.10
+    - end: 192.168.58.10
+      start: 192.168.58.2
+  gateway: 192.168.58.1
+  prefix: 24
+  subnet: 192.168.58.0
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
@@ -44,16 +67,27 @@ metadata:
   name: group0-data0v6
   namespace: deployment
 spec:
+  associatedAddressPools:
+  - group0-data0v6-pool
+  dynamic: true
   type: other
-  subnet: "fd00:0:0:1::"
-  prefix: 64
-  gateway: fd00:0:0:1::1
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data0v6-pool
+  namespace: deployment
+spec:
   allocation:
-    type: dynamic
     order: sequential
     ranges:
-      - start: fd00:0:0:1::2
-        end: fd00:0:0:1::a
+    - end: fd00:0:0:1::a
+      start: fd00:0:0:1::2
+  gateway: fd00:0:0:1::1
+  prefix: 64
+  subnet: 'fd00:0:0:1::'
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
@@ -63,16 +97,27 @@ metadata:
   name: group0-data1v6
   namespace: deployment
 spec:
+  associatedAddressPools:
+  - group0-data1v6-pool
+  dynamic: true
   type: other
-  subnet: "fd00:0:0:2::"
-  prefix: 64
-  gateway: fd00:0:0:2::1
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: group0-data1v6-pool
+  namespace: deployment
+spec:
   allocation:
-    type: dynamic
     order: sequential
     ranges:
-      - start: fd00:0:0:2::2
-        end: fd00:0:0:2::a
+    - end: fd00:0:0:2::a
+      start: fd00:0:0:2::2
+  gateway: fd00:0:0:2::1
+  prefix: 64
+  subnet: 'fd00:0:0:2::'
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PlatformNetwork
@@ -82,13 +127,74 @@ metadata:
   name: management
   namespace: deployment
 spec:
+  associatedAddressPools:
+  - management-pool
+  dynamic: true
+  type: mgmt
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: management-pool
+  namespace: deployment
+spec:
   allocation:
     order: random
     ranges:
     - end: 192.168.204.254
       start: 192.168.204.2
-    type: dynamic
   floatingAddress: 192.168.204.2
   prefix: 24
   subnet: 192.168.204.0
-  type: mgmt
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PlatformNetwork
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: oam
+  namespace: deployment
+spec:
+  associatedAddressPools:
+  - oam-ipv4
+  - oam-ipv6
+  dynamic: false
+  type: oam
+status:
+  deploymentScope: principal
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: oam-ipv4
+  namespace: deployment
+spec:
+  allocation:
+    order: random
+    ranges:
+    - end: 10.10.10.254
+      start: 10.10.10.2
+  floatingAddress: 10.10.10.2
+  prefix: 24
+  subnet: 10.10.10.1
+---
+apiVersion: starlingx.windriver.com/v1
+kind: AddressPool
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: oam-ipv6
+  namespace: deployment
+spec:
+  allocation:
+    order: random
+    ranges:
+    - end: fcff:10::a
+      start: fcff:10::2
+  floatingAddress: fcff:10::2
+  prefix: 64
+  subnet: fcff:10::1
