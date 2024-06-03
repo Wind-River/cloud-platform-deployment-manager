@@ -712,7 +712,7 @@
               get_unrecon_status_post.stderr == "")
             retries: "{{ host_reconcile_retries }}"
             delay: 30
-            ignore_errors: yes
+            failed_when: false
 
           - name: Fail if fail to get resource reconciled status
             fail:
