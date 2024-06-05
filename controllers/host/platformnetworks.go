@@ -159,37 +159,42 @@ func (r *HostReconciler) ValidateAddressPool(
 
 // IsNetworkUpdateRequired determines if platform network update is required
 // by comparing it with applied PlatformNetwork spec.
-func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.PlatformNetwork, system_network *networks.Network) (opts networks.NetworkOpts, result bool, uuid string) {
+func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.PlatformNetwork, current_network *networks.Network, primary_address_pool *addresspools.AddressPool) (opts networks.NetworkOpts, result bool, uuid string) {
 	var delta strings.Builder
 
 	spec := network_instance.Spec
 
-	if system_network == nil || (network_instance.Name != system_network.Name) {
+	if current_network == nil || (network_instance.Name != current_network.Name) {
 		opts.Name = &network_instance.Name
 		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
 	}
 
-	if system_network == nil || (spec.Type != system_network.Type) {
+	if current_network == nil || (spec.Type != current_network.Type) {
 		opts.Type = &spec.Type
 		delta.WriteString(fmt.Sprintf("\t+Type: %s\n", *opts.Type))
 		result = true
 	}
 
-	if system_network == nil || (spec.Dynamic != system_network.Dynamic) {
+	if current_network == nil || (spec.Dynamic != current_network.Dynamic) {
 		opts.Dynamic = &spec.Dynamic
 		delta.WriteString(fmt.Sprintf("\t+Dynamic: %v\n", *opts.Dynamic))
 		result = true
 	}
 
-	if system_network != nil {
-		uuid = system_network.UUID
+	if current_network == nil {
+		// This is required while creating the network only and
+		// internally managed by the system during reconfiguration.
+		opts.PoolUUID = &primary_address_pool.ID
+		delta.WriteString(fmt.Sprintf("\t+PoolUUID: %v\n", *opts.PoolUUID))
+	} else {
+		uuid = current_network.UUID
 	}
 
 	deltaString := delta.String()
 	if deltaString != "" {
 		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
-		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 	}
 
 	network_instance.Status.Delta = deltaString
@@ -203,10 +208,10 @@ func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.P
 
 // IsAddrPoolUpdateRequired determines if addresspool update is required
 // by comparing it with applied AddressPool spec.
-func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, system_addrpool *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool, uuid string) {
+func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, current_addrpool *addresspools.AddressPool) (opts addresspools.AddressPoolOpts, result bool, uuid string) {
 	var delta strings.Builder
 
-	if system_addrpool == nil || (addrpool_instance.Name != system_addrpool.Name) {
+	if current_addrpool == nil || (addrpool_instance.Name != current_addrpool.Name) {
 		opts.Name = &addrpool_instance.Name
 		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
 		result = true
@@ -214,48 +219,48 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 
 	spec := addrpool_instance.Spec
 
-	if system_addrpool == nil || !utils.IsIPAddressSame(spec.Subnet, system_addrpool.Network) {
+	if current_addrpool == nil || !utils.IsIPAddressSame(spec.Subnet, current_addrpool.Network) {
 		opts.Network = &spec.Subnet
 		delta.WriteString(fmt.Sprintf("\t+Network: %s\n", *opts.Network))
 		result = true
 	}
 
-	if system_addrpool == nil || spec.Prefix != system_addrpool.Prefix {
+	if current_addrpool == nil || spec.Prefix != current_addrpool.Prefix {
 		opts.Prefix = &spec.Prefix
 		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
 		result = true
 	}
 
-	if (system_addrpool == nil && spec.FloatingAddress != nil) ||
-		(spec.FloatingAddress != nil && !utils.IsIPAddressSame(*spec.FloatingAddress, system_addrpool.FloatingAddress)) {
+	if (current_addrpool == nil && spec.FloatingAddress != nil) ||
+		(spec.FloatingAddress != nil && !utils.IsIPAddressSame(*spec.FloatingAddress, current_addrpool.FloatingAddress)) {
 		opts.FloatingAddress = spec.FloatingAddress
 		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.FloatingAddress))
 		result = true
-	} else if spec.FloatingAddress == nil && system_addrpool != nil && system_addrpool.FloatingAddress != "" {
+	} else if spec.FloatingAddress == nil && current_addrpool != nil && current_addrpool.FloatingAddress != "" {
 		opts.FloatingAddress = spec.FloatingAddress
-		delta.WriteString(fmt.Sprintf("\t-Floating Address: %s\n", system_addrpool.FloatingAddress))
+		delta.WriteString(fmt.Sprintf("\t-Floating Address: %s\n", current_addrpool.FloatingAddress))
 		result = true
 	}
 
-	if (system_addrpool == nil && spec.Controller0Address != nil) ||
-		(spec.Controller0Address != nil && !utils.IsIPAddressSame(*spec.Controller0Address, system_addrpool.Controller0Address)) {
+	if (current_addrpool == nil && spec.Controller0Address != nil) ||
+		(spec.Controller0Address != nil && !utils.IsIPAddressSame(*spec.Controller0Address, current_addrpool.Controller0Address)) {
 		opts.Controller0Address = spec.Controller0Address
 		delta.WriteString(fmt.Sprintf("\t+Controller0 Address: %s\n", *opts.Controller0Address))
 		result = true
-	} else if spec.Controller0Address == nil && system_addrpool != nil && system_addrpool.Controller0Address != "" {
+	} else if spec.Controller0Address == nil && current_addrpool != nil && current_addrpool.Controller0Address != "" {
 		opts.Controller0Address = spec.Controller0Address
-		delta.WriteString(fmt.Sprintf("\t-Controller0 Address: %s\n", system_addrpool.Controller0Address))
+		delta.WriteString(fmt.Sprintf("\t-Controller0 Address: %s\n", current_addrpool.Controller0Address))
 		result = true
 	}
 
-	if (system_addrpool == nil && spec.Controller1Address != nil) ||
-		(spec.Controller1Address != nil && !utils.IsIPAddressSame(*spec.Controller1Address, system_addrpool.Controller1Address)) {
+	if (current_addrpool == nil && spec.Controller1Address != nil) ||
+		(spec.Controller1Address != nil && !utils.IsIPAddressSame(*spec.Controller1Address, current_addrpool.Controller1Address)) {
 		opts.Controller1Address = spec.Controller1Address
 		delta.WriteString(fmt.Sprintf("\t+Controller1 Address: %s\n", *opts.Controller1Address))
 		result = true
-	} else if spec.Controller1Address == nil && system_addrpool != nil && system_addrpool.Controller1Address != "" {
+	} else if spec.Controller1Address == nil && current_addrpool != nil && current_addrpool.Controller1Address != "" {
 		opts.Controller1Address = spec.Controller1Address
-		delta.WriteString(fmt.Sprintf("\t-Controller1 Address: %s\n", system_addrpool.Controller1Address))
+		delta.WriteString(fmt.Sprintf("\t-Controller1 Address: %s\n", current_addrpool.Controller1Address))
 		result = true
 	}
 
@@ -263,20 +268,20 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 		// TODO(alegacy): There is a sysinv bug in how the gateway address
 		//  gets registered in the database.  It doesn't have a "name" and
 		//  so causes an exception when a related route is added.
-		if (system_addrpool == nil && spec.Gateway != nil) ||
-			(spec.Gateway != nil && system_addrpool.Gateway == nil) ||
-			(spec.Gateway != nil && !utils.IsIPAddressSame(*spec.Gateway, *system_addrpool.Gateway)) {
+		if (current_addrpool == nil && spec.Gateway != nil) ||
+			(spec.Gateway != nil && current_addrpool.Gateway == nil) ||
+			(spec.Gateway != nil && !utils.IsIPAddressSame(*spec.Gateway, *current_addrpool.Gateway)) {
 			opts.Gateway = spec.Gateway
 			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.Gateway))
 			result = true
-		} else if spec.Gateway == nil && system_addrpool != nil && system_addrpool.Gateway != nil {
+		} else if spec.Gateway == nil && current_addrpool != nil && current_addrpool.Gateway != nil {
 			opts.Gateway = spec.Gateway
-			delta.WriteString(fmt.Sprintf("\t-Gateway Address: %s\n", *system_addrpool.Gateway))
+			delta.WriteString(fmt.Sprintf("\t-Gateway Address: %s\n", *current_addrpool.Gateway))
 			result = true
 		}
 	}
 
-	if system_addrpool == nil || (spec.Allocation.Order != nil && *spec.Allocation.Order != system_addrpool.Order) {
+	if current_addrpool == nil || (spec.Allocation.Order != nil && *spec.Allocation.Order != current_addrpool.Order) {
 		opts.Order = spec.Allocation.Order
 		delta.WriteString(fmt.Sprintf("\t+Order: %s\n", *opts.Order))
 		result = true
@@ -284,21 +289,21 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 
 	if len(spec.Allocation.Ranges) > 0 {
 		ranges := makeRangeArray(spec.Allocation.Ranges)
-		if system_addrpool == nil || !compareRangeArrays(ranges, system_addrpool.Ranges) {
+		if current_addrpool == nil || !compareRangeArrays(ranges, current_addrpool.Ranges) {
 			opts.Ranges = &ranges
 			delta.WriteString(fmt.Sprintf("\t+Ranges: %s\n", *opts.Ranges))
 			result = true
 		}
 	}
 
-	if system_addrpool != nil {
-		uuid = system_addrpool.ID
+	if current_addrpool != nil {
+		uuid = current_addrpool.ID
 	}
 
 	deltaString := delta.String()
 	if deltaString != "" {
 		deltaString = "\n" + strings.TrimSuffix(deltaString, "\n")
-		logHost.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
 	}
 
 	addrpool_instance.Status.Delta = deltaString
@@ -787,9 +792,24 @@ func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceCli
 		return err, nil
 	}
 
+	addrpool_instances, fetch_errs := r.GetAddressPoolsFromPlatformNetwork(network_instance.Spec.AssociatedAddressPools,
+		network_instance.Namespace)
+	if len(fetch_errs) > 0 {
+		// There were errors while fetching associated addresspool instances.
+		// Reconciliation request will be requeued.
+		return fetch_errs[0], nil
+	}
+
+	primary_address_pool, err := GetSystemAddrPool(client, addrpool_instances[0])
+	if err != nil {
+		return err, nil
+	} else if system_network == nil && primary_address_pool == nil {
+		return common.NewPlatformNetworkReconciliationError("Cannot create a network without primary address pool."), nil
+	}
+
 	r.UpdateNetworkUUID(network_instance, system_network)
 
-	opts, update_required, uuid := r.IsNetworkUpdateRequired(network_instance, system_network)
+	opts, update_required, uuid := r.IsNetworkUpdateRequired(network_instance, system_network, primary_address_pool)
 
 	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, nil, update_required, uuid)
 	if err != nil {
@@ -827,45 +847,54 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 	addrpool_instance *starlingxv1.AddressPool,
 	system_info *cloudManager.SystemInfo) error {
 
-	err, reconcile_expected := r.ReconcileNetworkResource(client, network_instance)
-	if err != nil && reconcile_expected == nil {
+	err, addrpool_reconcile_expected, validation_result := r.ReconcileAddrPoolResource(client, network_instance, addrpool_instance, system_info)
+	if err != nil && addrpool_reconcile_expected == nil {
 		// Some other error occured not related to reconciliation.
 		// Eg. error listing networks by querying the system.
 		// Request will be requeued.
 		return err
 	}
 
-	is_reconciled := err == nil
-	err_status := r.UpdateNetworkReconciliationStatus(
-		network_instance,
-		is_reconciled,
-		*reconcile_expected)
+	addrpool_is_reconciled := err == nil && *validation_result
 
-	if *reconcile_expected && err != nil {
-		//Reconciliation request will be requeued
-		return err
-	} else if err_status != nil {
-		//Reconciliation request will be requeued
-		return err_status
-	}
-
-	err, reconcile_expected, validation_result := r.ReconcileAddrPoolResource(client, network_instance, addrpool_instance, system_info)
-	if err != nil && reconcile_expected == nil {
-		// Some other error occured not related to reconciliation.
-		// Eg. error listing networks by querying the system.
-		// Request will be requeued.
-		return err
-	}
-
-	is_reconciled = err == nil && *validation_result
-
-	err_status = r.UpdateAddrPoolReconciliationStatus(
+	err_status := r.UpdateAddrPoolReconciliationStatus(
 		network_instance,
 		addrpool_instance,
-		is_reconciled,
-		*reconcile_expected)
+		addrpool_is_reconciled,
+		*addrpool_reconcile_expected)
 
-	if *reconcile_expected && err != nil {
+	if *addrpool_reconcile_expected && err != nil {
+		//Reconciliation request will be requeued
+		return err
+	} else if err_status != nil {
+		//Reconciliation request will be requeued
+		return err_status
+	} else if !*validation_result {
+		// If addresspool reconciliation is expected and applied spec is not valid
+		// error will be logged and reconciliation request should not be requeued
+		// since it will only be futile.
+		// An example would be pxeboot network type with IPv6 addresspool - this
+		// never succeeds.
+		return nil
+	}
+
+	// It's important to note that UUID of first addresspool in the list of "AssociatedAddressPools" 
+	// will be used during creation of network and this will become the primary IP pool of the network.
+	err, network_reconcile_expected := r.ReconcileNetworkResource(client, network_instance)
+	if err != nil && network_reconcile_expected == nil {
+		// Some other error occured not related to reconciliation.
+		// Eg. error listing networks by querying the system.
+		// Request will be requeued.
+		return err
+	}
+
+	network_is_reconciled := err == nil
+	err_status = r.UpdateNetworkReconciliationStatus(
+		network_instance,
+		network_is_reconciled,
+		*network_reconcile_expected)
+
+	if *network_reconcile_expected && err != nil {
 		//Reconciliation request will be requeued
 		return err
 	} else if err_status != nil {
@@ -873,8 +902,8 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 		return err_status
 	}
 
-	// Update network-addresspool only if addresspool has been reconciled.
-	if *reconcile_expected && is_reconciled {
+	// Update network-addresspool only if network and addresspools have been reconciled.
+	if *addrpool_reconcile_expected && addrpool_is_reconciled && network_is_reconciled {
 		logHost.V(2).Info(
 			fmt.Sprintf("Updating network-addresspool association for network '%s' and addrpool '%s'",
 				network_instance.Name, addrpool_instance.Name))
