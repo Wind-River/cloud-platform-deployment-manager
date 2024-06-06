@@ -459,6 +459,12 @@ func (r *HostReconciler) ReconcileOtherPlatformNetworksExpected(client *gophercl
 	addrpool_instance *starlingxv1.AddressPool,
 	uuid string) (error, bool) {
 
+	if network_instance.Spec.Type == cloudManager.OtherNetworkType {
+		// The network type "other" indicates only addresspool is
+		// going to be reconciled, hence, it's always reconcilable.
+		return nil, true
+	}
+
 	if addrpool_instance != nil {
 		err, is_reconfig := r.IsReconfiguration(client, network_instance, addrpool_instance)
 		if err != nil {
@@ -495,6 +501,8 @@ func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.Se
 		default:
 			// Allow fresh configuration of networks / addrpools other than
 			// oam / mgmt / admin in day-1 but not reconfiguration.
+			// Reconciliation of addresspools under "other" network type is
+			// always allowed.
 			return r.ReconcileOtherPlatformNetworksExpected(client, network_instance, addrpool_instance, uuid)
 		}
 	} else if network_instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
@@ -508,6 +516,8 @@ func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.Se
 		default:
 			// Allow fresh configuration of networks / addrpools other than
 			// oam / mgmt / admin in day-2 but not reconfiguration.
+			// Reconciliation of addresspools under "other" network type is
+			// always allowed.
 			return r.ReconcileOtherPlatformNetworksExpected(client, network_instance, addrpool_instance, uuid)
 		}
 	}
@@ -878,7 +888,25 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 		return nil
 	}
 
-	// It's important to note that UUID of first addresspool in the list of "AssociatedAddressPools" 
+	if network_instance.Spec.Type == cloudManager.OtherNetworkType {
+		// The network type "other" does not exist in real sense.
+		// It's serves as an indicator to DM that only addresspool
+		// needs to be reconciled and not network / network-addrpools.
+		// Just set reconciled / insync to true for the sake of consistency.
+		err_status = r.UpdateNetworkReconciliationStatus(
+			network_instance,
+			true,
+			true)
+
+		if err_status != nil {
+			//Reconciliation request will be requeued
+			return err_status
+		}
+
+		return nil
+	}
+
+	// It's important to note that UUID of first addresspool in the list of "AssociatedAddressPools"
 	// will be used during creation of network and this will become the primary IP pool of the network.
 	err, network_reconcile_expected := r.ReconcileNetworkResource(client, network_instance)
 	if err != nil && network_reconcile_expected == nil {
