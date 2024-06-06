@@ -10,7 +10,7 @@ import (
 // PlatformNetworkSpec defines the desired state of PlatformNetwork
 type PlatformNetworkSpec struct {
 	// Type defines the intended usage of the network
-	// +kubebuilder:validation:Enum=mgmt;pxeboot;infra;oam;multicast;system-controller;cluster-host;cluster-pod;cluster-service;storage;admin;other
+	// +kubebuilder:validation:Enum=mgmt;pxeboot;oam;multicast;system-controller;cluster-host;cluster-pod;cluster-service;storage;admin;other
 	Type string `json:"type"`
 
 	// Dynamic defines whether network addresses are allocated dynamically (true) or

@@ -79,7 +79,6 @@ spec:
                 enum:
                 - mgmt
                 - pxeboot
-                - infra
                 - oam
                 - multicast
                 - system-controller

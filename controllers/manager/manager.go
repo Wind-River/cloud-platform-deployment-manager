@@ -62,6 +62,10 @@ const (
 	MgmtAddrPoolName       = "management"
 	PXEBootNetworkType     = "pxeboot"
 	ClusterHostNetworkType = "cluster-host"
+	// The network type "other" does not exist in real sense.
+	// It's serves as an indicator to DM that only addresspool
+	// needs to be reconciled and not network / network-addrpools.
+	OtherNetworkType = "other"
 )
 
 const (
