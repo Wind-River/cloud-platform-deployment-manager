@@ -422,7 +422,7 @@ func GetDeltaString(spec interface{}, current interface{}, parameters map[string
 		return "", err
 	}
 
-	diff := cmp.Diff(specData, currentData)
+	diff := cmp.Diff(currentData, specData)
 	deltaString := collectDiffValues(diff, parameters)
 	deltaString = strings.TrimSuffix(deltaString, "\n")
 	return deltaString, nil
