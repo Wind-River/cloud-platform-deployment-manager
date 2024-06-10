@@ -281,7 +281,8 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 		}
 	}
 
-	if current_addrpool == nil || (spec.Allocation.Order != nil && *spec.Allocation.Order != current_addrpool.Order) {
+	if (current_addrpool == nil && spec.Allocation.Order != nil) ||
+		(current_addrpool != nil && spec.Allocation.Order != nil && *spec.Allocation.Order != current_addrpool.Order) {
 		opts.Order = spec.Allocation.Order
 		delta.WriteString(fmt.Sprintf("\t+Order: %s\n", *opts.Order))
 		result = true
