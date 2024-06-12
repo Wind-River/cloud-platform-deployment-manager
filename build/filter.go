@@ -810,13 +810,9 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 
 	result := make([]v1.CertificateInfo, 0)
 	for _, c := range *system.Spec.Certificates {
-		if c.Type == v1.PlatformCACertificate || c.Type == v1.OpenstackCACertificate ||
-			c.Type == v1.DockerCertificate || c.Type == v1.OpenLDAPCertificate ||
-			c.Type == v1.PlatformCertificate {
-			continue
+		if c.Type == v1.TPMCertificate || c.Type == v1.OpenstackCertificate {
+			result = append(result, c)
 		}
-
-		result = append(result, c)
 	}
 
 	if len(result) > 0 {
