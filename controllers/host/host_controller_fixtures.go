@@ -5,6 +5,9 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networkAddressPools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
@@ -12,9 +15,7 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
-	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 )
 
 var AddrPoolListBody string
@@ -440,7 +441,6 @@ const SingleSystemBody = `
 				"shared_services": "[]",
 				"bm_region": "External",
 				"vswitch_type": "none",
-				"https_enabled": false,
 				"region_config": false
 			},
 			"name": "Herp",
