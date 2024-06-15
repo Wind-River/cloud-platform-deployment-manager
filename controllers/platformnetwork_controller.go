@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -72,11 +71,11 @@ func (r *PlatformNetworkReconciler) UpdateInsyncStatus(client *gophercloud.Servi
 // or there is a deploymentScope change.
 // Note that for deletion we are just cleaning up the finalizer and we
 // are not specifically deleting network object on the system.
-func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, request_namespace string, scope_updated bool) (err error) {
+func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PlatformNetwork, reqNs string, scope_updated bool) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation ||
 			scope_updated {
-			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
+			host_instance, err := r.CloudManager.GetActiveHost(reqNs, client)
 			if err != nil {
 				msg := "failed to get active host"
 				logPlatformNetwork.Error(err, msg)
@@ -129,73 +128,29 @@ func (r *PlatformNetworkReconciler) StopAfterInSync() bool {
 	return utils.GetReconcilerOptionBool(utils.PlatformNetwork, utils.StopAfterInSync, true)
 }
 
-// Obtain deploymentScope value from configuration
-// Taking this value from annotation in instacne
-// (It seems Client.Get does not update Status value from configuration)
-// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
-// "principal" if "principal" in configuration
-func (r *PlatformNetworkReconciler) GetScopeConfig(instance *starlingxv1.PlatformNetwork) (scope string, err error) {
-	// Set default value for deployment scope
-	deploymentScope := cloudManager.ScopeBootstrap
-	// Set DeploymentScope from configuration
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	if annotation != nil {
-		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
-		if ok {
-			status_config := &starlingxv1.PlatformNetwork{}
-			err := json.Unmarshal([]byte(config), &status_config)
-			if err == nil {
-				if status_config.Status.DeploymentScope != "" {
-					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
-					switch lowerCaseScope {
-					case cloudManager.ScopeBootstrap:
-						deploymentScope = cloudManager.ScopeBootstrap
-					case cloudManager.ScopePrincipal:
-						deploymentScope = cloudManager.ScopePrincipal
-					default:
-						err = fmt.Errorf("Unsupported DeploymentScope: %s",
-							status_config.Status.DeploymentScope)
-						return deploymentScope, err
-					}
-				}
-			} else {
-				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
-				return deploymentScope, err
-			}
-		}
-	}
-	return deploymentScope, nil
-}
-
-// UpdateDeploymentScope function is used to update the deployment scope.
+// UpdateDeploymentScope function is used to update the deployment scope for PlatformNetwork.
 func (r *PlatformNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.PlatformNetwork) (error, bool) {
-	scope, err := r.GetScopeConfig(instance)
+	updated, err := common.UpdateDeploymentScope(r.Client, instance)
 	if err != nil {
-		logPlatformNetwork.Error(err, "failed to fetch deploymentScope")
+		logPlatformNetwork.Error(err, "failed to update deploymentScope")
 		return err, false
 	}
-
-	if instance.Status.DeploymentScope != scope {
-		instance.Status.DeploymentScope = scope
-		err := r.Client.Status().Update(context.TODO(), instance)
-		if err != nil {
-			logPlatformNetwork.Error(err, "failed to update deploymentScope")
-			return err, false
-		}
-		return nil, true
-	}
-
-	return nil, false
+	return nil, updated
 }
 
 // Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "true"  if the factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
 // It is expected that instance.Status.Deployment scope is already updated by
 // UpdateDeploymentScope at this point.
-func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.PlatformNetwork) (err error) {
+func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.PlatformNetwork, ns string) (err error) {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	if err != nil {
+		return err
+	}
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -207,9 +162,10 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "true"  if the factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -234,7 +190,6 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 			return err
 		}
 
-		// Check if the configuration is updated
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
@@ -306,17 +261,24 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, err
 	}
 
+	// The status reaches its desired status post reconciled
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled {
 
-		if !scope_updated {
-			return ctrl.Result{}, nil
+		factory, err := r.GetFactoryInstall(request.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if !scope_updated && !factory {
+			logPlatformNetwork.V(2).Info("reconcile finished, desired state reached after reconciled.")
+			return reconcile.Result{}, nil
 		}
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration.
 	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance)
+	err = r.UpdateConfigStatus(instance, request.Namespace)
 	if err != nil {
 		logPlatformNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
 		return reconcile.Result{}, err

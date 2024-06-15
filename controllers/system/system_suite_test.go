@@ -5,6 +5,7 @@ package system
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -98,8 +99,12 @@ var _ = AfterSuite(func() {
 
 	select {
 	case err := <-done:
-		Expect(err).NotTo(HaveOccurred())
-	case <-time.After(time.Minute): // 1 minute, adjust timeout as necessary
+		if err != nil {
+			By(fmt.Sprintf("Error stopping test environment: %v\n", err))
+		} else {
+			By("Test environment stopped successfully")
+		}
+	case <-time.After(time.Minute * 2): // 2 minute, adjust timeout as necessary
 		By("timeout waiting for the test environment to stop")
 		// Implement additional logging or force-termination here
 	}

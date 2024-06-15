@@ -6,6 +6,8 @@ package host
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networkAddressPools"
@@ -16,7 +18,6 @@ import (
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
-	"strings"
 )
 
 // makeRangeArray converts an array of range structs to an array of arrays where

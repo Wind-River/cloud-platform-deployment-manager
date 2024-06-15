@@ -560,3 +560,23 @@ func searchParameters(lines []string, lineNumber int, parameters map[string]inte
 
 	return result
 }
+
+// UpdateDefaultRequired checks if the host default need to be updated.
+func UpdateDefaultsRequired(
+	manager manager.CloudManager,
+	namespace string,
+	name string,
+	factory bool,
+) (bool, error) {
+	if !factory {
+		return false, nil
+	}
+
+	defaultUpdated, err := manager.GetResourceDefaultUpdated(namespace, name)
+
+	if err != nil {
+		// Failed to get the info, force to update it again
+		return true, NewValidationError(err.Error())
+	}
+	return !defaultUpdated, nil
+}

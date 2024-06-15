@@ -60,6 +60,30 @@ type PlatformNetworkStatus struct {
 	Delta string `json:"delta"`
 }
 
+func (p *PlatformNetwork) GetStrategyRequired() string {
+	return ""
+}
+
+func (p *PlatformNetwork) SetStrategyRequired(strategy string) {
+	// PlatformNetwork does not use StrategyRequired, so do nothing.
+}
+
+func (p *PlatformNetwork) GetDeploymentScope() string {
+	return p.Status.DeploymentScope
+}
+
+func (p *PlatformNetwork) SetDeploymentScope(scope string) {
+	p.Status.DeploymentScope = scope
+}
+
+func (p *PlatformNetwork) GetAnnotations() map[string]string {
+	return p.ObjectMeta.Annotations
+}
+
+func (p *PlatformNetwork) SetAnnotations(annotations map[string]string) {
+	p.ObjectMeta.Annotations = annotations
+}
+
 // +kubebuilder:object:root=true
 // PlatformNetwork defines the attributes that represent the network level
 // attributes of a StarlingX system.  This is a composition of the following
