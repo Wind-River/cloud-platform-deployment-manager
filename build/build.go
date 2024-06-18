@@ -17,6 +17,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/licenses"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networkAddressPools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinstances"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptpinterfaces"
@@ -146,6 +147,7 @@ type Deployment struct {
 	Hosts             []*starlingxv1.Host
 	PtpInstances      []*starlingxv1.PtpInstance
 	PtpInterfaces     []*starlingxv1.PtpInterface
+	AddressPools      []*starlingxv1.AddressPool
 }
 
 // progressUpdate is a utility method to write a progress log to the provided
@@ -226,7 +228,7 @@ func (db *DeploymentBuilder) Build() (*Deployment, error) {
 		return nil, err
 	}
 
-	db.progressUpdate("building platform network configurations\n")
+	db.progressUpdate("building platform network and address pool configurations\n")
 
 	err = db.buildPlatformNetworks(&deployment)
 	if err != nil {
@@ -342,6 +344,17 @@ func (d *Deployment) ToYAML() (string, error) {
 		buf, err := yaml.Marshal(n)
 		if err != nil {
 			err = perrors.Wrap(err, "failed to render platform network to YAML")
+			return "", err
+		}
+
+		b.Write(buf)
+		b.Write([]byte(yamlSeparator))
+	}
+
+	for _, n := range d.AddressPools {
+		buf, err := yaml.Marshal(n)
+		if err != nil {
+			err = perrors.Wrap(err, "failed to render address pools to YAML")
 			return "", err
 		}
 
@@ -554,7 +567,22 @@ func (db *DeploymentBuilder) buildDataNetworks(d *Deployment) error {
 	return nil
 }
 
+func (db *DeploymentBuilder) GetAssociatedAddressPools(networkName string, networkAddressPools []networkAddressPools.NetworkAddressPool, addressPools []addresspools.AddressPool) []addresspools.AddressPool {
+	var associated_address_pools []addresspools.AddressPool
+	for _, networkAddressPool := range networkAddressPools {
+		if networkAddressPool.NetworkName == networkName {
+			addressPool := utils.GetSystemAddrPoolByName(addressPools, networkAddressPool.AddressPoolName)
+			associated_address_pools = append(associated_address_pools, *addressPool)
+
+		}
+	}
+	return associated_address_pools
+}
+
 func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
+	var associated_address_pools []addresspools.AddressPool
+	var associated_pools_name []string
+	var addressPool *starlingxv1.AddressPool
 	results, err := networks.ListNetworks(db.client)
 	if err != nil {
 		err = perrors.Wrap(err, "failed to list platform networks")
@@ -567,36 +595,31 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 		return err
 	}
 
+	networkAddrPools, err := networkAddressPools.ListNetworkAddressPools(db.client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list network address pools")
+		return err
+	}
+
 	d.PlatformNetworks = make([]*starlingxv1.PlatformNetwork, 0)
 	always_generate_networks := []string{"storage", "mgmt", "oam", "admin"}
 	sort.Strings(always_generate_networks)
-	for _, p := range pools {
-		skip := false
-		network := networks.Network{}
-		for _, n := range results {
-			if n.PoolUUID == p.ID {
-				// TODO(alegacy): for now we only support networks used for data
-				//  interfaces which are realized in the system as a standalone
-				//  pool without a network so if we find a matching network then
-				//  skip it.
-				//
-				// sdinescu: we special case storage network type, since this is
-				// a user configurable network type with an attached address pool
-				// and we should always create this network.
-				// Since go doesn't seem to have an easy way to determine if an
-				// element is part of a slice, we sort it and then use
-				// sort.SearchStrings to look for the element.
-				index := sort.SearchStrings(always_generate_networks, n.Type)
-				if index >= len(always_generate_networks) || always_generate_networks[index] != n.Type {
-					skip = true
+	for _, n := range results {
+		associated_pools_name = []string{}
+		index := sort.SearchStrings(always_generate_networks, n.Type)
+		if index < len(always_generate_networks) && always_generate_networks[index] == n.Type {
+			// With "--minimal-config", Exports platform networks / address pools belonging to only storage network
+			// Without "--minimal-config", Exports all address pools and platform networks belongs to any of storage, admin, mgmt, oam networks
+			associated_address_pools = db.GetAssociatedAddressPools(n.Name, networkAddrPools, pools)
+			for _, pools := range associated_address_pools {
+				associated_pools_name = append(associated_pools_name, pools.Name)
+				addressPool, err = starlingxv1.NewAddressPool(db.namespace, pools)
+				if err != nil {
+					return err
 				}
-				network = n
-				break
+				d.AddressPools = append(d.AddressPools, addressPool)
 			}
-		}
-
-		if !skip {
-			net, err := starlingxv1.NewPlatformNetwork(db.namespace, p, network)
+			net, err := starlingxv1.NewPlatformNetwork(db.namespace, associated_pools_name, n)
 			if err != nil {
 				return err
 			}
@@ -611,7 +634,6 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 			}
 		}
 	}
-
 	return nil
 }
 

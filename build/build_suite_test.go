@@ -34,6 +34,93 @@ var _ = BeforeSuite(func() {
 	StartAPIHandlers()
 }, 60)
 
+var expYaml = `---
+apiVersion: v1
+kind: namespace
+metadata:
+  name: fakens
+spec: {}
+---
+apiVersion: v1
+data:
+  password: ""
+  username: dXNlcm5hbWU=
+kind: Secret
+metadata:
+  name: secret1
+  namespace: fakens
+type: kubernetes.io/basic-auth
+---
+Data:
+  Fake Data: 'Warning: Incomplete secret, please replace it with the secret content'
+ObjectMeta:
+  name: incomsec1
+  namespace: bar
+Type: fake type
+TypeMeta:
+  apiVersion: v1
+  kind: Secret
+---
+metadata:
+  name: sys1
+  namespace: default
+spec: {}
+---
+metadata:
+  name: pn1
+  namespace: default
+spec:
+  associatedAddressPools: null
+  dynamic: false
+  type: mgmt
+---
+metadata:
+  name: pn1
+  namespace: default
+spec:
+  allocation:
+    order: random
+    ranges:
+    - end: 192.168.204.254
+      start: 192.168.204.2
+  controller0Address: 192.168.204.3
+  controller1Address: 192.168.204.4
+  floatingAddress: 192.168.204.2
+  gateway: 192.168.204.1
+  prefix: 24
+  subnet: 192.168.204.0
+---
+metadata:
+  name: dn1
+  namespace: default
+spec:
+  type: ""
+---
+metadata:
+  name: ptpinst1
+  namespace: default
+spec:
+  service: ""
+---
+metadata:
+  name: ptpinf1
+  namespace: default
+spec:
+  ptpinstance: ""
+---
+metadata:
+  name: hostprofile1
+  namespace: default
+spec: {}
+---
+metadata:
+  name: host
+  namespace: default
+spec:
+  profile: ""
+---
+`
+
 const DataNetworkListBody = `
 {
 	"datanetworks": [
@@ -48,7 +135,7 @@ const AddrPoolListBody = `
     "addrpools": [
         {
             "name": "management",
-			"uuid": "aa277c8e-7421-4721-ae6a-347771fe4fa6"
+	    "uuid": "aa277c8e-7421-4721-ae6a-347771fe4fa6"
         }
     ]
 }
@@ -62,7 +149,6 @@ const PlatformNetworkListBody = `
 			"pool_uuid": "aa277c8e-7421-4721-ae6a-347771fe4fa6",
 			"type": "mgmt",
 			"uuid": "a48a7b6d-9cfa-24a4-8d48-f0e25d35984a"
-
         }
     ]
 }
@@ -99,6 +185,19 @@ const PTPInterfaceListBody = `
 	]
 }
 `
+const NetworkAddressPoolListBody = `
+{
+    "network_addresspools": [
+        {
+			"uuid": "11111111-a6e5-425e-9317-995da88d6694",
+			"network_uuid": "a48a7b6d-9cfa-24a4-8d48-f0e25d35984a",
+			"address_pool_uuid": "aa277c8e-7421-4721-ae6a-347771fe4fa6",
+			"network_name": "oam",
+			"address_pool_name": "oam-ipv4"
+	}
+    ]
+}
+`
 
 func HandleResourceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -125,6 +224,10 @@ func HandleResourceRequests(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, PTPInterfaceListBody)
 			break
 		}
+		if strings.HasSuffix(path, "/"+"network_addresspools") {
+			fmt.Fprint(w, NetworkAddressPoolListBody)
+			break
+		}
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -137,6 +240,7 @@ func StartAPIHandlers() {
 	th.Mux.HandleFunc("/addrpools", HandleResourceRequests)
 	th.Mux.HandleFunc("/ptp_instances", HandleResourceRequests)
 	th.Mux.HandleFunc("/ptp_interfaces", HandleResourceRequests)
+	th.Mux.HandleFunc("/network_addresspools", HandleResourceRequests)
 }
 
 var _ = Describe("Test Build utilities:", func() {
@@ -709,9 +813,6 @@ var _ = Describe("Test Build utilities:", func() {
 				ns := "fakens"
 				name := "mgmt"
 				network_type := "mgmt"
-				dynamic := "dynamic"
-				order := ""
-				ranges := make([]starlingxv1.AllocationRange, 0)
 				db := &DeploymentBuilder{
 					client:    gcClient.ServiceClient(),
 					namespace: ns,
@@ -731,17 +832,13 @@ var _ = Describe("Test Build utilities:", func() {
 						},
 					},
 					Spec: starlingxv1.PlatformNetworkSpec{
-						Type: network_type,
-						Allocation: starlingxv1.AllocationInfo{
-							Type:   dynamic,
-							Order:  &order,
-							Ranges: ranges,
-						},
+						Dynamic:                true,
+						Type:                   network_type,
+						AssociatedAddressPools: []string{},
 					},
 				}
 				expPNs = append(expPNs, &expPN)
 				err := db.buildPlatformNetworks(&d)
-
 				Expect(err).To(BeNil())
 				Expect(d.PlatformNetworks).To(Equal(expPNs))
 			})
@@ -872,6 +969,11 @@ var _ = Describe("Test Build utilities:", func() {
 				warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 				namespace := "fakens"
 				fakePassword := []byte("")
+				floating_address := "192.168.204.2"
+				controller0_address := "192.168.204.3"
+				controller1_address := "192.168.204.4"
+				gateway := "192.168.204.1"
+				allocation_order := "random"
 				d := &Deployment{
 					Namespace: v1.Namespace{
 						TypeMeta: metav1.TypeMeta{
@@ -933,6 +1035,27 @@ var _ = Describe("Test Build utilities:", func() {
 							},
 						},
 					},
+					AddressPools: []*starlingxv1.AddressPool{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "pn1",
+								Namespace: "default",
+							},
+							Spec: starlingxv1.AddressPoolSpec{
+								Subnet:             "192.168.204.0",
+								FloatingAddress:    &floating_address,
+								Controller0Address: &controller0_address,
+								Controller1Address: &controller1_address,
+								Prefix:             24,
+								Gateway:            &gateway,
+								Allocation: starlingxv1.AllocationInfo{
+									Order:  &allocation_order,
+									Ranges: []starlingxv1.AllocationRange{{Start: "192.168.204.2", End: "192.168.204.254"}},
+								},
+							},
+						},
+					},
+
 					DataNetworks: []*starlingxv1.DataNetwork{
 						{
 							ObjectMeta: metav1.ObjectMeta{
@@ -974,81 +1097,9 @@ var _ = Describe("Test Build utilities:", func() {
 						},
 					},
 				}
-				exp := `---
-apiVersion: v1
-kind: namespace
-metadata:
-  name: fakens
-spec: {}
----
-apiVersion: v1
-data:
-  password: ""
-  username: dXNlcm5hbWU=
-kind: Secret
-metadata:
-  name: secret1
-  namespace: fakens
-type: kubernetes.io/basic-auth
----
-Data:
-  Fake Data: 'Warning: Incomplete secret, please replace it with the secret content'
-ObjectMeta:
-  name: incomsec1
-  namespace: bar
-Type: fake type
-TypeMeta:
-  apiVersion: v1
-  kind: Secret
----
-metadata:
-  name: sys1
-  namespace: default
-spec: {}
----
-metadata:
-  name: pn1
-  namespace: default
-spec:
-  allocation:
-    type: ""
-  prefix: 0
-  subnet: ""
-  type: mgmt
----
-metadata:
-  name: dn1
-  namespace: default
-spec:
-  type: ""
----
-metadata:
-  name: ptpinst1
-  namespace: default
-spec:
-  service: ""
----
-metadata:
-  name: ptpinf1
-  namespace: default
-spec:
-  ptpinstance: ""
----
-metadata:
-  name: hostprofile1
-  namespace: default
-spec: {}
----
-metadata:
-  name: host
-  namespace: default
-spec:
-  profile: ""
----
-`
 				out, err := d.ToYAML()
 				Expect(err).To(BeNil())
-				Expect(out).To(Equal(exp))
+				Expect(out).To(Equal(expYaml))
 			})
 		})
 	})

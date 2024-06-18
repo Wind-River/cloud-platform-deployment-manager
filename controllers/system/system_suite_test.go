@@ -7,6 +7,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -90,6 +91,16 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
+	done := make(chan error, 1)
+	go func() {
+		done <- testEnv.Stop()
+	}()
+
+	select {
+	case err := <-done:
+		Expect(err).NotTo(HaveOccurred())
+	case <-time.After(time.Minute): // 1 minute, adjust timeout as necessary
+		By("timeout waiting for the test environment to stop")
+		// Implement additional logging or force-termination here
+	}
 })

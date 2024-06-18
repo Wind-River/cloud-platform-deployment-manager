@@ -70,6 +70,8 @@ type SystemReconciler struct {
 
 const CertificateDirectory = "/etc/ssl/certs"
 
+const SystemFinalizerName = "system.finalizers.windriver.com"
+
 func InstallCertificate(filename string, data []byte) error {
 	err := os.MkdirAll("/etc/ssl/certs", 0600)
 	if err != nil {
@@ -1422,11 +1424,13 @@ func (r *SystemReconciler) GetScopeConfig(instance *starlingxv1.System) (scope s
 	return deploymentScope, nil
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -1436,17 +1440,12 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -1470,15 +1469,6 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 		if err != nil {
 			return err
 		}
-
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logSystem.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -1518,6 +1508,18 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System) (err
 	return nil
 }
 
+// Filter out certificates with type other than "ssl_ca"
+func clean_deprecated_certificates(certs starlingxv1.CertificateList) starlingxv1.CertificateList {
+	originalLength := len(certs)
+	filteredCerts := make([]starlingxv1.CertificateInfo, 0, originalLength)
+	for _, cert := range certs {
+		if cert.Type == starlingxv1.PlatformCACertificate {
+			filteredCerts = append(filteredCerts, cert)
+		}
+	}
+	return filteredCerts
+}
+
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
@@ -1548,11 +1550,78 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	// Update scope from configuration
+	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
+
+	// Restore the data network status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' system resource status without doing actual reconciliation", instance.Name)
+
+		if platformClient == nil {
+			// Create the platform client without notifying other controllers
+			platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
+			if err != nil {
+				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+			}
+		}
+
+		systemInfo := v1info.SystemInfo{}
+		err = systemInfo.PopulateSystemInfo(platformClient)
+		if err != nil {
+			return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		}
+		value := strings.ToLower(systemInfo.System.SystemType)
+		r.CloudManager.SetSystemType(instance.Namespace, cloudManager.SystemType(value))
+
+		// This allows other controllers to reconcile next time
+		// a configuration is applied.
+		r.CloudManager.SetSystemReady(instance.Namespace, true)
+
+		if err := r.RestoreSystemStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled &&
+		platformClient != nil {
+
+		if !scope_updated {
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// Update ReconciledAfterInSync and ObservedGeneration
 	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
+
+	// Filter out certificates with type other than "ssl_ca"
+	if instance.Spec.Certificates != nil {
+		originalLength := len(*instance.Spec.Certificates)
+		filteredCerts := clean_deprecated_certificates(*instance.Spec.Certificates)
+
+		// Update the instance if any certificates were removed
+		if len(filteredCerts) != originalLength {
+			logSystem.Info("Removed certificates with all other deprecated types except ssl_ca", "system", instance.Name)
+			*instance.Spec.Certificates = starlingxv1.CertificateList(filteredCerts)
+			err = r.Client.Update(ctx, instance)
+			if err != nil {
+				logSystem.Error(err, "Failed to update System instance after removing certificates")
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logSystem.Error(err, "unable to update scope")
+		logSystem.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -1563,7 +1632,6 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
 
-	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
 	if platformClient == nil {
 		// Create the platform client
 		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
@@ -1600,6 +1668,32 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
+// UpdateDeploymentScope function is used to update the deployment scope.
+func (r *SystemReconciler) UpdateDeploymentScope(instance *starlingxv1.System) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logSystem.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	// Set default value for StrategyRequired otherwise status update will fail.
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logSystem.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *SystemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	tMgr := cloudManager.GetInstance(mgr)
@@ -1616,4 +1710,63 @@ func (r *SystemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.System{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *SystemReconciler) checkRestoreInProgress(instance *starlingxv1.System) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *SystemReconciler) RestoreSystemStatus(instance *starlingxv1.System) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update system status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for system resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *SystemReconciler) ClearRestoreInProgress(instance *starlingxv1.System) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, SystemFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, SystemFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' system resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }

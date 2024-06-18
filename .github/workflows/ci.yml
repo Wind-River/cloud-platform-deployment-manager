@@ -13,11 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
-        go-version: '1.19'
-        cache: false
+        go-version: '1.22.2'
 
     - name: Test the commit
       run: make test
@@ -30,14 +29,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
-        go-version: '1.19'
+        # when the files to be extracted are already present,
+        # tar extraction in Golangci Lint fails with the "File exists"
+        # errors. These files appear to be present because of
+        # cache in setup-go, on disabling the cache we are no more seeing
+        # such error. Cache is to be enabled once the fix is available for
+        # this issue
+        go-version: '1.22.2'
         cache: false
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.49
+        version: v1.57.1
         args: "-v --timeout 15m0s"

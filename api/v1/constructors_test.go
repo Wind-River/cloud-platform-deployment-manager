@@ -395,52 +395,22 @@ var _ = Describe("Constructor utils for kind", func() {
 	Describe("Test NewPlatformNetworkSpec", func() {
 		Context("When network dynamic is false", func() {
 			It("should give allocation type as AllocationOrderStatic", func() {
-				gateway := "gateway"
-				ranges := make([]AllocationRange, 0)
-				obj := AllocationRange{
-					Start: "192.168.1.100",
-					End:   "192.168.1.200",
+				associatedAddressPool := []string{
+					"192.168.1.0/24",
+					"192.168.1.255",
+					"192.168.1.1",
+					"192.168.1.2",
 				}
-				ranges = append(ranges, obj)
-				obj = AllocationRange{
-					Start: "10.0.0.1",
-					End:   "10.0.0.255",
-				}
-				ranges = append(ranges, obj)
-				poolRanges := make([][]string, 2)
-				poolRanges[0] = []string{"192.168.1.100", "192.168.1.200"}
-				poolRanges[1] = []string{"10.0.0.1", "10.0.0.255"}
-
-				pool := addresspools.AddressPool{
-					Network:            "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Order:              "random",
-					Ranges:             poolRanges,
-				}
-
 				network := networks.Network{
 					Dynamic: false,
 					Type:    "mgmt",
 				}
 				expSpec := PlatformNetworkSpec{
-					Type:               "mgmt",
-					Subnet:             "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Allocation: AllocationInfo{
-						Type:   networks.AllocationOrderStatic,
-						Order:  &pool.Order,
-						Ranges: ranges,
-					},
+					Type:                   "mgmt",
+					Dynamic:                false,
+					AssociatedAddressPools: associatedAddressPool,
 				}
-				pnSpec, err := NewPlatformNetworkSpec(pool, network)
+				pnSpec, err := NewPlatformNetworkSpec(associatedAddressPool, network)
 				Expect(err).To(BeNil())
 				Expect(*pnSpec).To(Equal(expSpec))
 			})
@@ -451,51 +421,21 @@ var _ = Describe("Constructor utils for kind", func() {
 		Context("When network dynamic is false", func() {
 			It("should give allocation type as AllocationOrderStatic", func() {
 				namespace := "NameSpace"
-				gateway := "192.168.1.1"
-				ranges := make([]AllocationRange, 0)
-				obj := AllocationRange{
-					Start: "192.168.1.100",
-					End:   "192.168.1.200",
+				associatedAddressPool := []string{
+					"192.168.1.0/24",
+					"192.168.1.255",
+					"192.168.1.1",
+					"192.168.1.2",
 				}
-				ranges = append(ranges, obj)
-				obj = AllocationRange{
-					Start: "10.0.0.1",
-					End:   "10.0.0.255",
-				}
-				ranges = append(ranges, obj)
-				poolRanges := make([][]string, 2)
-				poolRanges[0] = []string{"192.168.1.100", "192.168.1.200"}
-				poolRanges[1] = []string{"10.0.0.1", "10.0.0.255"}
-
-				pool := addresspools.AddressPool{
-					Network:            "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Order:              "random",
-					Ranges:             poolRanges,
-				}
-
 				network := networks.Network{
 					Name:    "NetworkName",
 					Dynamic: false,
 					Type:    "mgmt",
 				}
 				expSpec := PlatformNetworkSpec{
-					Type:               "mgmt",
-					Subnet:             "192.168.1.0/24",
-					FloatingAddress:    "192.168.1.255",
-					Controller0Address: "192.168.1.1",
-					Controller1Address: "192.168.1.2",
-					Prefix:             24,
-					Gateway:            &gateway,
-					Allocation: AllocationInfo{
-						Type:   networks.AllocationOrderStatic,
-						Order:  &pool.Order,
-						Ranges: ranges,
-					},
+					Type:                   "mgmt",
+					Dynamic:                false,
+					AssociatedAddressPools: associatedAddressPool,
 				}
 				expPn := PlatformNetwork{
 					TypeMeta: metav1.TypeMeta{
@@ -511,9 +451,73 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 					Spec: expSpec,
 				}
-				pn, err := NewPlatformNetwork(namespace, pool, network)
+				pn, err := NewPlatformNetwork(namespace, associatedAddressPool, network)
 				Expect(err).To(BeNil())
 				Expect(*pn).To(Equal(expPn))
+			})
+		})
+	})
+
+	Describe("Test NewAddressPool", func() {
+		Context("When gophercloud's addresspools.AddressPool is input", func() {
+			It("should return starlingxv1.AddressPool spec", func() {
+				namespace := "NameSpace"
+				subnet := "192.168.204.0"
+				floating_address := "192.168.204.2"
+				controller0_address := "192.168.204.3"
+				controller1_address := "192.168.204.4"
+				gateway := "192.168.204.1"
+				range_start := "192.168.204.2"
+				range_end := "192.168.204.254"
+				allocation_order := "random"
+
+				poolRanges := make([][]string, 1)
+				poolRanges[0] = []string{range_start, range_end}
+
+				pool := addresspools.AddressPool{
+					Name:               "mgmt",
+					Network:            "192.168.204.0",
+					FloatingAddress:    floating_address,
+					Controller0Address: controller0_address,
+					Controller1Address: controller1_address,
+					Prefix:             24,
+					Gateway:            &gateway,
+					Order:              allocation_order,
+					Ranges:             poolRanges,
+				}
+
+				expSpec := AddressPoolSpec{
+					Subnet:             subnet,
+					FloatingAddress:    &floating_address,
+					Controller0Address: &controller0_address,
+					Controller1Address: &controller1_address,
+					Prefix:             24,
+					Gateway:            &gateway,
+					Allocation: AllocationInfo{
+						Order:  &allocation_order,
+						Ranges: []AllocationRange{{Start: range_start, End: range_end}},
+					},
+				}
+
+				expAddrPool := AddressPool{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: APIVersion,
+						Kind:       KindAddressPool,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      pool.Name,
+						Namespace: namespace,
+						Labels: map[string]string{
+							ControllerToolsLabel: ControllerToolsVersion,
+						},
+					},
+					Spec: expSpec,
+				}
+
+				ap, err := NewAddressPool(namespace, pool)
+				Expect(err).To(BeNil())
+				Expect(*ap).To(Equal(expAddrPool))
+
 			})
 		})
 	})

@@ -482,11 +482,13 @@ func (r *PtpInterfaceReconciler) GetScopeConfig(instance *starlingxv1.PtpInterfa
 	return deploymentScope, nil
 }
 
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInterface) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -496,17 +498,12 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPtpInterface.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -530,14 +527,6 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 		if err != nil {
 			return err
 		}
-
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPtpInterface.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -606,11 +595,35 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
+	// Restore the PtpInterface status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' PtpInterface resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestorePtpinterfaceStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
+		if !scope_updated {
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// Update ReconciledAfterInSync and ObservedGeneration.
 	logPtpInterface.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance)
 	if err != nil {
-		logPtpInterface.Error(err, "unable to update scope")
+		logPtpInterface.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
 		return reconcile.Result{}, err
 	}
 	logPtpInterface.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -658,6 +671,32 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	return ctrl.Result{}, nil
 }
 
+// UpdateDeploymentScope function is used to update the deployment scope.
+func (r *PtpInterfaceReconciler) UpdateDeploymentScope(instance *starlingxv1.PtpInterface) (error, bool) {
+	scope, err := r.GetScopeConfig(instance)
+	if err != nil {
+		logPtpInterface.Error(err, "failed to fetch deploymentScope")
+		return err, false
+	}
+
+	// Set default value for StrategyRequired otherwise status update will fail.
+	if instance.Status.StrategyRequired == "" {
+		instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+	}
+
+	if instance.Status.DeploymentScope != scope {
+		instance.Status.DeploymentScope = scope
+		err := r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			logPtpInterface.Error(err, "failed to update deploymentScope")
+			return err, false
+		}
+		return nil, true
+	}
+
+	return nil, false
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *PtpInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	tMgr := cloudManager.GetInstance(mgr)
@@ -673,4 +712,62 @@ func (r *PtpInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PtpInterface{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *PtpInterfaceReconciler) checkRestoreInProgress(instance *starlingxv1.PtpInterface) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *PtpInterfaceReconciler) RestorePtpinterfaceStatus(instance *starlingxv1.PtpInterface) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update ptp interface status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for PtpInterface resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *PtpInterfaceReconciler) ClearRestoreInProgress(instance *starlingxv1.PtpInterface) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' ptp interface resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }
