@@ -34,7 +34,7 @@ var _ = Describe("system_webhook functions", func() {
 		})
 	})
 	Describe("validateBackendAttributes function is tested", func() {
-		Context("When the type is ceph and partitionsize and replica factor is specified", func() {
+		Context("When the type is ceph and partitionSize and replicationFactor is specified", func() {
 			It("Validtes backend attributes sucessfully without any error", func() {
 				prtSize := 20
 				repFac := 2
@@ -48,18 +48,54 @@ var _ = Describe("system_webhook functions", func() {
 				Expect(err).To(BeNil())
 			})
 		})
-		Context("When partitionSize and replicafactor is present when the Type is file", func() {
-			It("Should return the error partitionSize and ReplicationFactor only permitted with ceph backend", func() {
+		Context("When partitionSize is present when the Type is file", func() {
+			It("Should return the error partitionSize only permitted with ceph backend", func() {
 				prtSize := 20
+				backend := StorageBackend{
+					PartitionSize: &prtSize,
+					Type:          file,
+				}
+
+				err := validateBackendAttributes(backend)
+				msg := errors.New("partitionSize is only permitted with ceph backend")
+				Expect(err).To(Equal(msg))
+			})
+		})
+		Context("When replicationFactor is present when the Type is file", func() {
+			It("Should return the error ReplicationFactor only permitted with ceph and ceph-rook backends", func() {
 				repFac := 2
 				backend := StorageBackend{
-					PartitionSize:     &prtSize,
 					ReplicationFactor: &repFac,
 					Type:              file,
 				}
 
 				err := validateBackendAttributes(backend)
-				msg := errors.New("partitionSize and ReplicationFactor only permitted with ceph backend")
+				msg := errors.New("replicationFactor is only permitted with ceph and ceph-rook backends")
+				Expect(err).To(Equal(msg))
+			})
+		})
+		Context("When replicationFactor is present when the Type is ceph-rook", func() {
+			It("Should returns success", func() {
+				repFac := 2
+				backend := StorageBackend{
+					ReplicationFactor: &repFac,
+					Type:              rook,
+				}
+
+				err := validateBackendAttributes(backend)
+				Expect(err).To(Succeed())
+			})
+		})
+		Context("When deployment is present when the Type is file", func() {
+			It("Should return the error Deployment only permitted with ceph-rook backend", func() {
+				deploymentModel := "open"
+				backend := StorageBackend{
+					Deployment: deploymentModel,
+					Type:       file,
+				}
+
+				err := validateBackendAttributes(backend)
+				msg := errors.New("deployment is only permitted with ceph-rook backend")
 				Expect(err).To(Equal(msg))
 			})
 		})
@@ -116,6 +152,55 @@ var _ = Describe("system_webhook functions", func() {
 				err := validateStorageBackends(obj)
 				msg := errors.New("backend services may only be specified once.")
 				Expect(err).To(Equal(msg))
+			})
+		})
+		Context("When ceph and ceph-rook backends are added", func() {
+			It("Returns error that they are not supported at the same time.", func() {
+				repFac := 10
+				deployment := "open"
+
+				obj := &System{
+					Spec: SystemSpec{
+						Storage: &SystemStorageInfo{
+							Backends: &StorageBackendList{
+								{
+									Type:     ceph,
+									Services: []string{"cinder", "nova"},
+								},
+								{
+									Type:              rook,
+									ReplicationFactor: &repFac,
+									Deployment:        deployment,
+									Services:          []string{"block", "filesystem"},
+								},
+							},
+						},
+					},
+				}
+				err := validateStorageBackends(obj)
+				msg := errors.New("ceph and ceph-rook backends are not supported at the same time")
+				Expect(err).To(Equal(msg))
+			})
+		})
+		Context("When ceph and file backends are added", func() {
+			It("Returns success.", func() {
+				obj := &System{
+					Spec: SystemSpec{
+						Storage: &SystemStorageInfo{
+							Backends: &StorageBackendList{
+								{
+									Type:     ceph,
+									Services: []string{"cinder", "nova"},
+								},
+								{
+									Type: file,
+								},
+							},
+						},
+					},
+				}
+				err := validateStorageBackends(obj)
+				Expect(err).To(Succeed())
 			})
 		})
 	})
