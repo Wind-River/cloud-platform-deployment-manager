@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022 Wind River Systems, Inc. */
+/* Copyright(c) 2022,2024 Wind River Systems, Inc. */
 package system
 
 import (
@@ -78,4 +78,55 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
+	Context("Test valid deployment for Ceph Rook backend", func() {
+		It("Should return successfully", func() {
+			nameBackend := string("ceph-rook-foobar")
+			typeBackend := string("ceph-rook")
+			deploymentModel := string("controller")
+			created := &starlingxv1.System{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foobar",
+					Namespace: "default",
+				},
+				Spec: starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						Backends: &starlingxv1.StorageBackendList{
+							{
+								Name:       nameBackend,
+								Type:       typeBackend,
+								Deployment: deploymentModel,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, created)).To(Succeed())
+		})
+	})
+
+	Context("Test invalid deployment for Ceph Rook backend", func() {
+		It("Should return error", func() {
+			nameBackend := string("ceph-rook-foobarfoo")
+			typeBackend := string("ceph-rook")
+			deploymentModel := string("incorrect-deployment-model")
+			created := &starlingxv1.System{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foobarfoo",
+					Namespace: "default",
+				},
+				Spec: starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						Backends: &starlingxv1.StorageBackendList{
+							{
+								Name:       nameBackend,
+								Type:       typeBackend,
+								Deployment: deploymentModel,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, created)).Error()
+		})
+	})
 })

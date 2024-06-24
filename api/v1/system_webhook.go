@@ -32,6 +32,7 @@ const (
 	file = "file"
 	lvm  = "lvm"
 	ceph = "ceph"
+	rook = "ceph-rook"
 )
 
 const (
@@ -41,6 +42,10 @@ const (
 	nova           = "nova"
 	swift          = "swift"
 	rbdProvisioner = "rbd-provisioner"
+	block          = "block"
+	ecblock        = "ecblock"
+	filesystem     = "filesystem"
+	object         = "object"
 )
 
 var validBackendServices = map[string]map[string]bool{
@@ -58,6 +63,13 @@ var validBackendServices = map[string]map[string]bool{
 		nova:           true,
 		swift:          true,
 		rbdProvisioner: true,
+	},
+
+	rook: {
+		block:      true,
+		ecblock:    true,
+		filesystem: true,
+		object:     true,
 	},
 }
 
@@ -92,9 +104,23 @@ func validateBackendServices(backendType string, services []string) error {
 }
 
 func validateBackendAttributes(backend StorageBackend) error {
-	if backend.PartitionSize != nil || backend.ReplicationFactor != nil {
+	if backend.Deployment != "" {
+		if backend.Type != rook {
+			msg := fmt.Sprintf("deployment is only permitted with %s backend", rook)
+			return errors.New(msg)
+		}
+	}
+
+	if backend.PartitionSize != nil {
 		if backend.Type != ceph {
-			msg := fmt.Sprintf("partitionSize and ReplicationFactor only permitted with %s backend", ceph)
+			msg := fmt.Sprintf("partitionSize is only permitted with %s backend", ceph)
+			return errors.New(msg)
+		}
+	}
+
+	if backend.ReplicationFactor != nil {
+		if backend.Type != ceph && backend.Type != rook {
+			msg := fmt.Sprintf("replicationFactor is only permitted with %s and %s backends", ceph, rook)
 			return errors.New(msg)
 		}
 	}
@@ -123,6 +149,10 @@ func validateStorageBackends(obj *System) error {
 		}
 
 		present[b.Type] = true
+	}
+
+	if present[ceph] && present[rook] {
+		return errors.New("ceph and ceph-rook backends are not supported at the same time")
 	}
 
 	return nil

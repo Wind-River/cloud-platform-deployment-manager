@@ -221,14 +221,32 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 			Network:   spec_sb.Network,
 		}
 
+		capabilities := make(map[string]interface{})
+
 		// Replication is an optional parameter.
 		// In the spec, the parameter is named ReplicationFactor,
-		// and it maps to the replication key in the Capabilities
-		// dictionary
+		// and it maps to the replication key in the Capabilities dictionary
 		if spec_sb.ReplicationFactor != nil {
-			capabilities := make(map[string]interface{})
 			capabilities["replication"] = strconv.Itoa(*spec_sb.ReplicationFactor)
+		}
+
+		// Deployment is an optional parameter.
+		// In the spec, the parameter is named Deployment,
+		// and it maps to the deployment_model key in the Capabilities dictionary
+		if spec_sb.Deployment != "" {
+			capabilities["deployment_model"] = &spec_sb.Deployment
+		}
+
+		if len(capabilities) > 0 {
 			opts.Capabilities = &capabilities
+		}
+
+		// Services is an optional parameter.
+		// In the spec, it is received as an array,
+		// that must be concatenated into a single string.
+		if len(spec_sb.Services) > 0 {
+			str_services := strings.Join(spec_sb.Services, ",")
+			opts.Services = &str_services
 		}
 
 		result, err := storagebackends.Create(client, opts).Extract()
