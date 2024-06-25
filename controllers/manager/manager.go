@@ -10,6 +10,8 @@ import (
 	"sync"
 
 	"fmt"
+	"strings"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
@@ -24,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"strings"
 )
 
 var log = logf.Log.WithName("manager")
@@ -121,7 +122,7 @@ type CloudManager interface {
 	StrageySent()
 	GetStrageySent() bool
 	ClearStragey()
-	GetStrageyNamespace() string
+	GetNamespace() string
 	GetVimClient() *gophercloud.ServiceClient
 	SetStrategyAppliedSent(namespace string, applied bool) error
 	StartStrategyMonitor()
@@ -131,6 +132,12 @@ type CloudManager interface {
 	SetPlatformNetworkReconciling(status bool)
 	IsNotifyingActiveHost() bool
 	SetNotifyingActiveHost(status bool)
+
+	// factory install related methods
+	GetFactoryInstall(namespace string) (bool, error)
+	SetFactoryConfigFinalized(namespace string, value bool) error
+	SetResourceDefaultUpdated(namespace string, name string, value bool) error
+	GetResourceDefaultUpdated(namespace string, name string) (bool, error)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
@@ -857,8 +864,8 @@ func (m *PlatformManager) ClearStragey() {
 	}
 }
 
-// GetStrageyNamespace returns namespace for gopher client
-func (m *PlatformManager) GetStrageyNamespace() string {
+// GetNamespace returns namespace for gopher client
+func (m *PlatformManager) GetNamespace() string {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
@@ -868,7 +875,7 @@ func (m *PlatformManager) GetStrageyNamespace() string {
 // GetVimClient returns vim client for system update
 func (m *PlatformManager) GetVimClient() *gophercloud.ServiceClient {
 	if m.vimClient == nil {
-		namespace := m.GetStrageyNamespace()
+		namespace := m.GetNamespace()
 		if namespace == "" {
 			log.Info("No Namespace. Waiting for platform client creation")
 		} else {

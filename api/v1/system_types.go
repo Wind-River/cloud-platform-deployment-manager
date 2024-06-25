@@ -482,6 +482,30 @@ type SystemStatus struct {
 	StrategyRetryCount int `json:"strategyRetryCount"`
 }
 
+func (i *System) GetStrategyRequired() string {
+	return i.Status.StrategyRequired
+}
+
+func (i *System) SetStrategyRequired(strategy string) {
+	i.Status.StrategyRequired = strategy
+}
+
+func (i *System) GetDeploymentScope() string {
+	return i.Status.DeploymentScope
+}
+
+func (i *System) SetDeploymentScope(scope string) {
+	i.Status.DeploymentScope = scope
+}
+
+func (s *System) GetAnnotations() map[string]string {
+	return s.ObjectMeta.Annotations
+}
+
+func (s *System) SetAnnotations(annotations map[string]string) {
+	s.ObjectMeta.Annotations = annotations
+}
+
 // +kubebuilder:object:root=true
 // System defines the attributes that represent the system level attributes
 // of a StarlingX system.  This is a composition of the following StarlingX

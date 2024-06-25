@@ -607,96 +607,53 @@ func SyncIFNameByUuid(
 	}
 }
 
-// FillEmptyUuidbyName fills the empty uuid by its name. Normally, the uuids can
-// be searched from the system and merged to the default profile.
+// FillEmptyUuidbyName fills the empty UUIDs in the profile by searching in the current profile.
 func FillEmptyUuidbyName(
-	profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec,
+	profile *starlingxv1.HostProfileSpec,
+	current *starlingxv1.HostProfileSpec,
 ) {
 	if profile == nil || current == nil {
 		return
 	}
 
-	// update ethernet
-	eth_current := current.Interfaces.Ethernet
-	eth_profile := profile.Interfaces.Ethernet
-	for idx_profile := range eth_profile {
-		info_profile := eth_profile[idx_profile].CommonInterfaceInfo
-		profile_uuid := info_profile.UUID
-		if profile_uuid == "" || profile == nil {
-			for idx_current := range eth_current {
-				info_current := eth_current[idx_current].CommonInterfaceInfo
-				if info_current.Name == info_profile.Name {
-					logProfileUtils.Info(
-						"Empty IF UUID filled", "profile", info_profile.Name,
-						"current", info_current.Name, "uuid", info_current.UUID)
-					eth_profile[idx_profile].CommonInterfaceInfo.UUID =
-						info_current.UUID
+	updateUUIDs(profile.Interfaces.Ethernet, current.Interfaces.Ethernet)
+	updateUUIDs(profile.Interfaces.VLAN, current.Interfaces.VLAN)
+	updateUUIDs(profile.Interfaces.Bond, current.Interfaces.Bond)
+	updateUUIDs(profile.Interfaces.VF, current.Interfaces.VF)
+}
+
+// updateUUIDs is a generic function to update UUIDs in profile interfaces based on current interfaces.
+func updateUUIDs[T any](profileInterfaces []T, currentInterfaces []T) {
+	for idxProfile := range profileInterfaces {
+		infoProfile := getCommonInterfaceInfo(&profileInterfaces[idxProfile])
+		if infoProfile.UUID == "" {
+			for _, currentInterface := range currentInterfaces {
+				infoCurrent := getCommonInterfaceInfo(&currentInterface)
+				if infoCurrent.Name == infoProfile.Name {
+					logProfileUtils.V(2).Info(
+						"Empty IF UUID filled", "profile", infoProfile.Name,
+						"current", infoCurrent.Name, "uuid", infoCurrent.UUID)
+					infoProfile.UUID = infoCurrent.UUID
 					break
 				}
 			}
 		}
 	}
+}
 
-	// update vlan
-	vlan_current := current.Interfaces.VLAN
-	vlan_profile := profile.Interfaces.VLAN
-	for idx_profile := range vlan_profile {
-		info_profile := vlan_profile[idx_profile].CommonInterfaceInfo
-		profile_uuid := info_profile.UUID
-		if profile_uuid == "" || profile == nil {
-			for idx_current := range vlan_current {
-				info_current := vlan_current[idx_current].CommonInterfaceInfo
-				if info_current.Name == info_profile.Name {
-					logProfileUtils.Info(
-						"Empty IF UUID filled", "profile", info_profile.Name,
-						"current", info_current.Name, "uuid", info_current.UUID)
-					vlan_profile[idx_profile].CommonInterfaceInfo.UUID =
-						info_current.UUID
-					break
-				}
-			}
-		}
-	}
-
-	// update bond
-	bond_current := current.Interfaces.Bond
-	bond_profile := profile.Interfaces.Bond
-	for idx_profile := range bond_profile {
-		info_profile := bond_profile[idx_profile].CommonInterfaceInfo
-		profile_uuid := info_profile.UUID
-		if profile_uuid == "" || profile == nil {
-			for idx_current := range bond_current {
-				info_current := bond_current[idx_current].CommonInterfaceInfo
-				if info_current.Name == info_profile.Name {
-					logProfileUtils.Info(
-						"Empty IF UUID filled", "profile", info_profile.Name,
-						"current", info_current.Name, "uuid", info_current.UUID)
-					bond_profile[idx_profile].CommonInterfaceInfo.UUID =
-						info_current.UUID
-					break
-				}
-			}
-		}
-	}
-
-	// update VF
-	vf_current := current.Interfaces.VF
-	vf_profile := profile.Interfaces.VF
-	for idx_profile := range vf_profile {
-		info_profile := vf_profile[idx_profile].CommonInterfaceInfo
-		profile_uuid := info_profile.UUID
-		if profile_uuid == "" || profile == nil {
-			for idx_current := range vf_current {
-				info_current := vf_current[idx_current].CommonInterfaceInfo
-				if info_current.Name == info_profile.Name {
-					logProfileUtils.Info(
-						"Empty IF UUID filled", "profile", info_profile.Name,
-						"current", info_current.Name, "uuid", info_current.UUID)
-					vf_profile[idx_profile].CommonInterfaceInfo.UUID =
-						info_current.UUID
-					break
-				}
-			}
-		}
+// getCommonInterfaceInfo is a helper function to extract CommonInterfaceInfo from any interface type.
+func getCommonInterfaceInfo[T any](iface *T) *starlingxv1.CommonInterfaceInfo {
+	// Use type assertion or reflection to extract the CommonInterfaceInfo
+	switch v := any(iface).(type) {
+	case *starlingxv1.EthernetInfo:
+		return &v.CommonInterfaceInfo
+	case *starlingxv1.VLANInfo:
+		return &v.CommonInterfaceInfo
+	case *starlingxv1.BondInfo:
+		return &v.CommonInterfaceInfo
+	case *starlingxv1.VFInfo:
+		return &v.CommonInterfaceInfo
+	default:
+		return nil
 	}
 }

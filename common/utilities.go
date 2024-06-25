@@ -136,35 +136,19 @@ func RemoveString(slice []string, s string) (result []string) {
 
 // DedupeSlice is a utility function that removes a duplicated element from
 // a slice.
-// TODO(yuxing): switch to generic comparable after switch to go 1.20 which
-// supports comparable.
-func DedupeSlice[T string | int](sliceList []T) []T {
+func DedupeSlice[T comparable](sliceList []T) []T {
 	dedupeMap := make(map[T]bool)
 	list := []T{}
+
 	for _, item := range sliceList {
 		if _, value := dedupeMap[item]; !value {
 			dedupeMap[item] = true
 			list = append(list, item)
 		}
 	}
+
 	return list
 }
-
-/*
-func DedupeSlice[T comparable](sliceList []T) []T {
-    dedupeMap := make(map[T]bool)
-    list := []T{}
-
-    for _, item := range sliceList {
-        if _, value := dedupeMap[item]; !value {
-            dedupeMap[item] = true
-            list = append(list, item)
-        }
-    }
-
-    return list
-}
-*/
 
 func NormalizeIPv6(address string) string {
 	var ret_ip string

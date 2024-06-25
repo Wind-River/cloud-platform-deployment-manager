@@ -296,7 +296,7 @@ func monitorStrategyState(management CloudManager) bool {
 
 		} else {
 			// Update strategy applied in System
-			namespace := management.GetStrageyNamespace()
+			namespace := management.GetNamespace()
 			if namespace == "" {
 				log.Info("System namespace does not exist. Skip")
 			} else {
@@ -327,6 +327,15 @@ func monitorStrategyState(management CloudManager) bool {
 	case StrategyApplied:
 		log.Info("Strategy applied. Finish strategy monitor.")
 		deleteStrategy(management, client)
+		ns := management.GetNamespace()
+		if ns == "" {
+			log.Info("System namespace does not exist. Skip")
+		} else {
+			err := management.SetFactoryConfigFinalized(ns, true)
+			if err != nil {
+				log.Error(err, "Failed to set factory config finalized")
+			}
+		}
 		return true
 	}
 	return false
@@ -346,7 +355,7 @@ func ManageStrategy(management CloudManager) bool {
 	monitor_version := management.GetMonitorVersion()
 	if monitor_version != config_version {
 		management.SetMonitorVersion(config_version)
-		log.Info("ManageStrategy monitor version different. Wait until matched")
+		log.V(2).Info("ManageStrategy monitor version different. Wait until matched")
 		return false
 	}
 

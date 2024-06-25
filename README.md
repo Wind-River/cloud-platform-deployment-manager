@@ -521,6 +521,40 @@ metadata:
 type: kubernetes.io/tls
 ```
 
+## Post Factory Installation Updates
+
+In cases the starlingx system was already deployed once by the Deployment
+Manager with generic configurations, additional customized configurations are
+expected to be applied once again to finalize the configuration of the system.
+The Deployment Manager can read/update a configmap and orchestrate the
+configuration process accordingly.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+	name: factory-install
+	namespace: deployment
+data:
+	factory-installed: "true"  # Initial state (change to "true" if factory-installed)
+	factory-config-finalized: "false" # Optional (change to "true" if configuration is complete)
+	<system-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
+  <controller-0-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
+  <controller-1-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
+```
+
+Once the factory-installed data is set to true, the Deployment Manager will
+recollect the default resource configuration(which is expected to be set up
+before the Deployment Manager and should not be updated by the Deployment
+Manager), and force a strategy required orchestration only once until finalized.
+
+Once the factory-config-finalized is set to true, or the configmap is deleted
+from the namespace, this operation will not be triggered.
+
+The "-default-updated" data are expected to be updated by the deployment manager,
+they are expected to be set to true if the default configurations are updated once
+based on the configurations before the deployment manager.
+
 
 ## Operational Models
 
