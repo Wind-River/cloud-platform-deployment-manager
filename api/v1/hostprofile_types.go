@@ -259,7 +259,7 @@ type FileSystemInfo struct {
 	// Name defines the system defined name of the filesystem resource.  Each
 	// filesystem name may only be applicable to a subset of host personalities.
 	// Refer to StarlingX documentation for more information.
-	// +kubebuilder:validation:Enum=backup;docker;scratch;kubelet;log;root;var;image-conversion;instances
+	// +kubebuilder:validation:Enum=backup;docker;scratch;kubelet;log;root;var;image-conversion;instances;ceph
 	Name string `json:"name"`
 
 	// +kubebuilder:validation:Minimum=1

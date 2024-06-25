@@ -1221,6 +1221,7 @@ spec:
                           - var
                           - image-conversion
                           - instances
+                          - ceph
                           type: string
                         size:
                           minimum: 1
@@ -2328,6 +2329,7 @@ spec:
                               - var
                               - image-conversion
                               - instances
+                              - ceph
                               type: string
                             size:
                               minimum: 1

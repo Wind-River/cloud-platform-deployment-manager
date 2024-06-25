@@ -69,7 +69,7 @@ var DefaultHostProfile = starlingxv1.HostProfileSpec{
 var CephPrimaryGroup []string
 
 // Only the listed file systems are allow to create and delete
-var FileSystemCreationAllowed = []string{"instances", "image-conversion"}
+var FileSystemCreationAllowed = []string{"instances", "image-conversion", "ceph"}
 
 var _ reconcile.Reconciler = &HostReconciler{}
 
