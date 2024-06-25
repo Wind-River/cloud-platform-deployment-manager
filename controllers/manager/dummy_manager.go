@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -53,6 +54,9 @@ func (m *Dummymanager) BuildPlatformClient(namespace string, endpointName string
 	return c, nil
 }
 func (m *Dummymanager) NotifySystemDependencies(namespace string) error {
+	return nil
+}
+func (m *Dummymanager) NotifyController(object client.Object, annotationKey string, deleteKey bool) error {
 	return nil
 }
 func (m *Dummymanager) NotifyResource(object client.Object) error {
@@ -103,13 +107,13 @@ func (m *Dummymanager) GetMonitorVersion() int {
 func (m *Dummymanager) SetMonitorVersion(i int) {
 
 }
-func (m *Dummymanager) StrageySent() {
+func (m *Dummymanager) StrategySent() {
 	m.strategySent = true
 }
-func (m *Dummymanager) GetStrageySent() bool {
+func (m *Dummymanager) GetStrategySent() bool {
 	return m.strategySent
 }
-func (m *Dummymanager) ClearStragey() {
+func (m *Dummymanager) ClearStrategy() {
 
 }
 func (m *Dummymanager) GetNamespace() string {
@@ -146,6 +150,9 @@ func (m *Dummymanager) IsNotifyingActiveHost() bool {
 }
 func (m *Dummymanager) SetNotifyingActiveHost(status bool) {
 
+}
+func (m *Dummymanager) GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*starlingxv1.Host, *hosts.Host, error) {
+	return nil, nil, nil
 }
 func (m *Dummymanager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
 	if len(m.gcShow) == 0 {

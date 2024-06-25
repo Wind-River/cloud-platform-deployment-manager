@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package common
 
@@ -286,7 +286,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		result = RetryTransientError
 		err = nil
 
-		h.Info("waiting for dependency status", "request", request)
+		h.Info(fmt.Sprintf("%s", in), "request", request)
 	case HostNotifyError:
 		resetClient = false
 		result = RetryImmediate

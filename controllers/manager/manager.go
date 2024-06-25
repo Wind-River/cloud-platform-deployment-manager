@@ -43,9 +43,10 @@ const SystemEndpointSecretName = "system-endpoint"
 
 const (
 	// Defines annotation keys for resources.
-	NotificationCountKey = "deployment-manager/notifications"
-	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
-	RestoreInProgress    = "deployment-manager/restore-in-progress"
+	NotificationCountKey    = "deployment-manager/notifications"
+	ReconcileAfterInSync    = "deployment-manager/reconcile-after-insync"
+	RestoreInProgress       = "deployment-manager/restore-in-progress"
+	LockAndUnlockController = "deployment-manager/lock-and-unlock-controller"
 )
 
 const (
@@ -67,6 +68,11 @@ const (
 	// It's serves as an indicator to DM that only addresspool
 	// needs to be reconciled and not network / network-addrpools.
 	OtherNetworkType = "other"
+)
+
+const (
+	PersonalityActiveController  = "Controller-Active"
+	PersonalityStandbyController = "Controller-Standby"
 )
 
 const (
@@ -102,13 +108,14 @@ type CloudManager interface {
 	BuildPlatformClient(namespace string, endpointName string, endpointType string) (*gophercloud.ServiceClient, error)
 	NotifySystemDependencies(namespace string) error
 	NotifyResource(object client.Object) error
+	NotifyController(object client.Object, annotationKey string, deleteKey bool) error
 	SetSystemReady(namespace string, value bool)
 	GetSystemReady(namespace string) bool
 	SetSystemType(namespace string, value SystemType)
 	GetSystemType(namespace string) SystemType
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object client.Object)
-	GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error)
+	GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*v1.Host, *hosts.Host, error)
 	GetSystemInfo(namespace string, client *gophercloud.ServiceClient) (*SystemInfo, error)
 
 	// Strategy related methods
@@ -119,9 +126,9 @@ type CloudManager interface {
 	GetConfigVersion() int
 	GetMonitorVersion() int
 	SetMonitorVersion(i int)
-	StrageySent()
-	GetStrageySent() bool
-	ClearStragey()
+	StrategySent()
+	GetStrategySent() bool
+	ClearStrategy()
 	GetNamespace() string
 	GetVimClient() *gophercloud.ServiceClient
 	SetStrategyAppliedSent(namespace string, applied bool) error
@@ -425,7 +432,7 @@ func (m *PlatformManager) notifyControllers(namespace string, gvkList []schema.G
 
 // notifyController updates an annotation on a single controller to force it
 // to re-run its reconcile loop.
-func (m *PlatformManager) notifyController(object client.Object, annotationKey string, deleteKey bool) error {
+func (m *PlatformManager) NotifyController(object client.Object, annotationKey string, deleteKey bool) error {
 	key := client.ObjectKeyFromObject(object)
 
 	result := object.DeepCopyObject().(client.Object)
@@ -476,7 +483,7 @@ func (m *PlatformManager) NotifySystemDependencies(namespace string) error {
 }
 
 func (m *PlatformManager) NotifyResource(object client.Object) error {
-	return m.notifyController(object, NotificationCountKey, false)
+	return m.NotifyController(object, NotificationCountKey, false)
 }
 
 // GetKubernetesClient returns a reference to the Kubernetes client
@@ -645,23 +652,25 @@ func (m *PlatformManager) GetSystemInfo(namespace string, client *gophercloud.Se
 
 }
 
-func (m *PlatformManager) GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error) {
+func (m *PlatformManager) GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*v1.Host, *hosts.Host, error) {
 	host_instance := &v1.Host{}
+	var host_obj *hosts.Host
 
 	host_list, err := hosts.ListHosts(client)
 	if err != nil {
 		log.Error(err, "failed to query host list")
-		return host_instance, err
+		return host_instance, host_obj, err
 	}
 
 	for _, host := range host_list {
 		if host.Capabilities.Personality != nil {
-			if *host.Capabilities.Personality == "Controller-Active" {
+			if *host.Capabilities.Personality == personality {
 				host_namespace := types.NamespacedName{Namespace: namespace, Name: host.Hostname}
+				host_obj = &host
 				err = m.GetClient().Get(context.TODO(), host_namespace, host_instance)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("failed to fetch host instance: %s", host.Hostname))
-					return host_instance, err
+					return host_instance, host_obj, err
 				}
 				break
 			}
@@ -669,12 +678,11 @@ func (m *PlatformManager) GetActiveHost(namespace string, client *gophercloud.Se
 	}
 
 	if host_instance.Name == "" {
-		err = perrors.New("None of the controllers are active at this point")
-		return host_instance, err
+		err = perrors.New(fmt.Sprintf("None of the hosts are %s at this point", personality))
+		return host_instance, host_obj, err
 	}
 
-	return host_instance, nil
-
+	return host_instance, host_obj, nil
 }
 
 func (m *PlatformManager) StartStrategyMonitor() {
@@ -771,16 +779,16 @@ func (m *PlatformManager) SetMonitorVersion(i int) {
 	m.strategyStatus.MonitorVersion = i
 }
 
-// StrageySent to update strategy sent with true
-func (m *PlatformManager) StrageySent() {
+// StrategySent to update strategy sent with true
+func (m *PlatformManager) StrategySent() {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
 	m.strategyStatus.StrategySent = true
 }
 
-// GetStrageySent to return the current strategy sent value
-func (m *PlatformManager) GetStrageySent() bool {
+// GetStrategySent to return the current strategy sent value
+func (m *PlatformManager) GetStrategySent() bool {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
@@ -848,8 +856,8 @@ func (m *PlatformManager) SetStrategyRetryCount(c int) error {
 	return nil
 }
 
-// ClearStragey to clear strategy status
-func (m *PlatformManager) ClearStragey() {
+// ClearStrategy to clear strategy status
+func (m *PlatformManager) ClearStrategy() {
 	// Clear applied status in System instance
 	err := m.SetStrategyAppliedSent(m.strategyStatus.Namespace, false)
 	if err != nil {

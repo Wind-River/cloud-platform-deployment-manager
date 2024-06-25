@@ -5,15 +5,15 @@ package manager
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
+	perrors "github.com/pkg/errors"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 // Monitor defines the interface which must be implemented by all concrete
@@ -236,7 +236,7 @@ func StrategyRequiredMonitor(management CloudManager) {
 		finished := ManageStrategy(management)
 		if finished {
 			//Clear strategy
-			management.ClearStragey()
+			management.ClearStrategy()
 			break
 		}
 	}
@@ -341,6 +341,21 @@ func monitorStrategyState(management CloudManager) bool {
 	return false
 }
 
+// After swact the DM app loses track of strategy sent.
+// Due to this DM attempts to create new strategy and gets
+// 409 response from VIM.
+// In this case it should just monitor the ongoing strategy.
+func IsExistingStrategy(err error) bool {
+	cause := perrors.Cause(err)
+
+	switch cause.(type) {
+	case gophercloud.ErrDefault409:
+		return true
+	default:
+		return false
+	}
+}
+
 // Run function for StrategyRequiredMonitor
 // responsible for monitor resource information and send
 // strategy if needed
@@ -362,7 +377,7 @@ func ManageStrategy(management CloudManager) bool {
 	resource := management.GetStrategyRequiredList()
 
 	// Monitor strategy status after strategy is sent
-	if management.GetStrageySent() {
+	if management.GetStrategySent() {
 		r := monitorStrategyState(management)
 		return r
 	}
@@ -429,6 +444,27 @@ func ManageStrategy(management CloudManager) bool {
 			_, err := management.GcCreate(client, request)
 			if err != nil {
 				log.Error(err, "Strategy creation failed")
+				// If existing strategy is in applied state delete it so that
+				// new strategy can be created, otherwise, monitor ongoing
+				// strategy.
+				if IsExistingStrategy(err) {
+					strategy_status, _ := management.GcShow(client)
+					if strategy_status.State == "applied" {
+						log.Info("Found existing strategy in applied state, it will be deleted.")
+						err = management.GcDelete(client).ExtractErr()
+						if err != nil {
+							log.Error(err, "Failed to delete existing strategy.")
+						}
+						return false
+					}
+					log.Info(fmt.Sprintf(
+						"Found existing strategy which is %s state, it will be monitored.", strategy_status.State))
+					management.StrategySent()
+					err = management.SetStrategyRetryCount(0)
+					if err != nil {
+						log.Error(err, "Fail to clear strategy retry count")
+					}
+				}
 				c, err := management.GetStrategyRetryCount()
 				if err != nil {
 					log.Error(err, "Fail to obtain strategy retry count")
@@ -444,7 +480,7 @@ func ManageStrategy(management CloudManager) bool {
 					return true
 				}
 			} else {
-				management.StrageySent()
+				management.StrategySent()
 				err = management.SetStrategyRetryCount(0)
 				if err != nil {
 					log.Error(err, "Fail to clear strategy retry count")

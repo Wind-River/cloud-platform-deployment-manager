@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2024 Wind River Systems, Inc. */
 
 package common
 
@@ -40,7 +40,7 @@ var _ = Describe("Common utils", func() {
 				Expect(result).To(Equal(RetryTransientError))
 				Expect(sink.infoCalled).To(BeTrue())
 				Expect(sink.errorCalled).To(BeFalse())
-				Expect(sink.message).To(Equal("waiting for dependency status"))
+				Expect(sink.message).To(Equal("Test for status dependency"))
 			})
 		})
 		Context("when error is ErrResourceConfigurationDependency", func() {

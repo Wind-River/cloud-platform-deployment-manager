@@ -1657,7 +1657,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// If strategy is applied, start strategy monitor
 	if instance.Status.StrategyApplied {
 		logSystem.Info("Strategy applied, start strategy monitor")
-		r.CloudManager.StrageySent()
+		r.CloudManager.StrategySent()
 		r.CloudManager.StartStrategyMonitor()
 	} else {
 		logSystem.V(2).Info("Strategy not applied")

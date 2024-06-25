@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package host
 
@@ -140,7 +140,7 @@ const (
 )
 
 func (r *HostReconciler) IsActiveHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, reqNs string) (bool, error) {
-	host_instance, err := r.CloudManager.GetActiveHost(reqNs, client)
+	host_instance, _, err := r.CloudManager.GetHostByPersonality(reqNs, client, cloudManager.PersonalityActiveController)
 	if err != nil {
 		msg := "failed to get active host"
 		return false, common.NewUserDataError(msg)
@@ -1118,7 +1118,7 @@ func (r *HostReconciler) ReconcileHostByState(
 		// Update strategy regardless the disabled attributes
 		// the admin network mult-netting can also be done when host is disabled
 		// StrategyRequired should not be updated when strategy was sent.
-		if factory && !r.CloudManager.GetStrageySent() {
+		if factory && !r.CloudManager.GetStrategySent() {
 			logHost.Info("set lock required for configuration after factory install")
 			instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
@@ -1170,19 +1170,6 @@ func (r *HostReconciler) ReconcileHostByState(
 			msg := "waiting for locked state before applying out-of-service attributes"
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
-		}
-
-		// Clean up strategy required after Disabled and enabled attributes are all in-sync
-		if strategy_required {
-			logHost.V(2).Info("set strategy not required as attributes are all configured")
-			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
-			err := r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				err = perrors.Wrapf(err, "failed to update status: %s",
-					common.FormatStruct(instance.Status))
-				return err
-			}
 		}
 
 	} else if host.IsLockedDisabled() {
@@ -1542,7 +1529,12 @@ func (r *HostReconciler) StopAfterInSync() bool {
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
 // existing host.
-func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host, reqNs string) error {
+func (r *HostReconciler) ReconcileExistingHost(
+	client *gophercloud.ServiceClient,
+	instance *starlingxv1.Host,
+	profile *starlingxv1.HostProfileSpec,
+	host *hosts.Host,
+	reqNs string) error {
 	var defaults *starlingxv1.HostProfileSpec
 	var current *starlingxv1.HostProfileSpec
 	var platform_network_subreconciler_errs []error
@@ -1838,6 +1830,85 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	return nil
 }
 
+func (r *HostReconciler) LockUnlockAnnotationExists(instance *starlingxv1.Host) bool {
+	_, ok := instance.Annotations[cloudManager.LockAndUnlockController]
+
+	return ok
+}
+
+func (r *HostReconciler) ProcessLockHost(host_instance *starlingxv1.Host, host_obj *hosts.Host) error {
+	mon_err, req_success := r.LockHostRequest(host_instance, host_obj.ID, host_obj.Personality, "oam platform network")
+	if !req_success {
+		return common.NewResourceStatusDependency("lock_required strategy update failed.")
+	}
+	// Third argument "true" implies cloudManager.LockAndUnlockController annotation be deleted.
+	notify_err := r.CloudManager.NotifyController(host_instance, cloudManager.LockAndUnlockController, true)
+	if notify_err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf(
+			"%s annotation delete failed.", cloudManager.LockAndUnlockController))
+	}
+
+	return mon_err
+}
+
+func (r *HostReconciler) DeleteSucessfulStrategy(client *gophercloud.ServiceClient) error {
+	strategy_status, err := r.CloudManager.GcShow(client)
+	if err == nil {
+
+		if strategy_status.State != "applied" {
+			return common.NewResourceStatusDependency("waiting for existing strategy to finish.")
+		}
+
+		err = r.CloudManager.GcDelete(client).ExtractErr()
+		if err != nil {
+			return common.NewResourceStatusDependency("failed to delete existing strategy.")
+		}
+
+	}
+
+	return nil
+}
+
+func (r *HostReconciler) ProcessControllerLockAndUnlock(client *gophercloud.ServiceClient, instance *starlingxv1.Host, reqNs string) (err error) {
+	active_host_instance, active_host, err := r.CloudManager.GetHostByPersonality(reqNs, client, cloudManager.PersonalityActiveController)
+	if err != nil {
+		return common.NewResourceStatusDependency("could not fetch active host data.")
+	}
+
+	stb_host_instance, stb_host, err := r.CloudManager.GetHostByPersonality(reqNs, client, cloudManager.PersonalityStandbyController)
+	if err != nil {
+		return common.NewResourceStatusDependency("could not fetch standby host data.")
+	}
+
+	if stb_host_instance.Name == instance.Name && r.LockUnlockAnnotationExists(instance) {
+
+		if r.CloudManager.GetStrategySent() {
+			return common.NewResourceStatusDependency("waiting for existing strategy to complete.")
+		}
+
+		return r.ProcessLockHost(stb_host_instance, stb_host)
+
+	} else if active_host_instance.Name == instance.Name && r.LockUnlockAnnotationExists(instance) {
+
+		if r.LockUnlockAnnotationExists(stb_host_instance) ||
+			stb_host_instance.Status.StrategyRequired == cloudManager.StrategyLockRequired ||
+			!stb_host.IsUnlockedEnabled() {
+
+			return common.NewResourceStatusDependency("waiting for lock and unlock of standby controller.")
+		}
+
+		if r.CloudManager.GetStrategySent() {
+			return common.NewResourceStatusDependency("waiting for existing strategy to complete.")
+		}
+
+		return r.ProcessLockHost(active_host_instance, active_host)
+
+	}
+
+	return nil
+
+}
+
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
 func (r *HostReconciler) ReconcileResource(
@@ -1944,12 +2015,33 @@ func (r *HostReconciler) ReconcileResource(
 		}
 	}
 
+	// The controller instances will be checked for deployment-manager/lock-and-unlock-controller
+	// annotation and strategies are triggered to lock and unlock the controllers accordingly.
+	err = r.ProcessControllerLockAndUnlock(client, instance, reqNs)
+	if err != nil {
+		return err
+	}
+
 	if err == nil {
 		// We are done reconciling and will not be invoked again and so will
 		// not be able to track the host state if it changes administrative,
 		// operational or available states for the purpose of recording the
 		// change in our database.  Therefore we are going to start a periodic
 		// monitor to track the state of the host.
+
+		// Clean up strategy required after Disabled and enabled attributes are all in-sync
+		if instance.Status.StrategyRequired == cloudManager.StrategyUnlockRequired && host.IsUnlockedEnabled() {
+			logHost.V(2).Info("set strategy not required as attributes are all configured")
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return err
+			}
+		}
+
 		msg := "monitoring host for state changes"
 		m := NewStateChangeMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
@@ -2235,7 +2327,9 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
 		instance.Status.DeploymentScope == "bootstrap" &&
-		!platformnetwork_update_required {
+		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
+		!platformnetwork_update_required &&
+		!r.LockUnlockAnnotationExists(instance) {
 
 		factory, err := r.GetFactoryInstall(request.Namespace)
 		if err != nil {
@@ -2475,27 +2569,27 @@ func (r *HostReconciler) GetAddressPoolsFromPlatformNetwork(associated_addrpools
 // host monitor and returns LockedDisabledHost monitor error.
 // This would initiate lock request of a host through VIM so that disabled attributes
 // can be reconciled later.
-func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_id string, host_personality string, reconcile_object string) error {
+func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_id string, host_personality string, reconcile_object string) (error, bool) {
 
 	if host_instance.Status.StrategyRequired != cloudManager.StrategyLockRequired {
 		host_instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
 
-		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost,
-			host_personality,
-			host_instance.Name,
-			host_instance.Status.Reconciled,
-			host_instance.Status.StrategyRequired)
-
 		err := r.Client.Status().Update(context.TODO(), host_instance)
 		if err != nil {
 			logHost.Error(err, "failed to update host strategy")
-			return err
+			return err, false
 		}
 	}
 
+	r.CloudManager.SetResourceInfo(cloudManager.ResourceHost,
+		host_personality,
+		host_instance.Name,
+		host_instance.Status.Reconciled,
+		host_instance.Status.StrategyRequired)
+
 	msg := fmt.Sprintf("Waiting for %s to be in locked state to reconcile %s", host_instance.Name, reconcile_object)
 	m := NewLockedDisabledHostMonitor(host_instance, host_id)
-	return r.CloudManager.StartMonitor(m, msg)
+	return r.CloudManager.StartMonitor(m, msg), true
 
 }
 
