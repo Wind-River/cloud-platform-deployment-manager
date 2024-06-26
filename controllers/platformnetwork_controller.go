@@ -369,9 +369,7 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 		restoreStatus := &cloudManager.RestoreStatus{}
 		err := json.Unmarshal([]byte(config), &restoreStatus)
 		if err == nil {
-			if restoreStatus.InSync != nil {
-				instance.Status.InSync = *restoreStatus.InSync
-			}
+			instance.Status.InSync = true
 			instance.Status.Reconciled = true
 			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 			instance.Status.DeploymentScope = "bootstrap"
