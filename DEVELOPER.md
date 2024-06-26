@@ -27,17 +27,19 @@ cd ${HOME}
 mkdir -p go/{src,bin}
 export GOPATH=${HOME}/go
 export PATH=${PATH}:${HOME}/go/bin
+cd ${GOPATH}
 mkdir downloads
 cd downloads
 ```
 
 The Deployment Manager was developed during the period when GoLang version
-1.19.6 was prominent.  A newer version may work fine, but the minimum guaranteed
-version that will work with the tools and Makefile provided is v1.19.6.
+1.22.2 was prominent.  A newer version may work fine, but the minimum guaranteed
+version that will work with the tools and Makefile provided is v1.22.2.
 
 ```bash
-wget https://dl.google.com/go/go1.19.6.linux-amd64.tar.gz
-sudo tar -C /usr/local -zxf go1.19.6.linux-amd64.tar.gz
+cd ${GOPATH}/downloads
+wget https://dl.google.com/go/go1.22.2.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxf go1.22.2.linux-amd64.tar.gz
 export PATH=${PATH}:/usr/local/go/bin
 ```
 
@@ -51,6 +53,7 @@ version of Helm is v3.6.2 and can be installed on your workstation using the
 following commands.
 
 ```bash
+cd ${GOPATH}/downloads
 wget https://get.helm.sh/helm-v3.6.2-linux-amd64.tar.gz
 tar zxf helm-v3.6.2-linux-amd64.tar.gz
 sudo cp linux-amd64/helm /usr/local/bin/
@@ -70,6 +73,7 @@ manager. But kubebuilder is needed to add new type or new webhook.
 To install the latest kubebuilder,
 
 ```bash
+cd ${GOPATH}/downloads
 curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
 sudo chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
 export PATH=$PATH:/usr/local/bin
@@ -432,6 +436,21 @@ docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:latest
 docker push ${MY_REGISTRY}/wind-river/cloud-platform-deployment-manager:debug
 ```
 
+## Run golangci-lint locally
+The project is already integrated golangci-lint and go test with GitHub Action.
+In case the golangci-lint check fails, if the Github Action logs are not clear
+for trouble shoot, may need to install the golangci-lint locally for further
+investigation.
+
+Follow the official instruction to install it locally:
+https://golangci-lint.run/welcome/install/#local-installation.
+
+Then test the golangci-lint with the following commands:
+
+```bash
+golangci-lint run ./... -v
+```
+
 ## Troubleshooting dep
 If you encounter issues with dep (eg, dep command hangs), check the following:
 
@@ -466,8 +485,8 @@ public key to ~/.ssh/authorized_keys.
 
 #### Versions
 
-Try using Go 1.19 if newer versions aren't working. Check with:
+Try using Go 1.22.2 if newer versions aren't working. Check with:
 ```bash
 > go version
-go version go1.19.6 linux/amd64
+go version go1.22.2 linux/amd64
 ```

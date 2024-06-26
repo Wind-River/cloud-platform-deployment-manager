@@ -3,7 +3,167 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: addresspools.starlingx.windriver.com
+spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: {{ .Values.namespace }}-webhook-service
+          namespace: {{ .Values.namespace }}
+          path: /convert
+      conversionReviewVersions:
+      - v1
+  group: starlingx.windriver.com
+  names:
+    kind: AddressPool
+    listKind: AddressPoolList
+    plural: addresspools
+    singular: addresspool
+  preserveUnknownFields: false
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The address pool subnet.
+      jsonPath: .spec.subnet
+      name: subnet
+      type: string
+    - description: The address pool prefix.
+      jsonPath: .spec.prefix
+      name: prefix
+      type: string
+    - description: The current synchronization state.
+      jsonPath: .status.inSync
+      name: insync
+      type: boolean
+    - description: The current reconciliation state.
+      jsonPath: .status.reconciled
+      name: reconciled
+      type: boolean
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: "AddressPool defines the attributes that represent the addresspool level\nattributes of a StarlingX system.  This represents following StarlingX endpoint:\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AddressPoolSpec defines the desired state of AddressPool
+            properties:
+              allocation:
+                description: Allocation defines the allocation scheme details for the network
+                properties:
+                  order:
+                    description: |-
+                      Order defines whether host address are allocation randomly or sequential
+                      from the available pool or addresses.
+                    enum:
+                    - sequential
+                    - random
+                    type: string
+                  ranges:
+                    description: |-
+                      Ranges defines the pools from which host addresses are allocated.
+                      If omitted addresses the entire network address space is
+                      considered available.
+                    items:
+                      description: AllocationRange defines the start and end address for an allocation range
+                      properties:
+                        end:
+                          description: End defines the end of the address range (inclusively)
+                          type: string
+                        start:
+                          description: Start defines the beginning of the address range (inclusively)
+                          type: string
+                      required:
+                      - end
+                      - start
+                      type: object
+                    type: array
+                type: object
+              controller0Address:
+                description: Controller0Address is the controller-0 IPv4 or IPv6 network address value.
+                type: string
+              controller1Address:
+                description: Controller1Address is the controller-1 IPv4 or IPv6 network address value.
+                type: string
+              floatingAddress:
+                description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+                type: string
+              gateway:
+                description: Gateway defines the nexthop gateway IP address if applicable
+                type: string
+              prefix:
+                maximum: 128
+                minimum: 1
+                type: integer
+              subnet:
+                description: Subnet defines the subdivision IPv4 or IPv6 network address for the network
+                type: string
+            required:
+            - allocation
+            - prefix
+            - subnet
+            type: object
+          status:
+            description: AddressPoolStatus defines the observed state of AddressPool
+            properties:
+              configurationUpdated:
+                description: Value for configuration is updated or not
+                type: boolean
+              delta:
+                description: Delta between final profile vs current configuration
+                type: string
+              id:
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
+                type: string
+              inSync:
+                description: Defines whether the resource has been provisioned on the target system.
+                type: boolean
+              observedGeneration:
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
+                format: int64
+                type: integer
+              reconciled:
+                description: |-
+                  Reconciled defines whether the network has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: datanetworks.starlingx.windriver.com
 spec:
   conversion:
@@ -45,13 +205,22 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "DataNetworks defines the attributes that represent the data network level attributes of a StarlingX system.  This is a composition of the following StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
+        description: "DataNetworks defines the attributes that represent the data network level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -59,10 +228,14 @@ spec:
             description: DataNetworkSpec defines the desired state of DataNetwork
             properties:
               description:
-                description: Description defines a user define description which explains the purpose of the data network.
+                description: |-
+                  Description defines a user define description which explains the purpose
+                  of the data network.
                 type: string
               mtu:
-                description: MTU defines the maximum transmit unit for any virtual network derived from this data network.
+                description: |-
+                  MTU defines the maximum transmit unit for any virtual network derived
+                  from this data network.
                 maximum: 9216
                 minimum: 576
                 type: integer
@@ -77,13 +250,21 @@ spec:
                 description: VxLan defines VxLAN specific attributes for the data network.
                 properties:
                   endpointMode:
-                    description: EndpointMode defines the endpoint port learning mode for the data network network.  The dynamic mode allows the virtual network to use multicast addressing when transmitting a packet to an unknown endpoint to dynamically discover that node's VTEP IP address.   The static mode requires that all VTEP IP addresses be programmed into the virtual switch in advance and any packets destined to an unknown endpoint are dropped.
+                    description: |-
+                      EndpointMode defines the endpoint port learning mode for the data network
+                      network.  The dynamic mode allows the virtual network to use multicast
+                      addressing when transmitting a packet to an unknown endpoint to
+                      dynamically discover that node's VTEP IP address.   The static mode
+                      requires that all VTEP IP addresses be programmed into the virtual switch
+                      in advance and any packets destined to an unknown endpoint are dropped.
                     enum:
                     - static
                     - dynamic
                     type: string
                   multicastGroup:
-                    description: MulticastGroup defines the multicast IP address to be used for the data network.
+                    description: |-
+                      MulticastGroup defines the multicast IP address to be used for the data
+                      network.
                     type: string
                   ttl:
                     description: TTL defines the time-to-live value to assign to the data network.
@@ -91,7 +272,10 @@ spec:
                     minimum: 1
                     type: integer
                   udpPortNumber:
-                    description: UDPPortNumber defines the UDP protocol number to be used for the data network.  The IANA or Legacy port number values can be used.
+                    description: |-
+                      UDPPortNumber defines the UDP protocol number to be used for the data
+                      network.  The IANA or Legacy port
+                      number values can be used.
                     enum:
                     - 4789
                     - 8472
@@ -111,7 +295,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -121,17 +307,24 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the host has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
@@ -153,7 +346,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: hostprofiles.starlingx.windriver.com
 spec:
   conversion:
@@ -183,13 +376,22 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "HostProfile defines the attributes that represent the host level attributes of a StarlingX system.  This is represents the bulk of the system API attributes and is the most complex part of the schema definition. Refer the full list of API documentation here: \n https://docs.starlingx.io/api-ref/stx-config/index.html"
+        description: "HostProfile defines the attributes that represent the host level\nattributes of a StarlingX system.  This is represents the bulk of the\nsystem API attributes and is the most complex part of the schema definition.\nRefer the full list of API documentation here:\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/index.html"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -197,7 +399,11 @@ spec:
             description: HostProfileSpec defines the desired state of HostProfile
             properties:
               addresses:
-                description: Addresses defines the list of addresses to be configured against this host.  Addresses are specific to a single host therefore they should only be specified if this profile is only going to be used to configure a single host.
+                description: |-
+                  Addresses defines the list of addresses to be configured against this
+                  host. Addresses are specific to a single host therefore they should only
+                  be specified if this profile is only going to be used to configure a
+                  single host.
                 items:
                   description: AddressInfo defines the attributes specific to a single address.
                   properties:
@@ -205,7 +411,9 @@ spec:
                       description: Address defines the IPv4 or IPv6 address value.
                       type: string
                     interface:
-                      description: Interface is a reference to the interface name against which to configure the address.
+                      description: |-
+                        Interface is a reference to the interface name against which to configure
+                        the address.
                       maxLength: 255
                       pattern: ^[a-zA-Z0-9\-_\.]+$
                       type: string
@@ -230,29 +438,131 @@ spec:
                 description: AppArmor defines the security model on the host.
                 type: string
               base:
-                description: "Base defines the name of another HostProfile from which to inherit attributes.  HostProfiles can be structured in a hierarchy so that many HostProfiles can inherit generic attributes from a parent HostProfile. This hierarchy can be defined in multiple layers; with lower layers overriding attributes set in higher layers. \n At configuration time, before a Host is configured, the hierarchy of HostProfile resources is flattened to produce a single composite profile that represents the final attributes as they are overridden down the HostProfile hierarchy. \n Once the HostProfile hierarchy is flattened to a composite profile.  The Deployment Manager will further refine the profile to create a final HostProfile which serves as the final configuration for the Host resource.  To create the final HostProfile, the Deployment Manages merges the composite profile with the initial default host attributes, and then merges the individual host overrides into that result.  The process can be illustrated as follows: \n Host Defaults      +---------------------+ |                                      \\ |                                       \\ Base Profile        +                       \\ |                 \\                       \\ ...                  + Composite Profile ----+  Final Profile |                 /                        / Personality Profile(s) +                        / |                                        / |                                       / Host                                    / |                                     / |                                    / Host Overrides       +-----------------+ \n Merging two HostProfileSpec resources consists of merging the attributes of a higher precedence profile into the attributes of a lower precedences profile.  The rules for merging attributes are as follows. \n 1) A nil pointer is always overwritten by a non-nil pointer. \n 2) Two non-nil pointers are merged together according to the underlying type. \n 2a) If the type pointed to is a primitive type (e.g., int, bool, string, etc) then the higher precedence value is used). \n 2b) If the type pointed to is a structure then this same merge procedure is repeated recursively on each field of the structure with these same rules applying to each field. \n 2c) If the type pointed to is a slice/array then rule (3) is used. \n 2d) If the type pointed to is a map then higher precedence value is used and the entire map is overwritten. \n 3) Two slices are merged together using the following sub-rules. \n 3a) If the elements of slices define the KeyEqual() method then an attempt is made to try to merge equivalent element using this same merge strategy.  Elements from the higher precedence list that do not have an equivalent in the lower precedence list are appended to the list.  Elements appearing in the lower precedence list but not in the higher precedence list are kept intact. \n 3b) If the elements of the slices do not define the KeyEqual() method then they are simply concatenated together. \n 3c) An empty slice is handled as a special case that deletes the contents of the lower precedence slice.  Do not confuse an empty slice with a nil slice pointer."
+                description: |-
+                  Base defines the name of another HostProfile from which to inherit
+                  attributes.  HostProfiles can be structured in a hierarchy so that many
+                  HostProfiles can inherit generic attributes from a parent HostProfile.
+                  This hierarchy can be defined in multiple layers; with lower layers
+                  overriding attributes set in higher layers.
+
+
+                  At configuration time, before a Host is configured, the hierarchy of
+                  HostProfile resources is flattened to produce a single composite profile
+                  that represents the final attributes as they are overridden down the
+                  HostProfile hierarchy.
+
+
+                  Once the HostProfile hierarchy is flattened to a composite profile.  The
+                  Deployment Manager will further refine the profile to create a final
+                  HostProfile which serves as the final configuration for the Host
+                  resource.  To create the final HostProfile, the Deployment Manages merges
+                  the composite profile with the initial default host attributes, and then
+                  merges the individual host overrides into that result.  The process
+                  can be illustrated as follows:
+
+
+                          Host Defaults      +---------------------+
+                             |                                      \
+                             |                                       \
+                          Base Profile        +                       \
+                             |                 \                       \
+                            ...                  + Composite Profile ----+  Final Profile
+                             |                 /                        /
+                       Personality Profile(s) +                        /
+                             |                                        /
+                             |                                       /
+                            Host                                    /
+                             |                                     /
+                             |                                    /
+                          Host Overrides       +-----------------+
+
+
+                  Merging two HostProfileSpec resources consists of merging the attributes
+                  of a higher precedence profile into the attributes of a lower precedences
+                  profile.  The rules for merging attributes are as follows.
+
+
+                    1) A nil pointer is always overwritten by a non-nil pointer.
+
+
+                    2) Two non-nil pointers are merged together according to the underlying
+                       type.
+
+
+                    2a) If the type pointed to is a primitive type (e.g., int, bool,
+                        string, etc) then the higher precedence value is used).
+
+
+                    2b) If the type pointed to is a structure then this same merge
+                        procedure is repeated recursively on each field of the structure
+                        with these same rules applying to each field.
+
+
+                    2c) If the type pointed to is a slice/array then rule (3) is used.
+
+
+                    2d) If the type pointed to is a map then higher precedence value is
+                        used and the entire map is overwritten.
+
+
+                    3) Two slices are merged together using the following sub-rules.
+
+
+                    3a) If the elements of slices define the KeyEqual() method then an
+                        attempt is made to try to merge equivalent element using this same
+                        merge strategy.  Elements from the higher precedence list that do
+                        not have an equivalent in the lower precedence list are appended to
+                        the list.  Elements appearing in the lower precedence list but not
+                        in the higher precedence list are kept intact.
+
+
+                    3b) If the elements of the slices do not define the KeyEqual() method
+                        then they are simply concatenated together.
+
+
+                    3c) An empty slice is handled as a special case that deletes the
+                        contents of the lower precedence slice.  Do not confuse an empty
+                        slice with a nil slice pointer.
                 type: string
               boardManagement:
-                description: BoardManagement defines the attributes specific to the board management controller configuration.
+                description: |-
+                  BoardManagement defines the attributes specific to the board management
+                  controller configuration.
                 properties:
                   address:
-                    description: Address defines the IP address or hostname of the board management interface.  An address is specific to a host therefore this should only be set if the profile is only going to be used to configure a single host; otherwise it should be set as a per-host override.
+                    description: |-
+                      Address defines the IP address or hostname of the board management
+                      interface.  An address is specific to a host therefore this should only
+                      be set if the profile is only going to be used to configure a single
+                      host; otherwise it should be set as a per-host override.
                     type: string
                   credentials:
-                    description: Credentials defines the authentication credentials for the board management interface.  This is left as optional so that the address can be overridden on a per-host basis without worrying about overwriting the type or credentials.
+                    description: |-
+                      Credentials defines the authentication credentials for the board
+                      management interface.  This is left as optional so that the address can
+                      be overridden on a per-host basis without worrying about overwriting the
+                      type or credentials.
                     properties:
                       password:
-                        description: Password defines the attributes specific to password based authentication.
+                        description: |-
+                          Password defines the attributes specific to password based
+                          authentication.
                         properties:
                           secret:
-                            description: Secret defines the name of the secret which contains the username and password for the board management controller.
+                            description: |-
+                              Secret defines the name of the secret which contains the username and
+                              password for the board management
+                              controller.
                             type: string
                         required:
                         - secret
                         type: object
                     type: object
                   type:
-                    description: Type defines the board management controller type.  This is left as optional so that the address can be overridden on a per-host basis without worrying about overwriting the type or credentials.
+                    description: |-
+                      Type defines the board management controller type.  This is left as
+                      optional so that the address can be overridden on a per-host basis
+                      without worrying about overwriting the type or credentials.
                     enum:
                     - none
                     - bmc
@@ -262,16 +572,24 @@ spec:
                     type: string
                 type: object
               bootDevice:
-                description: BootDevice defines the absolute device path of the device to be used for installation.
+                description: |-
+                  BootDevice defines the absolute device path of the device to be used for
+                  installation.
                 maxLength: 4095
                 pattern: ^/dev/.+$
                 type: string
               bootMAC:
-                description: BootMAC defines the MAC address that a host uses to perform the initial software installation.  This is only applicable for statically provisioned hosts and should be set on each hosts via the overrides attributes.
+                description: |-
+                  BootMAC defines the MAC address that a host uses to perform the initial
+                  software installation.  This is only applicable for statically
+                  provisioned hosts and should be set on each hosts via the overrides
+                  attributes.
                 pattern: ^([0-9a-fA-Z]{2}[:-]){5}([0-9a-fA-Z]{2})$
                 type: string
               clockSynchronization:
-                description: ClockSynchronization defines the clock synchronization source of the host resource.
+                description: |-
+                  ClockSynchronization defines the clock synchronization source of the host
+                  resource.
                 enum:
                 - ntp
                 - ptp
@@ -285,18 +603,26 @@ spec:
                 pattern: ^[0-9]+$
                 type: string
               installOutput:
-                description: InstallOutput defines the install output method.  The graphical mode is only suitable when the console attribute is set to a graphical terminal. The text mode can be used with both serial and graphical console configurations.
+                description: |-
+                  InstallOutput defines the install output method.  The graphical mode is
+                  only suitable when the console attribute is set to a graphical terminal.
+                  The text mode can be used with both serial and graphical console
+                  configurations.
                 enum:
                 - text
                 - graphical
                 type: string
               interfaces:
-                description: Interfaces defines the list of interfaces to be configured against this host.
+                description: |-
+                  Interfaces defines the list of interfaces to be configured against this
+                  host.
                 properties:
                   bond:
                     description: Bond defines the list of Bond interfaces to be configured on a host.
                     items:
-                      description: BondInfo defines the attributes specific to a single Bond interface.
+                      description: |-
+                        BondInfo defines the attributes specific to a single Bond
+                        interface.
                       properties:
                         class:
                           description: Class defines the intended usage of this interface by the system.
@@ -308,14 +634,18 @@ spec:
                           - none
                           type: string
                         dataNetworks:
-                          description: DataNetworks defines the list of data networks to be configured against this interface.
+                          description: |-
+                            DataNetworks defines the list of data networks to be configured against
+                            this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         members:
-                          description: Members defines the list of interfaces which, together, make up the Bond interface.
+                          description: |-
+                            Members defines the list of interfaces which, together, make up the Bond
+                            interface.
                           items:
                             type: string
                           type: array
@@ -337,17 +667,23 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         platformNetworks:
-                          description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                          description: |-
+                            PlatformNetworks defines the list of platform networks to be configured
+                            against this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         primaryReselect:
-                          description: PrimaryReselect defines the reselection policy for the Bond interface. Only applicable for active_standby mode.
+                          description: |-
+                            PrimaryReselect defines the reselection policy for the Bond interface.
+                            Only applicable for active_standby mode.
                           type: string
                         ptpInterfaces:
-                          description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                          description: |-
+                            PtpInterfaces defines the ptp interfaces to be configured against this
+                            interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
@@ -361,7 +697,9 @@ spec:
                           - none
                           type: string
                         transmitHashPolicy:
-                          description: TransmitHashPolicy defines the transmit interface selection policy for the Bond interface.  Only applicable for 802.3ad and balanced modes.
+                          description: |-
+                            TransmitHashPolicy defines the transmit interface selection policy for
+                            the Bond interface.  Only applicable for 802.3ad and balanced modes.
                           enum:
                           - layer2
                           - layer2+3
@@ -377,9 +715,13 @@ spec:
                       type: object
                     type: array
                   ethernet:
-                    description: Ethernet defines the list of ethernet interfaces to be configured on a host.
+                    description: |-
+                      Ethernet defines the list of ethernet interfaces to be configured on a
+                      host.
                     items:
-                      description: EthernetInfo defines the attributes specific to a single Ethernet interface.
+                      description: |-
+                        EthernetInfo defines the attributes specific to a single
+                        Ethernet interface.
                       properties:
                         class:
                           description: Class defines the intended usage of this interface by the system.
@@ -391,14 +733,18 @@ spec:
                           - none
                           type: string
                         dataNetworks:
-                          description: DataNetworks defines the list of data networks to be configured against this interface.
+                          description: |-
+                            DataNetworks defines the list of data networks to be configured against
+                            this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         lower:
-                          description: Lower defines the interface name over which this ethernet interface is to be configured.
+                          description: |-
+                            Lower defines the interface name over which this ethernet interface is to be
+                            configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         mtu:
@@ -412,14 +758,18 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         platformNetworks:
-                          description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                          description: |-
+                            PlatformNetworks defines the list of platform networks to be configured
+                            against this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         port:
-                          description: Port defines the attributes identifying the underlying port which defines this Ethernet interface.
+                          description: |-
+                            Port defines the attributes identifying the underlying port which defines
+                            this Ethernet interface.
                           properties:
                             name:
                               description: SystemName defines the device name of the Ethernet port.
@@ -430,7 +780,9 @@ spec:
                           - name
                           type: object
                         ptpInterfaces:
-                          description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                          description: |-
+                            PtpInterfaces defines the ptp interfaces to be configured against this
+                            interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
@@ -447,12 +799,17 @@ spec:
                           description: The system assigned unique UUID value for the interface
                           type: string
                         vfCount:
-                          description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
+                          description: |-
+                            VFCount defines the number of SRIOV VF interfaces to be allocated.  Only
+                            applicable if the interface class is set to "pci-sriov".
                           maximum: 128
                           minimum: 1
                           type: integer
                         vfDriver:
-                          description: VFDriver defines the device driver to be associated with each individual SRIOV VF interface allocated.  Only applicable if the interface class is set to "pci-sriov".
+                          description: |-
+                            VFDriver defines the device driver to be associated with each individual
+                            SRIOV VF interface allocated.  Only applicable if the interface class is
+                            set to "pci-sriov".
                           type: string
                       required:
                       - class
@@ -463,7 +820,9 @@ spec:
                   vf:
                     description: VF defines the list of SR-IOV VF interfaces to be configured on a host.
                     items:
-                      description: VFInfo defines the attributes specific to a single SR-IOV vf interface.
+                      description: |-
+                        VFInfo defines the attributes specific to a single SR-IOV
+                        vf interface.
                       properties:
                         class:
                           description: Class defines the intended usage of this interface by the system.
@@ -475,18 +834,25 @@ spec:
                           - none
                           type: string
                         dataNetworks:
-                          description: DataNetworks defines the list of data networks to be configured against this interface.
+                          description: |-
+                            DataNetworks defines the list of data networks to be configured against
+                            this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         lower:
-                          description: Lower defines the interface name over which this VF interface is to be configured.
+                          description: |-
+                            Lower defines the interface name over which this VF interface is to be
+                            configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         maxTxRate:
-                          description: MaxTxRate defines the maximum tx rate of SRIOV VF interfaces. Only applicable if the interface class is set to "pci-sriov" and interface type is set to "vf".
+                          description: |-
+                            MaxTxRate defines the maximum tx rate of SRIOV VF
+                            interfaces. Only applicable if the interface class is set to
+                            "pci-sriov" and interface type is set to "vf".
                           type: integer
                         mtu:
                           description: MTU defines the maximum transmit unit for this interface.
@@ -499,14 +865,18 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         platformNetworks:
-                          description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                          description: |-
+                            PlatformNetworks defines the list of platform networks to be configured
+                            against this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         ptpInterfaces:
-                          description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                          description: |-
+                            PtpInterfaces defines the ptp interfaces to be configured against this
+                            interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
@@ -528,7 +898,10 @@ spec:
                           minimum: 1
                           type: integer
                         vfDriver:
-                          description: VFDriver defines the device driver to be associated with each individual SRIOV VF interface allocated.  Only applicable if the interface class is set to "pci-sriov".
+                          description: |-
+                            VFDriver defines the device driver to be associated with each individual
+                            SRIOV VF interface allocated.  Only applicable if the interface class is
+                            set to "pci-sriov".
                           type: string
                       required:
                       - class
@@ -540,7 +913,9 @@ spec:
                   vlan:
                     description: VLAN defines the list of VLAN interfaces to be configured on a host.
                     items:
-                      description: VLANInfo defines the attributes specific to a single VLAN interface.
+                      description: |-
+                        VLANInfo defines the attributes specific to a single VLAN
+                        interface.
                       properties:
                         class:
                           description: Class defines the intended usage of this interface by the system.
@@ -552,14 +927,18 @@ spec:
                           - none
                           type: string
                         dataNetworks:
-                          description: DataNetworks defines the list of data networks to be configured against this interface.
+                          description: |-
+                            DataNetworks defines the list of data networks to be configured against
+                            this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         lower:
-                          description: Lower defines the interface name over which this VLAN interface is to be configured.
+                          description: |-
+                            Lower defines the interface name over which this VLAN interface is to be
+                            configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         mtu:
@@ -573,14 +952,18 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         platformNetworks:
-                          description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                          description: |-
+                            PlatformNetworks defines the list of platform networks to be configured
+                            against this interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
                         ptpInterfaces:
-                          description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                          description: |-
+                            PtpInterfaces defines the ptp interfaces to be configured against this
+                            interface.
                           items:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
@@ -618,7 +1001,9 @@ spec:
               labels:
                 additionalProperties:
                   type: string
-                description: Labels defines the set of labels to be applied to the kubernetes node resources that is running on this host.
+                description: |-
+                  Labels defines the set of labels to be applied to the kubernetes node
+                  resources that is running on this host.
                 type: object
               location:
                 description: Location defines the physical location of the host in the data centre.
@@ -628,14 +1013,22 @@ spec:
                 pattern: ^[1-9][0-9]*$
                 type: string
               memory:
-                description: Memory defines the memory allocations for each function across all NUMA sockets/nodes.
+                description: |-
+                  Memory defines the memory allocations for each function across all NUMA
+                  sockets/nodes.
                 items:
-                  description: MemoryNodeInfo defines the memory allocations for a specific NUMA node/socket.
+                  description: |-
+                    MemoryNodeInfo defines the memory allocations for a specific NUMA
+                    node/socket.
                   properties:
                     functions:
-                      description: Functions defines a list of function specific allocations for the given NUMA socket/node.
+                      description: |-
+                        Functions defines a list of function specific allocations for the given
+                        NUMA socket/node.
                       items:
-                        description: MemoryFunctionInfo defines the amount of memory to assign to a specific function.
+                        description: |-
+                          MemoryFunctionInfo defines the amount of memory to assign to a
+                          specific function.
                         properties:
                           function:
                             description: Function defines the function for which to allocate a number of cores.
@@ -648,7 +1041,10 @@ spec:
                             description: PageCount defines the number of pages to allocate to a specific function.
                             type: integer
                           pageSize:
-                            description: PageSize defines the size of individual memory pages to be allocated to a specific function.  For platform allocations the 4KB page size is the only valid choice.
+                            description: |-
+                              PageSize defines the size of individual memory pages to be allocated to
+                              a specific function.  For platform
+                              allocations the 4KB page size is the only valid choice.
                             enum:
                             - 4KB
                             - 2MB
@@ -661,7 +1057,9 @@ spec:
                         type: object
                       type: array
                     node:
-                      description: Node defines the NUMA node number for which to allocate a number of functions.
+                      description: |-
+                        Node defines the NUMA node number for which to allocate a number of
+                        functions.
                       maximum: 7
                       minimum: 0
                       type: integer
@@ -679,17 +1077,27 @@ spec:
                 - controller-worker
                 type: string
               powerOn:
-                description: PowerOn defines the initial power state of the node if static provisioning is being used.
+                description: |-
+                  PowerOn defines the initial power state of the node if static
+                  provisioning is being used.
                 type: boolean
               processors:
-                description: Processors defines the core allocations for each function across all NUMA sockets/nodes.
+                description: |-
+                  Processors defines the core allocations for each function across all NUMA
+                  sockets/nodes.
                 items:
-                  description: ProcessorInfo defines the processor core allocations for a specific NUMA socket/node.
+                  description: |-
+                    ProcessorInfo defines the processor core allocations for a
+                    specific NUMA socket/node.
                   properties:
                     functions:
-                      description: Functions defines a list of function specific allocations for the given NUMA socket/node.
+                      description: |-
+                        Functions defines a list of function specific allocations for the given
+                        NUMA socket/node.
                       items:
-                        description: ProcessorFunctionInfo defines the number of cores to assign to a specific function.
+                        description: |-
+                          ProcessorFunctionInfo defines the number of cores to assign to a
+                          specific function.
                         properties:
                           count:
                             description: Count defines the number of cores to allocate to a specific function.
@@ -711,7 +1119,9 @@ spec:
                         type: object
                       type: array
                     node:
-                      description: Node defines the NUMA node number for which to allocate a number of functions.
+                      description: |-
+                        Node defines the NUMA node number for which to allocate a number of
+                        functions.
                       maximum: 7
                       minimum: 0
                       type: integer
@@ -721,25 +1131,40 @@ spec:
                   type: object
                 type: array
               provisioningMode:
-                description: ProvisioningMode defines whether a host is provisioned dynamically when it appears in system host inventory or whether it is provisioned statically and powered up explicitly.  Statically provisioned hosts require that the user supply a boot MAC address, board management IP address, and a management IP address if the management network is configured for static address assignment.
+                description: |-
+                  ProvisioningMode defines whether a host is provisioned dynamically when
+                  it appears in system host inventory or whether it is provisioned
+                  statically and powered up explicitly.  Statically provisioned hosts
+                  require that the user supply a boot MAC address, board management IP
+                  address, and a management IP address if the management network is
+                  configured for static address assignment.
                 enum:
                 - static
                 - dynamic
                 type: string
               ptpInstances:
-                description: PtpInstances defines the list of ptp instance to be configured against this interface.
+                description: |-
+                  PtpInstances defines the list of ptp instance to be configured
+                  against this interface.
                 items:
                   maxLength: 255
                   pattern: ^[a-zA-Z0-9\-_]+$
                   type: string
                 type: array
               rootDevice:
-                description: RootDevice defines the absolute device path of the device to be used as the root file system.
+                description: |-
+                  RootDevice defines the absolute device path of the device to be used as
+                  the root file system.
                 maxLength: 4095
                 pattern: ^/dev/.+$
                 type: string
               routes:
-                description: Routes defines the list of routes to be configured against this host. Routes require that the target interface be configured with a suitable address (e.g., one that allows reachability to next hop device(s)) therefore the host must be configured with valid addresses or configured to for automatic address assignment from a platform network.
+                description: |-
+                  Routes defines the list of routes to be configured against this host.
+                  Routes require that the target interface be configured with a suitable
+                  address (e.g., one that allows reachability to next hop device(s))
+                  therefore the host must be configured with valid addresses or configured
+                  to for automatic address assignment from a platform network.
                 items:
                   description: RouteInfo defines the attributes specific to a single route.
                   properties:
@@ -747,7 +1172,9 @@ spec:
                       description: Gateway defines the next hop gateway IP address.
                       type: string
                     interface:
-                      description: Interface is a reference to the interface name against which to configure the route.
+                      description: |-
+                        Interface is a reference to the interface name against which to configure
+                        the route.
                       maxLength: 255
                       pattern: ^[a-zA-Z0-9\-_\.]+$
                       type: string
@@ -780,7 +1207,10 @@ spec:
                       description: FileSystemInfo defines the attributes of a single host filesystem resource.
                       properties:
                         name:
-                          description: Name defines the system defined name of the filesystem resource.  Each filesystem name may only be applicable to a subset of host personalities. Refer to StarlingX documentation for more information.
+                          description: |-
+                            Name defines the system defined name of the filesystem resource.  Each
+                            filesystem name may only be applicable to a subset of host personalities.
+                            Refer to StarlingX documentation for more information.
                           enum:
                           - backup
                           - docker
@@ -801,7 +1231,9 @@ spec:
                       type: object
                     type: array
                   monitor:
-                    description: Monitor defines whether a Ceph storage monitor should be enabled on a node.
+                    description: |-
+                      Monitor defines whether a Ceph storage monitor should be enabled on a
+                      node.
                     properties:
                       size:
                         description: Size represents the storage allocated to the monitor in gibibytes
@@ -810,12 +1242,16 @@ spec:
                         type: integer
                     type: object
                   osds:
-                    description: OSDs defines the list of OSD devices to be created on the host.  This is only applicable to storage related nodes.
+                    description: |-
+                      OSDs defines the list of OSD devices to be created on the host.  This is
+                      only applicable to storage related nodes.
                     items:
                       description: OSDInfo defines attributes specific to a single OSD device.
                       properties:
                         cluster:
-                          description: ClusterName defines the storage cluster to which the OSD device should be assigned.  By default this is the "ceph_cluster".
+                          description: |-
+                            ClusterName defines the storage cluster to which the OSD device should
+                            be assigned.  By default this is the "ceph_cluster".
                           maxLength: 255
                           type: string
                         function:
@@ -825,10 +1261,14 @@ spec:
                           - journal
                           type: string
                         journal:
-                          description: Journal defines another OSD device to be used as the journal for this OSD device.
+                          description: |-
+                            Journal defines another OSD device to be used as the journal for this
+                            OSD device.
                           properties:
                             location:
-                              description: "Location defines\tthe OSD device path to be used as the Journal OSD for this logical device."
+                              description: |-
+                                Location defines the OSD device path to be used as the Journal OSD for
+                                this logical device.
                               maxLength: 255
                               type: string
                             size:
@@ -852,10 +1292,14 @@ spec:
                   volumeGroups:
                     description: VolumeGroups defines the list of volume groups to be created on the host.
                     items:
-                      description: VolumeGroupInfo defines the attributes specific to a single volume group.
+                      description: |-
+                        VolumeGroupInfo defines the attributes specific to a single
+                        volume group.
                       properties:
                         lvmType:
-                          description: LVMType defines the provisioning type for volumes defines with 'Type' set to 'lvm'.
+                          description: |-
+                            LVMType defines the provisioning type for volumes defines with 'Type'
+                            set to 'lvm'.
                           enum:
                           - thin
                           - thick
@@ -871,11 +1315,17 @@ spec:
                             description: PhysicalVolumeInfo defines attributes of a physical volume.
                             properties:
                               path:
-                                description: Path defines the device path backing the physical volume.  If 'Type' is set as disk then this attribute refers to the absolute path of a disk device.  If 'Type' is set as partition then it refers to the device path of the disk onto which this partition will be created.
+                                description: |-
+                                  Path defines the device path backing the physical volume.  If 'Type' is
+                                  set as disk then this attribute refers to the absolute path of a disk
+                                  device.  If 'Type' is set as partition then it refers to the device path
+                                  of the disk onto which this partition will be created.
                                 maxLength: 255
                                 type: string
                               size:
-                                description: Size defines the size of the disk partition in gibibytes.  This should be omitted if the path refers to a disk.
+                                description: |-
+                                  Size defines the size of the disk partition in gibibytes.  This should be
+                                  omitted if the path refers to a disk.
                                 minimum: 1
                                 type: integer
                               type:
@@ -896,7 +1346,9 @@ spec:
                     type: array
                 type: object
               subfunctions:
-                description: SubFunctions defines the set of subfunctions to be provisioned on the node at time of initial provisioning.
+                description: |-
+                  SubFunctions defines the set of subfunctions to be provisioned on the
+                  node at time of initial provisioning.
                 items:
                   enum:
                   - controller
@@ -916,7 +1368,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: hosts.starlingx.windriver.com
 spec:
   conversion:
@@ -970,13 +1422,24 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: Host defines the attributes that represent the host level attributes of a StarlingX system.
+        description: |-
+          Host defines the attributes that represent the host level attributes
+          of a StarlingX system.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -984,10 +1447,15 @@ spec:
             description: HostSpec defines the desired state of Host
             properties:
               match:
-                description: Match defines the attributes used to match a system host resource to a host CR definition.
+                description: |-
+                  Match defines the attributes used to match a system host resource to a
+                  host CR definition.
                 properties:
                   boardManagement:
-                    description: 'BoardManagement defines the board management attributes that can be used to match a system host resource to a system CR definition. NOTE:  Not yet supported.'
+                    description: |-
+                      BoardManagement defines the board management attributes that can be used
+                      to match a system host resource to a system CR definition.
+                      NOTE:  Not yet supported.
                     properties:
                       address:
                         description: Address defines the board management IP address.
@@ -1003,11 +1471,16 @@ spec:
                         type: string
                     type: object
                   bootMAC:
-                    description: BootMAC defines the MAC address that a host used to perform the initial software installation.
+                    description: |-
+                      BootMAC defines the MAC address that a host used to perform the initial
+                      software installation.
                     pattern: ^([0-9a-fA-Z]{2}[:-]){5}([0-9a-fA-Z]{2})$
                     type: string
                   dmi:
-                    description: 'DMI defines the Desktop Management Interface attributes that can be used to match a system host resource to a system CR definition. NOTE:  Not yet supported.'
+                    description: |-
+                      DMI defines the Desktop Management Interface attributes that can be used
+                      to match a system host resource to a system CR definition.
+                      NOTE:  Not yet supported.
                     properties:
                       assetTag:
                         description: AssetTag defines the board asset tag as stored in the DMI block.
@@ -1020,10 +1493,24 @@ spec:
                     type: object
                 type: object
               overrides:
-                description: "Overrides defines a set of HostProfile attributes that must be overridden from the base HostProfile before configuring the host.  The schema for this field is intentionally a copy of the full HostProfileSpec schema so that any HostProfile attribute can be overridden on a per-host basis. \n For example, it may be necessary to define IP addresses that are unique to each host, or to override storage device paths if the installed devices does not align completely with the HostProfile pointed to by the \"profile\" attribute."
+                description: |-
+                  Overrides defines a set of HostProfile attributes that must be overridden
+                  from the base HostProfile before configuring the host.  The schema for
+                  this field is intentionally a copy of the full HostProfileSpec schema
+                  so that any HostProfile attribute can be overridden on a per-host basis.
+
+
+                  For example, it may be necessary to define IP addresses that are unique
+                  to each host, or to override storage device paths if the installed
+                  devices does not align completely with the HostProfile pointed to by the
+                  "profile" attribute.
                 properties:
                   addresses:
-                    description: Addresses defines the list of addresses to be configured against this host.  Addresses are specific to a single host therefore they should only be specified if this profile is only going to be used to configure a single host.
+                    description: |-
+                      Addresses defines the list of addresses to be configured against this
+                      host. Addresses are specific to a single host therefore they should only
+                      be specified if this profile is only going to be used to configure a
+                      single host.
                     items:
                       description: AddressInfo defines the attributes specific to a single address.
                       properties:
@@ -1031,7 +1518,9 @@ spec:
                           description: Address defines the IPv4 or IPv6 address value.
                           type: string
                         interface:
-                          description: Interface is a reference to the interface name against which to configure the address.
+                          description: |-
+                            Interface is a reference to the interface name against which to configure
+                            the address.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -1056,29 +1545,131 @@ spec:
                     description: AppArmor defines the security model on the host.
                     type: string
                   base:
-                    description: "Base defines the name of another HostProfile from which to inherit attributes.  HostProfiles can be structured in a hierarchy so that many HostProfiles can inherit generic attributes from a parent HostProfile. This hierarchy can be defined in multiple layers; with lower layers overriding attributes set in higher layers. \n At configuration time, before a Host is configured, the hierarchy of HostProfile resources is flattened to produce a single composite profile that represents the final attributes as they are overridden down the HostProfile hierarchy. \n Once the HostProfile hierarchy is flattened to a composite profile.  The Deployment Manager will further refine the profile to create a final HostProfile which serves as the final configuration for the Host resource.  To create the final HostProfile, the Deployment Manages merges the composite profile with the initial default host attributes, and then merges the individual host overrides into that result.  The process can be illustrated as follows: \n Host Defaults      +---------------------+ |                                      \\ |                                       \\ Base Profile        +                       \\ |                 \\                       \\ ...                  + Composite Profile ----+  Final Profile |                 /                        / Personality Profile(s) +                        / |                                        / |                                       / Host                                    / |                                     / |                                    / Host Overrides       +-----------------+ \n Merging two HostProfileSpec resources consists of merging the attributes of a higher precedence profile into the attributes of a lower precedences profile.  The rules for merging attributes are as follows. \n 1) A nil pointer is always overwritten by a non-nil pointer. \n 2) Two non-nil pointers are merged together according to the underlying type. \n 2a) If the type pointed to is a primitive type (e.g., int, bool, string, etc) then the higher precedence value is used). \n 2b) If the type pointed to is a structure then this same merge procedure is repeated recursively on each field of the structure with these same rules applying to each field. \n 2c) If the type pointed to is a slice/array then rule (3) is used. \n 2d) If the type pointed to is a map then higher precedence value is used and the entire map is overwritten. \n 3) Two slices are merged together using the following sub-rules. \n 3a) If the elements of slices define the KeyEqual() method then an attempt is made to try to merge equivalent element using this same merge strategy.  Elements from the higher precedence list that do not have an equivalent in the lower precedence list are appended to the list.  Elements appearing in the lower precedence list but not in the higher precedence list are kept intact. \n 3b) If the elements of the slices do not define the KeyEqual() method then they are simply concatenated together. \n 3c) An empty slice is handled as a special case that deletes the contents of the lower precedence slice.  Do not confuse an empty slice with a nil slice pointer."
+                    description: |-
+                      Base defines the name of another HostProfile from which to inherit
+                      attributes.  HostProfiles can be structured in a hierarchy so that many
+                      HostProfiles can inherit generic attributes from a parent HostProfile.
+                      This hierarchy can be defined in multiple layers; with lower layers
+                      overriding attributes set in higher layers.
+
+
+                      At configuration time, before a Host is configured, the hierarchy of
+                      HostProfile resources is flattened to produce a single composite profile
+                      that represents the final attributes as they are overridden down the
+                      HostProfile hierarchy.
+
+
+                      Once the HostProfile hierarchy is flattened to a composite profile.  The
+                      Deployment Manager will further refine the profile to create a final
+                      HostProfile which serves as the final configuration for the Host
+                      resource.  To create the final HostProfile, the Deployment Manages merges
+                      the composite profile with the initial default host attributes, and then
+                      merges the individual host overrides into that result.  The process
+                      can be illustrated as follows:
+
+
+                              Host Defaults      +---------------------+
+                                 |                                      \
+                                 |                                       \
+                              Base Profile        +                       \
+                                 |                 \                       \
+                                ...                  + Composite Profile ----+  Final Profile
+                                 |                 /                        /
+                           Personality Profile(s) +                        /
+                                 |                                        /
+                                 |                                       /
+                                Host                                    /
+                                 |                                     /
+                                 |                                    /
+                              Host Overrides       +-----------------+
+
+
+                      Merging two HostProfileSpec resources consists of merging the attributes
+                      of a higher precedence profile into the attributes of a lower precedences
+                      profile.  The rules for merging attributes are as follows.
+
+
+                        1) A nil pointer is always overwritten by a non-nil pointer.
+
+
+                        2) Two non-nil pointers are merged together according to the underlying
+                           type.
+
+
+                        2a) If the type pointed to is a primitive type (e.g., int, bool,
+                            string, etc) then the higher precedence value is used).
+
+
+                        2b) If the type pointed to is a structure then this same merge
+                            procedure is repeated recursively on each field of the structure
+                            with these same rules applying to each field.
+
+
+                        2c) If the type pointed to is a slice/array then rule (3) is used.
+
+
+                        2d) If the type pointed to is a map then higher precedence value is
+                            used and the entire map is overwritten.
+
+
+                        3) Two slices are merged together using the following sub-rules.
+
+
+                        3a) If the elements of slices define the KeyEqual() method then an
+                            attempt is made to try to merge equivalent element using this same
+                            merge strategy.  Elements from the higher precedence list that do
+                            not have an equivalent in the lower precedence list are appended to
+                            the list.  Elements appearing in the lower precedence list but not
+                            in the higher precedence list are kept intact.
+
+
+                        3b) If the elements of the slices do not define the KeyEqual() method
+                            then they are simply concatenated together.
+
+
+                        3c) An empty slice is handled as a special case that deletes the
+                            contents of the lower precedence slice.  Do not confuse an empty
+                            slice with a nil slice pointer.
                     type: string
                   boardManagement:
-                    description: BoardManagement defines the attributes specific to the board management controller configuration.
+                    description: |-
+                      BoardManagement defines the attributes specific to the board management
+                      controller configuration.
                     properties:
                       address:
-                        description: Address defines the IP address or hostname of the board management interface.  An address is specific to a host therefore this should only be set if the profile is only going to be used to configure a single host; otherwise it should be set as a per-host override.
+                        description: |-
+                          Address defines the IP address or hostname of the board management
+                          interface.  An address is specific to a host therefore this should only
+                          be set if the profile is only going to be used to configure a single
+                          host; otherwise it should be set as a per-host override.
                         type: string
                       credentials:
-                        description: Credentials defines the authentication credentials for the board management interface.  This is left as optional so that the address can be overridden on a per-host basis without worrying about overwriting the type or credentials.
+                        description: |-
+                          Credentials defines the authentication credentials for the board
+                          management interface.  This is left as optional so that the address can
+                          be overridden on a per-host basis without worrying about overwriting the
+                          type or credentials.
                         properties:
                           password:
-                            description: Password defines the attributes specific to password based authentication.
+                            description: |-
+                              Password defines the attributes specific to password based
+                              authentication.
                             properties:
                               secret:
-                                description: Secret defines the name of the secret which contains the username and password for the board management controller.
+                                description: |-
+                                  Secret defines the name of the secret which contains the username and
+                                  password for the board management
+                                  controller.
                                 type: string
                             required:
                             - secret
                             type: object
                         type: object
                       type:
-                        description: Type defines the board management controller type.  This is left as optional so that the address can be overridden on a per-host basis without worrying about overwriting the type or credentials.
+                        description: |-
+                          Type defines the board management controller type.  This is left as
+                          optional so that the address can be overridden on a per-host basis
+                          without worrying about overwriting the type or credentials.
                         enum:
                         - none
                         - bmc
@@ -1088,16 +1679,24 @@ spec:
                         type: string
                     type: object
                   bootDevice:
-                    description: BootDevice defines the absolute device path of the device to be used for installation.
+                    description: |-
+                      BootDevice defines the absolute device path of the device to be used for
+                      installation.
                     maxLength: 4095
                     pattern: ^/dev/.+$
                     type: string
                   bootMAC:
-                    description: BootMAC defines the MAC address that a host uses to perform the initial software installation.  This is only applicable for statically provisioned hosts and should be set on each hosts via the overrides attributes.
+                    description: |-
+                      BootMAC defines the MAC address that a host uses to perform the initial
+                      software installation.  This is only applicable for statically
+                      provisioned hosts and should be set on each hosts via the overrides
+                      attributes.
                     pattern: ^([0-9a-fA-Z]{2}[:-]){5}([0-9a-fA-Z]{2})$
                     type: string
                   clockSynchronization:
-                    description: ClockSynchronization defines the clock synchronization source of the host resource.
+                    description: |-
+                      ClockSynchronization defines the clock synchronization source of the host
+                      resource.
                     enum:
                     - ntp
                     - ptp
@@ -1111,18 +1710,26 @@ spec:
                     pattern: ^[0-9]+$
                     type: string
                   installOutput:
-                    description: InstallOutput defines the install output method.  The graphical mode is only suitable when the console attribute is set to a graphical terminal. The text mode can be used with both serial and graphical console configurations.
+                    description: |-
+                      InstallOutput defines the install output method.  The graphical mode is
+                      only suitable when the console attribute is set to a graphical terminal.
+                      The text mode can be used with both serial and graphical console
+                      configurations.
                     enum:
                     - text
                     - graphical
                     type: string
                   interfaces:
-                    description: Interfaces defines the list of interfaces to be configured against this host.
+                    description: |-
+                      Interfaces defines the list of interfaces to be configured against this
+                      host.
                     properties:
                       bond:
                         description: Bond defines the list of Bond interfaces to be configured on a host.
                         items:
-                          description: BondInfo defines the attributes specific to a single Bond interface.
+                          description: |-
+                            BondInfo defines the attributes specific to a single Bond
+                            interface.
                           properties:
                             class:
                               description: Class defines the intended usage of this interface by the system.
@@ -1134,14 +1741,18 @@ spec:
                               - none
                               type: string
                             dataNetworks:
-                              description: DataNetworks defines the list of data networks to be configured against this interface.
+                              description: |-
+                                DataNetworks defines the list of data networks to be configured against
+                                this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             members:
-                              description: Members defines the list of interfaces which, together, make up the Bond interface.
+                              description: |-
+                                Members defines the list of interfaces which, together, make up the Bond
+                                interface.
                               items:
                                 type: string
                               type: array
@@ -1163,17 +1774,23 @@ spec:
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             platformNetworks:
-                              description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                              description: |-
+                                PlatformNetworks defines the list of platform networks to be configured
+                                against this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             primaryReselect:
-                              description: PrimaryReselect defines the reselection policy for the Bond interface. Only applicable for active_standby mode.
+                              description: |-
+                                PrimaryReselect defines the reselection policy for the Bond interface.
+                                Only applicable for active_standby mode.
                               type: string
                             ptpInterfaces:
-                              description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                              description: |-
+                                PtpInterfaces defines the ptp interfaces to be configured against this
+                                interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
@@ -1187,7 +1804,9 @@ spec:
                               - none
                               type: string
                             transmitHashPolicy:
-                              description: TransmitHashPolicy defines the transmit interface selection policy for the Bond interface.  Only applicable for 802.3ad and balanced modes.
+                              description: |-
+                                TransmitHashPolicy defines the transmit interface selection policy for
+                                the Bond interface.  Only applicable for 802.3ad and balanced modes.
                               enum:
                               - layer2
                               - layer2+3
@@ -1203,9 +1822,13 @@ spec:
                           type: object
                         type: array
                       ethernet:
-                        description: Ethernet defines the list of ethernet interfaces to be configured on a host.
+                        description: |-
+                          Ethernet defines the list of ethernet interfaces to be configured on a
+                          host.
                         items:
-                          description: EthernetInfo defines the attributes specific to a single Ethernet interface.
+                          description: |-
+                            EthernetInfo defines the attributes specific to a single
+                            Ethernet interface.
                           properties:
                             class:
                               description: Class defines the intended usage of this interface by the system.
@@ -1217,14 +1840,18 @@ spec:
                               - none
                               type: string
                             dataNetworks:
-                              description: DataNetworks defines the list of data networks to be configured against this interface.
+                              description: |-
+                                DataNetworks defines the list of data networks to be configured against
+                                this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
-                              description: Lower defines the interface name over which this ethernet interface is to be configured.
+                              description: |-
+                                Lower defines the interface name over which this ethernet interface is to be
+                                configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             mtu:
@@ -1238,14 +1865,18 @@ spec:
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             platformNetworks:
-                              description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                              description: |-
+                                PlatformNetworks defines the list of platform networks to be configured
+                                against this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             port:
-                              description: Port defines the attributes identifying the underlying port which defines this Ethernet interface.
+                              description: |-
+                                Port defines the attributes identifying the underlying port which defines
+                                this Ethernet interface.
                               properties:
                                 name:
                                   description: SystemName defines the device name of the Ethernet port.
@@ -1256,7 +1887,9 @@ spec:
                               - name
                               type: object
                             ptpInterfaces:
-                              description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                              description: |-
+                                PtpInterfaces defines the ptp interfaces to be configured against this
+                                interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
@@ -1273,12 +1906,17 @@ spec:
                               description: The system assigned unique UUID value for the interface
                               type: string
                             vfCount:
-                              description: VFCount defines the number of SRIOV VF interfaces to be allocated.  Only applicable if the interface class is set to "pci-sriov".
+                              description: |-
+                                VFCount defines the number of SRIOV VF interfaces to be allocated.  Only
+                                applicable if the interface class is set to "pci-sriov".
                               maximum: 128
                               minimum: 1
                               type: integer
                             vfDriver:
-                              description: VFDriver defines the device driver to be associated with each individual SRIOV VF interface allocated.  Only applicable if the interface class is set to "pci-sriov".
+                              description: |-
+                                VFDriver defines the device driver to be associated with each individual
+                                SRIOV VF interface allocated.  Only applicable if the interface class is
+                                set to "pci-sriov".
                               type: string
                           required:
                           - class
@@ -1289,7 +1927,9 @@ spec:
                       vf:
                         description: VF defines the list of SR-IOV VF interfaces to be configured on a host.
                         items:
-                          description: VFInfo defines the attributes specific to a single SR-IOV vf interface.
+                          description: |-
+                            VFInfo defines the attributes specific to a single SR-IOV
+                            vf interface.
                           properties:
                             class:
                               description: Class defines the intended usage of this interface by the system.
@@ -1301,18 +1941,25 @@ spec:
                               - none
                               type: string
                             dataNetworks:
-                              description: DataNetworks defines the list of data networks to be configured against this interface.
+                              description: |-
+                                DataNetworks defines the list of data networks to be configured against
+                                this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
-                              description: Lower defines the interface name over which this VF interface is to be configured.
+                              description: |-
+                                Lower defines the interface name over which this VF interface is to be
+                                configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             maxTxRate:
-                              description: MaxTxRate defines the maximum tx rate of SRIOV VF interfaces. Only applicable if the interface class is set to "pci-sriov" and interface type is set to "vf".
+                              description: |-
+                                MaxTxRate defines the maximum tx rate of SRIOV VF
+                                interfaces. Only applicable if the interface class is set to
+                                "pci-sriov" and interface type is set to "vf".
                               type: integer
                             mtu:
                               description: MTU defines the maximum transmit unit for this interface.
@@ -1325,14 +1972,18 @@ spec:
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             platformNetworks:
-                              description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                              description: |-
+                                PlatformNetworks defines the list of platform networks to be configured
+                                against this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpInterfaces:
-                              description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                              description: |-
+                                PtpInterfaces defines the ptp interfaces to be configured against this
+                                interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
@@ -1354,7 +2005,10 @@ spec:
                               minimum: 1
                               type: integer
                             vfDriver:
-                              description: VFDriver defines the device driver to be associated with each individual SRIOV VF interface allocated.  Only applicable if the interface class is set to "pci-sriov".
+                              description: |-
+                                VFDriver defines the device driver to be associated with each individual
+                                SRIOV VF interface allocated.  Only applicable if the interface class is
+                                set to "pci-sriov".
                               type: string
                           required:
                           - class
@@ -1366,7 +2020,9 @@ spec:
                       vlan:
                         description: VLAN defines the list of VLAN interfaces to be configured on a host.
                         items:
-                          description: VLANInfo defines the attributes specific to a single VLAN interface.
+                          description: |-
+                            VLANInfo defines the attributes specific to a single VLAN
+                            interface.
                           properties:
                             class:
                               description: Class defines the intended usage of this interface by the system.
@@ -1378,14 +2034,18 @@ spec:
                               - none
                               type: string
                             dataNetworks:
-                              description: DataNetworks defines the list of data networks to be configured against this interface.
+                              description: |-
+                                DataNetworks defines the list of data networks to be configured against
+                                this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             lower:
-                              description: Lower defines the interface name over which this VLAN interface is to be configured.
+                              description: |-
+                                Lower defines the interface name over which this VLAN interface is to be
+                                configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             mtu:
@@ -1399,14 +2059,18 @@ spec:
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
                             platformNetworks:
-                              description: PlatformNetworks defines the list of platform networks to be configured against this interface.
+                              description: |-
+                                PlatformNetworks defines the list of platform networks to be configured
+                                against this interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
                             ptpInterfaces:
-                              description: PtpInterfaces defines the ptp interfaces to be configured against this interface.
+                              description: |-
+                                PtpInterfaces defines the ptp interfaces to be configured against this
+                                interface.
                               items:
                                 maxLength: 255
                                 pattern: ^[a-zA-Z0-9\-_]+$
@@ -1444,7 +2108,9 @@ spec:
                   labels:
                     additionalProperties:
                       type: string
-                    description: Labels defines the set of labels to be applied to the kubernetes node resources that is running on this host.
+                    description: |-
+                      Labels defines the set of labels to be applied to the kubernetes node
+                      resources that is running on this host.
                     type: object
                   location:
                     description: Location defines the physical location of the host in the data centre.
@@ -1454,14 +2120,22 @@ spec:
                     pattern: ^[1-9][0-9]*$
                     type: string
                   memory:
-                    description: Memory defines the memory allocations for each function across all NUMA sockets/nodes.
+                    description: |-
+                      Memory defines the memory allocations for each function across all NUMA
+                      sockets/nodes.
                     items:
-                      description: MemoryNodeInfo defines the memory allocations for a specific NUMA node/socket.
+                      description: |-
+                        MemoryNodeInfo defines the memory allocations for a specific NUMA
+                        node/socket.
                       properties:
                         functions:
-                          description: Functions defines a list of function specific allocations for the given NUMA socket/node.
+                          description: |-
+                            Functions defines a list of function specific allocations for the given
+                            NUMA socket/node.
                           items:
-                            description: MemoryFunctionInfo defines the amount of memory to assign to a specific function.
+                            description: |-
+                              MemoryFunctionInfo defines the amount of memory to assign to a
+                              specific function.
                             properties:
                               function:
                                 description: Function defines the function for which to allocate a number of cores.
@@ -1474,7 +2148,10 @@ spec:
                                 description: PageCount defines the number of pages to allocate to a specific function.
                                 type: integer
                               pageSize:
-                                description: PageSize defines the size of individual memory pages to be allocated to a specific function.  For platform allocations the 4KB page size is the only valid choice.
+                                description: |-
+                                  PageSize defines the size of individual memory pages to be allocated to
+                                  a specific function.  For platform
+                                  allocations the 4KB page size is the only valid choice.
                                 enum:
                                 - 4KB
                                 - 2MB
@@ -1487,7 +2164,9 @@ spec:
                             type: object
                           type: array
                         node:
-                          description: Node defines the NUMA node number for which to allocate a number of functions.
+                          description: |-
+                            Node defines the NUMA node number for which to allocate a number of
+                            functions.
                           maximum: 7
                           minimum: 0
                           type: integer
@@ -1505,17 +2184,27 @@ spec:
                     - controller-worker
                     type: string
                   powerOn:
-                    description: PowerOn defines the initial power state of the node if static provisioning is being used.
+                    description: |-
+                      PowerOn defines the initial power state of the node if static
+                      provisioning is being used.
                     type: boolean
                   processors:
-                    description: Processors defines the core allocations for each function across all NUMA sockets/nodes.
+                    description: |-
+                      Processors defines the core allocations for each function across all NUMA
+                      sockets/nodes.
                     items:
-                      description: ProcessorInfo defines the processor core allocations for a specific NUMA socket/node.
+                      description: |-
+                        ProcessorInfo defines the processor core allocations for a
+                        specific NUMA socket/node.
                       properties:
                         functions:
-                          description: Functions defines a list of function specific allocations for the given NUMA socket/node.
+                          description: |-
+                            Functions defines a list of function specific allocations for the given
+                            NUMA socket/node.
                           items:
-                            description: ProcessorFunctionInfo defines the number of cores to assign to a specific function.
+                            description: |-
+                              ProcessorFunctionInfo defines the number of cores to assign to a
+                              specific function.
                             properties:
                               count:
                                 description: Count defines the number of cores to allocate to a specific function.
@@ -1537,7 +2226,9 @@ spec:
                             type: object
                           type: array
                         node:
-                          description: Node defines the NUMA node number for which to allocate a number of functions.
+                          description: |-
+                            Node defines the NUMA node number for which to allocate a number of
+                            functions.
                           maximum: 7
                           minimum: 0
                           type: integer
@@ -1547,25 +2238,40 @@ spec:
                       type: object
                     type: array
                   provisioningMode:
-                    description: ProvisioningMode defines whether a host is provisioned dynamically when it appears in system host inventory or whether it is provisioned statically and powered up explicitly.  Statically provisioned hosts require that the user supply a boot MAC address, board management IP address, and a management IP address if the management network is configured for static address assignment.
+                    description: |-
+                      ProvisioningMode defines whether a host is provisioned dynamically when
+                      it appears in system host inventory or whether it is provisioned
+                      statically and powered up explicitly.  Statically provisioned hosts
+                      require that the user supply a boot MAC address, board management IP
+                      address, and a management IP address if the management network is
+                      configured for static address assignment.
                     enum:
                     - static
                     - dynamic
                     type: string
                   ptpInstances:
-                    description: PtpInstances defines the list of ptp instance to be configured against this interface.
+                    description: |-
+                      PtpInstances defines the list of ptp instance to be configured
+                      against this interface.
                     items:
                       maxLength: 255
                       pattern: ^[a-zA-Z0-9\-_]+$
                       type: string
                     type: array
                   rootDevice:
-                    description: RootDevice defines the absolute device path of the device to be used as the root file system.
+                    description: |-
+                      RootDevice defines the absolute device path of the device to be used as
+                      the root file system.
                     maxLength: 4095
                     pattern: ^/dev/.+$
                     type: string
                   routes:
-                    description: Routes defines the list of routes to be configured against this host. Routes require that the target interface be configured with a suitable address (e.g., one that allows reachability to next hop device(s)) therefore the host must be configured with valid addresses or configured to for automatic address assignment from a platform network.
+                    description: |-
+                      Routes defines the list of routes to be configured against this host.
+                      Routes require that the target interface be configured with a suitable
+                      address (e.g., one that allows reachability to next hop device(s))
+                      therefore the host must be configured with valid addresses or configured
+                      to for automatic address assignment from a platform network.
                     items:
                       description: RouteInfo defines the attributes specific to a single route.
                       properties:
@@ -1573,7 +2279,9 @@ spec:
                           description: Gateway defines the next hop gateway IP address.
                           type: string
                         interface:
-                          description: Interface is a reference to the interface name against which to configure the route.
+                          description: |-
+                            Interface is a reference to the interface name against which to configure
+                            the route.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -1606,7 +2314,10 @@ spec:
                           description: FileSystemInfo defines the attributes of a single host filesystem resource.
                           properties:
                             name:
-                              description: Name defines the system defined name of the filesystem resource.  Each filesystem name may only be applicable to a subset of host personalities. Refer to StarlingX documentation for more information.
+                              description: |-
+                                Name defines the system defined name of the filesystem resource.  Each
+                                filesystem name may only be applicable to a subset of host personalities.
+                                Refer to StarlingX documentation for more information.
                               enum:
                               - backup
                               - docker
@@ -1627,7 +2338,9 @@ spec:
                           type: object
                         type: array
                       monitor:
-                        description: Monitor defines whether a Ceph storage monitor should be enabled on a node.
+                        description: |-
+                          Monitor defines whether a Ceph storage monitor should be enabled on a
+                          node.
                         properties:
                           size:
                             description: Size represents the storage allocated to the monitor in gibibytes
@@ -1636,12 +2349,16 @@ spec:
                             type: integer
                         type: object
                       osds:
-                        description: OSDs defines the list of OSD devices to be created on the host.  This is only applicable to storage related nodes.
+                        description: |-
+                          OSDs defines the list of OSD devices to be created on the host.  This is
+                          only applicable to storage related nodes.
                         items:
                           description: OSDInfo defines attributes specific to a single OSD device.
                           properties:
                             cluster:
-                              description: ClusterName defines the storage cluster to which the OSD device should be assigned.  By default this is the "ceph_cluster".
+                              description: |-
+                                ClusterName defines the storage cluster to which the OSD device should
+                                be assigned.  By default this is the "ceph_cluster".
                               maxLength: 255
                               type: string
                             function:
@@ -1651,10 +2368,14 @@ spec:
                               - journal
                               type: string
                             journal:
-                              description: Journal defines another OSD device to be used as the journal for this OSD device.
+                              description: |-
+                                Journal defines another OSD device to be used as the journal for this
+                                OSD device.
                               properties:
                                 location:
-                                  description: "Location defines\tthe OSD device path to be used as the Journal OSD for this logical device."
+                                  description: |-
+                                    Location defines the OSD device path to be used as the Journal OSD for
+                                    this logical device.
                                   maxLength: 255
                                   type: string
                                 size:
@@ -1678,10 +2399,14 @@ spec:
                       volumeGroups:
                         description: VolumeGroups defines the list of volume groups to be created on the host.
                         items:
-                          description: VolumeGroupInfo defines the attributes specific to a single volume group.
+                          description: |-
+                            VolumeGroupInfo defines the attributes specific to a single
+                            volume group.
                           properties:
                             lvmType:
-                              description: LVMType defines the provisioning type for volumes defines with 'Type' set to 'lvm'.
+                              description: |-
+                                LVMType defines the provisioning type for volumes defines with 'Type'
+                                set to 'lvm'.
                               enum:
                               - thin
                               - thick
@@ -1697,11 +2422,17 @@ spec:
                                 description: PhysicalVolumeInfo defines attributes of a physical volume.
                                 properties:
                                   path:
-                                    description: Path defines the device path backing the physical volume.  If 'Type' is set as disk then this attribute refers to the absolute path of a disk device.  If 'Type' is set as partition then it refers to the device path of the disk onto which this partition will be created.
+                                    description: |-
+                                      Path defines the device path backing the physical volume.  If 'Type' is
+                                      set as disk then this attribute refers to the absolute path of a disk
+                                      device.  If 'Type' is set as partition then it refers to the device path
+                                      of the disk onto which this partition will be created.
                                     maxLength: 255
                                     type: string
                                   size:
-                                    description: Size defines the size of the disk partition in gibibytes.  This should be omitted if the path refers to a disk.
+                                    description: |-
+                                      Size defines the size of the disk partition in gibibytes.  This should be
+                                      omitted if the path refers to a disk.
                                     minimum: 1
                                     type: integer
                                   type:
@@ -1722,7 +2453,9 @@ spec:
                         type: array
                     type: object
                   subfunctions:
-                    description: SubFunctions defines the set of subfunctions to be provisioned on the node at time of initial provisioning.
+                    description: |-
+                      SubFunctions defines the set of subfunctions to be provisioned on the
+                      node at time of initial provisioning.
                     items:
                       enum:
                       - controller
@@ -1733,7 +2466,16 @@ spec:
                     type: array
                 type: object
               profile:
-                description: Profile defines the name of the HostProfile to use as a configuration template for the host.  A host may point to a single HostProfile resource or may point to a chain or hierarchy of HostProfile resources.  At configuration time the Deployment Manager will flatten the Host attributes defined in the hierarchy of HostProfiles and produce a final composite profile that represents the intended configuration state of an individual Host resources.  This composite profile also include any individual host specific attributes defined in the "overrides" attribute defined below.
+                description: |-
+                  Profile defines the name of the HostProfile to use as a configuration
+                  template for the host.  A host may point to a single HostProfile resource
+                  or may point to a chain or hierarchy of HostProfile resources.  At
+                  configuration time the Deployment Manager will flatten the Host
+                  attributes defined in the hierarchy of HostProfiles and produce a final
+                  composite profile that represents the intended configuration state of
+                  an individual Host resources.  This composite profile also include any
+                  individual host specific attributes defined in the "overrides" attribute
+                  defined below.
                 type: string
             required:
             - profile
@@ -1751,14 +2493,18 @@ spec:
                 description: Value for configuration is updated or not
                 type: boolean
               defaults:
-                description: Defaults defines the configuration attributed collected before applying any user configuration values.
+                description: |-
+                  Defaults defines the configuration attributed collected before applying
+                  any user configuration values.
                 type: string
               delta:
                 description: Delta between final profile vs current configuration
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -1771,24 +2517,33 @@ spec:
                 description: Value for host profile configuration is updated or not
                 type: boolean
               id:
-                description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: InSync defines whether the desired state matches the operational state.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               observedHostProfileGeneration:
-                description: Reflect value of configuration generation of host profile. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation of host profile.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               operationalStatus:
                 description: OperationalStatus is the last known operational status of the host.
                 type: string
               reconciled:
-                description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the host has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
@@ -1810,7 +2565,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: platformnetworks.starlingx.windriver.com
 spec:
   conversion:
@@ -1837,14 +2592,10 @@ spec:
       jsonPath: .spec.type
       name: type
       type: string
-    - description: The platform network address subnet.
-      jsonPath: .spec.subnet
-      name: subnet
-      type: string
-    - description: The platform network address prefix.
-      jsonPath: .spec.prefix
-      name: prefix
-      type: string
+    - description: The platform network address IP Allocation Type.
+      jsonPath: .spec.dynamic
+      name: dynamic
+      type: boolean
     - description: The current synchronization state.
       jsonPath: .status.inSync
       name: insync
@@ -1860,78 +2611,45 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "PlatformNetwork defines the attributes that represent the network level attributes of a StarlingX system.  This is a composition of the following StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+        description: "PlatformNetwork defines the attributes that represent the network level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
             description: PlatformNetworkSpec defines the desired state of PlatformNetwork
             properties:
-              allocation:
-                description: Allocation defines the allocation scheme details for the network
-                properties:
-                  order:
-                    description: Order defines whether host address are allocation randomly or sequential from the available pool or addresses.
-                    enum:
-                    - sequential
-                    - random
-                    type: string
-                  ranges:
-                    description: Ranges defines the pools from which host addresses are allocated.   If omitted addresses the entire network address space is considered available.
-                    items:
-                      description: AllocationRange defines the start and end address for an allocation range
-                      properties:
-                        end:
-                          description: End defines the end of the address range (inclusively)
-                          type: string
-                        start:
-                          description: Start defines the beginning of the address range (inclusively)
-                          type: string
-                      required:
-                      - end
-                      - start
-                      type: object
-                    type: array
-                  type:
-                    description: Type defines whether network addresses are allocated dynamically or statically.
-                    enum:
-                    - static
-                    - dynamic
-                    type: string
-                required:
-                - type
-                type: object
-              controller0Address:
-                description: Controller0Address is the controller-0 IPv4 or IPv6 network address value.
-                type: string
-              controller1Address:
-                description: Controller1Address is the controller-1 IPv4 or IPv6 network address value.
-                type: string
-              floatingAddress:
-                description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
-                type: string
-              gateway:
-                description: Gateway defines the nexthop gateway IP address if applicable
-                type: string
-              prefix:
-                maximum: 128
-                minimum: 1
-                type: integer
-              subnet:
-                description: Subnet defines the subdivision IPv4 or IPv6 network address for the network
-                type: string
+              associatedAddressPools:
+                description: |-
+                  AssociatedAddressPools defines the set of address pool names to associate
+                  the network with.
+                items:
+                  type: string
+                type: array
+              dynamic:
+                description: |-
+                  Dynamic defines whether network addresses are allocated dynamically (true) or
+                  statically (false).
+                type: boolean
               type:
                 description: Type defines the intended usage of the network
                 enum:
                 - mgmt
                 - pxeboot
-                - infra
                 - oam
                 - multicast
                 - system-controller
@@ -1943,9 +2661,8 @@ spec:
                 - other
                 type: string
             required:
-            - allocation
-            - prefix
-            - subnet
+            - associatedAddressPools
+            - dynamic
             - type
             type: object
           status:
@@ -1959,7 +2676,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -1969,29 +2688,25 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
-              poolUUID:
-                description: PoolUUID defines the system assigned unique identifier that is represents the networks underlying address pool resource.  This will only exist once this resource has been provisioned into the system.
-                type: string
               reconciled:
-                description: Reconciled defines whether the network has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the network has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
-              strategyRequired:
-                default: not_required
-                description: Value for configuration is updated or not
-                enum:
-                - not_required
-                - lock_required
-                - unlock_required
-                type: string
             type: object
         type: object
     served: true
@@ -2004,7 +2719,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: ptpinstances.starlingx.windriver.com
 spec:
   conversion:
@@ -2045,10 +2760,19 @@ spec:
         description: PtpInstance is the Schema for the ptpinstances API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -2082,7 +2806,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -2092,17 +2818,24 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the host has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
@@ -2124,7 +2857,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: ptpinterfaces.starlingx.windriver.com
 spec:
   conversion:
@@ -2164,10 +2897,19 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -2198,7 +2940,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -2208,17 +2952,24 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This will only exist once this resource has been provisioned into the system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the host has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the host has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               strategyRequired:
                 default: not_required
@@ -2240,7 +2991,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: systems.starlingx.windriver.com
 spec:
   conversion:
@@ -2290,13 +3041,22 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "System defines the attributes that represent the system level attributes of a StarlingX system.  This is a composition of the following StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
+        description: "System defines the attributes that represent the system level attributes\nof a StarlingX system.  This is a composition of the following StarlingX\nAPI endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -2304,22 +3064,35 @@ spec:
             description: SystemSpec defines the desired state of System
             properties:
               certificates:
-                description: Certificates is a list of references to certificates that must be installed.
+                description: |-
+                  Certificates is a list of references to certificates that must be
+                  installed.
                 items:
-                  description: CertificateInfo defines the attributes required to define an instance of a certificate to be installed via the system API.  The structure of the system API is not uniform for all certificate types therefore some attention is required when defining these resources.
+                  description: |-
+                    CertificateInfo defines the attributes required to define an instance of a
+                    certificate to be installed via the system API.  The structure of the
+                    system API is not uniform for all certificate types therefore some attention
+                    is required when defining these resources.
                   properties:
                     secret:
-                      description: Secret is the name of a TLS secret containing the public certificate and private key.  The secret must be of type kubernetes.io/tls and must contain specific data attributes.  Specifically, all secrets must, at a minimum contain the "tls.crt" key since all certificates will at least require public certificate PEM data.  The remaining two keys "tls.key" and "ca.crt" are optional depending on the certificate type. For the "platform", "openstack", "tpm", and "docker" certificate types both the "tls.crt" and "tls.key" certificates are needed while for the "*_ca" version of those same certificate types only the "tls.crt" attribute is required.  The "ca.crt" attribute is only required for the "platform" or "tpm" certificate types, and only if the supplied public certificate is signed by a non-standard root CA.
+                      description: |-
+                        Secret is the name of a TLS secret containing the public certificate and
+                        private key.  The secret must be of type kubernetes.io/tls and must
+                        contain specific data attributes.  Specifically, all secrets must, at a
+                        minimum contain the "tls.crt" key since all certificates will at least
+                        require public certificate PEM data.  The remaining two keys "tls.key"
+                        and "ca.crt" are optional depending on the certificate type. For the
+                        "platform", "openstack", "tpm", and "docker" certificate types both the
+                        "tls.crt" and "tls.key" certificates are needed while for the "*_ca"
+                        version of those same certificate types only the "tls.crt" attribute is
+                        required.  The "ca.crt" attribute is only required for the "platform" or
+                        "tpm" certificate types, and only if the supplied public certificate is
+                        signed by a non-standard root CA.
                       type: string
                     type:
                       description: Type represents the intended usage of the certificate
                       enum:
-                      - ssl
                       - ssl_ca
-                      - openstack
-                      - openstack_ca
-                      - docker_registry
-                      - tpm_mode
                       type: string
                   required:
                   - secret
@@ -2327,20 +3100,30 @@ spec:
                   type: object
                 type: array
               contact:
-                description: Contact is a method to reach the person responsible for the system.  For example it could be an email address, phone number, or physical address.
+                description: |-
+                  Contact is a method to reach the person responsible for the system.  For
+                  example it could be an email address,
+                  phone number, or physical address.
                 maxLength: 255
                 pattern: ^[a-zA-Z0-9@\-_\. ]+$
                 type: string
               description:
-                description: Description is a free form string describing the intended purpose of the system.
+                description: |-
+                  Description is a free form string describing the intended purpose of the
+                  system.
                 type: string
               dnsServers:
-                description: Nameservers is an array of Domain SystemName servers.  Each server can be specified as either an IPv4 or IPv6 address.
+                description: |-
+                  Nameservers is an array of Domain SystemName servers.  Each server can be
+                  specified as either an IPv4 or IPv6
+                  address.
                 items:
                   type: string
                 type: array
               latitude:
-                description: Latitude is the latitude geolocation coordinate of the system's physical location.
+                description: |-
+                  Latitude is the latitude geolocation coordinate of the system's physical
+                  location.
                 maxLength: 30
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
@@ -2348,7 +3131,9 @@ spec:
                 description: License is a reference to a license file that must be installed.
                 properties:
                   secret:
-                    description: Secret is the name of a TLS secret containing the license file contents. It must refer to a Opaque Kubernetes Secret.
+                    description: |-
+                      Secret is the name of a TLS secret containing the license file contents.
+                      It must refer to a Opaque Kubernetes Secret.
                     type: string
                 required:
                 - secret
@@ -2359,12 +3144,17 @@ spec:
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
               longitude:
-                description: Longitude is the longitude geolocation coordinate of the system's physical location.
+                description: |-
+                  Longitude is the longitude geolocation coordinate of the system's physical
+                  location.
                 maxLength: 30
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
               ntpServers:
-                description: NTPServers is an array of Network Time Protocol servers.  Each server can be specified as either an IPv4 or IPv6 address, or a FQDN hostname.
+                description: |-
+                  NTPServers is an array of Network Time Protocol servers.  Each server can
+                  be specified as either an IPv4 or IPv6
+                  address, or a FQDN hostname.
                 items:
                   type: string
                 type: array
@@ -2372,7 +3162,9 @@ spec:
                 description: PTP defines the Precision Time Protocol configuration for the system.
                 properties:
                   mechanism:
-                    description: Mechanism defines the high level messaging architecture used to implement the precision time procotol.
+                    description: |-
+                      Mechanism defines the high level messaging architecture used to implement
+                      the precision time procotol.
                     enum:
                     - p2p
                     - e2e
@@ -2385,7 +3177,9 @@ spec:
                     - legacy
                     type: string
                   transport:
-                    description: Transport defines the network transport protocol used to implement the precision time protocol.
+                    description: |-
+                      Transport defines the network transport protocol used to implement the
+                      precision time protocol.
                     enum:
                     - l2
                     - udp
@@ -2394,7 +3188,9 @@ spec:
               serviceParameters:
                 description: ServiceParameters is a list of service parameters
                 items:
-                  description: ServiceParameterInfo defines the attributes required to define an instance of a service parameter to be installed via the system API.
+                  description: |-
+                    ServiceParameterInfo defines the attributes required to define an instance of a
+                    service parameter to be installed via the system API.
                   properties:
                     paramname:
                       description: ParamName identifies the name for this service parameter
@@ -2430,7 +3226,9 @@ spec:
                   type: object
                 type: array
               storage:
-                description: Storage is a set of storage specific attributes to be configured for the system.
+                description: |-
+                  Storage is a set of storage specific attributes to be configured for the
+                  system.
                 properties:
                   backends:
                     description: Backends is a set of backend storage methods to be configured.  Only
@@ -2442,22 +3240,33 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_]+$
                           type: string
                         network:
-                          description: Network is the network type associated with this backend. At the momemnt it is used only for ceph backend.
+                          description: |-
+                            Network is the network type associated with this backend.
+                            At the momemnt it is used only for ceph backend.
                           enum:
                           - mgmt
                           - cluster-host
                           type: string
                         partitionSize:
-                          description: PartitionSize is the controller disk partition size to be allocated for the Ceph monitor - in gigabytes. This attribute is only applicable for Ceph storage backends.
+                          description: |-
+                            PartitionSize is the controller disk partition size to be allocated for
+                            the Ceph monitor - in gigabytes.
+                            This attribute is only applicable for Ceph storage backends.
                           minimum: 20
                           type: integer
                         replicationFactor:
-                          description: ReplicationFactor is the number of storage hosts required in each replication group for storage redundancy. This attribute is only applicable for Ceph storage backends.
+                          description: |-
+                            ReplicationFactor is the number of storage hosts required in each
+                            replication group for storage redundancy.
+                            This attribute is only applicable for Ceph storage backends.
                           maximum: 3
                           minimum: 1
                           type: integer
                         services:
-                          description: Services is a list of services to enable for this backend instance.  Each backend type supports a limited set of services.  Refer to customer documentation for more information.
+                          description: |-
+                            Services is a list of services to enable for this backend instance.  Each
+                            backend type supports a limited set
+                            of services.  Refer to customer documentation for more information.
                           items:
                             type: string
                           type: array
@@ -2477,7 +3286,9 @@ spec:
                     description: DRBD defines the set of DRBD configuration attributes for the system.
                     properties:
                       linkUtilization:
-                        description: LinkUtilization defines the maximum link utilisation percentage during sync activities.
+                        description: |-
+                          LinkUtilization defines the maximum link utilisation percentage during
+                          sync activities.
                         maximum: 100
                         minimum: 20
                         type: integer
@@ -2487,7 +3298,9 @@ spec:
                   filesystems:
                     description: Filesystems defines the set of controller file system definitions.
                     items:
-                      description: ControllerFileSystemInfo defines the attributes of a single controller filesystem resource.
+                      description: |-
+                        ControllerFileSystemInfo defines the attributes of a single controller
+                        filesystem resource.
                       properties:
                         name:
                           description: Name defines the system defined name of the filesystem resource.
@@ -2502,7 +3315,10 @@ spec:
                     type: array
                 type: object
               vswitchType:
-                description: VSwitchType is the desired vswitch implementation to be configured. This is intentionally left unvalidated to avoid issues with proprietary vswitch implementation.
+                description: |-
+                  VSwitchType is the desired vswitch implementation to be configured. This
+                  is intentionally left unvalidated to avoid issues with proprietary
+                  vswitch implementation.
                 type: string
             type: object
           status:
@@ -2512,14 +3328,18 @@ spec:
                 description: Value for configuration is updated or not
                 type: boolean
               defaults:
-                description: Defaults defines the configuration attributed collected before applying any user configuration values.
+                description: |-
+                  Defaults defines the configuration attributed collected before applying
+                  any user configuration values.
                 type: string
               delta:
                 description: Delta between final profile vs current configuration
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -2535,14 +3355,21 @@ spec:
                 description: Defines whether the resource has been provisioned on the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the System has been successfully reconciled at least once.  If further changes are made they will be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the System has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               softwareVersion:
-                description: SoftwareVersion defines the current software version reported by the system API.
+                description: |-
+                  SoftwareVersion defines the current software version reported by the
+                  system API.
                 type: string
               strategyApplied:
                 default: false

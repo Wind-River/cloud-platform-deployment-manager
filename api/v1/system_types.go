@@ -33,7 +33,7 @@ const (
 // is required when defining these resources.
 type CertificateInfo struct {
 	// Type represents the intended usage of the certificate
-	// +kubebuilder:validation:Enum=ssl;ssl_ca;openstack;openstack_ca;docker_registry;tpm_mode
+	// +kubebuilder:validation:Enum=ssl_ca
 	Type string `json:"type"`
 
 	// Secret is the name of a TLS secret containing the public certificate and
@@ -480,6 +480,30 @@ type SystemStatus struct {
 	// Strategy monitor retry count for Day 2 operation
 	// +optional
 	StrategyRetryCount int `json:"strategyRetryCount"`
+}
+
+func (i *System) GetStrategyRequired() string {
+	return i.Status.StrategyRequired
+}
+
+func (i *System) SetStrategyRequired(strategy string) {
+	i.Status.StrategyRequired = strategy
+}
+
+func (i *System) GetDeploymentScope() string {
+	return i.Status.DeploymentScope
+}
+
+func (i *System) SetDeploymentScope(scope string) {
+	i.Status.DeploymentScope = scope
+}
+
+func (s *System) GetAnnotations() map[string]string {
+	return s.ObjectMeta.Annotations
+}
+
+func (s *System) SetAnnotations(annotations map[string]string) {
+	s.ObjectMeta.Annotations = annotations
 }
 
 // +kubebuilder:object:root=true

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package controllers
 
@@ -24,7 +24,6 @@ import (
 	th "github.com/gophercloud/gophercloud/testhelper"
 	gcClient "github.com/gophercloud/gophercloud/testhelper/client"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	"github.com/wind-river/cloud-platform-deployment-manager/controllers/host"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	//+kubebuilder:scaffold:imports
 )
@@ -44,6 +43,8 @@ const (
 	timeout  = time.Second * 60
 	interval = time.Second * 1
 )
+
+const TestNamespace = "default"
 
 func TestControllers(t *testing.T) {
 	masterT = t
@@ -96,20 +97,14 @@ var _ = BeforeSuite(func() {
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	// HostProfile
-	err = (&HostProfileReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	// Host
-	err = (&host.HostReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
 	// PlatformNetwork
 	err = (&PlatformNetworkReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	// AddressPool
+	err = (&AddressPoolReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)

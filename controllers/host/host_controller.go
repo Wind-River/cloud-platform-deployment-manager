@@ -139,6 +139,20 @@ const (
 	passwordKey = "password"
 )
 
+func (r *HostReconciler) IsActiveHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, reqNs string) (bool, error) {
+	host_instance, err := r.CloudManager.GetActiveHost(reqNs, client)
+	if err != nil {
+		msg := "failed to get active host"
+		return false, common.NewUserDataError(msg)
+	}
+
+	if host_instance.Name == instance.Name {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // getBMPasswordCredentials is a utility to retrieve the host's board management
 // credentials from the information stored in the specified secret.
 func (r *HostReconciler) getBMPasswordCredentials(namespace string, name string) (username, password string, err error) {
@@ -774,8 +788,8 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 	return nil
 }
 
-// ReconcileHostByState is responsible for reconciling each individual sub-domain of a
-// host resource.
+// ReconcileDisabledHost is responsible for reconciling each individual sub-domain of a
+// host resource on a disabled host.
 func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
 	err := r.ReconcileAttributes(client, instance, profile, &host.Host)
@@ -979,24 +993,24 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 // CompareDisabledAttributes determines if two profiles are identical for the
 // purpose of reconciling any attributes that can only be applied when the host
 // is disabled.
-func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string, principal bool) bool {
+func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, namespace, personality string, reconfig bool) bool {
 	if other == nil {
 		return false
 	}
 
-	// In day2 operation, copy AdministrativeState temporary to ignore difference
-	// Put original value back after DeepEqual
+	// In cases of reconfiguration(day2 operation/ reconfiguration after factory install,
+	// copy AdministrativeState temporary to ignore difference. Put original value back after DeepEqual
 	adminState := other.ProfileBaseAttributes.AdministrativeState
-	if principal {
+	if reconfig {
 		other.ProfileBaseAttributes.AdministrativeState = in.ProfileBaseAttributes.AdministrativeState
 	}
 	if !in.ProfileBaseAttributes.DeepEqual(&other.ProfileBaseAttributes) {
-		if principal {
+		if reconfig {
 			other.ProfileBaseAttributes.AdministrativeState = adminState
 		}
 		return false
 	}
-	if principal {
+	if reconfig {
 		other.ProfileBaseAttributes.AdministrativeState = adminState
 	}
 
@@ -1038,6 +1052,12 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 				return false
 			}
 		}
+
+		if utils.IsReconcilerEnabled(utils.Route) {
+			if !in.Routes.DeepEqual(&other.Routes) {
+				return false
+			}
+		}
 	}
 
 	if utils.IsReconcilerEnabled(utils.FileSystemTypes) {
@@ -1062,7 +1082,14 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 // host and a disabled host.  Most attributes only support being updated when
 // the host is in a certain state therefore those differences are discriminated
 // here.
-func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient, instance *starlingxv1.Host, current *starlingxv1.HostProfileSpec, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+func (r *HostReconciler) ReconcileHostByState(
+	client *gophercloud.ServiceClient,
+	instance *starlingxv1.Host,
+	current *starlingxv1.HostProfileSpec,
+	profile *starlingxv1.HostProfileSpec,
+	host *v1info.HostInfo,
+	factory bool,
+) error {
 
 	principal := false
 	// Other than day2 changes to host resource VIM strategy on host could be updated
@@ -1088,18 +1115,36 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			logHost.Info("no enabled attribute changes required")
 		}
 
+		// Update strategy regardless the disabled attributes
+		// the admin network mult-netting can also be done when host is disabled
+		// StrategyRequired should not be updated when strategy was sent.
+		if factory && !r.CloudManager.GetStrageySent() {
+			logHost.Info("set lock required for configuration after factory install")
+			instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return err
+			}
+			msg := "waiting for locked state before applying out-of-service attributes"
+			m := NewLockedDisabledHostMonitor(instance, host.ID)
+			return r.CloudManager.StartMonitor(m, msg)
+		}
+
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			if principal || strategy_required {
-				if ethInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
-					logHost.Info("Has admin network multi-netting changes", "interface", ethInfo.Name)
-					iface, found := host.FindInterfaceByName(ethInfo.Name)
+				if interfaceName, commonInterfaceInfo, hasChange := hasAdminNetworkChange(profile.Interfaces, current.Interfaces); hasChange {
+					logHost.Info("Has admin network multi-netting changes", "interface", interfaceName)
+					iface, found := host.FindInterfaceByName(interfaceName)
 					if !found {
-						msg := fmt.Sprintf("unable to find interface: %s", ethInfo.Name)
+						msg := fmt.Sprintf("unable to find interface: %s", interfaceName)
 						return starlingxv1.NewMissingSystemResource(msg)
 					}
 
 					// We need to reconcile the interfaces to assign the admin network
-					_, err := r.ReconcileInterfaceNetworks(client, instance, ethInfo.CommonInterfaceInfo, *iface, host)
+					_, err := r.ReconcileInterfaceNetworks(client, instance, *commonInterfaceInfo, *iface, host)
 					if err != nil {
 						return err
 					}
@@ -1127,8 +1172,21 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			return r.CloudManager.StartMonitor(m, msg)
 		}
 
+		// Clean up strategy required after Disabled and enabled attributes are all in-sync
+		if strategy_required {
+			logHost.V(2).Info("set strategy not required as attributes are all configured")
+			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return err
+			}
+		}
+
 	} else if host.IsLockedDisabled() {
-		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
+		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal || factory) {
 			err := r.ReconcileDisabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -1137,27 +1195,21 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 			logHost.Info("no disabled attribute changes required")
 		}
 
-		if r.CloudManager.IsPlatformNetworkReconciling() {
-			return common.NewResourceConfigurationDependency("waiting for platform networks to reconcile")
-		}
-
-		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
-			if principal || strategy_required {
-				instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
-				logHost.V(2).Info("set unlock required: day2 operation. There are unlocked attributes")
-				r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
-				err := r.Client.Status().Update(context.TODO(), instance)
-				if err != nil {
-					err = perrors.Wrapf(err, "failed to update status: %s",
-						common.FormatStruct(instance.Status))
-					return err
-				}
+		// As disabled attributes are configured, ready to unlock the system.
+		if principal || strategy_required {
+			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
+			logHost.V(2).Info("set unlock required. Lock required attributes are configured")
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			err := r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to update status: %s",
+					common.FormatStruct(instance.Status))
+				return err
 			}
-			msg := "waiting for the unlocked state before applying in-service attributes"
-			m := NewUnlockedEnabledHostMonitor(instance, host.ID)
-			return r.CloudManager.StartMonitor(m, msg)
 		}
-
+		msg := "waiting for the unlocked state before applying in-service attributes"
+		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
+		return r.CloudManager.StartMonitor(m, msg)
 	} else {
 		msg := "waiting for a stable state in unknown state"
 		m := NewStableHostMonitor(instance, host.ID)
@@ -1168,13 +1220,25 @@ func (r *HostReconciler) ReconcileHostByState(client *gophercloud.ServiceClient,
 }
 
 // hasAdminNetworkChange checks whether the addition of "admin" to PlatformNetworks
-// within an existing (multi-netting) EthernetInfo is present in the given profile and
-// current InterfaceInfo instances.
-func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
+// within an existing (multi-netting) EthernetInfo, VLANInfo and BondInfo is present
+// in the given profile and current InterfaceInfo instances.
+func hasAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (string, *starlingxv1.CommonInterfaceInfo, bool) {
 	if profileInterfaces == nil || currentInterfaces == nil {
-		return nil, false
+		return "", nil, false
 	}
 
+	if ethInfo, hasChange := hasEthernetAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return ethInfo.Name, &ethInfo.CommonInterfaceInfo, true
+	} else if VLANInfo, hasChange := hasVLANAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return VLANInfo.Name, &VLANInfo.CommonInterfaceInfo, true
+	} else if BondInfo, hasChange := hasBondAdminNetworkChange(profileInterfaces, currentInterfaces); hasChange {
+		return BondInfo.Name, &BondInfo.CommonInterfaceInfo, true
+	} else {
+		return "", nil, false
+	}
+}
+
+func hasEthernetAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.EthernetInfo, bool) {
 	for _, profileEth := range profileInterfaces.Ethernet {
 		logHost.V(2).Info("Profile Ethernet Name", "name", profileEth.Name)
 		currentEth := findEthernetInfoByName(currentInterfaces.Ethernet, profileEth.Name)
@@ -1187,6 +1251,41 @@ func hasAdminNetworkChange(profileInterfaces *starlingxv1.InterfaceInfo, current
 			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
 		}
 	}
+
+	return nil, false
+}
+
+func hasVLANAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.VLANInfo, bool) {
+	for _, profileVLAN := range profileInterfaces.VLAN {
+		logHost.V(2).Info("Profile VLAN Name", "name", profileVLAN.Name)
+		currentVLAN := findVLANInfoByName(currentInterfaces.VLAN, profileVLAN.Name)
+		logHost.V(2).Info("Current VLANInfo", "VLAN", currentVLAN)
+		if currentVLAN == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileVLAN.PlatformNetworks, currentVLAN.PlatformNetworks) {
+			return &profileVLAN, containsAdminPlatformNetwork(*profileVLAN.PlatformNetworks)
+		}
+	}
+
+	return nil, false
+}
+
+func hasBondAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1.InterfaceInfo) (*starlingxv1.BondInfo, bool) {
+	for _, profileBond := range profileInterfaces.Bond {
+		logHost.V(2).Info("Profile Bond Name", "name", profileBond.Name)
+		currentBond := findBondInfoByName(currentInterfaces.Bond, profileBond.Name)
+		logHost.V(2).Info("Current bondinfo", "bond", currentBond)
+		if currentBond == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(profileBond.PlatformNetworks, currentBond.PlatformNetworks) {
+			return &profileBond, containsAdminPlatformNetwork(*profileBond.PlatformNetworks)
+		}
+	}
+
 	return nil, false
 }
 
@@ -1196,6 +1295,26 @@ func findEthernetInfoByName(ethList []starlingxv1.EthernetInfo, name string) *st
 	for i := range ethList {
 		if ethList[i].Name == name {
 			return &ethList[i]
+		}
+	}
+	return nil
+}
+
+// findVLANInfoByName is a utility function to locate an VLANInfo in a list by its name.
+func findVLANInfoByName(VLANList []starlingxv1.VLANInfo, name string) *starlingxv1.VLANInfo {
+	for i := range VLANList {
+		if VLANList[i].Name == name {
+			return &VLANList[i]
+		}
+	}
+	return nil
+}
+
+// findBondInfoByName is a utility function to locate an BondInfo in a list by its name.
+func findBondInfoByName(bondList []starlingxv1.BondInfo, name string) *starlingxv1.BondInfo {
+	for i := range bondList {
+		if bondList[i].Name == name {
+			return &bondList[i]
 		}
 	}
 	return nil
@@ -1248,33 +1367,37 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 	}
 
 	logHost.V(2).Info("Current Status", "status", status)
-	principal := instance.Status.DeploymentScope == cloudManager.ScopePrincipal
+	strategyUpdated := false
 
-	if status.InSync && status.Reconciled && principal && host.IsUnlockedAvailable() {
-		// Clean up strategy required status after Day-2 operation finished
-		logHost.V(2).Info("Clean up strategy required status after Day-2 operation finished")
+	if status.InSync && status.Reconciled && host.IsUnlockedAvailable() &&
+		status.StrategyRequired == cloudManager.StrategyUnlockRequired {
+		// Already unlocked and inSync, set strategy not required
+		logHost.V(2).Info("Unlocked, set strategy not required")
 		status.StrategyRequired = cloudManager.StrategyNotRequired
-		logHost.V(2).Info("set not required: Day-2 operation finished")
+		strategyUpdated = true
 		result = true
 	}
 
 	if status.InSync && !status.Reconciled {
 		// Record the fact that we have reached inSync at least once.
 		logHost.V(2).Info("Insync=true so that change reconciled=true")
-		if principal && host.IsLockedDisabled() && (status.ConfigurationUpdated || status.HostProfileConfigurationUpdated) {
-			// Unlock if current is locked in Day-2 operation
+		if host.IsLockedDisabled() && (status.ConfigurationUpdated || status.HostProfileConfigurationUpdated) &&
+			status.StrategyRequired == cloudManager.StrategyLockRequired {
+			// Unlock if current is locked
+			logHost.V(2).Info("host inSync, set unlock required")
 			status.StrategyRequired = cloudManager.StrategyUnlockRequired
-			logHost.V(2).Info("set unlock required: day2 operation currently locked")
-		} else {
-			status.StrategyRequired = cloudManager.StrategyNotRequired
+			strategyUpdated = true
+		} else if status.StrategyRequired != cloudManager.StrategyNotRequired {
 			logHost.V(2).Info("set not required: reconcile finished")
+			status.StrategyRequired = cloudManager.StrategyNotRequired
+			strategyUpdated = true
 		}
 		status.Reconciled = true
 		status.ConfigurationUpdated = false
 		status.HostProfileConfigurationUpdated = false
 		logHost.V(2).Info("set profile config updated false: reconcile finished")
 		// Update resource info for Day-2 operation
-		if principal {
+		if strategyUpdated {
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, status.Reconciled, status.StrategyRequired)
 		}
 		result = true
@@ -1419,10 +1542,10 @@ func (r *HostReconciler) StopAfterInSync() bool {
 
 // ReconcileExistingHost is responsible for dealing with the provisioning of an
 // existing host.
-func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host) error {
+func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *hosts.Host, reqNs string) error {
 	var defaults *starlingxv1.HostProfileSpec
 	var current *starlingxv1.HostProfileSpec
-
+	var platform_network_subreconciler_errs []error
 	if !host.Stable() {
 		msg := "waiting for a stable state for existing host"
 		m := NewStableHostMonitor(instance, host.ID)
@@ -1442,7 +1565,25 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	defaults, err = r.GetHostDefaults(instance)
 	if err != nil {
 		return err
-	} else if defaults == nil {
+	}
+
+	// Check facotry install config map
+	factory, err := r.CloudManager.GetFactoryInstall(reqNs)
+	if err != nil {
+		return err
+	}
+
+	updatedRequired, err := common.UpdateDefaultsRequired(
+		r.CloudManager,
+		reqNs,
+		instance.Name,
+		factory,
+	)
+	if err != nil {
+		return err
+	}
+
+	if defaults == nil || updatedRequired {
 		if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
 			// Ideally we would only ever collect the defaults when the host is
 			// in the locked/disabled/online state.  This is the best approach
@@ -1469,6 +1610,13 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
 			"defaults collected and stored")
+
+		if factory {
+			err := r.CloudManager.SetResourceDefaultUpdated(reqNs, instance.Name, true)
+			if err != nil {
+				return err
+			}
+		}
 
 		current = defaults.DeepCopy()
 
@@ -1523,8 +1671,64 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		SyncIFNameByUuid(profile, current)
 	}
 
+	is_active_host, err := r.IsActiveHost(client, instance, reqNs)
+	if err != nil {
+		return err
+	}
+
+	if is_active_host {
+		system_info, err := r.CloudManager.GetSystemInfo(reqNs, client)
+		if err != nil {
+			msg := "failed to get active host"
+			return common.NewUserDataError(msg)
+		}
+
+		// Only reconcile platform networks in active controller reconciliation
+		// loops to prevent concurrency issues.
+		// Also within active controller prevent potential concurrent reconciliation
+		// if IsPlatformNetworkReconciling.
+		if !r.CloudManager.IsPlatformNetworkReconciling() {
+			r.CloudManager.SetPlatformNetworkReconciling(true)
+
+			// Do not allow notifying active host until ReconcilePlatformNetworks
+			// is completed, this is to prevent unnecessary status update conflicts
+			// in addrpools and platform network resources.
+			r.CloudManager.SetNotifyingActiveHost(true)
+
+			platform_network_subreconciler_errs = r.ReconcilePlatformNetworks(client, instance, profile, &hostInfo, system_info)
+
+			r.CloudManager.SetPlatformNetworkReconciling(false)
+			r.CloudManager.SetNotifyingActiveHost(false)
+
+			for _, err := range platform_network_subreconciler_errs {
+				cause := perrors.Cause(err)
+				if _, ok := cause.(cloudManager.WaitForMonitor); ok {
+					// If there is a WaitForMonitor error the reconciliation
+					// request should not be requeued.
+					// Reconciliation will be triggered after change in state
+					// of the host by the monitor itself.
+					return err
+				}
+			}
+
+			if len(platform_network_subreconciler_errs) != 0 {
+				err_msg := "there were errors during platform network reconciliation"
+				return common.NewPlatformNetworkReconciliationError(err_msg)
+			}
+
+		} else {
+			err_msg := "waiting for platform network reconciled."
+			return common.NewPlatformNetworkReconciliationError(err_msg)
+		}
+	}
+
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
-	if inSync {
+
+	// Continue the following steps even inSync:
+	// factory install
+	// strategy not finished
+	if inSync && !factory &&
+		(instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
 		instance.Status.Delta = ""
 		return nil
@@ -1551,7 +1755,9 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		}
 	}
 
-	if instance.Status.Reconciled && r.StopAfterInSync() {
+	if instance.Status.Reconciled &&
+		r.StopAfterInSync() &&
+		instance.Status.StrategyRequired != cloudManager.StrategyLockRequired {
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			if !host.IsUnlockedAvailable() {
 				msg := "waiting for the host reach available state"
@@ -1569,7 +1775,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		}
 	}
 
-	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo)
+	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo, factory)
 	if err != nil {
 		return err
 	}
@@ -1638,7 +1844,7 @@ func (r *HostReconciler) ReconcileResource(
 	client *gophercloud.ServiceClient,
 	instance *starlingxv1.Host,
 	profile *starlingxv1.HostProfileSpec,
-) (err error) {
+	reqNs string) (err error) {
 	var host *hosts.Host
 	var inSync bool
 
@@ -1715,7 +1921,10 @@ func (r *HostReconciler) ReconcileResource(
 	}
 
 	// Check that the current configuration of a host matches the desired state.
-	err = r.ReconcileExistingHost(client, instance, profile, host)
+	// This also captures errors from platform network subreconciler separately
+	// thus enabling conditional handling of certain errors coming from
+	// platform network subreconciler in future.
+	err = r.ReconcileExistingHost(client, instance, profile, host, reqNs)
 
 	inSync = err == nil
 	oldInSync := instance.Status.InSync
@@ -1834,47 +2043,10 @@ func (r *HostReconciler) IsCephDelayTargetGroup(client *gophercloud.ServiceClien
 	}
 }
 
-// Obtain deploymentScope value from configuration
-// Taking this value from annotation in instacne
-// (It seems Client.Get does not update Status value from configuration)
-// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
-// "principal" if "principal" in configuration
-func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope string, err error) {
-	// Set default value for deployment scope
-	deploymentScope := cloudManager.ScopeBootstrap
-	// Set DeploymentScope from configuration
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	if annotation != nil {
-		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
-		if ok {
-			status_config := &starlingxv1.Host{}
-			err := json.Unmarshal([]byte(config), &status_config)
-			if err == nil {
-				if status_config.Status.DeploymentScope != "" {
-					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
-					switch lowerCaseScope {
-					case cloudManager.ScopeBootstrap:
-						deploymentScope = cloudManager.ScopeBootstrap
-					case cloudManager.ScopePrincipal:
-						deploymentScope = cloudManager.ScopePrincipal
-					default:
-						err = fmt.Errorf("Unsupported DeploymentScope: %s",
-							status_config.Status.DeploymentScope)
-						return deploymentScope, err
-					}
-				}
-			} else {
-				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
-				return deploymentScope, err
-			}
-		}
-	}
-	return deploymentScope, nil
-}
-
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "true" if factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // and
 // Set ObservedGeneration as the value of Generation
@@ -1882,10 +2054,19 @@ func (r *HostReconciler) GetScopeConfig(instance *starlingxv1.Host) (scope strin
 // - Set ConfigurationUpdated true
 // - Set Reconciled false (since it is going to reconcile with new configuration)
 // Then reflect these values to cluster object
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
 func (r *HostReconciler) UpdateConfigStatus(
 	profile *starlingxv1.HostProfileSpec,
 	instance *starlingxv1.Host,
+	ns string,
 ) (err error) {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	logHost.V(2).Info("Factory install from config", "factory", factory)
+	if err != nil {
+		return err
+	}
+
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -1894,18 +2075,12 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if err != nil {
 			return err
 		}
-		logHost.V(2).Info("update config before", "instance", instance)
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
-		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "true"  if the factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -1931,14 +2106,6 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if err != nil {
 			return err
 		}
-		logHost.V(2).Info("update status before", "instance", instance)
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logHost.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
 
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
@@ -1951,26 +2118,26 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if err != nil {
 			return err
 		}
-		if hostProfile != nil &&
-			instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
-			if (instance.Status.ObservedHostProfileGeneration == 0 && instance.Status.Reconciled) ||
-				instance.Status.DeploymentScope != cloudManager.ScopePrincipal {
-				// Case: DM upgrade in reconciled node or update in bootstrap
-				instance.Status.HostProfileConfigurationUpdated = false
-				logHost.V(2).Info("set profile config updated false: bootstrap or DM upgrade")
-			} else {
-				// Case: Fresh install or Day-2 operation
-				instance.Status.HostProfileConfigurationUpdated = true
-				instance.Status.Reconciled = false
-				instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
-				logHost.V(2).Info("set profile config updated true: initial or day2 operation starts")
-				logHost.V(2).Info("set not required: initial or day2 operation starts. profile config updated")
+		if hostProfile != nil {
+			if instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
+				if (instance.Status.ObservedHostProfileGeneration == 0 && instance.Status.Reconciled) ||
+					instance.Status.DeploymentScope != cloudManager.ScopePrincipal || !factory {
+					// Case: DM upgrade in reconciled node or update in bootstrap
+					instance.Status.HostProfileConfigurationUpdated = false
+					logHost.V(2).Info("set profile config updated false: bootstrap or DM upgrade")
+				} else {
+					// Case: Fresh install or Day-2 operation
+					instance.Status.HostProfileConfigurationUpdated = true
+					instance.Status.Reconciled = false
+					instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
+					logHost.V(2).Info("set profile config updated true: initial or day2 operation starts")
+					logHost.V(2).Info("set not required: initial or day2 operation starts. profile config updated")
+				}
+				instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
+				logHost.V(2).Info("update observed profile config generation", "generation", hostProfile.ObjectMeta.Generation)
 			}
-			instance.Status.ObservedHostProfileGeneration = hostProfile.ObjectMeta.Generation
-			logHost.V(2).Info("update observed profile config generation", "generation", hostProfile.ObjectMeta.Generation)
 		}
 
-		// Check if the Host configuration is updated
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
@@ -1978,12 +2145,12 @@ func (r *HostReconciler) UpdateConfigStatus(
 				instance.Status.ConfigurationUpdated = false
 				logHost.V(2).Info("set host config updated false: bootstrap or DM upgrade")
 			} else {
-				// Case: Fresh install or Day-2 operation
+				// Case: Fresh/facotry install or Day-2 operation
 				instance.Status.ConfigurationUpdated = true
 				instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 				logHost.V(2).Info("set host config updated true: initial or day2 operation starts")
 				logHost.V(2).Info("set not required: initial or day2 operation starts. host config updated")
-				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
@@ -2043,6 +2210,44 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' host resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestoreHostStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	err, platformnetwork_update_required := r.PlatformNetworkUpdateRequired(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	err, scope_updated := r.UpdateDeploymentScope(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// The status reaches its desired status post reconciled
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled &&
+		instance.Status.DeploymentScope == "bootstrap" &&
+		!platformnetwork_update_required {
+
+		factory, err := r.GetFactoryInstall(request.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if !scope_updated && !factory {
+			logHost.V(2).Info("reconcile finished, desired state reached after reconciled.")
+			return reconcile.Result{}, nil
+		}
+	}
+
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any hosts that we have previously added.
@@ -2084,11 +2289,11 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
+	// Update ReconciledAfterInSync and ObservedGeneration
 	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(profile, instance)
+	err = r.UpdateConfigStatus(profile, instance, request.Namespace)
 	if err != nil {
-		logHost.Error(err, "unable to update scope")
+		logHost.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -2118,12 +2323,190 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		logHost.V(2).Info("not storage node or in ceph primary group. continue")
 	}
 
-	err = r.ReconcileResource(platformClient, instance, profile)
+	err = r.ReconcileResource(platformClient, instance, profile, request.Namespace)
 	if err != nil {
 		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// PlatformNetworkUpdateRequired checks and returns true if any of the
+// platform networks / address pools are out of sync.
+func (r *HostReconciler) PlatformNetworkUpdateRequired(instance *starlingxv1.Host) (error, bool) {
+	errs := make([]error, 0)
+	platform_network_instances, fetch_errs := r.ListPlatformNetworks(instance.Namespace)
+	errs = append(errs, fetch_errs...)
+
+	for _, platform_network_instance := range platform_network_instances {
+		if !(platform_network_instance.Status.InSync && platform_network_instance.Status.Reconciled) {
+			return nil, true
+		}
+
+		addrpool_instances, fetch_errs := r.GetAddressPoolsFromPlatformNetwork(platform_network_instance.Spec.AssociatedAddressPools,
+			instance.Namespace)
+		errs = append(errs, fetch_errs...)
+
+		for _, addrpool_instance := range addrpool_instances {
+			if !(addrpool_instance.Status.InSync && addrpool_instance.Status.Reconciled) {
+				return nil, true
+			}
+		}
+	}
+
+	if len(errs) != 0 {
+		err_msg := "There were errors fetching platform networks / addresspools"
+		return common.NewPlatformNetworkReconciliationError(err_msg), false
+	}
+
+	return nil, false
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *HostReconciler) checkRestoreInProgress(instance *starlingxv1.Host) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *HostReconciler) RestoreHostStatus(instance *starlingxv1.Host) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update host status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for host resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *HostReconciler) ClearRestoreInProgress(instance *starlingxv1.Host) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, HostFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, HostFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' host resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
+}
+
+// ListPlatformNetworks returns all of PlatformNetwork instances or errors while
+// retrieving them if any.
+func (r *HostReconciler) ListPlatformNetworks(namespace string) ([]*starlingxv1.PlatformNetwork, []error) {
+	platform_network_instances := make([]*starlingxv1.PlatformNetwork, 0)
+	errs := make([]error, 0)
+	opts := client.ListOptions{}
+	opts.Namespace = namespace
+	platform_networks := &starlingxv1.PlatformNetworkList{}
+	err := r.List(context.TODO(), platform_networks, &opts)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to list platform networks")
+		errs = append(errs, err)
+	}
+
+	for _, platform_network := range platform_networks.Items {
+		platform_network_instance := &starlingxv1.PlatformNetwork{}
+		platform_network_namespace := types.NamespacedName{Namespace: namespace, Name: platform_network.ObjectMeta.Name}
+		err := r.Client.Get(context.TODO(), platform_network_namespace, platform_network_instance)
+		if err != nil {
+			logHost.Error(err, "Failed to get platform network resource from namespace")
+			errs = append(errs, err)
+			continue
+		}
+
+		platform_network_instances = append(platform_network_instances, platform_network_instance)
+	}
+
+	return platform_network_instances, errs
+}
+
+func (r *HostReconciler) GetAddressPoolsFromPlatformNetwork(associated_addrpools []string, namespace string) ([]*starlingxv1.AddressPool, []error) {
+	addrpool_instances := make([]*starlingxv1.AddressPool, 0)
+	errs := make([]error, 0)
+	for _, addrpool_name := range associated_addrpools {
+		addrpool_instance := &starlingxv1.AddressPool{}
+		addrpool_namespace := types.NamespacedName{
+			Namespace: namespace,
+			Name:      addrpool_name}
+		err := r.Client.Get(context.TODO(), addrpool_namespace, addrpool_instance)
+		if err != nil {
+			logHost.Error(err, "Failed to get addrpool resource from namespace")
+			errs = append(errs, err)
+			continue
+		}
+		addrpool_instances = append(addrpool_instances, addrpool_instance)
+	}
+
+	return addrpool_instances, errs
+}
+
+// LockHostRequest takes the host object, host ID / personality and reconcile_object
+// which describes the purpose of requesting locking of particular host, starts lock
+// host monitor and returns LockedDisabledHost monitor error.
+// This would initiate lock request of a host through VIM so that disabled attributes
+// can be reconciled later.
+func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_id string, host_personality string, reconcile_object string) error {
+
+	if host_instance.Status.StrategyRequired != cloudManager.StrategyLockRequired {
+		host_instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+
+		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost,
+			host_personality,
+			host_instance.Name,
+			host_instance.Status.Reconciled,
+			host_instance.Status.StrategyRequired)
+
+		err := r.Client.Status().Update(context.TODO(), host_instance)
+		if err != nil {
+			logHost.Error(err, "failed to update host strategy")
+			return err
+		}
+	}
+
+	msg := fmt.Sprintf("Waiting for %s to be in locked state to reconcile %s", host_instance.Name, reconcile_object)
+	m := NewLockedDisabledHostMonitor(host_instance, host_id)
+	return r.CloudManager.StartMonitor(m, msg)
+
+}
+
+// UpdateDeploymentScope function is used to update the deployment scope for Host.
+func (r *HostReconciler) UpdateDeploymentScope(instance *starlingxv1.Host) (error, bool) {
+	updated, err := common.UpdateDeploymentScope(r.Client, instance)
+	if err != nil {
+		logHost.Error(err, "failed to update deploymentScope")
+		return err, false
+	}
+	return nil, updated
 }
 
 // SetupWithManager sets up the controller with the Manager.

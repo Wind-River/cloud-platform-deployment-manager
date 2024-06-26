@@ -104,6 +104,30 @@ type DataNetworkStatus struct {
 	Delta string `json:"delta"`
 }
 
+func (d *DataNetwork) GetStrategyRequired() string {
+	return d.Status.StrategyRequired
+}
+
+func (d *DataNetwork) SetStrategyRequired(strategy string) {
+	d.Status.StrategyRequired = strategy
+}
+
+func (d *DataNetwork) GetDeploymentScope() string {
+	return d.Status.DeploymentScope
+}
+
+func (d *DataNetwork) SetDeploymentScope(scope string) {
+	d.Status.DeploymentScope = scope
+}
+
+func (d *DataNetwork) GetAnnotations() map[string]string {
+	return d.ObjectMeta.Annotations
+}
+
+func (d *DataNetwork) SetAnnotations(annotations map[string]string) {
+	d.ObjectMeta.Annotations = annotations
+}
+
 // +kubebuilder:object:root=true
 // DataNetworks defines the attributes that represent the data network level
 // attributes of a StarlingX system.  This is a composition of the following

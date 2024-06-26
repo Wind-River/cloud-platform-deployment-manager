@@ -63,6 +63,30 @@ type PtpInterfaceStatus struct {
 	Delta string `json:"delta"`
 }
 
+func (p *PtpInterface) GetStrategyRequired() string {
+	return p.Status.StrategyRequired
+}
+
+func (p *PtpInterface) SetStrategyRequired(strategy string) {
+	p.Status.StrategyRequired = strategy
+}
+
+func (p *PtpInterface) GetDeploymentScope() string {
+	return p.Status.DeploymentScope
+}
+
+func (p *PtpInterface) SetDeploymentScope(scope string) {
+	p.Status.DeploymentScope = scope
+}
+
+func (p *PtpInterface) GetAnnotations() map[string]string {
+	return p.ObjectMeta.Annotations
+}
+
+func (p *PtpInterface) SetAnnotations(annotations map[string]string) {
+	p.ObjectMeta.Annotations = annotations
+}
+
 // +kubebuilder:object:root=true
 // +deepequal-gen=false
 // +kubebuilder:subresource:status

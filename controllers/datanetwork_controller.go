@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package controllers
 
@@ -364,50 +364,19 @@ func (r *DataNetworkReconciler) StopAfterInSync() bool {
 	return utils.GetReconcilerOptionBool(utils.DataNetwork, utils.StopAfterInSync, true)
 }
 
-// Obtain deploymentScope value from configuration
-// Taking this value from annotation in instacne
-// (It seems Client.Get does not update Status value from configuration)
-// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
-// "principal" if "principal" in configuration
-func (r *DataNetworkReconciler) GetScopeConfig(instance *starlingxv1.DataNetwork) (scope string, err error) {
-	// Set default value for deployment scope
-	deploymentScope := cloudManager.ScopeBootstrap
-	// Set DeploymentScope from configuration
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	if annotation != nil {
-		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
-		if ok {
-			status_config := &starlingxv1.DataNetwork{}
-			err := json.Unmarshal([]byte(config), &status_config)
-			if err == nil {
-				if status_config.Status.DeploymentScope != "" {
-					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
-					switch lowerCaseScope {
-					case cloudManager.ScopeBootstrap:
-						deploymentScope = cloudManager.ScopeBootstrap
-					case cloudManager.ScopePrincipal:
-						deploymentScope = cloudManager.ScopePrincipal
-					default:
-						err = fmt.Errorf("Unsupported DeploymentScope: %s",
-							status_config.Status.DeploymentScope)
-						return deploymentScope, err
-					}
-				}
-			} else {
-				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
-				return deploymentScope, err
-			}
-		}
-	}
-	return deploymentScope, nil
-}
-
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "true"  if the factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
-func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNetwork) (err error) {
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
+func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNetwork, ns string) (err error) {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	if err != nil {
+		return err
+	}
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -416,17 +385,13 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logDataNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "true"  if the factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -452,29 +417,21 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 			return err
 		}
 
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logDataNetwork.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
-
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
 
-		// Check if the configuration is updated
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			// The configuration is updated
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
 				// Case: DM upgrade in reconciled node
 				instance.Status.ConfigurationUpdated = false
 			} else {
-				// Case: Fresh install or Day-2 operation
+				// Case: Fresh/factory install or Day-2 operation
 				instance.Status.ConfigurationUpdated = true
-				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
@@ -524,11 +481,43 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
-	logDataNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance)
+	// Restore the data network status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' Data network resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestoreDataNetworkStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	err, scope_updated := r.UpdateDeploymentScope(instance)
 	if err != nil {
-		logDataNetwork.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+
+	// The status reaches its desired status post reconciled
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
+
+		factory, err := r.GetFactoryInstall(request.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if !scope_updated && !factory {
+			logDataNetwork.V(2).Info("reconcile finished, desired state reached after reconciled.")
+			return reconcile.Result{}, nil
+		}
+	}
+
+	// Update ReconciledAfterInSync and ObservedGeneration
+	logDataNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance, request.Namespace)
+	if err != nil {
+		logDataNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
 		return reconcile.Result{}, err
 	}
 	logDataNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -576,6 +565,16 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
+// UpdateDeploymentScope function is used to update the deployment scope for DataNetwork.
+func (r *DataNetworkReconciler) UpdateDeploymentScope(instance *starlingxv1.DataNetwork) (error, bool) {
+	updated, err := common.UpdateDeploymentScope(r.Client, instance)
+	if err != nil {
+		logDataNetwork.Error(err, "failed to update deploymentScope")
+		return err, false
+	}
+	return nil, updated
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *DataNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	tMgr := cloudManager.GetInstance(mgr)
@@ -591,4 +590,62 @@ func (r *DataNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.DataNetwork{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *DataNetworkReconciler) checkRestoreInProgress(instance *starlingxv1.DataNetwork) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *DataNetworkReconciler) RestoreDataNetworkStatus(instance *starlingxv1.DataNetwork) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update data network status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for DataNetwork resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *DataNetworkReconciler) ClearRestoreInProgress(instance *starlingxv1.DataNetwork) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' data network resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }

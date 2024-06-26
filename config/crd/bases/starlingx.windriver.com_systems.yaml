@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: systems.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -43,22 +43,23 @@ spec:
     schema:
       openAPIV3Schema:
         description: "System defines the attributes that represent the system level
-          attributes of a StarlingX system.  This is a composition of the following
-          StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
+          attributes\nof a StarlingX system.  This is a composition of the following
+          StarlingX\nAPI endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -66,40 +67,35 @@ spec:
             description: SystemSpec defines the desired state of System
             properties:
               certificates:
-                description: Certificates is a list of references to certificates
-                  that must be installed.
+                description: |-
+                  Certificates is a list of references to certificates that must be
+                  installed.
                 items:
-                  description: CertificateInfo defines the attributes required to
-                    define an instance of a certificate to be installed via the system
-                    API.  The structure of the system API is not uniform for all certificate
-                    types therefore some attention is required when defining these
-                    resources.
+                  description: |-
+                    CertificateInfo defines the attributes required to define an instance of a
+                    certificate to be installed via the system API.  The structure of the
+                    system API is not uniform for all certificate types therefore some attention
+                    is required when defining these resources.
                   properties:
                     secret:
-                      description: Secret is the name of a TLS secret containing the
-                        public certificate and private key.  The secret must be of
-                        type kubernetes.io/tls and must contain specific data attributes.  Specifically,
-                        all secrets must, at a minimum contain the "tls.crt" key since
-                        all certificates will at least require public certificate
-                        PEM data.  The remaining two keys "tls.key" and "ca.crt" are
-                        optional depending on the certificate type. For the "platform",
-                        "openstack", "tpm", and "docker" certificate types both the
-                        "tls.crt" and "tls.key" certificates are needed while for
-                        the "*_ca" version of those same certificate types only the
-                        "tls.crt" attribute is required.  The "ca.crt" attribute is
-                        only required for the "platform" or "tpm" certificate types,
-                        and only if the supplied public certificate is signed by a
-                        non-standard root CA.
+                      description: |-
+                        Secret is the name of a TLS secret containing the public certificate and
+                        private key.  The secret must be of type kubernetes.io/tls and must
+                        contain specific data attributes.  Specifically, all secrets must, at a
+                        minimum contain the "tls.crt" key since all certificates will at least
+                        require public certificate PEM data.  The remaining two keys "tls.key"
+                        and "ca.crt" are optional depending on the certificate type. For the
+                        "platform", "openstack", "tpm", and "docker" certificate types both the
+                        "tls.crt" and "tls.key" certificates are needed while for the "*_ca"
+                        version of those same certificate types only the "tls.crt" attribute is
+                        required.  The "ca.crt" attribute is only required for the "platform" or
+                        "tpm" certificate types, and only if the supplied public certificate is
+                        signed by a non-standard root CA.
                       type: string
                     type:
                       description: Type represents the intended usage of the certificate
                       enum:
-                      - ssl
                       - ssl_ca
-                      - openstack
-                      - openstack_ca
-                      - docker_registry
-                      - tpm_mode
                       type: string
                   required:
                   - secret
@@ -107,25 +103,30 @@ spec:
                   type: object
                 type: array
               contact:
-                description: Contact is a method to reach the person responsible for
-                  the system.  For example it could be an email address, phone number,
-                  or physical address.
+                description: |-
+                  Contact is a method to reach the person responsible for the system.  For
+                  example it could be an email address,
+                  phone number, or physical address.
                 maxLength: 255
                 pattern: ^[a-zA-Z0-9@\-_\. ]+$
                 type: string
               description:
-                description: Description is a free form string describing the intended
-                  purpose of the system.
+                description: |-
+                  Description is a free form string describing the intended purpose of the
+                  system.
                 type: string
               dnsServers:
-                description: Nameservers is an array of Domain SystemName servers.  Each
-                  server can be specified as either an IPv4 or IPv6 address.
+                description: |-
+                  Nameservers is an array of Domain SystemName servers.  Each server can be
+                  specified as either an IPv4 or IPv6
+                  address.
                 items:
                   type: string
                 type: array
               latitude:
-                description: Latitude is the latitude geolocation coordinate of the
-                  system's physical location.
+                description: |-
+                  Latitude is the latitude geolocation coordinate of the system's physical
+                  location.
                 maxLength: 30
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
@@ -134,9 +135,9 @@ spec:
                   installed.
                 properties:
                   secret:
-                    description: Secret is the name of a TLS secret containing the
-                      license file contents. It must refer to a Opaque Kubernetes
-                      Secret.
+                    description: |-
+                      Secret is the name of a TLS secret containing the license file contents.
+                      It must refer to a Opaque Kubernetes Secret.
                     type: string
                 required:
                 - secret
@@ -148,15 +149,17 @@ spec:
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
               longitude:
-                description: Longitude is the longitude geolocation coordinate of
-                  the system's physical location.
+                description: |-
+                  Longitude is the longitude geolocation coordinate of the system's physical
+                  location.
                 maxLength: 30
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
               ntpServers:
-                description: NTPServers is an array of Network Time Protocol servers.  Each
-                  server can be specified as either an IPv4 or IPv6 address, or a
-                  FQDN hostname.
+                description: |-
+                  NTPServers is an array of Network Time Protocol servers.  Each server can
+                  be specified as either an IPv4 or IPv6
+                  address, or a FQDN hostname.
                 items:
                   type: string
                 type: array
@@ -165,8 +168,9 @@ spec:
                   for the system.
                 properties:
                   mechanism:
-                    description: Mechanism defines the high level messaging architecture
-                      used to implement the precision time procotol.
+                    description: |-
+                      Mechanism defines the high level messaging architecture used to implement
+                      the precision time procotol.
                     enum:
                     - p2p
                     - e2e
@@ -180,8 +184,9 @@ spec:
                     - legacy
                     type: string
                   transport:
-                    description: Transport defines the network transport protocol
-                      used to implement the precision time protocol.
+                    description: |-
+                      Transport defines the network transport protocol used to implement the
+                      precision time protocol.
                     enum:
                     - l2
                     - udp
@@ -190,9 +195,9 @@ spec:
               serviceParameters:
                 description: ServiceParameters is a list of service parameters
                 items:
-                  description: ServiceParameterInfo defines the attributes required
-                    to define an instance of a service parameter to be installed via
-                    the system API.
+                  description: |-
+                    ServiceParameterInfo defines the attributes required to define an instance of a
+                    service parameter to be installed via the system API.
                   properties:
                     paramname:
                       description: ParamName identifies the name for this service
@@ -234,8 +239,9 @@ spec:
                   type: object
                 type: array
               storage:
-                description: Storage is a set of storage specific attributes to be
-                  configured for the system.
+                description: |-
+                  Storage is a set of storage specific attributes to be configured for the
+                  system.
                 properties:
                   backends:
                     description: Backends is a set of backend storage methods to be
@@ -249,31 +255,33 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_]+$
                           type: string
                         network:
-                          description: Network is the network type associated with
-                            this backend. At the momemnt it is used only for ceph
-                            backend.
+                          description: |-
+                            Network is the network type associated with this backend.
+                            At the momemnt it is used only for ceph backend.
                           enum:
                           - mgmt
                           - cluster-host
                           type: string
                         partitionSize:
-                          description: PartitionSize is the controller disk partition
-                            size to be allocated for the Ceph monitor - in gigabytes.
+                          description: |-
+                            PartitionSize is the controller disk partition size to be allocated for
+                            the Ceph monitor - in gigabytes.
                             This attribute is only applicable for Ceph storage backends.
                           minimum: 20
                           type: integer
                         replicationFactor:
-                          description: ReplicationFactor is the number of storage
-                            hosts required in each replication group for storage redundancy.
+                          description: |-
+                            ReplicationFactor is the number of storage hosts required in each
+                            replication group for storage redundancy.
                             This attribute is only applicable for Ceph storage backends.
                           maximum: 3
                           minimum: 1
                           type: integer
                         services:
-                          description: Services is a list of services to enable for
-                            this backend instance.  Each backend type supports a limited
-                            set of services.  Refer to customer documentation for
-                            more information.
+                          description: |-
+                            Services is a list of services to enable for this backend instance.  Each
+                            backend type supports a limited set
+                            of services.  Refer to customer documentation for more information.
                           items:
                             type: string
                           type: array
@@ -294,8 +302,9 @@ spec:
                       for the system.
                     properties:
                       linkUtilization:
-                        description: LinkUtilization defines the maximum link utilisation
-                          percentage during sync activities.
+                        description: |-
+                          LinkUtilization defines the maximum link utilisation percentage during
+                          sync activities.
                         maximum: 100
                         minimum: 20
                         type: integer
@@ -306,8 +315,9 @@ spec:
                     description: Filesystems defines the set of controller file system
                       definitions.
                     items:
-                      description: ControllerFileSystemInfo defines the attributes
-                        of a single controller filesystem resource.
+                      description: |-
+                        ControllerFileSystemInfo defines the attributes of a single controller
+                        filesystem resource.
                       properties:
                         name:
                           description: Name defines the system defined name of the
@@ -323,9 +333,10 @@ spec:
                     type: array
                 type: object
               vswitchType:
-                description: VSwitchType is the desired vswitch implementation to
-                  be configured. This is intentionally left unvalidated to avoid issues
-                  with proprietary vswitch implementation.
+                description: |-
+                  VSwitchType is the desired vswitch implementation to be configured. This
+                  is intentionally left unvalidated to avoid issues with proprietary
+                  vswitch implementation.
                 type: string
             type: object
           status:
@@ -335,16 +346,18 @@ spec:
                 description: Value for configuration is updated or not
                 type: boolean
               defaults:
-                description: Defaults defines the configuration attributed collected
-                  before applying any user configuration values.
+                description: |-
+                  Defaults defines the configuration attributed collected before applying
+                  any user configuration values.
                 type: string
               delta:
                 description: Delta between final profile vs current configuration
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been
-                  deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -361,18 +374,21 @@ spec:
                   the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value
-                  will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
               reconciled:
-                description: Reconciled defines whether the System has been successfully
-                  reconciled at least once.  If further changes are made they will
-                  be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the System has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
               softwareVersion:
-                description: SoftwareVersion defines the current software version
-                  reported by the system API.
+                description: |-
+                  SoftwareVersion defines the current software version reported by the
+                  system API.
                 type: string
               strategyApplied:
                 default: false

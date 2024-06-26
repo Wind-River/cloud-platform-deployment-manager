@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/cpus"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -230,39 +231,35 @@ var _ = Describe("Test filters utilities:", func() {
 	Describe("Test platform network filters", func() {
 		deployment := Deployment{}
 		deployment.PlatformNetworks = make([]*v1.PlatformNetwork, 0)
+		deployment.AddressPools = make([]*v1.AddressPool, 0)
 		coreNetworkFilter := NewCoreNetworkFilter()
-		var get_platform_network = func(nwk_type string) *v1.PlatformNetwork {
-			gw := "10.10.10.1"
-			order := "random"
+		var get_platform_network = func(nwk_type string, associatedAddressPools []string) *v1.PlatformNetwork {
 			spec := v1.PlatformNetworkSpec{
-				Type:               nwk_type,
-				Subnet:             "10.10.10.0",
-				FloatingAddress:    "10.10.10.2",
-				Controller0Address: "10.10.10.3",
-				Controller1Address: "10.10.10.4",
-				Prefix:             24,
-				Gateway:            &gw,
-				Allocation: v1.AllocationInfo{
-					Type:  "dynamic",
-					Order: &order,
-					Ranges: []v1.AllocationRange{
-						v1.AllocationRange{
-							Start: "10.10.10.2",
-							End:   "10.10.10.50",
-						},
-					},
-				},
+				Type:                   nwk_type,
+				AssociatedAddressPools: associatedAddressPools,
 			}
 			new_plat_nwk := v1.PlatformNetwork{}
 			new_plat_nwk.Spec = spec
 			return &new_plat_nwk
 		}
-		deployment.PlatformNetworks = []*v1.PlatformNetwork{
-			get_platform_network("oam"),
-			get_platform_network("mgmt"),
-			get_platform_network("admin"),
-			get_platform_network("storage")}
-
+		var get_associated_address_pool = func(pool_name string) *v1.AddressPool {
+			spec := v1.AddressPoolSpec{
+				Subnet: "192.168.11.32",
+			}
+			new_address_pool := v1.AddressPool{}
+			new_address_pool.Name = pool_name
+			new_address_pool.Spec = spec
+			return &new_address_pool
+		}
+		network_types := []string{"oam", "mgmt", "admin", "storage"}
+		ip_families := []string{"ipv4", "ipv6"}
+		for _, net_type := range network_types {
+			associated_pools := []string{net_type + "-ipv4", net_type + "-ipv6"}
+			deployment.PlatformNetworks = append(deployment.PlatformNetworks, get_platform_network(net_type, associated_pools))
+			for _, ip_family := range ip_families {
+				deployment.AddressPools = append(deployment.AddressPools, get_associated_address_pool(net_type+"-"+ip_family))
+			}
+		}
 		Context("when new core network filter", func() {
 			It("should return a CoreNetworkFilter", func() {
 				got := coreNetworkFilter
@@ -276,6 +273,7 @@ var _ = Describe("Test filters utilities:", func() {
 				err := coreNetworkFilter.Filter(deployment.PlatformNetworks[0], &deployment)
 				Expect(err).To(BeNil())
 				Expect(len(deployment.PlatformNetworks)).To(Equal(1), "CoreNetworkFilter should not delete any platform networks other than oam/mgmt/admin")
+				Expect(len(deployment.AddressPools)).To(Equal(2))
 			})
 		})
 
@@ -933,6 +931,631 @@ var _ = Describe("Test filters utilities:", func() {
 				ethList = append(ethList, ethInf)
 				ethLists := v1.EthernetList(ethList)
 				Expect(hp.Spec.Interfaces.Ethernet).To(Equal(ethLists))
+			})
+		})
+	})
+	Describe("Test MemoryDefaultsFilter", func() {
+		Context("When Func is platform,pagecount is 0 and other func is vswitch,pagecount is 1", func() {
+			It("Should omit func platform and vswitch in profile memory", func() {
+				filter := &MemoryDefaultsFilter{}
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Memory: v1.MemoryNodeList{
+							{
+								Node: 1,
+								Functions: v1.MemoryFunctionList{
+									{
+										Function:  "platform",
+										PageSize:  "4KB",
+										PageCount: 0,
+									},
+									{
+										Function:  "vswitch",
+										PageSize:  "4KB",
+										PageCount: 1,
+									},
+									{
+										Function:  "vm",
+										PageSize:  "4KB",
+										PageCount: 2,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				nodes := v1.MemoryNodeList{
+					{
+						Node: 1,
+						Functions: v1.MemoryFunctionList{
+							{
+								Function:  "vm",
+								PageSize:  "4KB",
+								PageCount: 2,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Memory).To(Equal(nodes))
+			})
+		})
+	})
+	Describe("Test ProcessorDefaultsFilter", func() {
+		Context("When personality is controller", func() {
+			It("Should ignore platform func in processors", func() {
+				filter := &ProcessorDefaultsFilter{}
+				personality := hosts.PersonalityController
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						ProfileBaseAttributes: v1.ProfileBaseAttributes{
+							Personality: &personality,
+						},
+						Processors: v1.ProcessorNodeList{
+							{
+								Node: 1,
+								Functions: v1.ProcessorFunctionList{
+									{
+										Function: cpus.CPUFunctionPlatform,
+										Count:    2,
+									},
+									{
+										Function: "vm",
+										Count:    3,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				expNodes := v1.ProcessorNodeList{
+					{
+						Node: 1,
+						Functions: v1.ProcessorFunctionList{
+							{
+								Function: "vm",
+								Count:    3,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(Equal(expNodes))
+			})
+		})
+		Context("When personality is worker", func() {
+			It("Should ignore platform func in processors", func() {
+				filter := &ProcessorDefaultsFilter{}
+				personality := hosts.PersonalityWorker
+				// Create a test case with sample input
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						ProfileBaseAttributes: v1.ProfileBaseAttributes{
+							Personality: &personality,
+						},
+						Processors: v1.ProcessorNodeList{
+							{
+								Node: 1,
+								Functions: v1.ProcessorFunctionList{
+									{
+										Function: cpus.CPUFunctionPlatform,
+										Count:    1,
+									},
+									{
+										Function: "vswitch",
+										Count:    1,
+									},
+								},
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				expNodes := v1.ProcessorNodeList{
+					{
+						Node: 1,
+						Functions: v1.ProcessorFunctionList{
+							{
+								Function: "vswitch",
+								Count:    1,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(Equal(expNodes))
+			})
+		})
+	})
+	Describe("Test ProcessorClearAllFilter", func() {
+		Context("When processors is not nil", func() {
+			It("Removes all processor configurations", func() {
+				filter := &ProcessorClearAllFilter{}
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Processors: v1.ProcessorNodeList{},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(hp.Spec.Processors).To(BeNil())
+			})
+		})
+	})
+	Describe("Test VolumeGroupFilter", func() {
+		Context("When there is volume group that is in blacklist", func() {
+			It("Removes volume group i.e present in blacklist", func() {
+				filter := &VolumeGroupFilter{
+					Blacklist: []string{"vg1", "vg2"},
+				}
+				lvmType := "thin"
+				size := 1
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Storage: &v1.ProfileStorageInfo{
+							VolumeGroups: &v1.VolumeGroupList{
+								{
+									Name:    "vg1",
+									LVMType: &lvmType,
+								},
+								{
+									Name:    "vg3",
+									LVMType: &lvmType,
+									PhysicalVolumes: v1.PhysicalVolumeList{
+										{
+											Type: "disk",
+											Path: "/a/b/c",
+											Size: &size,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+				expVgs := v1.VolumeGroupList{
+					{
+
+						Name:    "vg3",
+						LVMType: &lvmType,
+						PhysicalVolumes: v1.PhysicalVolumeList{
+							{
+								Type: "disk",
+								Path: "/a/b/c",
+								Size: &size,
+							},
+						},
+					},
+				}
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(*hp.Spec.Storage.VolumeGroups).To(Equal(expVgs))
+			})
+		})
+	})
+	Describe("Test InterfaceDefaultsFilter", func() {
+		Context("When Interface has defaults", func() {
+			It("Defaults to be filtereout to nil", func() {
+				filter := &InterfaceDefaultsFilter{}
+				defMTU := interfaces.DefaultMTU
+				mtu := 1400
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Interfaces: &v1.InterfaceInfo{
+							Ethernet: v1.EthernetList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &defMTU,
+									},
+								},
+							},
+							VLAN: v1.VLANList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{},
+								},
+							},
+							VF: v1.VFList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtu,
+									},
+								},
+							},
+						},
+					},
+				}
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				expInterfaces := v1.InterfaceInfo{
+					Ethernet: v1.EthernetList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{},
+						},
+					},
+					VLAN: v1.VLANList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{},
+						},
+					},
+					VF: v1.VFList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtu,
+							},
+						},
+					},
+				}
+
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(*hp.Spec.Interfaces).To(Equal(expInterfaces))
+			})
+		})
+	})
+	Describe("Test InterfaceMTUFilter checkMTU func", func() {
+		Context("When highwatermarks is not defaultMTU", func() {
+			It("InterfaceInfo mtu should equals to highwatermarks", func() {
+				filter := &InterfaceMTUFilter{
+					highwatermarks: map[string]int{"admin": 1600},
+				}
+				mtu := 1400
+
+				info := &v1.CommonInterfaceInfo{
+					MTU:              &mtu,
+					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+				}
+				// Call the CheckMTU method
+				filter.CheckMTU(info)
+				Expect(*info.MTU).To(Equal(filter.highwatermarks["admin"]))
+			})
+		})
+		Context("When highwatermarks equals defaultMTU", func() {
+			It("Highwatermarks should equals to InterfaceInfo mtu", func() {
+				filter := &InterfaceMTUFilter{
+					highwatermarks: map[string]int{"admin": 1600},
+				}
+				mtu := 1400
+
+				info := &v1.CommonInterfaceInfo{
+					MTU:              &mtu,
+					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+				}
+				// Call the CheckMTU method
+				filter.CheckMTU(info)
+				Expect(filter.highwatermarks["admin"]).To(Equal(*info.MTU))
+			})
+		})
+		Context("When interfaceInfo mtu is higher than  highwatermarks", func() {
+			It("InterfaceInfo mtu should equals to highwatermarks", func() {
+				filter := &InterfaceMTUFilter{
+					highwatermarks: map[string]int{"admin": 1600},
+				}
+				mtu := 1400
+				info := &v1.CommonInterfaceInfo{
+					MTU:              &mtu,
+					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+				}
+				// Call the CheckMTU method
+				filter.CheckMTU(info)
+				Expect(filter.highwatermarks["admin"]).To(Equal(*info.MTU))
+			})
+		})
+	})
+	Describe("Test InterfaceMTUFilter CheckMemberMTU func", func() {
+		Context("When ethernet name is in BondInfo's members", func() {
+			It("Ethernet's MTU equals to bondInfo's MTU", func() {
+				filter := &InterfaceMTUFilter{
+					highwatermarks: map[string]int{"admin": 1600},
+				}
+				mtu := 1400
+				ethnName := "eth0"
+				ethernet := v1.EthernetList{
+					{
+						CommonInterfaceInfo: v1.CommonInterfaceInfo{
+							Name: ethnName,
+						},
+					},
+				}
+				info := &v1.BondInfo{
+					Members: []string{"fake1", ethnName, "fake2"},
+					CommonInterfaceInfo: v1.CommonInterfaceInfo{
+						MTU: &mtu,
+					},
+				}
+				// Call the CheckMTU method
+				filter.CheckMemberMTU(info, ethernet)
+				Expect(*ethernet[0].MTU).To(Equal(*info.MTU))
+			})
+		})
+	})
+	Describe("Test InterfaceMTUFilter filter func", func() {
+		Context("When hostprofile interfaces is not nil", func() {
+			It("Filter and update the MTU", func() {
+				filter := &InterfaceMTUFilter{
+					highwatermarks: map[string]int{"admin": 1600},
+				}
+				ethnName := "eth0"
+				defMTU := interfaces.DefaultMTU
+				mtu := 1400
+				mtuBond := 1456
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Interfaces: &v1.InterfaceInfo{
+							Ethernet: v1.EthernetList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										Name: ethnName,
+										MTU:  &defMTU,
+									},
+								},
+							},
+							VLAN: v1.VLANList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtu,
+									},
+								},
+							},
+							VF: v1.VFList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtu,
+									},
+								},
+							},
+							Bond: v1.BondList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtuBond,
+									},
+									Members: []string{"fake1", ethnName, "fake2"},
+								},
+							},
+						},
+					},
+				}
+
+				expInterfaces := &v1.InterfaceInfo{
+					Ethernet: v1.EthernetList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU:  &mtuBond,
+								Name: ethnName,
+							},
+						},
+					},
+					VLAN: v1.VLANList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtu,
+							},
+						},
+					},
+					VF: v1.VFList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtu,
+							},
+						},
+					},
+					Bond: v1.BondList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtuBond,
+							},
+							Members: []string{"fake1", ethnName, "fake2"},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(*hp.Spec.Interfaces).To(Equal(*expInterfaces))
+			})
+		})
+	})
+
+	Describe("Test InterfaceNamingFilter filter func", func() {
+		Context("When hostprofile interfaces is not nil", func() {
+			It("Filter and update the interface name", func() {
+				filter := &InterfaceNamingFilter{
+					updates: map[string]string{},
+				}
+				ethnName := "eth0"
+				defMTU := interfaces.DefaultMTU
+				mtu := 1400
+				mtuBond := 1456
+				metric := 1
+				hp := &v1.HostProfile{
+					Spec: v1.HostProfileSpec{
+						Routes: v1.RouteList{
+							{
+								Interface: "eth0",
+								Network:   "admin",
+								Prefix:    1,
+								Gateway:   "Gateway",
+								Metric:    &metric,
+							},
+						},
+						Interfaces: &v1.InterfaceInfo{
+							Ethernet: v1.EthernetList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										Name: ethnName,
+										MTU:  &defMTU,
+									},
+								},
+							},
+							VLAN: v1.VLANList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtu,
+									},
+								},
+							},
+							VF: v1.VFList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtu,
+									},
+								},
+							},
+							Bond: v1.BondList{
+								{
+									CommonInterfaceInfo: v1.CommonInterfaceInfo{
+										MTU: &mtuBond,
+									},
+									Members: []string{"fake1", ethnName, "fake2"},
+								},
+							},
+						},
+					},
+				}
+
+				expInterfaces := &v1.InterfaceInfo{
+					Ethernet: v1.EthernetList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU:  &defMTU,
+								Name: ethnName,
+							},
+						},
+					},
+					VLAN: v1.VLANList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtu,
+							},
+						},
+					},
+					VF: v1.VFList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtu,
+							},
+						},
+					},
+					Bond: v1.BondList{
+						{
+							CommonInterfaceInfo: v1.CommonInterfaceInfo{
+								MTU: &mtuBond,
+							},
+							Members: []string{"fake1", ethnName, "fake2"},
+						},
+					},
+				}
+
+				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
+
+				// Call the Filter method
+				err := filter.Filter(hp, deployment)
+				Expect(err).To(BeNil())
+				Expect(*hp.Spec.Interfaces).To(Equal(*expInterfaces))
+			})
+		})
+	})
+
+	Describe("Test InterfaceNamingFilter checkInterface func", func() {
+		Context("When platform network is admin", func() {
+			It("Interface info name should not change", func() {
+				filter := &InterfaceNamingFilter{
+					updates: map[string]string{},
+				}
+				infoName := "eth0"
+				info := &v1.CommonInterfaceInfo{
+					Name:             infoName,
+					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+				}
+				// Call the CheckInterface method
+				filter.CheckInterface(info)
+				Expect(info.Name).To(Equal(infoName))
+			})
+		})
+		Context("When platform network is pxeboot", func() {
+			It("Interface info name should be pxeboot", func() {
+				updates := make(map[string]string, 1)
+				filter := &InterfaceNamingFilter{
+					updates: updates,
+				}
+				infoName := "eth0"
+				info := &v1.CommonInterfaceInfo{
+					Name:             infoName,
+					PlatformNetworks: &v1.PlatformNetworkItemList{pxebootNetwork},
+				}
+				// Call the CheckInterface method
+				filter.CheckInterface(info)
+				Expect(filter.updates[infoName]).To(Equal(pxebootIface))
+				Expect(info.Name).To(Equal(pxebootIface))
+			})
+		})
+		Context("When platform network is mgmt", func() {
+			It("Interface info name should be mgmt", func() {
+				filter := &InterfaceNamingFilter{
+					updates: map[string]string{},
+				}
+				infoName := "eth0"
+				info := &v1.CommonInterfaceInfo{
+					Name:             infoName,
+					PlatformNetworks: &v1.PlatformNetworkItemList{mgmtNetwork},
+				}
+				// Call the CheckInterface method
+				filter.CheckInterface(info)
+				Expect(filter.updates[infoName]).To(Equal(mgmtIface))
+				Expect(info.Name).To(Equal(mgmtIface))
+			})
+		})
+		Context("When platform network is cluster-host", func() {
+			It("Interface info name should be cluster-host", func() {
+				filter := &InterfaceNamingFilter{
+					updates: map[string]string{},
+				}
+				infoName := "eth0"
+				info := &v1.CommonInterfaceInfo{
+					Name:             infoName,
+					PlatformNetworks: &v1.PlatformNetworkItemList{clusterNetwork},
+				}
+				// Call the CheckInterface method
+				filter.CheckInterface(info)
+				Expect(filter.updates[infoName]).To(Equal(clusterIface))
+				Expect(info.Name).To(Equal(clusterIface))
+			})
+		})
+		Context("When platform network is oam", func() {
+			It("Interface info name should be oam", func() {
+				filter := &InterfaceNamingFilter{
+					updates: map[string]string{},
+				}
+				infoName := "eth0"
+				info := &v1.CommonInterfaceInfo{
+					Name:             infoName,
+					PlatformNetworks: &v1.PlatformNetworkItemList{oamNetwork},
+				}
+				// Call the CheckInterface method
+				filter.CheckInterface(info)
+				Expect(filter.updates[infoName]).To(Equal(oamIface))
+				Expect(info.Name).To(Equal(oamIface))
 			})
 		})
 	})

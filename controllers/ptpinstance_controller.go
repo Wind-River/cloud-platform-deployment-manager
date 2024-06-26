@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2022-2024 Wind River Systems, Inc. */
 
 package controllers
 
@@ -420,50 +420,20 @@ func (r *PtpInstanceReconciler) StopAfterInSync() bool {
 	return utils.GetReconcilerOptionBool(utils.PTPInstance, utils.StopAfterInSync, true)
 }
 
-// Obtain deploymentScope value from configuration
-// Taking this value from annotation in instacne
-// (It seems Client.Get does not update Status value from configuration)
-// "bootstrap" if "bootstrap" in configuration or deploymentScope not specified
-// "principal" if "principal" in configuration
-func (r *PtpInstanceReconciler) GetScopeConfig(instance *starlingxv1.PtpInstance) (scope string, err error) {
-	// Set default value for deployment scope
-	deploymentScope := cloudManager.ScopeBootstrap
-	// Set DeploymentScope from configuration
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	if annotation != nil {
-		config, ok := annotation["kubectl.kubernetes.io/last-applied-configuration"]
-		if ok {
-			status_config := &starlingxv1.PtpInstance{}
-			err := json.Unmarshal([]byte(config), &status_config)
-			if err == nil {
-				if status_config.Status.DeploymentScope != "" {
-					lowerCaseScope := strings.ToLower(status_config.Status.DeploymentScope)
-					switch lowerCaseScope {
-					case cloudManager.ScopeBootstrap:
-						deploymentScope = cloudManager.ScopeBootstrap
-					case cloudManager.ScopePrincipal:
-						deploymentScope = cloudManager.ScopePrincipal
-					default:
-						err = fmt.Errorf("Unsupported DeploymentScope: %s",
-							status_config.Status.DeploymentScope)
-						return deploymentScope, err
-					}
-				}
-			} else {
-				err = perrors.Wrapf(err, "failed to Unmarshal annotaion last-applied-configuration")
-				return deploymentScope, err
-			}
-		}
-	}
-	return deploymentScope, nil
-}
-
-// Update deploymentScope and ReconcileAfterInSync in instance
+// Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
+// "true" if factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
-func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInstance) (err error) {
+// It is expected that instance.Status.Deployment scope is already updated by
+// UpdateDeploymentScope at this point.
+func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInstance, ns string) (err error) {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	if err != nil {
+		return err
+	}
+
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -472,17 +442,13 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 		if err != nil {
 			return err
 		}
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPtpInstance.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
+		// "true" if factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if deploymentScope == cloudManager.ScopePrincipal {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -507,29 +473,21 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 			return err
 		}
 
-		// Update scope status
-		deploymentScope, err := r.GetScopeConfig(instance)
-		if err != nil {
-			return err
-		}
-		logPtpInstance.V(2).Info("deploymentScope in configuration", "deploymentScope", deploymentScope)
-		instance.Status.DeploymentScope = deploymentScope
-
 		// Set default value for StrategyRequired
 		if instance.Status.StrategyRequired == "" {
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
 
-		// Check if the configuration is updated
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+			// Configuration is updated
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
 				// Case: DM upgrade in reconciled node
 				instance.Status.ConfigurationUpdated = false
 			} else {
-				// Case: Fresh install or Day-2 operation
+				// Case: Fresh/factory install or Day-2 operation
 				instance.Status.ConfigurationUpdated = true
-				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
@@ -582,11 +540,42 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return reconcile.Result{}, err
 	}
 
-	// Update scope from configuration
-	logPtpInstance.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance)
+	// Restore the Ptp instance status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' Ptp Instance resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestorePtpInstanceStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	err, scope_updated := r.UpdateDeploymentScope(instance)
 	if err != nil {
-		logPtpInstance.Error(err, "unable to update scope")
+		return reconcile.Result{}, err
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
+
+		factory, err := r.GetFactoryInstall(request.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if !scope_updated && !factory {
+			logPtpInstance.V(2).Info("reconcile finished, desired state reached after reconciled.")
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// Update ReconciledAfterInSync and ObservedGeneration.
+	logPtpInstance.V(2).Info("before UpdateConfigStatus", "instance", instance)
+	err = r.UpdateConfigStatus(instance, request.Namespace)
+	if err != nil {
+		logPtpInstance.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
 		return reconcile.Result{}, err
 	}
 	logPtpInstance.V(2).Info("after UpdateConfigStatus", "instance", instance)
@@ -634,6 +623,16 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
+// UpdateDeploymentScope function is used to update the deployment scope for PtpInstance.
+func (r *PtpInstanceReconciler) UpdateDeploymentScope(instance *starlingxv1.PtpInstance) (error, bool) {
+	updated, err := common.UpdateDeploymentScope(r.Client, instance)
+	if err != nil {
+		logPtpInstance.Error(err, "failed to update deploymentScope")
+		return err, false
+	}
+	return nil, updated
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *PtpInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	tMgr := cloudManager.GetInstance(mgr)
@@ -649,4 +648,63 @@ func (r *PtpInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PtpInstance{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *PtpInstanceReconciler) checkRestoreInProgress(instance *starlingxv1.PtpInstance) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *PtpInstanceReconciler) RestorePtpInstanceStatus(instance *starlingxv1.PtpInstance) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.DeploymentScope = "bootstrap"
+			instance.Status.StrategyRequired = "not_required"
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update ptp instance status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for PtpInstance resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *PtpInstanceReconciler) ClearRestoreInProgress(instance *starlingxv1.PtpInstance) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' ptp instance resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+
+	}
+	return nil
 }

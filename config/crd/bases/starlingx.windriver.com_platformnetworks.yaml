@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: platformnetworks.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -19,14 +19,10 @@ spec:
       jsonPath: .spec.type
       name: type
       type: string
-    - description: The platform network address subnet.
-      jsonPath: .spec.subnet
-      name: subnet
-      type: string
-    - description: The platform network address prefix.
-      jsonPath: .spec.prefix
-      name: prefix
-      type: string
+    - description: The platform network address IP Allocation Type.
+      jsonPath: .spec.dynamic
+      name: dynamic
+      type: boolean
     - description: The current synchronization state.
       jsonPath: .status.inSync
       name: insync
@@ -43,95 +39,46 @@ spec:
     schema:
       openAPIV3Schema:
         description: "PlatformNetwork defines the attributes that represent the network
-          level attributes of a StarlingX system.  This is a composition of the following
-          StarlingX API endpoints. \n https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks
-          https://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+          level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX
+          API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
             description: PlatformNetworkSpec defines the desired state of PlatformNetwork
             properties:
-              allocation:
-                description: Allocation defines the allocation scheme details for
-                  the network
-                properties:
-                  order:
-                    description: Order defines whether host address are allocation
-                      randomly or sequential from the available pool or addresses.
-                    enum:
-                    - sequential
-                    - random
-                    type: string
-                  ranges:
-                    description: Ranges defines the pools from which host addresses
-                      are allocated.   If omitted addresses the entire network address
-                      space is considered available.
-                    items:
-                      description: AllocationRange defines the start and end address
-                        for an allocation range
-                      properties:
-                        end:
-                          description: End defines the end of the address range (inclusively)
-                          type: string
-                        start:
-                          description: Start defines the beginning of the address
-                            range (inclusively)
-                          type: string
-                      required:
-                      - end
-                      - start
-                      type: object
-                    type: array
-                  type:
-                    description: Type defines whether network addresses are allocated
-                      dynamically or statically.
-                    enum:
-                    - static
-                    - dynamic
-                    type: string
-                required:
-                - type
-                type: object
-              controller0Address:
-                description: Controller0Address is the controller-0 IPv4 or IPv6 network
-                  address value.
-                type: string
-              controller1Address:
-                description: Controller1Address is the controller-1 IPv4 or IPv6 network
-                  address value.
-                type: string
-              floatingAddress:
-                description: FloatingAddress defines the floating IPv4 or IPv6 network
-                  address for the network
-                type: string
-              gateway:
-                description: Gateway defines the nexthop gateway IP address if applicable
-                type: string
-              prefix:
-                maximum: 128
-                minimum: 1
-                type: integer
-              subnet:
-                description: Subnet defines the subdivision IPv4 or IPv6 network address
-                  for the network
-                type: string
+              associatedAddressPools:
+                description: |-
+                  AssociatedAddressPools defines the set of address pool names to associate
+                  the network with.
+                items:
+                  type: string
+                type: array
+              dynamic:
+                description: |-
+                  Dynamic defines whether network addresses are allocated dynamically (true) or
+                  statically (false).
+                type: boolean
               type:
                 description: Type defines the intended usage of the network
                 enum:
                 - mgmt
                 - pxeboot
-                - infra
                 - oam
                 - multicast
                 - system-controller
@@ -143,9 +90,8 @@ spec:
                 - other
                 type: string
             required:
-            - allocation
-            - prefix
-            - subnet
+            - associatedAddressPools
+            - dynamic
             - type
             type: object
           status:
@@ -159,8 +105,9 @@ spec:
                 type: string
               deploymentScope:
                 default: bootstrap
-                description: DeploymentScope defines whether the resource has been
-                  deployed on the initial setup or during an update.
+                description: |-
+                  DeploymentScope defines whether the resource has been deployed
+                  on the initial setup or during an update.
                 enum:
                 - bootstrap
                 - principal
@@ -170,38 +117,26 @@ spec:
                 - PRINCIPAL
                 type: string
               id:
-                description: ID defines the system assigned unique identifier.  This
-                  will only exist once this resource has been provisioned into the
-                  system.
+                description: |-
+                  ID defines the system assigned unique identifier.  This will only exist
+                  once this resource has been provisioned into the system.
                 type: string
               inSync:
                 description: Defines whether the resource has been provisioned on
                   the target system.
                 type: boolean
               observedGeneration:
-                description: Reflect value of configuration generation. The value
-                  will be set when configuration generation is updated.
+                description: |-
+                  Reflect value of configuration generation.
+                  The value will be set when configuration generation is updated.
                 format: int64
                 type: integer
-              poolUUID:
-                description: PoolUUID defines the system assigned unique identifier
-                  that is represents the networks underlying address pool resource.  This
-                  will only exist once this resource has been provisioned into the
-                  system.
-                type: string
               reconciled:
-                description: Reconciled defines whether the network has been successfully
-                  reconciled at least once.  If further changes are made they will
-                  be ignored by the reconciler.
+                description: |-
+                  Reconciled defines whether the network has been successfully reconciled
+                  at least once.  If further changes are made they will be ignored by the
+                  reconciler.
                 type: boolean
-              strategyRequired:
-                default: not_required
-                description: Value for configuration is updated or not
-                enum:
-                - not_required
-                - lock_required
-                - unlock_required
-                type: string
             type: object
         type: object
     served: true

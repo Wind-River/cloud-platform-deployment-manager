@@ -11,6 +11,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -142,6 +143,11 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	if instance.ObjectMeta.Generation == 1 && r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' HostProfile resource without doing actual reconciliation",
+			instance.Name)
+		return ctrl.Result{}, nil
+	}
 
 	// Force an update to each of the hosts that reference this profile.
 	err = r.UpdateHosts(instance)
@@ -166,4 +172,13 @@ func (r *HostProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.HostProfile{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *HostProfileReconciler) checkRestoreInProgress(instance *starlingxv1.HostProfile) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
 }

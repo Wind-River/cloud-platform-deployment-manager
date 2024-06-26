@@ -155,6 +155,30 @@ type HostStatus struct {
 	Delta string `json:"delta"`
 }
 
+func (h *Host) GetStrategyRequired() string {
+	return h.Status.StrategyRequired
+}
+
+func (h *Host) SetStrategyRequired(strategy string) {
+	h.Status.StrategyRequired = strategy
+}
+
+func (h *Host) GetDeploymentScope() string {
+	return h.Status.DeploymentScope
+}
+
+func (h *Host) SetDeploymentScope(scope string) {
+	h.Status.DeploymentScope = scope
+}
+
+func (h *Host) GetAnnotations() map[string]string {
+	return h.ObjectMeta.Annotations
+}
+
+func (h *Host) SetAnnotations(annotations map[string]string) {
+	h.ObjectMeta.Annotations = annotations
+}
+
 // +kubebuilder:object:root=true
 //
 // Host defines the attributes that represent the host level attributes

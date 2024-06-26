@@ -60,6 +60,7 @@ const (
 	KindHost            = "Host"
 	KindHostProfile     = "HostProfile"
 	KindPlatformNetwork = "PlatformNetwork"
+	KindAddressPool     = "AddressPool"
 	KindDataNetwork     = "DataNetwork"
 	KindSystem          = "System"
 	KindPTPInstance     = "PtpInstance"
@@ -1431,21 +1432,51 @@ func NewPTPInterface(name string, namespace string, PTPint ptpinterfaces.PTPInte
 	return &ptpInterface, nil
 }
 
-func NewPlatformNetworkSpec(pool addresspools.AddressPool, network networks.Network) (*PlatformNetworkSpec, error) {
-	allocation_type := networks.AllocationOrderDynamic
-	if !network.Dynamic {
-		allocation_type = networks.AllocationOrderStatic
-	}
+func NewPlatformNetworkSpec(associatedAddressPools []string, network networks.Network) (*PlatformNetworkSpec, error) {
 	spec := PlatformNetworkSpec{
-		Type:               network.Type,
+		Type:                   network.Type,
+		Dynamic:                network.Dynamic,
+		AssociatedAddressPools: associatedAddressPools,
+	}
+
+	return &spec, nil
+}
+
+func NewPlatformNetwork(namespace string, associatedAddressPools []string, network networks.Network) (*PlatformNetwork, error) {
+	platformNetwork := PlatformNetwork{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: APIVersion,
+			Kind:       KindPlatformNetwork,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      network.Name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ControllerToolsLabel: ControllerToolsVersion,
+			},
+		},
+	}
+
+	spec, err := NewPlatformNetworkSpec(associatedAddressPools, network)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.DeepCopyInto(&platformNetwork.Spec)
+
+	return &platformNetwork, nil
+}
+
+func NewAddressPoolSpec(pool addresspools.AddressPool) (*AddressPoolSpec, error) {
+
+	spec := AddressPoolSpec{
 		Subnet:             pool.Network,
-		FloatingAddress:    pool.FloatingAddress,
-		Controller0Address: pool.Controller0Address,
-		Controller1Address: pool.Controller1Address,
+		FloatingAddress:    &pool.FloatingAddress,
+		Controller0Address: &pool.Controller0Address,
+		Controller1Address: &pool.Controller1Address,
 		Prefix:             pool.Prefix,
 		Gateway:            pool.Gateway,
 		Allocation: AllocationInfo{
-			Type:  allocation_type,
 			Order: &pool.Order,
 		},
 	}
@@ -1464,14 +1495,14 @@ func NewPlatformNetworkSpec(pool addresspools.AddressPool, network networks.Netw
 	return &spec, nil
 }
 
-func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network networks.Network) (*PlatformNetwork, error) {
-	platformNetwork := PlatformNetwork{
+func NewAddressPool(namespace string, pool addresspools.AddressPool) (*AddressPool, error) {
+	addressPool := AddressPool{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: APIVersion,
-			Kind:       KindPlatformNetwork,
+			Kind:       KindAddressPool,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      network.Name,
+			Name:      pool.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ControllerToolsLabel: ControllerToolsVersion,
@@ -1479,14 +1510,14 @@ func NewPlatformNetwork(namespace string, pool addresspools.AddressPool, network
 		},
 	}
 
-	spec, err := NewPlatformNetworkSpec(pool, network)
+	spec, err := NewAddressPoolSpec(pool)
 	if err != nil {
 		return nil, err
 	}
 
-	spec.DeepCopyInto(&platformNetwork.Spec)
+	spec.DeepCopyInto(&addressPool.Spec)
 
-	return &platformNetwork, nil
+	return &addressPool, nil
 }
 
 // IsDefaultServiceParameter returns if a service parameter is a default.

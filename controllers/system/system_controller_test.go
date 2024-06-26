@@ -50,4 +50,32 @@ var _ = Describe("System controller", func() {
 			// So we test only for create
 		})
 	})
+
+	Context("Test clean_deprecated_certificates func", func() {
+		It("Should filter all deprecated certficate types successfully", func() {
+			certs := starlingxv1.CertificateList{
+				{
+					Type:      starlingxv1.PlatformCertificate,
+					Signature: "ssl_10886226602156394257",
+				},
+				{
+					Type:      starlingxv1.PlatformCACertificate,
+					Signature: "ssl_ca_10886226602156394257",
+				},
+				{
+					Type:      starlingxv1.DockerCertificate,
+					Signature: "docker_registry_10886226602156394257",
+				},
+			}
+			expOutCerts := starlingxv1.CertificateList{
+				{
+					Type:      starlingxv1.PlatformCACertificate,
+					Signature: "ssl_ca_10886226602156394257",
+				},
+			}
+			outCerts := clean_deprecated_certificates(certs)
+			Expect(outCerts).To(Equal(expOutCerts))
+		})
+	})
+
 })

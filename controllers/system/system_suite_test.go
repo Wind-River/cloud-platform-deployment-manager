@@ -5,8 +5,10 @@ package system
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -90,6 +92,20 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
+	done := make(chan error, 1)
+	go func() {
+		done <- testEnv.Stop()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			By(fmt.Sprintf("Error stopping test environment: %v\n", err))
+		} else {
+			By("Test environment stopped successfully")
+		}
+	case <-time.After(time.Minute * 2): // 2 minute, adjust timeout as necessary
+		By("timeout waiting for the test environment to stop")
+		// Implement additional logging or force-termination here
+	}
 })

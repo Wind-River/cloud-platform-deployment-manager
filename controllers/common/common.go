@@ -149,6 +149,7 @@ const (
 	ResourceDeleted    = "Deleted"
 	ResourceWait       = "Wait"
 	ResourceDependency = "Dependency"
+	ResourceNotified   = "Notified"
 )
 
 func FormatStruct(obj interface{}) string {
@@ -286,6 +287,20 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		err = nil
 
 		h.Info("waiting for dependency status", "request", request)
+	case HostNotifyError:
+		resetClient = false
+		result = RetryImmediate
+		err = nil
+		h.V(2).Info("waiting to notify active host controller", "request", request)
+
+	case PlatformNetworkReconciliationError:
+		// This error is related to failure of platform network reconciliation
+		// which is most likely a transient error condition.
+		resetClient = false
+		result = RetryTransientError
+		err = nil
+
+		h.Info("waiting to reconcile platform networks", "request", request)
 
 	case manager.ClientError, ErrUserDataError,
 		starlingxv1.ErrMissingSystemResource, ErrMissingKubernetesResource:
@@ -407,7 +422,7 @@ func GetDeltaString(spec interface{}, current interface{}, parameters map[string
 		return "", err
 	}
 
-	diff := cmp.Diff(specData, currentData)
+	diff := cmp.Diff(currentData, specData)
 	deltaString := collectDiffValues(diff, parameters)
 	deltaString = strings.TrimSuffix(deltaString, "\n")
 	return deltaString, nil
@@ -544,4 +559,24 @@ func searchParameters(lines []string, lineNumber int, parameters map[string]inte
 	}
 
 	return result
+}
+
+// UpdateDefaultRequired checks if the host default need to be updated.
+func UpdateDefaultsRequired(
+	manager manager.CloudManager,
+	namespace string,
+	name string,
+	factory bool,
+) (bool, error) {
+	if !factory {
+		return false, nil
+	}
+
+	defaultUpdated, err := manager.GetResourceDefaultUpdated(namespace, name)
+
+	if err != nil {
+		// Failed to get the info, force to update it again
+		return true, NewValidationError(err.Error())
+	}
+	return !defaultUpdated, nil
 }
