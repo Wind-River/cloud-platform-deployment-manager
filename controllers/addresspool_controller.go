@@ -5,7 +5,9 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -146,6 +148,22 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return reconcile.Result{}, err
 	}
 
+	// Restore the address pool status
+	if r.checkRestoreInProgress(instance) {
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' Addresspool resource status without doing actual reconciliation", instance.Name)
+		if err := r.RestoreAddressPoolStatus(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.ClearRestoreInProgress(instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation && instance.Status.Reconciled {
+		return ctrl.Result{}, nil
+	}
+
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.
@@ -211,4 +229,61 @@ func (r *AddressPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.AddressPool{}).
 		Complete(r)
+}
+
+// Verify whether we have annotation restore-in-progress
+func (r *AddressPoolReconciler) checkRestoreInProgress(instance *starlingxv1.AddressPool) bool {
+	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
+	if ok && restoreInProgress != "" {
+		return true
+	}
+	return false
+}
+
+// Update status
+func (r *AddressPoolReconciler) RestoreAddressPoolStatus(instance *starlingxv1.AddressPool) error {
+	annotation := instance.GetObjectMeta().GetAnnotations()
+	config, ok := annotation[cloudManager.RestoreInProgress]
+	if ok {
+		restoreStatus := &cloudManager.RestoreStatus{}
+		err := json.Unmarshal([]byte(config), &restoreStatus)
+		if err == nil {
+			if restoreStatus.InSync != nil {
+				instance.Status.InSync = *restoreStatus.InSync
+			}
+			instance.Status.Reconciled = true
+			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+
+			err = r.Client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log_err_msg := fmt.Sprintf(
+					"Failed to update AddressPool status while restoring '%s' resource. Error: %s",
+					instance.Name,
+					err)
+				return common.NewResourceStatusDependency(log_err_msg)
+			} else {
+				StatusUpdate := fmt.Sprintf("Status updated for AddressPool resource '%s' during restore with following values: Reconciled=%t InSync=%t",
+					instance.Name, instance.Status.Reconciled, instance.Status.InSync)
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
+
+			}
+		} else {
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
+		}
+	}
+	return nil
+}
+
+// Clear annotation RestoreInProgress
+func (r *AddressPoolReconciler) ClearRestoreInProgress(instance *starlingxv1.AddressPool) error {
+	delete(instance.Annotations, cloudManager.RestoreInProgress)
+	if !utils.ContainsString(instance.ObjectMeta.Finalizers, AddressPoolFinalizerName) {
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, AddressPoolFinalizerName)
+	}
+	err := r.Client.Update(context.TODO(), instance)
+	if err != nil {
+		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' addresspool resource after removing '%s' annotation during restoration.",
+			instance.Name, cloudManager.RestoreInProgress))
+	}
+	return nil
 }
