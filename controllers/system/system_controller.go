@@ -601,6 +601,18 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	return ready, err
 }
 
+// RefreshFilesystemsList updates the controller filesystems list in SystemInfo
+func (r *SystemReconciler) RefreshFilesystemsList(client *gophercloud.ServiceClient, instance *starlingxv1.System, info *v1info.SystemInfo) error {
+	result, err := controllerFilesystems.ListFileSystems(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to refresh controller filesystems list")
+		return err
+	}
+	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "FileSystems list info has been updated")
+	info.FileSystems = result
+	return nil
+}
+
 // ReconcileFilesystems configures the system resources to align with the
 // desired controller filesystem configuration.
 func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (err error) {
@@ -624,7 +636,8 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 		return err
 	}
 
-	updates := make([]controllerFilesystems.FileSystemOpts, 0)
+	updated := false
+	fs_to_update := make([]controllerFilesystems.FileSystemOpts, 0)
 	for _, fsInfo := range *spec.Storage.FileSystems {
 		found := false
 		for _, fs := range info.FileSystems {
@@ -644,26 +657,74 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 					Size: fsInfo.Size,
 				}
 
-				updates = append(updates, opts)
+				fs_to_update = append(fs_to_update, opts)
 			}
 		}
 
 		if !found {
-			msg := fmt.Sprintf("unknown controller filesystem %q", fsInfo.Name)
-			return starlingxv1.NewMissingSystemResource(msg)
+			opts := controllerFilesystems.FileSystemOpts{
+				Name: fsInfo.Name,
+				Size: fsInfo.Size,
+			}
+
+			result, err := controllerFilesystems.Create(client, opts).Extract()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "Controller Filesystem %q has been created", result.Name)
 		}
 	}
 
-	if len(updates) > 0 {
-		logSystem.Info("updating controller filesystem sizes", "opts", updates)
+	if len(fs_to_update) > 0 {
+		logSystem.Info("updating controller filesystem sizes", "opts", fs_to_update)
 
-		err := controllerFilesystems.Update(client, info.ID, updates).ExtractErr()
+		err := controllerFilesystems.Update(client, info.ID, fs_to_update).ExtractErr()
 		if err != nil {
 			err = perrors.Wrapf(err, "failed to update filesystems sizes")
 			return err
 		}
-
+		// success
+		updated = true
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
+	}
+
+	// update the system object with the list of controller filesystems
+	if updated {
+		err := r.RefreshFilesystemsList(client, instance, info)
+		if err != nil {
+			return err
+		}
+	}
+
+	updated = false
+	for _, fsInfo := range info.FileSystems {
+		found := false
+		for _, fs := range *spec.Storage.FileSystems {
+			if fs.Name != fsInfo.Name {
+				// do nothing as it should be able to be updated by previous section
+				found = true
+				break
+			}
+		}
+		if !found {
+			err := controllerFilesystems.Delete(client, fsInfo.ID).ExtractErr()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "Controller Filesystem %q has been deleted", fsInfo.Name)
+		}
+	}
+
+	// update the system object with the list of controller filesystems
+	if updated {
+		err := r.RefreshFilesystemsList(client, instance, info)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
