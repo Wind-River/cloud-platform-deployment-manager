@@ -129,4 +129,38 @@ var _ = Describe("System controller", func() {
 			Expect(k8sClient.Create(ctx, created)).Error()
 		})
 	})
+
+	Context("Test creating ceph-float Controller Filesystem", func() {
+		It("Should return successfully", func() {
+			nameBackend := string("ceph-rook-storage")
+			typeBackend := string("ceph-rook")
+			deploymentModel := string("controller")
+			nameControllerFs := string("ceph-float")
+			sizeControllerFs := 10
+			created := &starlingxv1.System{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rook",
+					Namespace: "default",
+				},
+				Spec: starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						Backends: &starlingxv1.StorageBackendList{
+							{
+								Name:       nameBackend,
+								Type:       typeBackend,
+								Deployment: deploymentModel,
+							},
+						},
+						FileSystems: &starlingxv1.ControllerFileSystemList{
+							{
+								Name: nameControllerFs,
+								Size: sizeControllerFs,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, created)).To(Succeed())
+		})
+	})
 })
