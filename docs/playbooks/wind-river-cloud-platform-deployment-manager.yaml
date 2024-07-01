@@ -540,7 +540,7 @@
                   host={{ ansible_host }}
                   timeout={{ wait_for_timeout }}
                   delay=5
-                  state: stopped
+                  state=stopped
 
             - name: Waiting for SSH port to become open
               local_action:
