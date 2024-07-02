@@ -61,8 +61,8 @@ github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMo
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/Wind-River/gophercloud v0.0.0-20240613135955-990ba2998293 h1:oNTZaEcMYACgZ/uwIKNEj+fmC5KyOlvf0PiR5b7Eni0=
-github.com/Wind-River/gophercloud v0.0.0-20240613135955-990ba2998293/go.mod h1:vVDhU9TrWNFfORJV7Tvx7UXsu/ImDlVeHhQCdrbzLEA=
+github.com/Wind-River/gophercloud v0.0.0-20240625143930-1d6b313577a4 h1:nmhNtNzi6j84s2V+7ObUn0cLL+P94iJPrkjNxhoH004=
+github.com/Wind-River/gophercloud v0.0.0-20240625143930-1d6b313577a4/go.mod h1:vVDhU9TrWNFfORJV7Tvx7UXsu/ImDlVeHhQCdrbzLEA=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
