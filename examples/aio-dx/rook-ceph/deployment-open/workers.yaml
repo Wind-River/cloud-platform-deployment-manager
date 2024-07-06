@@ -1,0 +1,92 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  personality: worker
+  subfunctions:
+  - worker
+  administrativeState: unlocked
+  installOutput: text
+  console: tty0
+  bootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+  rootDevice: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+  labels:
+    openstack-compute-node: enabled
+    openvswitch: enabled
+    sriov: enabled
+  processors:
+    - node: 0
+      functions:
+        - function: vswitch
+          count: 0
+  provisioningMode: static
+  storage:
+    volumeGroups:
+      - name: nova-local
+        physicalVolumes:
+          - type: partition
+            path: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+            size: 4
+  interfaces:
+    ethernet:
+      - name: mgmt0
+        class: platform
+        platformNetworks:
+          - mgmt
+          - cluster-host
+        port:
+          name: enp0s8
+      - name: data0
+        class: data
+        dataNetworks:
+          - group0-data0
+          - group0-data0b
+          - group0-ext0
+        port:
+          name: eth1000
+      - name: data1
+        class: data
+        dataNetworks:
+          - group0-data1
+        port:
+          name: eth1001
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-0
+  namespace: deployment
+spec:
+  profile: worker-profile
+  overrides:
+    bootMAC: COMPUTE0MAC
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-1
+  namespace: deployment
+spec:
+  profile: worker-profile
+  overrides:
+    bootMAC: COMPUTE1MAC
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-2
+  namespace: deployment
+spec:
+  profile: worker-profile
+  overrides:
+    bootMAC: COMPUTE2MAC

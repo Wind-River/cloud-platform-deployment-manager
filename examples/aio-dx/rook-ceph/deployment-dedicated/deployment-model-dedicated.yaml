@@ -1,0 +1,56 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  storage:
+    filesystems:
+    - name: ceph
+      size: 10
+    osds:
+---
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  storage:
+    osds:
+    - cluster: ceph_rook_cluster
+      function: osd
+      path: /dev/disk/by-path/pci-0000:00:0d.0-ata-2.0
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-0
+  namespace: deployment
+spec:
+  overrides:
+    storage:
+      filesystems:
+      - name: ceph
+        size: 10
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  storage:
+    backends:
+    - name: ceph-rook-store
+      type: ceph-rook
+      deployment: dedicated
+      replicationFactor: 3
