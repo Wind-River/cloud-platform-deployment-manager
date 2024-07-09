@@ -72,6 +72,11 @@ const (
 )
 
 const (
+	ActiveController  = "Controller-Active"
+	StandbyController = "Controller-Standby"
+)
+
+const (
 	StrategyNotRequired    = "not_required"
 	StrategyLockRequired   = "lock_required"
 	StrategyUnlockRequired = "unlock_required"
@@ -93,6 +98,10 @@ const (
 	StrategyAborted      = "aborted"
 )
 
+const (
+	NumDualStack = 2
+)
+
 // CloudManager wraps a runtime manager and provides the ability to
 // coordinate certain function across different controllers.
 type CloudManager interface {
@@ -110,7 +119,7 @@ type CloudManager interface {
 	GetSystemType(namespace string) SystemType
 	StartMonitor(monitor *Monitor, message string) error
 	CancelMonitor(object client.Object)
-	GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error)
+	GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*v1.Host, *hosts.Host, error)
 	GetSystemInfo(namespace string, client *gophercloud.ServiceClient) (*SystemInfo, error)
 
 	// Strategy related methods
@@ -121,9 +130,9 @@ type CloudManager interface {
 	GetConfigVersion() int
 	GetMonitorVersion() int
 	SetMonitorVersion(i int)
-	StrageySent()
-	GetStrageySent() bool
-	ClearStragey()
+	StrategySent()
+	GetStrategySent() bool
+	ClearStrategy()
 	GetNamespace() string
 	GetVimClient() *gophercloud.ServiceClient
 	SetStrategyAppliedSent(namespace string, applied bool) error
@@ -134,7 +143,8 @@ type CloudManager interface {
 	SetPlatformNetworkReconciling(status bool)
 	IsNotifyingActiveHost() bool
 	SetNotifyingActiveHost(status bool)
-
+	SetStrategyExpectedByOtherReconcilers(status bool)
+	GetStrategyExpectedByOtherReconcilers() bool
 	// factory install related methods
 	GetFactoryInstall(namespace string) (bool, error)
 	SetFactoryConfigFinalized(namespace string, value bool) error
@@ -223,6 +233,7 @@ type PlatformManager struct {
 	vimClient                       *gophercloud.ServiceClient
 	PlatformNetworkReconcilerStatus bool
 	NotifyActiveHostStatus          bool
+	WaitForStrategySent             bool
 	GetPlatformClientImpl           func(namespace string) *gophercloud.ServiceClient
 }
 
@@ -647,23 +658,25 @@ func (m *PlatformManager) GetSystemInfo(namespace string, client *gophercloud.Se
 
 }
 
-func (m *PlatformManager) GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*v1.Host, error) {
+func (m *PlatformManager) GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*v1.Host, *hosts.Host, error) {
 	host_instance := &v1.Host{}
+	var host_obj *hosts.Host
 
 	host_list, err := hosts.ListHosts(client)
 	if err != nil {
 		log.Error(err, "failed to query host list")
-		return host_instance, err
+		return host_instance, host_obj, err
 	}
 
 	for _, host := range host_list {
 		if host.Capabilities.Personality != nil {
-			if *host.Capabilities.Personality == "Controller-Active" {
+			if *host.Capabilities.Personality == personality {
 				host_namespace := types.NamespacedName{Namespace: namespace, Name: host.Hostname}
+				host_obj = &host
 				err = m.GetClient().Get(context.TODO(), host_namespace, host_instance)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("failed to fetch host instance: %s", host.Hostname))
-					return host_instance, err
+					return host_instance, host_obj, err
 				}
 				break
 			}
@@ -671,12 +684,11 @@ func (m *PlatformManager) GetActiveHost(namespace string, client *gophercloud.Se
 	}
 
 	if host_instance.Name == "" {
-		err = perrors.New("None of the controllers are active at this point")
-		return host_instance, err
+		err = perrors.New(fmt.Sprintf("None of the hosts are %s at this point", personality))
+		return host_instance, host_obj, err
 	}
 
-	return host_instance, nil
-
+	return host_instance, host_obj, nil
 }
 
 func (m *PlatformManager) StartStrategyMonitor() {
@@ -773,16 +785,16 @@ func (m *PlatformManager) SetMonitorVersion(i int) {
 	m.strategyStatus.MonitorVersion = i
 }
 
-// StrageySent to update strategy sent with true
-func (m *PlatformManager) StrageySent() {
+// StrategySent to update strategy sent with true
+func (m *PlatformManager) StrategySent() {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
 	m.strategyStatus.StrategySent = true
 }
 
-// GetStrageySent to return the current strategy sent value
-func (m *PlatformManager) GetStrageySent() bool {
+// GetStrategySent to return the current strategy sent value
+func (m *PlatformManager) GetStrategySent() bool {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 
@@ -850,8 +862,8 @@ func (m *PlatformManager) SetStrategyRetryCount(c int) error {
 	return nil
 }
 
-// ClearStragey to clear strategy status
-func (m *PlatformManager) ClearStragey() {
+// ClearStrategy to clear strategy status
+func (m *PlatformManager) ClearStrategy() {
 	// Clear applied status in System instance
 	err := m.SetStrategyAppliedSent(m.strategyStatus.Namespace, false)
 	if err != nil {
@@ -914,6 +926,25 @@ func (m *PlatformManager) SetNotifyingActiveHost(status bool) {
 	m.lock.Lock()
 	defer func() { m.lock.Unlock() }()
 	m.NotifyActiveHostStatus = status
+}
+
+func (m *PlatformManager) SetStrategyExpectedByOtherReconcilers(status bool) {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	m.WaitForStrategySent = status
+}
+
+// WaitForStrategySent is used to indicate whether a strategy creation
+// request is going to be triggered soon.
+// This will help prevent resetting StrategyRequired if there's a
+// reconciliation event triggered in the mean time.
+// Returns
+// true: When strategy request is expected to be sent
+// false: When strategy request is sent / there is no expectation of sending it.
+func (m *PlatformManager) GetStrategyExpectedByOtherReconcilers() bool {
+	m.lock.Lock()
+	defer func() { m.lock.Unlock() }()
+	return m.WaitForStrategySent
 }
 
 // GcCreate is wrapper function for systemconfigupdate Create

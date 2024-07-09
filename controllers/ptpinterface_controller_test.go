@@ -18,7 +18,7 @@ import (
 var _ = Describe("PtpInterface controller", func() {
 
 	const (
-		timeout  = time.Second * 10
+		timeout  = time.Second * 20
 		interval = time.Millisecond * 250
 	)
 

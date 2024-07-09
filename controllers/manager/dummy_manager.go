@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -103,13 +104,13 @@ func (m *Dummymanager) GetMonitorVersion() int {
 func (m *Dummymanager) SetMonitorVersion(i int) {
 
 }
-func (m *Dummymanager) StrageySent() {
+func (m *Dummymanager) StrategySent() {
 	m.strategySent = true
 }
-func (m *Dummymanager) GetStrageySent() bool {
+func (m *Dummymanager) GetStrategySent() bool {
 	return m.strategySent
 }
-func (m *Dummymanager) ClearStragey() {
+func (m *Dummymanager) ClearStrategy() {
 
 }
 func (m *Dummymanager) GetNamespace() string {
@@ -147,16 +148,29 @@ func (m *Dummymanager) IsNotifyingActiveHost() bool {
 func (m *Dummymanager) SetNotifyingActiveHost(status bool) {
 
 }
+func (m *Dummymanager) SetStrategyExpectedByOtherReconcilers(status bool) {
+
+}
+func (m *Dummymanager) GetStrategyExpectedByOtherReconcilers() bool {
+	return false
+}
+func (m *Dummymanager) GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*starlingxv1.Host, *hosts.Host, error) {
+	return nil, nil, nil
+}
 func (m *Dummymanager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
-	if len(m.gcShow) == 0 {
-		err := errors.New("test: no info available")
-		return nil, err
-	} else {
+	if len(m.gcShow) != 0 {
 		s := &systemconfigupdate.SystemConfigUpdate{
 			State: m.gcShow,
+			ID:    "abc-def",
 		}
 		return s, nil
 	}
+
+	// VIM API sends json response {"strategy": null} when there are no
+	// strategies on the system and not error responses such as 404.
+	// Hence we are returning nil, nil without error.
+
+	return nil, nil
 }
 func (m *Dummymanager) GcActionStrategy(c *gophercloud.ServiceClient, opts systemconfigupdate.StrategyActionOpts) (*systemconfigupdate.SystemConfigUpdate, error) {
 	m.strategyActionSend = true
