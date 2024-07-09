@@ -76,7 +76,7 @@ func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceCli
 				}
 			}
 
-			host_instance, err := r.CloudManager.GetActiveHost(request_namespace, client)
+			host_instance, _, err := r.CloudManager.GetHostByPersonality(request_namespace, client, cloudManager.ActiveController)
 			if err != nil {
 				msg := "failed to get active host"
 				return common.NewUserDataError(msg)

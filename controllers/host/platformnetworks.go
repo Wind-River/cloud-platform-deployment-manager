@@ -6,10 +6,9 @@ package host
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networkAddressPools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
 	perrors "github.com/pkg/errors"
@@ -18,6 +17,8 @@ import (
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
+	"k8s.io/apimachinery/pkg/types"
+	"strings"
 )
 
 // makeRangeArray converts an array of range structs to an array of arrays where
@@ -185,7 +186,7 @@ func (r *HostReconciler) IsOAMNetworkDualStackConfigured(client *gophercloud.Ser
 		}
 	}
 
-	return stacks_configured == 2
+	return stacks_configured == cloudManager.NumDualStack
 
 }
 
@@ -200,7 +201,7 @@ func (r *HostReconciler) IsOAMNetworkSpecDualStack(client *gophercloud.ServiceCl
 
 	for _, platform_network_instance := range platform_network_instances {
 		if platform_network_instance.Spec.Type == cloudManager.OAMNetworkType &&
-			len(platform_network_instance.Spec.AssociatedAddressPools) == 2 {
+			len(platform_network_instance.Spec.AssociatedAddressPools) == cloudManager.NumDualStack {
 
 			return nil, true
 		}
@@ -381,7 +382,7 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 
 	opts, update_required, uuid := r.IsAddrPoolUpdateRequired(network_instance, addrpool_instance, system_addrpool)
 
-	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, addrpool_instance, update_required, uuid)
+	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, addrpool_instance, update_required, uuid, system_info)
 	if err != nil {
 		return err, nil, nil
 	}
@@ -403,7 +404,7 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 			return err, nil, nil
 		}
 
-		if len(network_instance.Spec.AssociatedAddressPools) == 2 &&
+		if len(network_instance.Spec.AssociatedAddressPools) == cloudManager.NumDualStack &&
 			!is_oam_dual_stack_configured {
 
 			msg := fmt.Sprintf("%s: cannot be reconciled, need to configure the oam network dual stack, will retry the next round.",
@@ -574,7 +575,7 @@ func (r *HostReconciler) ReconcileOtherPlatformNetworksExpected(client *gophercl
 // behaviour of network and associated addresspools. Note that parameters 'update_required'
 // and 'uuid' refers to address pool update_required and address pool uuid when called from
 // ReconcileAddrPoolResource function.
-func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, update_required bool, uuid string) (error, bool) {
+func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, update_required bool, uuid string, system_info *cloudManager.SystemInfo) (error, bool) {
 	if network_instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
 		switch network_instance.Spec.Type {
 		case cloudManager.OAMNetworkType,
@@ -595,6 +596,26 @@ func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.Se
 		case cloudManager.OAMNetworkType,
 			cloudManager.MgmtNetworkType,
 			cloudManager.AdminNetworkType:
+
+			// Reconciliation is not expected for management network on
+			// AIO-DX / Standard setups.
+			if system_info.SystemMode != cloudManager.SystemModeSimplex &&
+				network_instance.Spec.Type == cloudManager.MgmtNetworkType &&
+				addrpool_instance != nil {
+				err, is_reconfig := r.IsReconfiguration(client, network_instance, addrpool_instance)
+				if err != nil {
+					return err, false
+				}
+
+				if is_reconfig {
+					if !addrpool_instance.Status.Reconciled {
+						logHost.Info(
+							fmt.Sprintf("Management network (%s) reconfiguration is not allowed in '%s' system type", addrpool_instance.Name, system_info.SystemMode))
+					}
+					return nil, false
+				}
+			}
+
 			// Allow both fresh configuration / reconfiguration of networks / addrpools
 			// such as oam / mgmt / admin in day-2.
 			return nil, true
@@ -824,6 +845,10 @@ func (r *HostReconciler) UpdateNetworkReconciliationStatus(
 		network_instance.Status.Reconciled = is_reconciled
 	}
 
+	if network_instance.Status.InSync && network_instance.Status.Reconciled {
+		network_instance.Status.Delta = ""
+	}
+
 	err := r.Client.Status().Update(context.TODO(), network_instance)
 	if err != nil {
 		logHost.Error(err, fmt.Sprintf("failed to update '%s' platform network status", network_instance.Name))
@@ -865,6 +890,10 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 		addrpool_instance.Status.Reconciled = is_reconciled
 	}
 
+	if addrpool_instance.Status.InSync && addrpool_instance.Status.Reconciled {
+		addrpool_instance.Status.Delta = ""
+	}
+
 	err := r.Client.Status().Update(context.TODO(), addrpool_instance)
 	if err != nil {
 		logHost.Error(err, fmt.Sprintf("failed to update '%s' addresspool status", addrpool_instance.Name))
@@ -880,7 +909,7 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 }
 
 // ReconcileNetworkResource reconciles a PlatformNetwork resource as per spec.
-func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork) (error, *bool) {
+func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, system_info *cloudManager.SystemInfo) (error, *bool) {
 
 	system_network, err := GetSystemNetwork(client, network_instance)
 	if err != nil {
@@ -906,7 +935,7 @@ func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceCli
 
 	opts, update_required, uuid := r.IsNetworkUpdateRequired(network_instance, system_network, primary_address_pool)
 
-	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, nil, update_required, uuid)
+	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, nil, update_required, uuid, system_info)
 	if err != nil {
 		return err, nil
 	}
@@ -993,7 +1022,7 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 
 	// It's important to note that UUID of first addresspool in the list of "AssociatedAddressPools"
 	// will be used during creation of network and this will become the primary IP pool of the network.
-	err, network_reconcile_expected := r.ReconcileNetworkResource(client, network_instance)
+	err, network_reconcile_expected := r.ReconcileNetworkResource(client, network_instance, system_info)
 	if err != nil && network_reconcile_expected == nil {
 		// Some other error occured not related to reconciliation.
 		// Eg. error listing networks by querying the system.
@@ -1056,7 +1085,13 @@ func (r *HostReconciler) ReconcileMgmtPrincipalSimplex(
 	if host.IsLockedDisabled() {
 		return r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
 	} else {
-		return r.LockHostRequest(host_instance, host.ID, host.Personality, "platform networks")
+		err := r.LockHostRequestByOtherController(host_instance, host.ID, host.Personality, true)
+		if err != nil {
+			return err
+		}
+
+		msg := "waiting for active controller to be locked to reconcile mgmt network."
+		return r.StartLockedDisabledHostMonitor(host_instance, host.ID, msg)
 	}
 }
 
@@ -1075,22 +1110,25 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalSimplex(
 		cloudManager.MgmtNetworkType,
 		cloudManager.AdminNetworkType:
 
-		system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
-		if err != nil {
-			return err
-		}
+		// In case of management network reconfiguration on AIO-SX
+		// the system has to be locked, mgmt network reconfigured and
+		// the system has to be unlocked to take effect.
+		if network_instance.Spec.Type == cloudManager.MgmtNetworkType {
+			system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
+			if err != nil {
+				return err
+			}
 
-		_, update_required, _ := r.IsAddrPoolUpdateRequired(network_instance, addrpool_instance, system_addrpool)
+			_, update_required, _ := r.IsAddrPoolUpdateRequired(network_instance, addrpool_instance, system_addrpool)
 
-		validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
+			validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
 
-		if update_required && validation_result {
+			if update_required && validation_result {
 
-			// This is valid mgmt network reconfiguration / fresh configuration and
-			// spec is clearly not in sync with the system and hence it should be
-			// allowed for reconciliation.
+				// This is valid mgmt network reconfiguration / fresh configuration and
+				// spec is clearly not in sync with the system and hence it should be
+				// allowed for reconciliation.
 
-			if network_instance.Spec.Type == cloudManager.MgmtNetworkType {
 				return r.ReconcileMgmtPrincipalSimplex(
 					client,
 					host_instance,
@@ -1098,8 +1136,10 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalSimplex(
 					network_instance,
 					addrpool_instance,
 					system_info)
+
 			}
 
+			return nil
 		}
 
 		return r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
@@ -1108,6 +1148,162 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalSimplex(
 		return r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
 	}
 
+}
+
+func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesOAM(
+	client *gophercloud.ServiceClient,
+	host_instance *starlingxv1.Host,
+	host *v1info.HostInfo,
+	network_instance *starlingxv1.PlatformNetwork,
+	addrpool_instance *starlingxv1.AddressPool,
+	system_info *cloudManager.SystemInfo) error {
+
+	system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
+	if err != nil {
+		return err
+	}
+
+	_, update_required, _ := r.IsAddrPoolUpdateRequired(network_instance, addrpool_instance, system_addrpool)
+
+	validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
+
+	if update_required && validation_result {
+
+		// We have to set both active and standby controller's StrategyRequired to "lock_required"
+		// so that VIM takes that into account during strategy build phase.
+		// During OAM reconfiguration lock and unlock is required only on both the controllers.
+
+		active_controller_instance, active_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
+		if err != nil {
+			msg := "failed to get active host"
+			return common.NewUserDataError(msg)
+		}
+
+		standby_controller_instance, standby_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.StandbyController)
+		if err != nil {
+			msg := "failed to get standby host"
+			return common.NewUserDataError(msg)
+		}
+
+		err = r.LockHostRequestByOtherController(active_controller_instance, active_controller_obj.ID, standby_controller_obj.Personality, true)
+		if err != nil {
+			return err
+		}
+
+		err = r.LockHostRequestByOtherController(standby_controller_instance, standby_controller_obj.ID, standby_controller_obj.Personality, false)
+		if err != nil {
+			return err
+		}
+
+		err = r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
+		if err != nil {
+			return err
+		}
+
+		msg := "waiting for lock / unlock of active controller to apply the OAM config update."
+
+		return r.StartLockedDisabledHostMonitor(active_controller_instance, active_controller_obj.ID, msg)
+	}
+
+	return nil
+
+}
+
+func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesMgmt(
+	client *gophercloud.ServiceClient,
+	host_instance *starlingxv1.Host,
+	host *v1info.HostInfo,
+	network_instance *starlingxv1.PlatformNetwork,
+	addrpool_instance *starlingxv1.AddressPool,
+	system_info *cloudManager.SystemInfo) error {
+
+	system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
+	if err != nil {
+		return err
+	}
+
+	_, update_required, _ := r.IsAddrPoolUpdateRequired(network_instance, addrpool_instance, system_addrpool)
+
+	validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
+
+	err, is_reconfig := r.IsReconfiguration(client, network_instance, addrpool_instance)
+	if err != nil {
+		return err
+	}
+
+	if is_reconfig {
+		// This will just set the insync / reconciled status without reconciling management network.
+		return r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
+	}
+
+	if update_required && validation_result && !is_reconfig {
+
+		// We have to set all controller & workers StrategyRequired to "lock_required"
+		// so that VIM takes that into account during strategy build phase.
+		// During mgmt reconfiguration lock and unlock is required on all nodes in the system.
+
+		active_controller_instance, active_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
+		if err != nil {
+			msg := "failed to get active host"
+			return common.NewUserDataError(msg)
+		}
+
+		host_list, err := hosts.ListHosts(client)
+		if err != nil {
+			logHost.Error(err, "failed to query host list")
+			return err
+		}
+
+		for _, host := range host_list {
+			lock_instance := &starlingxv1.Host{}
+
+			host_namespace := types.NamespacedName{Namespace: host_instance.Namespace, Name: host.Hostname}
+			lock_host_obj := &host
+			err = r.Client.Get(context.TODO(), host_namespace, lock_instance)
+			if err != nil {
+				logHost.Error(err, fmt.Sprintf("failed to fetch host instance: %s", host.Hostname))
+				return err
+			}
+
+			err = r.LockHostRequestByOtherController(lock_instance, lock_host_obj.ID, lock_host_obj.Personality, true)
+			if err != nil {
+				return err
+			}
+
+		}
+
+		err = r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
+		if err != nil {
+			return err
+		}
+
+		msg := "waiting for lock / unlock of active controller to apply the management config update."
+
+		return r.StartLockedDisabledHostMonitor(active_controller_instance, active_controller_obj.ID, msg)
+	}
+
+	return nil
+
+}
+
+// ReconcilePlatformNetworkPrincipalMultinodes reconciles PlatformNetwork and AddressPool specs
+// in the context of deploymentScope principal (Day-2 operation) on AIO-DX / Standard systems.
+func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodes(
+	client *gophercloud.ServiceClient,
+	host_instance *starlingxv1.Host,
+	host *v1info.HostInfo,
+	network_instance *starlingxv1.PlatformNetwork,
+	addrpool_instance *starlingxv1.AddressPool,
+	system_info *cloudManager.SystemInfo) error {
+
+	// OAM reconfiguration requires host swact and lock / unlock between both controllers.
+	if network_instance.Spec.Type == cloudManager.OAMNetworkType {
+		return r.ReconcilePlatformNetworkPrincipalMultinodesOAM(client, host_instance, host, network_instance, addrpool_instance, system_info)
+	} else if network_instance.Spec.Type == cloudManager.MgmtNetworkType {
+		return r.ReconcilePlatformNetworkPrincipalMultinodesMgmt(client, host_instance, host, network_instance, addrpool_instance, system_info)
+	}
+
+	return r.ReconcileNetworkAndAddressPools(client, network_instance, addrpool_instance, system_info)
 }
 
 // ReconcilePlatformNetworkPrincipal reconciles PlatformNetwork and AddressPool specs
@@ -1127,7 +1323,8 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipal(
 
 	}
 
-	return nil
+	// For duplex / standard setups
+	return r.ReconcilePlatformNetworkPrincipalMultinodes(client, host_instance, host, network_instance, addrpool_instance, system_info)
 
 }
 

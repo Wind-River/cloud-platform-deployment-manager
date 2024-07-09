@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
 
 package host
 
@@ -140,7 +140,7 @@ const (
 )
 
 func (r *HostReconciler) IsActiveHost(client *gophercloud.ServiceClient, instance *starlingxv1.Host, reqNs string) (bool, error) {
-	host_instance, err := r.CloudManager.GetActiveHost(reqNs, client)
+	host_instance, _, err := r.CloudManager.GetHostByPersonality(reqNs, client, cloudManager.ActiveController)
 	if err != nil {
 		msg := "failed to get active host"
 		return false, common.NewUserDataError(msg)
@@ -667,7 +667,8 @@ func (r *HostReconciler) ReconcileInitialState(client *gophercloud.ServiceClient
 	desiredState := profile.AdministrativeState
 
 	if desiredState != nil && *desiredState != host.AdministrativeState &&
-		instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
+		instance.Status.DeploymentScope == cloudManager.ScopeBootstrap &&
+		!r.CloudManager.GetStrategySent() {
 		if *desiredState == hosts.AdminLocked {
 			action := hosts.ActionLock
 			opts := hosts.HostOpts{
@@ -1118,7 +1119,7 @@ func (r *HostReconciler) ReconcileHostByState(
 		// Update strategy regardless the disabled attributes
 		// the admin network mult-netting can also be done when host is disabled
 		// StrategyRequired should not be updated when strategy was sent.
-		if factory && !r.CloudManager.GetStrageySent() {
+		if factory && !r.CloudManager.GetStrategySent() {
 			logHost.Info("set lock required for configuration after factory install")
 			instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
@@ -1173,7 +1174,8 @@ func (r *HostReconciler) ReconcileHostByState(
 		}
 
 		// Clean up strategy required after Disabled and enabled attributes are all in-sync
-		if strategy_required {
+		if strategy_required &&
+			!(r.CloudManager.GetStrategyExpectedByOtherReconcilers() || r.CloudManager.GetStrategySent()) {
 			logHost.V(2).Info("set strategy not required as attributes are all configured")
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
@@ -1387,7 +1389,8 @@ func (r *HostReconciler) statusUpdateRequired(instance *starlingxv1.Host, host *
 			logHost.V(2).Info("host inSync, set unlock required")
 			status.StrategyRequired = cloudManager.StrategyUnlockRequired
 			strategyUpdated = true
-		} else if status.StrategyRequired != cloudManager.StrategyNotRequired {
+		} else if status.StrategyRequired != cloudManager.StrategyNotRequired &&
+			!(r.CloudManager.GetStrategyExpectedByOtherReconcilers() || r.CloudManager.GetStrategySent()) {
 			logHost.V(2).Info("set not required: reconcile finished")
 			status.StrategyRequired = cloudManager.StrategyNotRequired
 			strategyUpdated = true
@@ -2235,6 +2238,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
 		instance.Status.DeploymentScope == "bootstrap" &&
+		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
 		!platformnetwork_update_required {
 
 		factory, err := r.GetFactoryInstall(request.Namespace)
@@ -2470,21 +2474,27 @@ func (r *HostReconciler) GetAddressPoolsFromPlatformNetwork(associated_addrpools
 	return addrpool_instances, errs
 }
 
-// LockHostRequest takes the host object, host ID / personality and reconcile_object
-// which describes the purpose of requesting locking of particular host, starts lock
-// host monitor and returns LockedDisabledHost monitor error.
+// LockHostRequestByOtherController takes the host object, host ID / personality and
+// starts lock host monitor and returns LockedDisabledHost monitor error.
 // This would initiate lock request of a host through VIM so that disabled attributes
 // can be reconciled later.
-func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_id string, host_personality string, reconcile_object string) error {
+func (r *HostReconciler) LockHostRequestByOtherController(host_instance *starlingxv1.Host, host_id string, host_personality string, set_res_info bool) error {
 
 	if host_instance.Status.StrategyRequired != cloudManager.StrategyLockRequired {
-		host_instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+		if !r.CloudManager.GetStrategyExpectedByOtherReconcilers() {
+			r.CloudManager.SetStrategyExpectedByOtherReconcilers(true)
+			logHost.Info("StrategyExpectedByOtherReoncilers has been set to true.")
+		}
 
-		r.CloudManager.SetResourceInfo(cloudManager.ResourceHost,
-			host_personality,
-			host_instance.Name,
-			host_instance.Status.Reconciled,
-			host_instance.Status.StrategyRequired)
+		logHost.Info(fmt.Sprintf("Updating strategyRequired to lock_required for %s.", host_instance.Name))
+		host_instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
+		if set_res_info {
+			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost,
+				host_personality,
+				host_instance.Name,
+				host_instance.Status.Reconciled,
+				host_instance.Status.StrategyRequired)
+		}
 
 		err := r.Client.Status().Update(context.TODO(), host_instance)
 		if err != nil {
@@ -2493,10 +2503,12 @@ func (r *HostReconciler) LockHostRequest(host_instance *starlingxv1.Host, host_i
 		}
 	}
 
-	msg := fmt.Sprintf("Waiting for %s to be in locked state to reconcile %s", host_instance.Name, reconcile_object)
+	return nil
+}
+
+func (r *HostReconciler) StartLockedDisabledHostMonitor(host_instance *starlingxv1.Host, host_id, msg string) error {
 	m := NewLockedDisabledHostMonitor(host_instance, host_id)
 	return r.CloudManager.StartMonitor(m, msg)
-
 }
 
 // UpdateDeploymentScope function is used to update the deployment scope for Host.
