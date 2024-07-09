@@ -57,12 +57,14 @@ const (
 // Note that the AdminNetworkType is being referenced from host controller as well
 // as platform network controller.
 const (
-	OAMNetworkType         = "oam"
-	MgmtNetworkType        = "mgmt"
-	AdminNetworkType       = "admin"
-	MgmtAddrPoolName       = "management"
-	PXEBootNetworkType     = "pxeboot"
-	ClusterHostNetworkType = "cluster-host"
+	OAMNetworkType            = "oam"
+	MgmtNetworkType           = "mgmt"
+	AdminNetworkType          = "admin"
+	MgmtAddrPoolName          = "management"
+	PXEBootNetworkType        = "pxeboot"
+	ClusterHostNetworkType    = "cluster-host"
+	ClusterPodNetworkType     = "cluster-pod"
+	ClusterServiceNetworkType = "cluster-service"
 	// The network type "other" does not exist in real sense.
 	// It's serves as an indicator to DM that only addresspool
 	// needs to be reconciled and not network / network-addrpools.
