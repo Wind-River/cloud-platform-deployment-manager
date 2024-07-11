@@ -158,6 +158,57 @@ func (r *HostReconciler) ValidateAddressPool(
 	return true
 }
 
+// Checks and returns true if dual-stack is configured for OAM network on the system.
+func (r *HostReconciler) IsOAMNetworkDualStackConfigured(client *gophercloud.ServiceClient) bool {
+	network_list, err := networks.ListNetworks(client)
+	if err != nil {
+		logHost.Error(err, "failed to fetch networks from system")
+		return false
+	}
+
+	network := utils.GetSystemNetworkByType(network_list, cloudManager.OAMNetworkType)
+
+	if network == nil {
+		return false
+	}
+
+	network_addrpool_list, err := networkAddressPools.ListNetworkAddressPools(client)
+	if err != nil {
+		logHost.Error(err, "failed to fetch network-addresspools from system")
+		return false
+	}
+
+	stacks_configured := 0
+	for _, network_addrpool := range network_addrpool_list {
+		if network_addrpool.NetworkUUID == network.UUID {
+			stacks_configured += 1
+		}
+	}
+
+	return stacks_configured == 2
+
+}
+
+// Checks the OAM network spec for dual-stack configuration and returns true if that's the case.
+func (r *HostReconciler) IsOAMNetworkSpecDualStack(client *gophercloud.ServiceClient, reqNs string) (error, bool) {
+	platform_network_instances, errs := r.ListPlatformNetworks(reqNs)
+	if len(errs) != 0 {
+		err := common.NewPlatformNetworkReconciliationError("failed to list platform network resources")
+		logHost.Error(err, "errors found while listing platform network resources, request will be requeued.")
+		return err, false
+	}
+
+	for _, platform_network_instance := range platform_network_instances {
+		if platform_network_instance.Spec.Type == cloudManager.OAMNetworkType &&
+			len(platform_network_instance.Spec.AssociatedAddressPools) == 2 {
+
+			return nil, true
+		}
+	}
+
+	return nil, false
+}
+
 // IsNetworkUpdateRequired determines if platform network update is required
 // by comparing it with applied PlatformNetwork spec.
 func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.PlatformNetwork, current_network *networks.Network, primary_address_pool *addresspools.AddressPool) (opts networks.NetworkOpts, result bool, uuid string) {
@@ -336,6 +387,38 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 	}
 
 	validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
+
+	// Secondary stacks for cluster-* should always be configured
+	// after making sure OAM dual-stack is configured.
+	// Otherwise, pods fail to reach the gateway through which
+	// it can reach secondary stack outside.
+	if network_instance.Spec.Type == cloudManager.ClusterHostNetworkType ||
+		network_instance.Spec.Type == cloudManager.ClusterPodNetworkType ||
+		network_instance.Spec.Type == cloudManager.ClusterServiceNetworkType {
+
+		is_oam_dual_stack_configured := r.IsOAMNetworkDualStackConfigured(client)
+
+		err, is_oam_spec_dual_stack := r.IsOAMNetworkSpecDualStack(client, network_instance.Namespace)
+		if err != nil {
+			return err, nil, nil
+		}
+
+		if len(network_instance.Spec.AssociatedAddressPools) == 2 &&
+			!is_oam_dual_stack_configured {
+
+			msg := fmt.Sprintf("%s: cannot be reconciled, need to configure the oam network dual stack, will retry the next round.",
+				addrpool_instance.Name)
+
+			if !is_oam_spec_dual_stack {
+				msg = fmt.Sprintf("Please add the configuration for OAM dual-stack before adding dual-stack for %s network",
+					network_instance.Spec.Type)
+			}
+
+			logHost.Info(msg)
+
+			return common.NewPlatformNetworkReconciliationError(msg), nil, nil
+		}
+	}
 
 	if reconcile_expected && validation_result && update_required {
 		err := r.CreateOrUpdateAddrPools(client, opts, uuid, addrpool_instance)

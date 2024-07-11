@@ -669,12 +669,14 @@ var _ = Describe("Networking utils", func() {
 					Name:      nwk_name,
 					Namespace: TestNamespace,
 				}
+
+				platform_networks[nwk_name].Spec.AssociatedAddressPools = []string{platform_networks[nwk_name].Spec.AssociatedAddressPools[0]}
+
 				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 
 				expected_platformnetwork := platform_networks[nwk_name].DeepCopy()
 
 				Expect(k8sClient.Create(ctx, address_pools["cluster-host"][0])).To(Succeed())
-				Expect(k8sClient.Create(ctx, address_pools["cluster-host"][1])).To(Succeed())
 
 				fetched_net := &starlingxv1.PlatformNetwork{}
 				Eventually(func() bool {
@@ -689,8 +691,6 @@ var _ = Describe("Networking utils", func() {
 				}, timeout, interval).Should(BeTrue())
 
 				DeleteAddressPool(address_pools["cluster-host"][0].Name)
-
-				DeleteAddressPool(address_pools["cluster-host"][1].Name)
 
 				DeletePlatformNetwork(nwk_name)
 			}
@@ -741,6 +741,82 @@ var _ = Describe("Networking utils", func() {
 
 				DeletePlatformNetwork(nwk_name)
 			}
+		})
+	})
+
+	Context("Verify cluster host secondary stack is not reconciled if oam is not dual-stack", func() {
+		It("Should be created successfully and Reconciled should be 'false' and Insync should be 'false'", func() {
+			CreateDummyHost("controller-0")
+			defer DeleteDummyHost("controller-0")
+			defer ResetResponses()
+
+			network_names := []string{"cluster-host"}
+			platform_networks, address_pools := GetPlatformNetworksFromFixtures(TestNamespace)
+			ctx := context.Background()
+
+			AddrPoolListBody = AddressPoolClusterHostReconcile
+			NetworkListBody = NetworkListWithoutDualStackOAM
+			NetworkAddressPoolListBody = NetworkAddrPoolListWithoutDualStackOAM
+
+			for _, nwk_name := range network_names {
+
+				key_net := types.NamespacedName{
+					Name:      nwk_name,
+					Namespace: TestNamespace,
+				}
+				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+				expected_platformnetwork := platform_networks[nwk_name].DeepCopy()
+
+				for _, pool := range address_pools[nwk_name] {
+					IntroduceAddrPoolChange(pool)
+
+					Expect(k8sClient.Create(ctx, pool)).To(Succeed())
+				}
+
+				fetched_net := &starlingxv1.PlatformNetwork{}
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, key_net, fetched_net)
+					_, found := comm.ListIntersect(fetched_net.ObjectMeta.Finalizers, []string{controllers.PlatformNetworkFinalizerName})
+					return err == nil && found
+				}, timeout, interval).Should(BeTrue())
+
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, key_net, fetched_net)
+					return err == nil &&
+						fetched_net.ObjectMeta.ResourceVersion != expected_platformnetwork.ObjectMeta.ResourceVersion &&
+						fetched_net.Status.Reconciled == false &&
+						fetched_net.Status.InSync == false
+				}, timeout, interval).Should(BeTrue())
+
+				for _, pool := range address_pools[nwk_name] {
+					expected_addrpool := pool.DeepCopy()
+
+					key_pool := types.NamespacedName{
+						Name:      pool.Name,
+						Namespace: TestNamespace,
+					}
+
+					fetched_pool := &starlingxv1.AddressPool{}
+					Eventually(func() bool {
+						err := k8sClient.Get(ctx, key_pool, fetched_pool)
+						_, found := comm.ListIntersect(fetched_pool.ObjectMeta.Finalizers, []string{controllers.AddressPoolFinalizerName})
+						return err == nil && found
+					}, timeout, interval).Should(BeTrue())
+
+					Eventually(func() bool {
+						err := k8sClient.Get(ctx, key_pool, fetched_pool)
+						return err == nil &&
+							fetched_pool.ObjectMeta.ResourceVersion != expected_addrpool.ObjectMeta.ResourceVersion &&
+							fetched_pool.Status.Reconciled == false &&
+							fetched_pool.Status.InSync == false
+					}, timeout, interval).Should(BeTrue())
+
+					DeleteAddressPool(pool.Name)
+				}
+				DeletePlatformNetwork(nwk_name)
+			}
+
 		})
 	})
 
