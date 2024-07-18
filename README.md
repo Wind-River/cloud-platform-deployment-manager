@@ -533,12 +533,12 @@ configuration process accordingly.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-	name: factory-install
-	namespace: deployment
+  name: factory-install
+  namespace: deployment
 data:
-	factory-installed: "true"  # Initial state (change to "true" if factory-installed)
-	factory-config-finalized: "false" # Optional (change to "true" if configuration is complete)
-	<system-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
+  factory-installed: "true"  # Initial state (change to "true" if factory-installed)
+  factory-config-finalized: "false" # Optional (change to "true" if configuration is complete)
+  <system-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
   <controller-0-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
   <controller-1-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
 ```
