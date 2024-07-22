@@ -197,7 +197,7 @@
       block:
       - name: Find deployment-manager app helm-chart in application directory
         find:
-          paths: /usr/local/share/applications/helm/
+          paths: "{{ manager_app_chart | dirname }}"
           patterns: 'deployment-manager*.tgz'
         register: app_helm_chart
 
@@ -207,7 +207,7 @@
         when: (app_helm_chart.files[0].path | length == 0)
 
       - name: Upload deployment-manager app Helm Chart
-        shell: source /etc/platform/openrc; system application-upload {{ manager_app_chart }}
+        shell: source /etc/platform/openrc; system application-upload {{ app_helm_chart.files[0].path }}
 
       - name: Wait deployment-manager app to become uploaded
         shell: source /etc/platform/openrc; system application-list --nowrap | grep deployment-manager | awk '{ print $10 }'
