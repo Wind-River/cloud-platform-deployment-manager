@@ -154,10 +154,15 @@
         path: /etc/platform/.unlock_ready
       register: is_unlock_ready
 
+    - name: Check if host is provisioned
+      shell: |
+        source /etc/platform/openrc;
+        system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^invprovision/ {print $4}'
+      register: get_host_invprovision
+
     - name: Set reconfiguration fact
       set_fact:
-        reconfig_flag: "{{ true if (is_unlock_ready.stat.exists == True)
-                        else false }}"
+        reconfig_flag: "{{ reconfig_flag | default(true if is_unlock_ready.stat.exists else false) }}"
 
     - name: Mark the bootstrap as finalized
       file:
