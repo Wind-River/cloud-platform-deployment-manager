@@ -410,6 +410,21 @@ var _ = Describe("Networking utils", func() {
 						want:  nil,
 						want1: false,
 					},
+					{name: "default",
+						args: args{
+							profile: &sample,
+							iface: &interfaces.Interface{
+								ID:      "uuid-sriov2",
+								Name:    "sriov2",
+								Type:    "default",
+								VFCount: &vfcount1,
+								Uses:    []string{"sriov1"},
+							},
+							host: &info,
+						},
+						want:  nil,
+						want1: false,
+					},
 				}
 
 				for _, tt := range tests {

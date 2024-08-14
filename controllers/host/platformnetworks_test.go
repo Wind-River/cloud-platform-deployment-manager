@@ -819,5 +819,74 @@ var _ = Describe("Networking utils", func() {
 
 		})
 	})
+	Context(" Verify host doesnt exist", func() {
+		It("Should be created successfully and Reconciled should be true & InSync should be 'false'", func() {
+			tMgr := cloudManager.GetInstance(k8sManager)
+			HostControllerAPIHandlers()
+			AddrPoolListBody = AddrPoolListBodyFull
+			NetworkListBody = NetworkListBodyFull
+			NetworkAddressPoolListBody = NetworkAddressPoolListBodyFull
+
+			tMgr.SetSystemReady(TestNamespace, true)
+
+			// CreateDummyHost("controller-0")
+			// defer DeleteDummyHost("controller-0")
+
+			network_names := []string{"mgmt", "admin", "oam", "cluster-host"}
+			platform_networks, address_pools := GetPlatformNetworksFromFixtures(TestNamespace)
+			ctx := context.Background()
+			for _, nwk_name := range network_names {
+
+				key_net := types.NamespacedName{
+					Name:      nwk_name,
+					Namespace: TestNamespace,
+				}
+				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
+
+				expected_platformnetwork := platform_networks[nwk_name].DeepCopy()
+
+				for _, pool := range address_pools[nwk_name] {
+					IntroduceAddrPoolChange(pool)
+
+					Expect(k8sClient.Create(ctx, pool)).To(Succeed())
+				}
+
+				fetched_net := &starlingxv1.PlatformNetwork{}
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, key_net, fetched_net)
+					return err == nil &&
+						fetched_net.ObjectMeta.ResourceVersion != expected_platformnetwork.ObjectMeta.ResourceVersion &&
+						fetched_net.Status.Reconciled == true &&
+						fetched_net.Status.InSync == true
+				}, timeout, interval).Should(BeTrue())
+				_, found := comm.ListIntersect(fetched_net.ObjectMeta.Finalizers, []string{controllers.PlatformNetworkFinalizerName})
+				Expect(found).To(BeTrue())
+
+				for _, pool := range address_pools[nwk_name] {
+					expected_addrpool := pool.DeepCopy()
+
+					key_pool := types.NamespacedName{
+						Name:      pool.Name,
+						Namespace: TestNamespace,
+					}
+
+					fetched_pool := &starlingxv1.AddressPool{}
+					Eventually(func() bool {
+						err := k8sClient.Get(ctx, key_pool, fetched_pool)
+						return err == nil &&
+							fetched_pool.ObjectMeta.ResourceVersion != expected_addrpool.ObjectMeta.ResourceVersion &&
+							fetched_pool.Status.Reconciled == true &&
+							fetched_pool.Status.InSync == false
+					}, timeout, interval).Should(BeTrue())
+					_, found = comm.ListIntersect(fetched_pool.ObjectMeta.Finalizers, []string{controllers.AddressPoolFinalizerName})
+					Expect(found).To(BeTrue())
+
+					DeleteAddressPool(pool.Name)
+				}
+
+				DeletePlatformNetwork(nwk_name)
+			}
+		})
+	})
 
 })
