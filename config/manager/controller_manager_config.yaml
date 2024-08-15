@@ -7,5 +7,5 @@ metrics:
 webhook:
   port: 9443
 leaderElection:
-  leaderElect: true
+  leaderElect: false
   resourceName: f28f85eb.windriver.com

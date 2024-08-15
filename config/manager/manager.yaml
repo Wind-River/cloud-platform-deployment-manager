@@ -41,20 +41,24 @@ spec:
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 5
         readinessProbe:
           httpGet:
             path: /readyz
             port: 8081
           initialDelaySeconds: 5
-          periodSeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
         # TODO(user): Configure the resources accordingly based on the project requirements.
         # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 150Mi
           requests:
-            cpu: 10m
-            memory: 64Mi
+            cpu: 0
+            memory: 0
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
