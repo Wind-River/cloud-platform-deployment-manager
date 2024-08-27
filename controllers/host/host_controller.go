@@ -1054,7 +1054,7 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 			}
 		}
 
-		if utils.IsReconcilerEnabled(utils.Route) {
+		if !reconfig && utils.IsReconcilerEnabled(utils.Route) {
 			if !in.Routes.DeepEqual(&other.Routes) {
 				return false
 			}
