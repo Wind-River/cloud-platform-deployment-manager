@@ -8,6 +8,7 @@
   tasks:
     - set_fact:
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
+        manager_playbook: "{{ deployment_manager_playbook |  default('/usr/local/share/applications/playbooks/wind-river-cloud-platform-deployment-manager.yaml') }}"
 
     - set_fact:
         user_uploaded_artifacts: "{{ user_uploaded_artifacts | default(true) }}"
@@ -43,11 +44,55 @@
             awk '$2 ~ /^distributed_cloud_role/ {print $4}'
           register: get_distributed_cloud_role
 
+        - name: Get software version
+          shell: >-
+            source /etc/platform/openrc; system show |
+            awk '$2 ~ /^software_version/ {print $4}'
+          register: get_software_version
+
         - name: Show dc_role and hostname
           debug:
             msg:
             - "hostname: {{get_host_name.stdout}}"
             - "dc_role: {{ get_distributed_cloud_role.stdout }}"
+            - "software_version: {{ get_software_version.stdout }}"
+
+  # if user not uploaded artifacts
+  # and software_version is less than 24.09
+  # host is subcloud
+  # Get the playbook locally(from the subcloud)
+   - block:
+      - name: Find deployment-manager playbook in application directory
+        find:
+          paths: "{{ manager_playbook | dirname }}"
+          patterns: 'deployment-manager.yaml'
+        register: deployment_manager_playbook
+
+      - name: Fail deployment-manager playbook does not exists
+        fail:
+          msg: "Deployment manger playbook does not exists in application directory on subcloud"
+        when: (deployment_manager_playbook.files[0].path | length == 0)
+
+      - name: Gather all the inputs
+        set_fact:
+        vars: |
+          ansible_become_pass={{ ansible_become_pass }}
+          ansible_ssh_pass={{ ansible_become_pass }}
+          admin_password={{ admin_password }}
+          deployment_config={{ deployment_config }}
+          user_uploaded_artifacts={{ user_uploaded_artifacts }}
+
+        - name: Install Deployment Manager
+          shell: ansible-playbook "{{ deployment_manager_playbook.files[0].path }}" --extra-vars "{{ vars }}"
+          become: yes
+
+        - name: Exit the playbook
+          meta: end_play
+
+      when:
+          - "subcloud" in get_distributed_cloud_role.stdout
+          - user_uploaded_artifacts is false
+          - get_software_version.stdout < "24.09"
 
     - block:
       # Copy required files up to the target host if this playbook is being
