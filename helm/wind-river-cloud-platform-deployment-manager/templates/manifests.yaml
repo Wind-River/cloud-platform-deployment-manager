@@ -425,7 +425,7 @@ data:
     webhook:
       port: 9443
     leaderElection:
-      leaderElect: true
+      leaderElect: {{ include "calculatedValue.leaderElection" . | trim }}
       resourceName: f28f85eb.windriver.com
 {{- with .Values.manager.configmap }}
 {{ toYaml . | indent 4 }}
@@ -494,7 +494,7 @@ metadata:
   name: {{ include "helm.name" . }}
   namespace: {{ .Values.namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       control-plane: controller-manager
@@ -529,7 +529,7 @@ spec:
         {{- end }}
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
-        - --leader-elect
+        - --leader-elect={{ include "calculatedValue.leaderElection" . | trim }}
         - --zap-time-encoding=rfc3339nano
         - --zap-encoder=console
         - --zap-log-level={{ .Values.manager.logLevel }}
@@ -548,6 +548,8 @@ spec:
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 5
         name: manager
         ports:
         - containerPort: 9443
@@ -558,7 +560,9 @@ spec:
             path: /readyz
             port: 8081
           initialDelaySeconds: 5
-          periodSeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
 {{- with .Values.resources }}
         resources:
 {{ toYaml . | indent 10 }}

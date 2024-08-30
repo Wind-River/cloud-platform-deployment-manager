@@ -1,0 +1,8 @@
+bases:
+  - ../../default
+
+resources:
+  - workers.yaml
+
+patches:
+  - deployment-model-open.yaml

@@ -197,7 +197,7 @@
       block:
       - name: Find deployment-manager app helm-chart in application directory
         find:
-          paths: /usr/local/share/applications/helm/
+          paths: "{{ manager_app_chart | dirname }}"
           patterns: 'deployment-manager*.tgz'
         register: app_helm_chart
 
@@ -207,7 +207,7 @@
         when: (app_helm_chart.files[0].path | length == 0)
 
       - name: Upload deployment-manager app Helm Chart
-        shell: source /etc/platform/openrc; system application-upload {{ manager_app_chart }}
+        shell: source /etc/platform/openrc; system application-upload {{ app_helm_chart.files[0].path }}
 
       - name: Wait deployment-manager app to become uploaded
         shell: source /etc/platform/openrc; system application-list --nowrap | grep deployment-manager | awk '{ print $10 }'
@@ -531,21 +531,24 @@
         # and check resources and logs.
         - block:
 
-          # check close-open port before starting last checkings
+          # check close-open port before starting the last checkings
           - block:
-            - name: Waiting for port to be closed due to unlock task
-              wait_for:
-                port: "{{ ansible_port }}"
-                host: "{{ ansible_host }}"
-                timeout: "{{ wait_for_timeout }}"
-                state: stopped
-
-            - name: Waiting for port to become open
+            - name: Waiting for SSH port to be closed due to unlock task
               local_action:
                 module: wait_for
                   port={{ ansible_port }}
                   host={{ ansible_host }}
                   timeout={{ wait_for_timeout }}
+                  delay=5
+                  state=stopped
+
+            - name: Waiting for SSH port to become open
+              local_action:
+                module: wait_for
+                  port={{ ansible_port }}
+                  host={{ ansible_host }}
+                  timeout={{ wait_for_timeout }}
+                  delay={{ boot_wait_time }}
                   state=started
               retries: 20
               delay: 20
@@ -555,7 +558,7 @@
             # If the state is not "unlocked," log the information from the subcloud.
             # If the state is "unlocked," continue with the normal flow of the main block.
             rescue:
-              - name: Waiting for port to become open
+              - name: Waiting for SSH port to become open
                 local_action:
                   module: wait_for
                     port={{ ansible_port }}
@@ -566,7 +569,7 @@
                 retries: 20
                 delay: 20
 
-              - name: Wait for {{ boot_wait_time }} seconds before checking status
+              - name: Wait for 300 seconds before checking status
                 wait_for:
                   timeout: 300
                 register: waiting_after_failures
@@ -616,7 +619,7 @@
           # Retry block: sometimes system reboots twice
           # It will take some extra time.
           - block:
-            - name: Waiting for port to become open on second reboot
+            - name: Waiting for SSH port to become open on a second reboot
               local_action:
                 module: wait_for
                   port={{ ansible_port }}
@@ -627,7 +630,7 @@
               retries: 20
               delay: 20
 
-            # Waiting task after unlock to catch right status
+            # Waiting task after unlock to catch the right status
             - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
               wait_for:
                 timeout: "{{ boot_wait_time }}"

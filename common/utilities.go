@@ -218,3 +218,12 @@ func GetSystemNetworkByName(network_list []networks.Network, network_name string
 	}
 	return nil
 }
+
+func GetSystemNetworkByType(network_list []networks.Network, network_type string) *networks.Network {
+	for _, network := range network_list {
+		if network.Type == network_type {
+			return &network
+		}
+	}
+	return nil
+}

@@ -533,12 +533,12 @@ configuration process accordingly.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-	name: factory-install
-	namespace: deployment
+  name: factory-install
+  namespace: deployment
 data:
-	factory-installed: "true"  # Initial state (change to "true" if factory-installed)
-	factory-config-finalized: "false" # Optional (change to "true" if configuration is complete)
-	<system-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
+  factory-installed: "true"  # Initial state (change to "true" if factory-installed)
+  factory-config-finalized: "false" # Optional (change to "true" if configuration is complete)
+  <system-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
   <controller-0-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
   <controller-1-name>-default-updated: "false" # Optional (change to "true" if resource default updated)
 ```
@@ -721,8 +721,11 @@ sudo docker load -i /home/wrsroot/wind-river-cloud-platform-deployment-manager-i
 
 ## Installing The Deployment Manager
 
-The Deployment Manager is intended to be deployed as a Helm™ chart.  The chart
-source definition can be found under the ```helm/wind-river-cloud-platform-deployment-manager```
+The Deployment Manager is intended to be deployed in two ways 
+
+# Deployment Manager as Helm™ chart.
+
+The chart source definition can be found under the ```helm/wind-river-cloud-platform-deployment-manager```
 directory and all overridable configuration values are defined in the
 ```helm/wind-river-cloud-platform-deployment-manager/values.yaml``` file.
 
@@ -763,6 +766,33 @@ syntax assuming that the private registry is hosted at "your.registry.org".
 helm upgrade --install deployment-manager --set "manager.image.repository=your.registry.com/wind-river/cloud-platform-deployment-manager" wind-river-cloud-platform-deployment-manager-2.0.10.tgz
 ```
 
+# Deployment Manager as System application
+
+The procedure for building the deployment-manager system application helm chart is not designed for open source. 
+The open-source version does not include the necessary code to generate the system application helm chart.
+
+The application chart source definition is of the form ```deployment-manager-*.tgz```
+
+This chart is built with helm-overrides.
+
+1. Upload the system application
+
+```bash
+system application-upload deployment-manager-*.tgz
+```
+
+2. Apply the system application
+
+```bash
+system application-apply deployment-manager
+```
+
+3. Check system application is successfully applied
+
+```bash
+[sysadmin@controller-0 ~(keystone_admin)]$ system application-list | grep deployment-manager
+| deployment-manager       | <app_version>  | deployment-manager-fluxcd-manifests       | fluxcd-manifests | applied | completed |
+```
 
 ## Loading A Deployment Configuration Model
 

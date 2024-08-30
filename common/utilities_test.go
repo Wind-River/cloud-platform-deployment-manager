@@ -4,10 +4,11 @@
 package common
 
 import (
-	"reflect"
-
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks"
+	net_test "github.com/gophercloud/gophercloud/starlingx/inventory/v1/networks/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"reflect"
 )
 
 var _ = Describe("Common utils", func() {
@@ -391,6 +392,16 @@ var _ = Describe("Common utils", func() {
 					gotResult := DedupeSlice(tt.given)
 					Expect(reflect.DeepEqual(gotResult, tt.wantResult)).To(BeTrue())
 				}
+			})
+		})
+	})
+
+	Describe("GetSystemNetworkByType utility", func() {
+		Context("with network list and network type", func() {
+			It("should return network object associated with network type", func() {
+				network_list := []networks.Network{net_test.NetworkHerp, net_test.NetworkDerp}
+				got := GetSystemNetworkByType(network_list, "oam")
+				Expect(reflect.DeepEqual(*got, net_test.NetworkDerp)).To(BeTrue())
 			})
 		})
 	})

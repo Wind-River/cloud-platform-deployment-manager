@@ -312,6 +312,20 @@ const NetworkAddressPoolClusterHostReconcile = `
 			"address_pool_uuid": "28f8fabb-43df-4458-a256-d9195e2b6667",
 			"network_name": "cluster-host",
 			"address_pool_name": "cluster-host"
+		},
+		{
+			"uuid": "33333333-a6e5-425e-9317-995da88d6694",
+			"network_uuid": "32665423-d48b-486e-8151-7dcecd3779df",
+			"address_pool_uuid": "384c6eb3-d48b-486e-8151-7dcecd377666",
+			"network_name": "oam",
+			"address_pool_name": "oam-ipv6"
+		},
+		{
+			"uuid": "33333333-2222-425e-9317-995da88d6694",
+			"network_uuid": "32665423-d48b-486e-8151-7dcecd3779df",
+			"address_pool_uuid": "384c6eb3-d48b-486e-8151-7dcecd3779df",
+			"network_name": "oam",
+			"address_pool_name": "oam"
 		}
 	]
 }
@@ -369,8 +383,47 @@ const NetworkListClusterHostReconcile = `
 			"type": "cluster-host",
 			"uuid": "0bebc4ef-e8e4-1248-b9d5-8694a79f58ce",
 			"primary_pool_family": "ipv4"
+		},
+		{
+			"dynamic": false,
+			"id": 3,
+			"name": "oam",
+			"pool_uuid": "384c6eb3-d48b-486e-8151-7dcecd377666",
+			"type": "oam",
+			"uuid": "32665423-d48b-486e-8151-7dcecd3779df",
+			"primary_pool_family": "ipv6"
 		}
     ]
+}
+`
+
+const NetworkListWithoutDualStackOAM = `
+{
+    "networks": [
+		{
+			"dynamic": true,
+			"id": 4,
+			"name": "cluster-host",
+			"pool_uuid": "28f8fabb-43df-4458-a256-d9195e2b6667",
+			"type": "cluster-host",
+			"uuid": "0bebc4ef-e8e4-1248-b9d5-8694a79f58ce",
+			"primary_pool_family": "ipv4"
+		}
+    ]
+}
+`
+
+const NetworkAddrPoolListWithoutDualStackOAM = `
+{
+    "network_addresspools": [
+		{
+			"uuid": "55555555-a6e5-425e-9317-995da88d6695",
+			"network_uuid": "0bebc4ef-e8e4-1248-b9d5-8694a79f58ce",
+			"address_pool_uuid": "28f8fabb-43df-4458-a256-d9195e2b6667",
+			"network_name": "cluster-host",
+			"address_pool_name": "cluster-host"
+		}
+	]
 }
 `
 
@@ -798,6 +851,71 @@ const storage_tiers = `
 	]
 }`
 
+const PTPInstanceListBody = `
+{
+	"ptp_instances": [
+		{
+			"uuid": "fa5defce-2546-4786-ae58-7bb08e2105fc",
+		 	"service": "phc2sys",
+		 	"created_at": "2022-01-18T20:47:27.655974+00:00",
+		 	"updated_at": null,
+		 	"capabilities": {},
+		 	"hostnames": [],
+		 	"parameters": [],
+		 	"type": "ptp-instance",
+		 	"id": 2,
+		 	"name": "phc2sys1"
+		},
+		{
+			"uuid": "53041360-451f-49ea-8843-44fab16f6628",
+			"service": "ptp4l",
+			"created_at": "2022-01-18T17:56:43.012323+00:00",
+			"updated_at": null,
+			"capabilities": {},
+			"hostnames": [],
+			"parameters": [],
+			"type": "ptp-instance",
+			"id": 1,
+			"name": "ptp1"
+		}
+	]
+}
+`
+
+const StorageBackendListBody = `
+{
+    "storage_backends": [
+        {
+            "task": "provision-storage",
+            "uuid": "cebe7a5e-7b57-497b-a335-6e7cf93e98ee",
+            "created_at": "2019-11-11T17:03:36.193041+00:00",
+            "updated_at": null,
+            "capabilities": {
+                "min_replication": "1",
+                "replication": "2"
+            },
+            "services": null,
+            "state": "configured",
+            "isystem_uuid": "cc0149fb-b40d-4ff1-9dd9-2070a05aee74",
+            "backend": "ceph",
+            "name": "ceph-store"
+        },
+		{
+            "task": null,
+            "uuid": "da0dd822-5b41-4402-a735-6b0f02a9d953",
+            "created_at": "2019-11-11T17:03:01.304313+00:00",
+            "updated_at": null,
+            "capabilities": {},
+            "services": "glance",
+            "state": "configured",
+            "isystem_uuid": null,
+            "backend": "external",
+            "name": "shared_services"
+        }
+    ]
+}
+`
+
 var HostsListBodyResponse string
 var SingleSystemBodyResponse string
 
@@ -1171,6 +1289,27 @@ func HandleClusterRequests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
 }
+
+func HandleStorageBackendRequests(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		w.Header().Add("Content-Type", "application/json")
+		fmt.Fprint(w, StorageBackendListBody)
+	default:
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
+func HandlePTPInstanceRequests(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		w.Header().Add("Content-Type", "application/json")
+		fmt.Fprint(w, PTPInstanceListBody)
+	default:
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
 func HandleHostPTPInstanceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -1264,6 +1403,9 @@ func OtherAPIS() {
 	th.Mux.HandleFunc("/ihosts/d99637e9-5451-45c6-98f4-f18968e43e91/ptp_instances", HandleHostPTPInstanceRequests)
 	th.Mux.HandleFunc("/ihosts/d99637e9-5451-45c6-98f4-f18968e43e91/ptp_interfaces", HandleHostPTPInterfaceRequests)
 	th.Mux.HandleFunc("/clusters/1/storage_tiers", HandleStorageTierRequests)
+	th.Mux.HandleFunc("/ptp_instances", HandlePTPInstanceRequests)
+	th.Mux.HandleFunc("/storage_backend", HandleStorageBackendRequests)
+
 }
 
 func GetPlatformNetworksFromFixtures(namespace string) (map[string]*starlingxv1.PlatformNetwork, map[string][]*starlingxv1.AddressPool) {

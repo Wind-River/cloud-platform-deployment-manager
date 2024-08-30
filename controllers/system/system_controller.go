@@ -221,14 +221,32 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 			Network:   spec_sb.Network,
 		}
 
+		capabilities := make(map[string]interface{})
+
 		// Replication is an optional parameter.
 		// In the spec, the parameter is named ReplicationFactor,
-		// and it maps to the replication key in the Capabilities
-		// dictionary
+		// and it maps to the replication key in the Capabilities dictionary
 		if spec_sb.ReplicationFactor != nil {
-			capabilities := make(map[string]interface{})
 			capabilities["replication"] = strconv.Itoa(*spec_sb.ReplicationFactor)
+		}
+
+		// Deployment is an optional parameter.
+		// In the spec, the parameter is named Deployment,
+		// and it maps to the deployment_model key in the Capabilities dictionary
+		if spec_sb.Deployment != "" {
+			capabilities["deployment_model"] = &spec_sb.Deployment
+		}
+
+		if len(capabilities) > 0 {
 			opts.Capabilities = &capabilities
+		}
+
+		// Services is an optional parameter.
+		// In the spec, it is received as an array,
+		// that must be concatenated into a single string.
+		if len(spec_sb.Services) > 0 {
+			str_services := strings.Join(spec_sb.Services, ",")
+			opts.Services = &str_services
 		}
 
 		result, err := storagebackends.Create(client, opts).Extract()
@@ -583,6 +601,18 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	return ready, err
 }
 
+// RefreshFilesystemsList updates the controller filesystems list in SystemInfo
+func (r *SystemReconciler) RefreshFilesystemsList(client *gophercloud.ServiceClient, instance *starlingxv1.System, info *v1info.SystemInfo) error {
+	result, err := controllerFilesystems.ListFileSystems(client)
+	if err != nil {
+		err = perrors.Wrap(err, "failed to refresh controller filesystems list")
+		return err
+	}
+	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "FileSystems list info has been updated")
+	info.FileSystems = result
+	return nil
+}
+
 // ReconcileFilesystems configures the system resources to align with the
 // desired controller filesystem configuration.
 func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (err error) {
@@ -606,7 +636,8 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 		return err
 	}
 
-	updates := make([]controllerFilesystems.FileSystemOpts, 0)
+	updated := false
+	fs_to_update := make([]controllerFilesystems.FileSystemOpts, 0)
 	for _, fsInfo := range *spec.Storage.FileSystems {
 		found := false
 		for _, fs := range info.FileSystems {
@@ -626,26 +657,74 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 					Size: fsInfo.Size,
 				}
 
-				updates = append(updates, opts)
+				fs_to_update = append(fs_to_update, opts)
 			}
 		}
 
 		if !found {
-			msg := fmt.Sprintf("unknown controller filesystem %q", fsInfo.Name)
-			return starlingxv1.NewMissingSystemResource(msg)
+			opts := controllerFilesystems.FileSystemOpts{
+				Name: fsInfo.Name,
+				Size: fsInfo.Size,
+			}
+
+			result, err := controllerFilesystems.Create(client, opts).Extract()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "Controller Filesystem %q has been created", result.Name)
 		}
 	}
 
-	if len(updates) > 0 {
-		logSystem.Info("updating controller filesystem sizes", "opts", updates)
+	if len(fs_to_update) > 0 {
+		logSystem.Info("updating controller filesystem sizes", "opts", fs_to_update)
 
-		err := controllerFilesystems.Update(client, info.ID, updates).ExtractErr()
+		err := controllerFilesystems.Update(client, info.ID, fs_to_update).ExtractErr()
 		if err != nil {
 			err = perrors.Wrapf(err, "failed to update filesystems sizes")
 			return err
 		}
-
+		// success
+		updated = true
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
+	}
+
+	// update the system object with the list of controller filesystems
+	if updated {
+		err := r.RefreshFilesystemsList(client, instance, info)
+		if err != nil {
+			return err
+		}
+	}
+
+	updated = false
+	for _, fsInfo := range info.FileSystems {
+		found := false
+		for _, fs := range *spec.Storage.FileSystems {
+			if fs.Name != fsInfo.Name {
+				// do nothing as it should be able to be updated by previous section
+				found = true
+				break
+			}
+		}
+		if !found {
+			err := controllerFilesystems.Delete(client, fsInfo.ID).ExtractErr()
+			if err != nil {
+				return err
+			}
+			// success
+			updated = true
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "Controller Filesystem %q has been deleted", fsInfo.Name)
+		}
+	}
+
+	// update the system object with the list of controller filesystems
+	if updated {
+		err := r.RefreshFilesystemsList(client, instance, info)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1657,7 +1736,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// If strategy is applied, start strategy monitor
 	if instance.Status.StrategyApplied {
 		logSystem.Info("Strategy applied, start strategy monitor")
-		r.CloudManager.StrageySent()
+		r.CloudManager.StrategySent()
 		r.CloudManager.StartStrategyMonitor()
 	} else {
 		logSystem.V(2).Info("Strategy not applied")

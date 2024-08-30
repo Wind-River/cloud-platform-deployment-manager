@@ -75,7 +75,7 @@ func (r *PlatformNetworkReconciler) ReconcileResource(client *gophercloud.Servic
 	if instance.DeletionTimestamp.IsZero() {
 		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation ||
 			scope_updated {
-			host_instance, err := r.CloudManager.GetActiveHost(reqNs, client)
+			host_instance, _, err := r.CloudManager.GetHostByPersonality(reqNs, client, cloudManager.ActiveController)
 			if err != nil {
 				msg := "failed to get active host"
 				logPlatformNetwork.Error(err, msg)
@@ -369,9 +369,7 @@ func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starl
 		restoreStatus := &cloudManager.RestoreStatus{}
 		err := json.Unmarshal([]byte(config), &restoreStatus)
 		if err == nil {
-			if restoreStatus.InSync != nil {
-				instance.Status.InSync = *restoreStatus.InSync
-			}
+			instance.Status.InSync = true
 			instance.Status.Reconciled = true
 			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
 			instance.Status.DeploymentScope = "bootstrap"

@@ -1221,6 +1221,7 @@ spec:
                           - var
                           - image-conversion
                           - instances
+                          - ceph
                           type: string
                         size:
                           minimum: 1
@@ -2328,6 +2329,7 @@ spec:
                               - var
                               - image-conversion
                               - instances
+                              - ceph
                               type: string
                             size:
                               minimum: 1
@@ -3234,6 +3236,16 @@ spec:
                     description: Backends is a set of backend storage methods to be configured.  Only
                     items:
                       properties:
+                        deployment:
+                          description: |-
+                            Deployment is the deployment model associated with this backend instance.
+                            This attribute is only applicable for Ceph Rook storage backend.
+                            Refer to customer documentation for more information.
+                          enum:
+                          - controller
+                          - dedicated
+                          - open
+                          type: string
                         name:
                           description: SystemName uniquely identifies the storage backend instance.
                           maxLength: 255
@@ -3258,8 +3270,7 @@ spec:
                           description: |-
                             ReplicationFactor is the number of storage hosts required in each
                             replication group for storage redundancy.
-                            This attribute is only applicable for Ceph storage backends.
-                          maximum: 3
+                            This attribute is applicable for Ceph and Ceph Rook storage backends.
                           minimum: 1
                           type: integer
                         services:
@@ -3276,6 +3287,7 @@ spec:
                           - file
                           - lvm
                           - ceph
+                          - ceph-rook
                           type: string
                       required:
                       - name

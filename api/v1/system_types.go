@@ -157,7 +157,7 @@ type StorageBackend struct {
 	Name string `json:"name"`
 
 	// Type specifies the storage backend type.
-	// +kubebuilder:validation:Enum=file;lvm;ceph
+	// +kubebuilder:validation:Enum=file;lvm;ceph;ceph-rook
 	Type string `json:"type"`
 
 	// Services is a list of services to enable for this backend instance.  Each
@@ -165,13 +165,17 @@ type StorageBackend struct {
 	// of services.  Refer to customer documentation for more information.
 	Services []string `json:"services,omitempty"`
 
+	// Deployment is the deployment model associated with this backend instance.
+	// This attribute is only applicable for Ceph Rook storage backend.
+	// Refer to customer documentation for more information.
+	// +kubebuilder:validation:Enum=controller;dedicated;open
+	Deployment string `json:"deployment,omitempty"`
+
 	// ReplicationFactor is the number of storage hosts required in each
 	// replication group for storage redundancy.
-	// This attribute is only applicable for Ceph storage backends.
+	// This attribute is applicable for Ceph and Ceph Rook storage backends.
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=3
 	// +kubebuilder:validation:ExclusiveMinimum=false
-	// +kubebuilder:validation:ExclusiveMaximum=false
 	// +optional
 	ReplicationFactor *int `json:"replicationFactor,omitempty"`
 

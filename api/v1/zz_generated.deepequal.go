@@ -2267,6 +2267,9 @@ func (in *StorageBackend) DeepEqual(other *StorageBackend) bool {
 		}
 	}
 
+	if in.Deployment != other.Deployment {
+		return false
+	}
 	if in.ReplicationFactor != nil {
 		if (in.ReplicationFactor == nil) != (other.ReplicationFactor == nil) {
 			return false
