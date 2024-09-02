@@ -659,7 +659,7 @@ var _ = Describe("Host controller", func() {
 						Size: 2,
 					},
 					{
-						Name: "ceph",
+						Name: "image-conversion",
 						Size: 1,
 					},
 				}},
@@ -676,6 +676,40 @@ var _ = Describe("Host controller", func() {
 
 			got := r.CompareFileSystemTypes(in, other)
 			Expect(got).To(BeFalse())
+		})
+		It("Should return true when in and other storage are not equal, since ceph fs does not support removal", func() {
+			in := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
+					{
+						Name: "instances",
+						Size: 5,
+					},
+				}},
+			}
+			other := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
+					{
+						Name: "instances",
+						Size: 2,
+					},
+					{
+						Name: "ceph",
+						Size: 1,
+					},
+				}},
+			}
+
+			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
+				Scheme:             scheme.Scheme,
+				MetricsBindAddress: "0",
+			})
+			r := &HostReconciler{
+				Client: k8sManager.GetClient(),
+				Scheme: k8sManager.GetScheme(),
+			}
+
+			got := r.CompareFileSystemTypes(in, other)
+			Expect(got).To(BeTrue())
 		})
 	})
 

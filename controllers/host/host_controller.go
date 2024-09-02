@@ -70,6 +70,7 @@ var CephPrimaryGroup []string
 
 // Only the listed file systems are allow to create and delete
 var FileSystemCreationAllowed = []string{"instances", "image-conversion", "ceph"}
+var FileSystemDeletionAllowed = []string{"instances", "image-conversion"}
 
 var _ reconcile.Reconciler = &HostReconciler{}
 
@@ -886,7 +887,7 @@ func (r *HostReconciler) CompareFileSystemTypes(in *starlingxv1.HostProfileSpec,
 		// Find difference of file system types to add or remove
 		added, removed, _ := utils.ListDelta(current, configured)
 		_, _, fs_to_add := utils.ListDelta(added, FileSystemCreationAllowed)
-		_, _, fs_to_remove := utils.ListDelta(removed, FileSystemCreationAllowed)
+		_, _, fs_to_remove := utils.ListDelta(removed, FileSystemDeletionAllowed)
 
 		if len(fs_to_remove) > 0 || len(fs_to_add) > 0 {
 			return false
