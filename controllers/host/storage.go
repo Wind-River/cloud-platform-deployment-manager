@@ -727,7 +727,7 @@ func (r *HostReconciler) ReconcileFileSystemTypes(client *gophercloud.ServiceCli
 	// Find difference of file system types to add or remove
 	added, removed, _ := common.ListDelta(current, configured)
 	_, _, fs_to_add := common.ListDelta(added, FileSystemCreationAllowed)
-	_, _, fs_to_remove := common.ListDelta(removed, FileSystemCreationAllowed)
+	_, _, fs_to_remove := common.ListDelta(removed, FileSystemDeletionAllowed)
 
 	if len(fs_to_remove) > 0 {
 		updated, err := r.DeleteFileSystems(client, fs_to_remove, host)
