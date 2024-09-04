@@ -684,7 +684,7 @@
             wait_for:
               timeout: "{{ boot_wait_time }}"
             register: waiting_after_reboot
-            ignore_errors: true
+            ignore_unreachable: true
 
           # Retry block: sometimes system reboots twice
           # It will take some extra time.
@@ -715,7 +715,7 @@
               register: new_reboot
               when: waiting_after_new_reboot.failed
 
-            when: waiting_after_reboot.failed
+            when: waiting_after_reboot.unreachable
 
           - name: Set retries to check resource reconciled status for simplex
             set_fact:
