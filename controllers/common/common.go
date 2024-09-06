@@ -568,11 +568,17 @@ func UpdateDefaultsRequired(
 	name string,
 	factory bool,
 ) (bool, error) {
+	// TODO(yuxing) currently the UpdateDefaultsRequired only works on factory
+	// installed scenario, consider remove this restriction for generic usage
 	if !factory {
 		return false, nil
 	}
 
-	defaultUpdated, err := manager.GetResourceDefaultUpdated(namespace, name)
+	defaultUpdated, err := manager.GetFactoryResourceDataUpdated(
+		namespace,
+		name,
+		"default",
+	)
 
 	if err != nil {
 		// Failed to get the info, force to update it again

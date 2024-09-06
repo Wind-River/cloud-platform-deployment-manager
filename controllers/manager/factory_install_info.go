@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	perrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -26,6 +27,9 @@ data:
 	factory-installed: "false"  # Initial state (change to "true" if factory-installed)
 	factory-config-finalized: "false" # Initial state (change to "true" if configuration is complete)
 	system-abcd-default-updated: "false" # Initial state (change to "true" if resource default updated)
+	system-abcd-reonciled-updated: "false" # Initial state to unblock the configuration(changed to true once updated)
+	controller-0-default-updated: "false" # Initial state (change to "true" if resource default updated)
+	controller-0-reonciled-updated: "false" # Initial state to unblock the configuration(changed to true once updated)
 */
 const FactoryInstallConfigMapName = "factory-install"
 const FactoryInstalled = "factory-installed"
@@ -112,6 +116,15 @@ func (m *PlatformManager) SetFactoryConfigFinalized(ns string, value bool) error
 	}
 	configMap.Data[FactoryConfigFinalized] = strconv.FormatBool(value)
 
+	// Update all keys that end with "*reconciled-updated" to false in case
+	// need a retry.
+	// The data "*default-updated" remains true as no need to re-collect.
+	for key := range configMap.Data {
+		if strings.HasSuffix(key, "reconciled-updated") {
+			configMap.Data[key] = "false"
+		}
+	}
+
 	// Update the ConfigMap
 	err = m.GetClient().Update(context.TODO(), configMap)
 	if err != nil {
@@ -122,14 +135,22 @@ func (m *PlatformManager) SetFactoryConfigFinalized(ns string, value bool) error
 	return nil
 }
 
-// SetResourceDefaultUpdated is to set the <resource name>-default-updated to
+// SetResourceDataUpdated is to set the <resource name>-<data>-updated to
 // block another update in the next around of reconciliation.
-func (m *PlatformManager) SetResourceDefaultUpdated(ns string, name string, value bool) error {
+func (m *PlatformManager) SetFactoryResourceDataUpdated(
+	ns string,
+	name string,
+	data string,
+	value bool,
+) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	configMap := &v1.ConfigMap{}
-	configMapName := types.NamespacedName{Namespace: ns, Name: FactoryInstallConfigMapName}
+	configMapName := types.NamespacedName{
+		Namespace: ns,
+		Name:      FactoryInstallConfigMapName,
+	}
 	// Lookup the factory install configMap from this namespace
 	err := m.GetClient().Get(context.TODO(), configMapName, configMap)
 	if err != nil {
@@ -146,26 +167,37 @@ func (m *PlatformManager) SetResourceDefaultUpdated(ns string, name string, valu
 	if configMap.Data == nil {
 		configMap.Data = make(map[string]string)
 	}
-	key := name + "-default-updated"
+	key := name + "-" + data + "-updated"
 	configMap.Data[key] = strconv.FormatBool(value)
 	// Update the ConfigMap
 	err = m.GetClient().Update(context.TODO(), configMap)
 	if err != nil {
-		err = perrors.Wrapf(err, "Error updating ConfigMap: %s", FactoryInstallConfigMapName)
+		err = perrors.Wrapf(
+			err,
+			"Error updating ConfigMap: %s",
+			FactoryInstallConfigMapName,
+		)
 		return err
 	}
-	log.V(2).Info("Resource defaults updated", "key", key)
+	log.V(2).Info("Resource updated", "key", key)
 
 	return nil
 }
 
-// GetResourceDefaultUpdated is to get the <resource name>-default-updated to
+// GetFactoryResourceDataUpdated is to get the <resource name>-<data>-updated to
 // block another update in the next around of reconciliation.
-func (m *PlatformManager) GetResourceDefaultUpdated(ns string, name string) (bool, error) {
+func (m *PlatformManager) GetFactoryResourceDataUpdated(
+	ns string,
+	name string,
+	data string,
+) (bool, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	configMap := &v1.ConfigMap{}
-	configMapName := types.NamespacedName{Namespace: ns, Name: FactoryInstallConfigMapName}
+	configMapName := types.NamespacedName{
+		Namespace: ns,
+		Name:      FactoryInstallConfigMapName,
+	}
 	// Lookup the factory install configMap from this namespace
 	err := m.GetClient().Get(context.TODO(), configMapName, configMap)
 	if err != nil {
@@ -179,7 +211,7 @@ func (m *PlatformManager) GetResourceDefaultUpdated(ns string, name string) (boo
 	}
 
 	// Retrieve the data entry
-	key := name + "-default-updated"
+	key := name + "-" + data + "-updated"
 	valueStr, ok := configMap.Data[key]
 	if !ok {
 		log.V(2).Info("Default updated info not found", "key", key)
@@ -189,7 +221,12 @@ func (m *PlatformManager) GetResourceDefaultUpdated(ns string, name string) (boo
 	// Convert the string value to a boolean
 	value, err := strconv.ParseBool(valueStr)
 	if err != nil {
-		return false, fmt.Errorf("error parsing boolean value from key %s in ConfigMap %s: %v", key, configMapName, err)
+		return false, fmt.Errorf(
+			"error parsing boolean value from key %s in ConfigMap %s: %v",
+			key,
+			configMapName,
+			err,
+		)
 	}
 
 	return value, nil

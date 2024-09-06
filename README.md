@@ -529,6 +529,10 @@ expected to be applied once again to finalize the configuration of the system.
 The Deployment Manager can read/update a configmap and orchestrate the
 configuration process accordingly.
 
+Note: only one host is expected to deployed before updating again, and the host
+is expected to be locked. Otherwise, the configMap will be set as finalized
+to block the further operation.
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -546,7 +550,10 @@ data:
 Once the factory-installed data is set to true, the Deployment Manager will
 recollect the default resource configuration(which is expected to be set up
 before the Deployment Manager and should not be updated by the Deployment
-Manager), and force a strategy required orchestration only once until finalized.
+Manager), and force update the reconciled status as false until finalized.
+
+The factory-config-finalized value is expected to be set as true once a host
+is unlocked.
 
 Once the factory-config-finalized is set to true, or the configmap is deleted
 from the namespace, this operation will not be triggered.

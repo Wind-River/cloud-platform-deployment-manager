@@ -288,7 +288,12 @@ func TestUpdateDefaultsRequired(t *testing.T) {
 			}
 
 			// Test setting resource default updated
-			err := manager.SetResourceDefaultUpdated("deployment", "system-abcd", tt.expectedDefaultUpdated)
+			err := manager.SetFactoryResourceDataUpdated(
+				"deployment",
+				"system-abcd",
+				"default",
+				tt.expectedDefaultUpdated,
+			)
 			if err != nil && tt.expectedError == nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -297,7 +302,11 @@ func TestUpdateDefaultsRequired(t *testing.T) {
 			}
 
 			// Test getting resource default updated
-			result, err := manager.GetResourceDefaultUpdated("deployment", "system-abcd")
+			result, err := manager.GetFactoryResourceDataUpdated(
+				"deployment",
+				"system-abcd",
+				"default",
+			)
 			if err != nil && tt.expectedError == nil {
 				t.Fatalf("expected no error, got %v", err)
 			}

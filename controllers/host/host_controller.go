@@ -748,6 +748,12 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
 		"host has been unlocked")
 
+	logHost.Info("finalizing factory install")
+	err = r.SetFactoryConfigFinalized(instance.Namespace, true)
+	if err != nil {
+		return err
+	}
+
 	// Return a retry result here because we know that it won't be possible to
 	// make any other changes until this change is complete.
 	return common.NewResourceStatusDependency("waiting for host state change in final state")
@@ -999,8 +1005,8 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 		return false
 	}
 
-	// In cases of reconfiguration(day2 operation/ reconfiguration after factory install,
-	// copy AdministrativeState temporary to ignore difference. Put original value back after DeepEqual
+	// In cases of reconfiguration(day2 operation copy AdministrativeState temporary
+	// to ignore difference. Put original value back after DeepEqual
 	adminState := other.ProfileBaseAttributes.AdministrativeState
 	if reconfig {
 		other.ProfileBaseAttributes.AdministrativeState = in.ProfileBaseAttributes.AdministrativeState
@@ -1089,7 +1095,6 @@ func (r *HostReconciler) ReconcileHostByState(
 	current *starlingxv1.HostProfileSpec,
 	profile *starlingxv1.HostProfileSpec,
 	host *v1info.HostInfo,
-	factory bool,
 ) error {
 
 	principal := false
@@ -1114,24 +1119,6 @@ func (r *HostReconciler) ReconcileHostByState(
 			}
 		} else {
 			logHost.Info("no enabled attribute changes required")
-		}
-
-		// Update strategy regardless the disabled attributes
-		// the admin network mult-netting can also be done when host is disabled
-		// StrategyRequired should not be updated when strategy was sent.
-		if factory && !r.CloudManager.GetStrategySent() {
-			logHost.Info("set lock required for configuration after factory install")
-			instance.Status.StrategyRequired = cloudManager.StrategyLockRequired
-			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
-			err := r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				err = perrors.Wrapf(err, "failed to update status: %s",
-					common.FormatStruct(instance.Status))
-				return err
-			}
-			msg := "waiting for locked state before applying out-of-service attributes"
-			m := NewLockedDisabledHostMonitor(instance, host.ID)
-			return r.CloudManager.StartMonitor(m, msg)
 		}
 
 		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
@@ -1188,7 +1175,7 @@ func (r *HostReconciler) ReconcileHostByState(
 		}
 
 	} else if host.IsLockedDisabled() {
-		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal || factory) {
+		if !r.CompareDisabledAttributes(profile, current, instance.Namespace, host.Personality, principal) {
 			err := r.ReconcileDisabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -1198,7 +1185,7 @@ func (r *HostReconciler) ReconcileHostByState(
 		}
 
 		// As disabled attributes are configured, ready to unlock the system.
-		if principal || strategy_required {
+		if strategy_required {
 			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
 			logHost.V(2).Info("set unlock required. Lock required attributes are configured")
 			r.CloudManager.SetResourceInfo(cloudManager.ResourceHost, host.Personality, instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
@@ -1576,6 +1563,16 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return err
 	}
 
+	if factory && host.IsUnlockedEnabled() {
+		// finalize factory install if host already unlocked
+		logHost.Info("finalizing factory install")
+		err = r.SetFactoryConfigFinalized(instance.Namespace, true)
+		if err != nil {
+			return err
+		}
+		factory = false
+	}
+
 	updatedRequired, err := common.UpdateDefaultsRequired(
 		r.CloudManager,
 		reqNs,
@@ -1615,7 +1612,12 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 			"defaults collected and stored")
 
 		if factory {
-			err := r.CloudManager.SetResourceDefaultUpdated(reqNs, instance.Name, true)
+			err := r.CloudManager.SetFactoryResourceDataUpdated(
+				reqNs,
+				instance.Name,
+				"default",
+				true,
+			)
 			if err != nil {
 				return err
 			}
@@ -1728,9 +1730,8 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
 
 	// Continue the following steps even inSync:
-	// factory install
 	// strategy not finished
-	if inSync && !factory &&
+	if inSync &&
 		(instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
 		instance.Status.Delta = ""
@@ -1778,7 +1779,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		}
 	}
 
-	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo, factory)
+	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo)
 	if err != nil {
 		return err
 	}
@@ -2049,7 +2050,6 @@ func (r *HostReconciler) IsCephDelayTargetGroup(client *gophercloud.ServiceClien
 // Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
-// "true" if factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // and
 // Set ObservedGeneration as the value of Generation
@@ -2064,11 +2064,6 @@ func (r *HostReconciler) UpdateConfigStatus(
 	instance *starlingxv1.Host,
 	ns string,
 ) (err error) {
-	factory, err := r.CloudManager.GetFactoryInstall(ns)
-	logHost.V(2).Info("Factory install from config", "factory", factory)
-	if err != nil {
-		return err
-	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -2080,10 +2075,9 @@ func (r *HostReconciler) UpdateConfigStatus(
 		}
 
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
-		// "true"  if the factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -2124,7 +2118,7 @@ func (r *HostReconciler) UpdateConfigStatus(
 		if hostProfile != nil {
 			if instance.Status.ObservedHostProfileGeneration != hostProfile.ObjectMeta.Generation {
 				if (instance.Status.ObservedHostProfileGeneration == 0 && instance.Status.Reconciled) ||
-					instance.Status.DeploymentScope != cloudManager.ScopePrincipal || !factory {
+					instance.Status.DeploymentScope != cloudManager.ScopePrincipal {
 					// Case: DM upgrade in reconciled node or update in bootstrap
 					instance.Status.HostProfileConfigurationUpdated = false
 					logHost.V(2).Info("set profile config updated false: bootstrap or DM upgrade")
@@ -2148,12 +2142,12 @@ func (r *HostReconciler) UpdateConfigStatus(
 				instance.Status.ConfigurationUpdated = false
 				logHost.V(2).Info("set host config updated false: bootstrap or DM upgrade")
 			} else {
-				// Case: Fresh/facotry install or Day-2 operation
+				// Case: Fresh install or Day-2 operation
 				instance.Status.ConfigurationUpdated = true
 				instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 				logHost.V(2).Info("set host config updated true: initial or day2 operation starts")
 				logHost.V(2).Info("set not required: initial or day2 operation starts. host config updated")
-				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
@@ -2177,6 +2171,55 @@ func (r *HostReconciler) UpdateConfigStatus(
 		return err
 	}
 
+	return nil
+}
+
+// During factory install, the reconciled status is expected to be updated to
+// false to unblock the configuration as the day 1 configuration.
+// UpdateStatusForFactoryInstall updates the status by checking the factory
+// install data.
+func (r *HostReconciler) UpdateStatusForFactoryInstall(
+	ns string,
+	instance *starlingxv1.Host,
+) error {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	if err != nil {
+		return err
+	}
+	if !factory {
+		return nil
+	}
+
+	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+		ns,
+		instance.Name,
+		"reconciled",
+	)
+	if err != nil {
+		return err
+	}
+
+	if !reconciledUpdated {
+		instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return err
+		}
+		err = r.CloudManager.SetFactoryResourceDataUpdated(
+			ns,
+			instance.Name,
+			"reconciled",
+			true,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	r.ReconcilerEventLogger.NormalEvent(
+		instance,
+		common.ResourceUpdated,
+		"Set Reconciled false for factory install",
+	)
 	return nil
 }
 
@@ -2234,6 +2277,11 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
+	err = r.UpdateStatusForFactoryInstall(request.Namespace, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// The status reaches its desired status post reconciled
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
@@ -2241,12 +2289,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
 		!platformnetwork_update_required {
 
-		factory, err := r.GetFactoryInstall(request.Namespace)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		if !scope_updated && !factory {
+		if !scope_updated {
 			logHost.V(2).Info("reconcile finished, desired state reached after reconciled.")
 			return reconcile.Result{}, nil
 		}

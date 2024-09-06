@@ -148,8 +148,8 @@ type CloudManager interface {
 	// factory install related methods
 	GetFactoryInstall(namespace string) (bool, error)
 	SetFactoryConfigFinalized(namespace string, value bool) error
-	SetResourceDefaultUpdated(namespace string, name string, value bool) error
-	GetResourceDefaultUpdated(namespace string, name string) (bool, error)
+	SetFactoryResourceDataUpdated(namespace string, name string, data string, value bool) error
+	GetFactoryResourceDataUpdated(namespace string, name string, data string) (bool, error)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
