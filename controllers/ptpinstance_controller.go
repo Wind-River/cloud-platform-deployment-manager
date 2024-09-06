@@ -423,17 +423,11 @@ func (r *PtpInstanceReconciler) StopAfterInSync() bool {
 // Update ReconcileAfterInSync in instance
 // ReconcileAfterInSync value will be:
 // "true"  if deploymentScope is "principal" because it is day 2 operation (update configuration)
-// "true" if factory install is not finalized
 // "false" if deploymentScope is "bootstrap"
 // Then reflect these values to cluster object
 // It is expected that instance.Status.Deployment scope is already updated by
 // UpdateDeploymentScope at this point.
 func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInstance, ns string) (err error) {
-	factory, err := r.CloudManager.GetFactoryInstall(ns)
-	if err != nil {
-		return err
-	}
-
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
@@ -445,10 +439,9 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 
 		// Put ReconcileAfterInSync values depends on scope
 		// "true"  if scope is "principal" because it is day 2 operation (update configuration)
-		// "true" if factory install is not finalized
 		// "false" if scope is "bootstrap" or None
 		afterInSync, ok := instance.Annotations[cloudManager.ReconcileAfterInSync]
-		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
+		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			if !ok || afterInSync != "true" {
 				instance.Annotations[cloudManager.ReconcileAfterInSync] = "true"
 			}
@@ -485,9 +478,9 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 				// Case: DM upgrade in reconciled node
 				instance.Status.ConfigurationUpdated = false
 			} else {
-				// Case: Fresh/factory install or Day-2 operation
+				// Case: Fresh install or Day-2 operation
 				instance.Status.ConfigurationUpdated = true
-				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal || factory {
+				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
 					r.CloudManager.UpdateConfigVersion()
@@ -508,6 +501,47 @@ func (r *PtpInstanceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInst
 		return err
 	}
 
+	return nil
+}
+
+// During factory install, the reconciled status is expected to be updated to
+// false to unblock the configuration as the day 1 configuration.
+// UpdateStatusForFactoryInstall updates the status by checking the factory
+// install data.
+func (r *PtpInstanceReconciler) UpdateStatusForFactoryInstall(
+	ns string,
+	instance *starlingxv1.PtpInstance,
+) error {
+	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+		ns,
+		instance.Name,
+		"reconciled",
+	)
+	if err != nil {
+		return err
+	}
+
+	if !reconciledUpdated {
+		instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return err
+		}
+		err = r.CloudManager.SetFactoryResourceDataUpdated(
+			ns,
+			instance.Name,
+			"reconciled",
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		r.ReconcilerEventLogger.NormalEvent(
+			instance,
+			common.ResourceUpdated,
+			"Set Reconciled false for factory install",
+		)
+	}
 	return nil
 }
 
@@ -557,13 +591,19 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return reconcile.Result{}, err
 	}
 
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
-
-		factory, err := r.GetFactoryInstall(request.Namespace)
+	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if factory {
+		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+	}
+
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled {
 
 		if !scope_updated && !factory {
 			logPtpInstance.V(2).Info("reconcile finished, desired state reached after reconciled.")

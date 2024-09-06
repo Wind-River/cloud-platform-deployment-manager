@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
@@ -221,11 +222,24 @@ func (m *Dummymanager) SetFactoryConfigFinalized(namespace string, value bool) e
 		configMap.Data = make(map[string]string)
 	}
 	configMap.Data[FactoryConfigFinalized] = strconv.FormatBool(value)
+	// Update all keys that end with "*reconciled-updated" to false in case
+	// need a retry.
+	// The data "*default-updated" remains true as no need to re-collect.
+	for key := range configMap.Data {
+		if strings.HasSuffix(key, "reconciled-updated") {
+			configMap.Data[key] = "false"
+		}
+	}
 
 	return m.Client.Update(context.TODO(), configMap)
 }
 
-func (m *Dummymanager) SetResourceDefaultUpdated(namespace string, name string, value bool) error {
+func (m *Dummymanager) SetFactoryResourceDataUpdated(
+	namespace string,
+	name string,
+	data string,
+	value bool,
+) error {
 	if m.Client == nil {
 		return errors.New("kubernetes client is not initialized")
 	}
@@ -250,7 +264,7 @@ func (m *Dummymanager) SetResourceDefaultUpdated(namespace string, name string, 
 	if configMap.Data == nil {
 		configMap.Data = make(map[string]string)
 	}
-	key := name + "-default-updated"
+	key := name + "-" + data + "-updated"
 	configMap.Data[key] = strconv.FormatBool(value)
 
 	if err := m.Client.Update(context.TODO(), configMap); err != nil {
@@ -264,7 +278,11 @@ func (m *Dummymanager) SetResourceDefaultUpdated(namespace string, name string, 
 	return nil
 }
 
-func (m *Dummymanager) GetResourceDefaultUpdated(namespace, name string) (bool, error) {
+func (m *Dummymanager) GetFactoryResourceDataUpdated(
+	namespace,
+	name string,
+	data string,
+) (bool, error) {
 	if m.Client == nil {
 		return false, errors.New("kubernetes client is not initialized")
 	}
@@ -279,7 +297,7 @@ func (m *Dummymanager) GetResourceDefaultUpdated(namespace, name string) (bool, 
 		return false, nil
 	}
 
-	key := name + "-default-updated"
+	key := name + "-" + data + "-updated"
 	valueStr, ok := configMap.Data[key]
 	if !ok {
 		return false, nil

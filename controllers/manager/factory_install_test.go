@@ -61,6 +61,10 @@ func TestSetFactoryConfigFinalized(t *testing.T) {
 			Name:      FactoryInstallConfigMapName,
 			Namespace: "deployment",
 		},
+		Data: map[string]string{
+			"factory-installed":              "true",
+			"system-abcd-reconciled-updated": "true",
+		},
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(configMap).Build()
 
@@ -88,9 +92,12 @@ func TestSetFactoryConfigFinalized(t *testing.T) {
 	if updatedConfigMap.Data["factory-config-finalized"] != "true" {
 		t.Fatalf("expected 'true', got %v", updatedConfigMap.Data["factory-config-finalized"])
 	}
+	if updatedConfigMap.Data["system-abcd-reconciled-updated"] != "false" {
+		t.Fatalf("expected 'false', got %v", updatedConfigMap.Data["system-abcd-reconciled-updated"])
+	}
 }
 
-func TestSetResourceDefaultUpdated(t *testing.T) {
+func TestSetFactoryResourceDataUpdated(t *testing.T) {
 	// Create a scheme and add ConfigMap to it
 	scheme := runtime.NewScheme()
 	err := v1.AddToScheme(scheme)
@@ -113,8 +120,13 @@ func TestSetResourceDefaultUpdated(t *testing.T) {
 		Client:   k8sClient, // Assign the fake client to the manager
 	}
 
-	// Test SetResourceDefaultUpdated
-	err = manager.SetResourceDefaultUpdated("deployment", "system-abcd", true)
+	// Test SetFactoryResourceDataUpdated to true for default
+	err = manager.SetFactoryResourceDataUpdated(
+		"deployment",
+		"system-abcd",
+		"default",
+		true,
+	)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -131,9 +143,51 @@ func TestSetResourceDefaultUpdated(t *testing.T) {
 	if updatedConfigMap.Data["system-abcd-default-updated"] != "true" {
 		t.Fatalf("expected 'true', got %v", updatedConfigMap.Data["system-abcd-default-updated"])
 	}
+
+	// Test SetFactoryResourceDataUpdated to false for default
+	err = manager.SetFactoryResourceDataUpdated(
+		"deployment",
+		"system-abcd",
+		"default",
+		false,
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	err = k8sClient.Get(context.TODO(), client.ObjectKey{
+		Name:      FactoryInstallConfigMapName,
+		Namespace: "deployment",
+	}, updatedConfigMap)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if updatedConfigMap.Data["system-abcd-default-updated"] != "false" {
+		t.Fatalf("expected 'false', got %v", updatedConfigMap.Data["system-abcd-default-updated"])
+	}
+
+	// Test SetFactoryResourceDataUpdated to false for reconciled
+	err = manager.SetFactoryResourceDataUpdated(
+		"deployment",
+		"system-abcd",
+		"reconclied",
+		true,
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	err = k8sClient.Get(context.TODO(), client.ObjectKey{
+		Name:      FactoryInstallConfigMapName,
+		Namespace: "deployment",
+	}, updatedConfigMap)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if updatedConfigMap.Data["system-abcd-reconclied-updated"] != "true" {
+		t.Fatalf("expected 'true', got %v", updatedConfigMap.Data["system-abcd-reconclied-updated"])
+	}
 }
 
-func TestGetResourceDefaultUpdated(t *testing.T) {
+func TestGetFactoryResourceDataUpdated(t *testing.T) {
 	// Create a scheme and add ConfigMap to it
 	scheme := runtime.NewScheme()
 	err := v1.AddToScheme(scheme)
@@ -148,7 +202,8 @@ func TestGetResourceDefaultUpdated(t *testing.T) {
 			Namespace: "deployment",
 		},
 		Data: map[string]string{
-			"system-abcd-default-updated": "true",
+			"system-abcd-default-updated":     "true",
+			"controller-0-reconciled-updated": "false",
 		},
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(configMap).Build()
@@ -160,12 +215,27 @@ func TestGetResourceDefaultUpdated(t *testing.T) {
 		defaultUpdated: true,      // Set the defaultUpdated flag to true for testing
 	}
 
-	// Test GetResourceDefaultUpdated
-	result, err := manager.GetResourceDefaultUpdated("deployment", "system-abcd")
+	// Test GetFactoryResourceDataUpdated
+	result, err := manager.GetFactoryResourceDataUpdated(
+		"deployment",
+		"system-abcd",
+		"default",
+	)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if !result {
 		t.Fatalf("expected true, got false")
+	}
+	result, err = manager.GetFactoryResourceDataUpdated(
+		"deployment",
+		"controller-0",
+		"reconclied",
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result {
+		t.Fatalf("expected false, got true")
 	}
 }

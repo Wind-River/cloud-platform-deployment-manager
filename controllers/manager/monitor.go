@@ -6,6 +6,8 @@ package manager
 import (
 	"fmt"
 
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
@@ -13,7 +15,6 @@ import (
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // Monitor defines the interface which must be implemented by all concrete
@@ -327,15 +328,6 @@ func monitorStrategyState(management CloudManager) bool {
 	case StrategyApplied:
 		log.Info("Strategy applied. Finish strategy monitor.")
 		deleteStrategy(management, client)
-		ns := management.GetNamespace()
-		if ns == "" {
-			log.Info("System namespace does not exist. Skip")
-		} else {
-			err := management.SetFactoryConfigFinalized(ns, true)
-			if err != nil {
-				log.Error(err, "Failed to set factory config finalized")
-			}
-		}
 		return true
 	}
 	return false
