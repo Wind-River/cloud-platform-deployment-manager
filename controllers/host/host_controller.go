@@ -1842,6 +1842,14 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	return nil
 }
 
+// removing the HostFinalizer from the host resource
+func (r *HostReconciler) removeHostFinalizer(instance *starlingxv1.Host) {
+	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, HostFinalizerName)
+	if err := r.Client.Update(context.Background(), instance); err != nil {
+		logHost.Error(err, "failed to remove the finalizer in the host because of the error:%v")
+	}
+}
+
 // ReconcileResource interacts with the system API in order to reconcile the
 // state of a data network with the state stored in the k8s database.
 func (r *HostReconciler) ReconcileResource(
@@ -1875,6 +1883,11 @@ func (r *HostReconciler) ReconcileResource(
 
 	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, HostFinalizerName) {
+
+			// Remove the finalizer so we don't try to do this delete action again.
+			// Defer the removal of the finalizer until the end of the function
+			defer r.removeHostFinalizer(instance)
+
 			// A finalizer is still present so we need to try to delete the
 			// host from the system.
 			if host != nil {
@@ -1882,15 +1895,8 @@ func (r *HostReconciler) ReconcileResource(
 				if err != nil {
 					return err
 				}
-
 			} else {
 				logHost.Info("host being deleted is no longer present on system")
-			}
-
-			// Remove the finalizer so we don't try to do this delete action again.
-			instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, HostFinalizerName)
-			if err := r.Client.Update(context.Background(), instance); err != nil {
-				return err
 			}
 		}
 
