@@ -207,10 +207,20 @@ func (r *PtpInterfaceReconciler) ReconcileNew(client *gophercloud.ServiceClient,
 	return new, nil
 }
 
+// Remove PtpInterface Finalizer
+func (r *PtpInterfaceReconciler) removePtpInterfaceFinalizer(instance *starlingxv1.PtpInterface) {
+	// Remove the finalizer so the kubernetes delete operation can continue.
+	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
+	if err := r.Client.Update(context.Background(), instance); err != nil {
+		logDataNetwork.Error(err, "failed to remove the finalizer in the PtpInterface because of the error:%v")
+	}
+}
+
 // ReconciledDeleted is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *PtpInterfaceReconciler) ReconciledDeleted(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInterface, i *ptpinterfaces.PTPInterface) error {
 	if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
+		defer r.removePtpInterfaceFinalizer(instance)
 		if i != nil {
 			// Unless it was already deleted go ahead and attempt to delete it.
 			err := ptpinterfaces.Delete(client, i.UUID).ExtractErr()
@@ -232,13 +242,6 @@ func (r *PtpInterfaceReconciler) ReconciledDeleted(client *gophercloud.ServiceCl
 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "PTP interface has been deleted")
 		}
-
-		// Remove the finalizer so the kubernetes delete operation can continue.
-		instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
-		if err := r.Client.Update(context.Background(), instance); err != nil {
-			return err
-		}
-
 	}
 
 	return nil
@@ -401,6 +404,12 @@ func (r *PtpInterfaceReconciler) ReconcileResource(client *gophercloud.ServiceCl
 	logPtpInterface.Info("ptp interface reconcile resource")
 	found, err := r.FindExistingPTPInterface(client, instance)
 	if err != nil {
+		if !instance.DeletionTimestamp.IsZero() {
+			if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
+				// Remove the finalizer
+				r.removePtpInterfaceFinalizer(instance)
+			}
+		}
 		return err
 	}
 
