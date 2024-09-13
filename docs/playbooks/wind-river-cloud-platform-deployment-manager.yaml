@@ -154,9 +154,20 @@
         path: /etc/platform/.unlock_ready
       register: is_unlock_ready
 
-    - name: Set reconfiguration fact
+    - name: Check if host is provisioned
+      shell: |
+        source /etc/platform/openrc;
+        system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^invprovision/ {print $4}'
+      register: get_host_invprovision
+
+    - name: Fail to update the deployment manager when host is upgrading
+      fail:
+        msg: "Fail to update the deployment manager when the host is upgrading"
+      when: get_host_invprovision.stdout == 'upgrading'
+
+    - name: Set initial configuration fact
       set_fact:
-        reconfig_flag: "{{ true if (is_unlock_ready.stat.exists == True)
+        initial_config_done: "{{ true if (get_host_invprovision.stdout == 'provisioned')
                         else false }}"
 
     - name: Mark the bootstrap as finalized
@@ -164,7 +175,7 @@
         path: "{{ config_permdir }}/.bootstrap_finalized"
         state: touch
       become: yes
-      when: not reconfig_flag
+      when: not initial_config_done
 
     - block:
       - name: Search for the pod of the Deployment Manager
@@ -176,7 +187,7 @@
 
       - debug:
           msg: "{{ deployment_manager_pod_name.stdout }}"
-      when: reconfig_flag
+      when: initial_config_done
 
     - name: Check deployment-manager app status
       shell: source /etc/platform/openrc; system application-list --nowrap | grep deployment-manager | awk '{ print $10 }'
@@ -440,7 +451,7 @@
             - "administrative state: {{administrative_state}}"
 
       when:
-        - not reconfig_flag
+        - not initial_config_done
         - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
         - "'unlocked' not in current_administrativestate.stdout"
@@ -777,7 +788,7 @@
                  and get_unrecon_status_post.stdout != "")
 
       when:
-        - not reconfig_flag
+        - not initial_config_done
         - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
         - "'unlocked' not in current_administrativestate.stdout"
