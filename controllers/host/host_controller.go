@@ -1869,6 +1869,12 @@ func (r *HostReconciler) ReconcileResource(
 		host, err = hosts.Get(client, *id).Extract()
 		if err != nil {
 			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+				if !instance.DeletionTimestamp.IsZero() {
+					if utils.ContainsString(instance.ObjectMeta.Finalizers, HostFinalizerName) {
+						// Remove the finalizer
+						r.removeHostFinalizer(instance)
+					}
+				}
 				err = perrors.Wrapf(err, "failed to get: %s", *id)
 				return err
 			}

@@ -182,10 +182,20 @@ func (r *PtpInstanceReconciler) ReconcileNew(client *gophercloud.ServiceClient, 
 	return new, nil
 }
 
+// Remove finalizer
+func (r *PtpInstanceReconciler) removePtpInstanceFinalizer(instance *starlingxv1.PtpInstance) {
+	// Remove the finalizer so the kubernetes delete operation can continue.
+	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName)
+	if err := r.Client.Update(context.Background(), instance); err != nil {
+		logPtpInstance.Error(err, "failed to remove the finalizer in the ptpInstance because of the error:%v")
+	}
+}
+
 // ReconciledDeleted is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *PtpInstanceReconciler) ReconciledDeleted(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInstance, i *ptpinstances.PTPInstance) error {
 	if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName) {
+		defer r.removePtpInstanceFinalizer(instance)
 		if i != nil {
 			// Unless it was already deleted go ahead and attempt to delete it.
 			err := ptpinstances.Delete(client, i.UUID).ExtractErr()
@@ -207,13 +217,6 @@ func (r *PtpInstanceReconciler) ReconciledDeleted(client *gophercloud.ServiceCli
 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "PTP instance has been deleted")
 		}
-
-		// Remove the finalizer so the kubernetes delete operation can continue.
-		instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName)
-		if err := r.Client.Update(context.Background(), instance); err != nil {
-			return err
-		}
-
 	}
 
 	return nil
@@ -375,8 +378,14 @@ func (r *PtpInstanceReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 // state of a ptp instance with the state stored in the k8s database.
 func (r *PtpInstanceReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInstance) error {
 	found, err := r.FindExistingPTPInstance(client, instance)
-
 	if err != nil {
+		if !instance.DeletionTimestamp.IsZero() {
+			if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInstanceFinalizerName) {
+
+				// Remove the PtpInstance finalizer
+				r.removePtpInstanceFinalizer(instance)
+			}
+		}
 		return err
 	}
 

@@ -203,10 +203,20 @@ func (r *DataNetworkReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 	return nil
 }
 
+// Removes the datanetwork finalizer
+func (r *DataNetworkReconciler) removeDataNetworkFinalizer(instance *starlingxv1.DataNetwork) {
+	// Remove the finalizer so the kubernetes delete operation can continue.
+	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName)
+	if err := r.Client.Update(context.Background(), instance); err != nil {
+		logDataNetwork.Error(err, "failed to remove the finalizer in the data network because of the error:%v")
+	}
+}
+
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *DataNetworkReconciler) ReconciledDeleted(client *gophercloud.ServiceClient, instance *starlingxv1.DataNetwork, network *datanetworks.DataNetwork) error {
 	if utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
+		defer r.removeDataNetworkFinalizer(instance)
 		if network != nil {
 			// Unless it was already deleted go ahead and attempt to delete it.
 			err := datanetworks.Delete(client, network.ID).ExtractErr()
@@ -228,15 +238,7 @@ func (r *DataNetworkReconciler) ReconciledDeleted(client *gophercloud.ServiceCli
 
 			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "data network has been deleted")
 		}
-
-		// Remove the finalizer so the kubernetes delete operation can continue.
-		instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName)
-		if err := r.Client.Update(context.Background(), instance); err != nil {
-			return err
-		}
-
 	}
-
 	return nil
 }
 
@@ -321,6 +323,12 @@ func (r *DataNetworkReconciler) FindExistingResource(client *gophercloud.Service
 func (r *DataNetworkReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.DataNetwork) error {
 	network, err := r.FindExistingResource(client, instance)
 	if err != nil {
+		if !instance.DeletionTimestamp.IsZero() {
+			if utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
+				// Remove the finalizer
+				r.removeDataNetworkFinalizer(instance)
+			}
+		}
 		return err
 	}
 
