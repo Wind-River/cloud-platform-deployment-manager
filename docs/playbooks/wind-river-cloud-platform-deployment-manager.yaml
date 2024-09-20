@@ -643,7 +643,7 @@
                 wait_for:
                   timeout: 300
                 register: waiting_after_failures
-                ignore_errors: true
+                ignore_unreachable: true
 
               - name: Get post unlock state
                 shell: >-
@@ -684,7 +684,7 @@
             wait_for:
               timeout: "{{ boot_wait_time }}"
             register: waiting_after_reboot
-            ignore_errors: true
+            ignore_unreachable: true
 
           # Retry block: sometimes system reboots twice
           # It will take some extra time.
