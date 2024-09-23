@@ -657,7 +657,7 @@
                 wait_for:
                   timeout: 300
                 register: waiting_after_failures
-                ignore_errors: true
+                ignore_unreachable: true
 
               - name: Get post unlock state
                 shell: >-
