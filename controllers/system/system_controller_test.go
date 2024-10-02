@@ -163,4 +163,57 @@ var _ = Describe("System controller", func() {
 			Expect(k8sClient.Create(ctx, created)).To(Succeed())
 		})
 	})
+	Context("For the FixCertsToManage func when current has runtimeCerts", func() {
+		It("Should remove the rutime certs and return the remaining", func() {
+			specCerts := &starlingxv1.CertificateList{
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-1",
+					Signature: "",
+				},
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-2",
+					Signature: "",
+				},
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-3",
+					Signature: "",
+				},
+			}
+			currentCerts := &starlingxv1.CertificateList{
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-1",
+					Signature: "ssl_ca_0011",
+				},
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-2",
+					Signature: "ssl_ca_0012",
+				},
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-0",
+					Signature: "ssl_ca_0013",
+				},
+			}
+
+			expRes := starlingxv1.CertificateList{
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-1",
+					Signature: "ssl_ca_0011",
+				},
+				{
+					Type:      "ssl_ca",
+					Secret:    "ssl-ca-secret-2",
+					Signature: "ssl_ca_0012",
+				},
+			}
+			res := FixCertsToManage(specCerts, currentCerts)
+			Expect(res).To(Equal(expRes))
+		})
+	})
 })

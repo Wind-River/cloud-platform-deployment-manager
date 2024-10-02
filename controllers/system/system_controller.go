@@ -1080,6 +1080,23 @@ func (r *SystemReconciler) ReconcileSystemFinal(client *gophercloud.ServiceClien
 	return nil
 }
 
+// Fixes extra certs from the response of the current configuration according to the certs specified in the profile.
+func FixCertsToManage(specCerts, currentCerts *starlingxv1.CertificateList) starlingxv1.CertificateList {
+	var res starlingxv1.CertificateList
+	certificateMap := make(map[string]bool)
+
+	//signature of spec certs are empty at this point so secrets are checked rather than signatures
+	for _, cert := range *specCerts {
+		certificateMap[cert.Secret] = true
+	}
+	for _, cert := range *currentCerts {
+		if _, ok := certificateMap[cert.Secret]; ok {
+			res = append(res, cert)
+		}
+	}
+	return res
+}
+
 // ReconcileRequired determines whether reconciliation is allowed/required on
 // the System resource.  Reconciliation is required if there is a difference
 // between the configured Spec and the current system state.  Reconciliation
@@ -1100,6 +1117,12 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 	current, err := starlingxv1.NewSystemSpec(*info)
 	if err != nil {
 		return err, false
+	}
+
+	// We need to remove the runtime installed certificated from the current
+	if spec.Certificates != nil && current.Certificates != nil {
+		res := FixCertsToManage(spec.Certificates, current.Certificates)
+		current.Certificates = &res
 	}
 
 	if spec.DeepEqual(current) {
