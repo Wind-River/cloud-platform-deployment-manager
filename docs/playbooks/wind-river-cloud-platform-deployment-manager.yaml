@@ -1,3 +1,4 @@
+---
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2021-2024 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
@@ -383,6 +384,14 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
+        - name: Check for the presence of the subcloud enrollment completed
+          stat:
+            path: /var/run/.subcloud_enrollment_completed
+          register: subcloud_enrollment_status
+
+        - set_fact:
+            subcloud_enrollment: "{{ subcloud_enrollment_status.stat.exists }}"
+
         - name: Configure required region value if not systemcontroller
           block:
           - name: Get region name from environment
@@ -420,19 +429,48 @@
           failed_when: false
           register: scope_principal
 
+        - name: Fail if system subcloud enrollment finalized but have principal in scope
+          fail:
+            msg:
+              "Cannot apply principal scope on enrolled subcloud before unlock."
+          when:
+            - scope_principal.stdout_lines | length > 0
+            - subcloud_enrollment
+
         # Check if there is any strategy-related alarm
         - name: Check if a VIM strategy is in progress
           shell: |
             source /etc/platform/openrc; fm alarm-list | grep 900.
           failed_when: false
           register: strategy_alarms
+          when: scope_principal.stdout_lines | length > 0
 
         - name: Fail if there is a strategy in progress during a Day-2 operation
           fail:
             msg:
               - "VIM Strategy in progress."
               - "Wait until all the strategies are cleared before applying the system configuration update."
-          when: ( scope_principal.stdout_lines | length > 0 and strategy_alarms.stdout != "")
+          when:
+            - scope_principal.stdout_lines | length > 0
+            - strategy_alarms.stdout != ""
+
+        - name: Append config map for subcloud enrollment
+          blockinfile:
+            path: "{{ deploy_config }}"
+            block: |
+
+              ---
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: factory-install
+                namespace: deployment
+              data:
+                factory-installed: "true"
+                factory-config-finalized: "false"
+            marker: ""
+            insertafter: EOF
+          when: subcloud_enrollment
 
         - name: Apply Deployment Configuration File
           shell: KUBECONFIG=/etc/kubernetes/admin.conf /bin/kubectl apply -f {{ deploy_config }}
@@ -455,6 +493,13 @@
         - wait_for:
             timeout: 5
             msg: Waiting after apply DM config
+
+        - name: Restart the deployment manager if subcloud enrollment
+          command: >-
+            kubectl -n platform-deployment-manager delete pods --selector control-plane=controller-manager
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          when: subcloud_enrollment
 
         # Check the current administrativestate
         - name: Get current administrativeState
