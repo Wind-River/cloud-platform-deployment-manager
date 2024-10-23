@@ -71,16 +71,21 @@ var defaultHostFilters = []HostFilter{
 	NewHostKernelFilter(),
 }
 
+var defaultPlatformNetworkFilters = []PlatformNetworkFilter{
+	NewAddressPoolFilter(),
+}
+
 // NewDeploymentBuilder returns an instantiation of a deployment builder
 // structure.
 func NewDeploymentBuilder(client *gophercloud.ServiceClient, namespace string, name string, progressWriter io.Writer) *DeploymentBuilder {
 	return &DeploymentBuilder{
-		client:         client,
-		namespace:      namespace,
-		name:           name,
-		progressWriter: progressWriter,
-		systemFilters:  defaultSystemFilters,
-		hostFilters:    defaultHostFilters}
+		client:                 client,
+		namespace:              namespace,
+		name:                   name,
+		progressWriter:         progressWriter,
+		systemFilters:          defaultSystemFilters,
+		platformNetworkFilters: defaultPlatformNetworkFilters,
+		hostFilters:            defaultHostFilters}
 }
 
 // parseIncompleteSecret is a convenience unitilty function to parse an incompleteSecret

@@ -267,7 +267,9 @@ var _ = Describe("Test Build utilities:", func() {
 		Expect(reflect.DeepEqual(
 			got.hostFilters, expectHostFilter)).To(BeTrue())
 
-		var expectPlatformNetworkFilters []PlatformNetworkFilter
+		expectPlatformNetworkFilters := []PlatformNetworkFilter{
+			NewAddressPoolFilter(),
+		}
 		Expect(reflect.DeepEqual(
 			got.platformNetworkFilters, expectPlatformNetworkFilters)).To(BeTrue())
 	})

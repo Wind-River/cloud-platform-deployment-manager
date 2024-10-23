@@ -1559,4 +1559,46 @@ var _ = Describe("Test filters utilities:", func() {
 			})
 		})
 	})
+	Describe("Test AddressPoolFilter filter func", func() {
+		Context("When addresspool has controllerAddress as empty", func() {
+			It("Updated the controllerAddresses to nil", func() {
+				emptyString := ""
+				addr0 := "192.168.192.01"
+				addr1 := "192.168.192.02"
+				in := &AddressPoolFilter{}
+				platform_network := &v1.PlatformNetwork{}
+				deployment := &Deployment{
+					AddressPools: []*v1.AddressPool{
+						{
+							Spec: v1.AddressPoolSpec{
+								Controller0Address: &emptyString,
+								Controller1Address: &emptyString,
+							},
+						},
+						{
+							Spec: v1.AddressPoolSpec{
+								Controller0Address: &addr0,
+								Controller1Address: &addr1,
+							},
+						},
+					},
+				}
+				expAddrPools := []*v1.AddressPool{
+					{
+						Spec: v1.AddressPoolSpec{},
+					},
+					{
+						Spec: v1.AddressPoolSpec{
+							Controller0Address: &addr0,
+							Controller1Address: &addr1,
+						},
+					},
+				}
+				// Call the filter method
+				err := in.Filter(platform_network, deployment)
+				Expect(err).To(BeNil())
+				Expect(deployment.AddressPools).To(Equal(expAddrPools))
+			})
+		})
+	})
 })
