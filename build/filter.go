@@ -761,6 +761,30 @@ func (in *CoreNetworkFilter) Filter(platform_network *v1.PlatformNetwork, deploy
 	return nil
 }
 
+// Interface removes the empty controllerAddress attributes from the addresspool
+type AddressPoolFilter struct {
+}
+
+func NewAddressPoolFilter() *AddressPoolFilter {
+	return &AddressPoolFilter{}
+}
+
+func (in *AddressPoolFilter) Filter(platform_network *v1.PlatformNetwork, deployment *Deployment) error {
+	if deployment.AddressPools != nil {
+		for _, addrPool := range deployment.AddressPools {
+			// Check if Controller0Address is not nil and if it's an empty string
+			if addrPool.Spec.Controller0Address != nil && *addrPool.Spec.Controller0Address == "" {
+				addrPool.Spec.Controller0Address = nil
+			}
+			// Check if Controller1Address is not nil and if it's an empty string
+			if addrPool.Spec.Controller1Address != nil && *addrPool.Spec.Controller1Address == "" {
+				addrPool.Spec.Controller1Address = nil
+			}
+		}
+	}
+	return nil
+}
+
 // Filter all filesystem types except backup and database
 type FileSystemFilter struct {
 }
