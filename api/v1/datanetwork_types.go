@@ -128,6 +128,18 @@ func (d *DataNetwork) SetAnnotations(annotations map[string]string) {
 	d.ObjectMeta.Annotations = annotations
 }
 
+func (d *DataNetwork) GetStatusDelta() string {
+	return d.Status.Delta
+}
+
+func (d *DataNetwork) SetStatusDelta(delta string) {
+	d.Status.Delta = delta
+}
+
+func (d *DataNetwork) GetInsync() bool {
+	return d.Status.InSync
+}
+
 // +kubebuilder:object:root=true
 // DataNetworks defines the attributes that represent the data network level
 // attributes of a StarlingX system.  This is a composition of the following
