@@ -1729,36 +1729,35 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 
 	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
+	oldDelta := instance.Status.Delta
 
-	// Continue the following steps even inSync:
-	// strategy not finished
-	if inSync &&
-		(instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
-		logHost.V(2).Info("no changes between composite profile and current configuration")
+	if inSync {
+		logHost.Info("Cleaning Delta since inSync")
 		instance.Status.Delta = ""
-		return nil
-	}
-
-	logHost.Info("defaults are:", "values", defaults)
-
-	logHost.Info("final profile is:", "values", profile)
-
-	logHost.Info("current config is:", "values", current)
-
-	deltaString, err := common.GetDeltaString(profile, current, common.HostProperties)
-	if err != nil {
+	} else if deltaString, err := common.GetDeltaString(profile, current, common.HostProperties); err == nil {
+		instance.Status.Delta = deltaString
+	} else {
 		logHost.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
 	}
 
-	if deltaString != "" {
-		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
-		instance.Status.Delta = deltaString
-
+	if oldDelta != instance.Status.Delta {
+		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", instance.Status.Delta))
 		err = r.Client.Status().Update(context.TODO(), instance)
 		if err != nil {
 			logHost.Info(fmt.Sprintf("failed to update status: %s", err))
 		}
 	}
+
+	// strategy not finished
+	if inSync &&
+		(instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
+		logHost.V(2).Info("no changes between composite profile and current configuration")
+		return nil
+	}
+
+	logHost.Info("defaults are:", "values", defaults)
+	logHost.Info("final profile is:", "values", profile)
+	logHost.Info("current config is:", "values", current)
 
 	if instance.Status.Reconciled &&
 		r.StopAfterInSync() &&
