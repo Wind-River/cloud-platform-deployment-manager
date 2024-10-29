@@ -24,6 +24,7 @@ webhooks:
     resources:
     - addresspools
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -44,6 +45,7 @@ webhooks:
     resources:
     - hosts
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -64,6 +66,7 @@ webhooks:
     resources:
     - hostprofiles
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -84,6 +87,7 @@ webhooks:
     resources:
     - platformnetworks
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -104,6 +108,7 @@ webhooks:
     resources:
     - ptpinstances
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -124,6 +129,7 @@ webhooks:
     resources:
     - ptpinterfaces
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -144,6 +150,7 @@ webhooks:
     resources:
     - systems
   sideEffects: None
+  timeoutSeconds: 30
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -170,6 +177,7 @@ webhooks:
     resources:
     - addresspools
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -190,6 +198,7 @@ webhooks:
     resources:
     - hosts
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -210,6 +219,7 @@ webhooks:
     resources:
     - hostprofiles
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -230,6 +240,7 @@ webhooks:
     resources:
     - platformnetworks
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -250,6 +261,7 @@ webhooks:
     resources:
     - ptpinstances
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -270,6 +282,7 @@ webhooks:
     resources:
     - ptpinterfaces
   sideEffects: None
+  timeoutSeconds: 30
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -290,3 +303,4 @@ webhooks:
     resources:
     - systems
   sideEffects: None
+  timeoutSeconds: 30

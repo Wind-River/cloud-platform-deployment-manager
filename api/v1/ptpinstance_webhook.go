@@ -26,7 +26,7 @@ func (r *PtpInstance) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-ptpinstance,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,verbs=create;update,versions=v1,name=mptpinstance.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-ptpinstance,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,verbs=create;update,versions=v1,name=mptpinstance.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
 var _ webhook.Defaulter = &PtpInstance{}
 
@@ -67,7 +67,7 @@ func (r *PtpInstance) validatePtpInstance() error {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-ptpinstance,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,versions=v1,name=vptpinstance.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-ptpinstance,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,versions=v1,name=vptpinstance.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
 var _ webhook.Validator = &PtpInstance{}
 

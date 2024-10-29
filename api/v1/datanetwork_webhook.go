@@ -22,7 +22,7 @@ func (r *DataNetwork) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-datanetwork,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=datanetworks,verbs=create;update,versions=v1,name=mdatanetwork.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-datanetwork,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=datanetworks,verbs=create;update,versions=v1,name=mdatanetwork.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 var _ webhook.Defaulter = &DataNetwork{}
 
 // Webhook response reasons
@@ -46,7 +46,7 @@ func (r *DataNetwork) validateDataNetwork() error {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-datanetwork,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=datanetworks,versions=v1,name=vdatanetwork.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-datanetwork,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=datanetworks,versions=v1,name=vdatanetwork.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 var _ webhook.Validator = &DataNetwork{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
