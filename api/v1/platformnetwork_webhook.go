@@ -22,7 +22,7 @@ func (r *PlatformNetwork) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-platformnetwork,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=platformnetworks,verbs=create;update,versions=v1,name=mplatformnetwork.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-platformnetwork,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=platformnetworks,verbs=create;update,versions=v1,name=mplatformnetwork.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
 var _ webhook.Defaulter = &PlatformNetwork{}
 
@@ -34,7 +34,7 @@ func (r *PlatformNetwork) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-platformnetwork,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=platformnetworks,versions=v1,name=vplatformnetwork.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-platformnetwork,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=platformnetworks,versions=v1,name=vplatformnetwork.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
 var _ webhook.Validator = &PlatformNetwork{}
 
