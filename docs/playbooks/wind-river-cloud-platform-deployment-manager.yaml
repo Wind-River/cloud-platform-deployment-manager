@@ -743,7 +743,19 @@
             wait_for:
               timeout: "{{ boot_wait_time }}"
             register: waiting_after_reboot
+            # Unreachable: Ignore a task failure due to the host instance being ’UNREACHABLE’ 
+            # with the ignore_unreachable keyword. Ansible ignores the task errors but continues
+            # to execute future tasks against the unreachable host. This usually happens 
+            # if the host is network-inaccessible. For example, during a second reboot that
+            # temporarily disrupts SSH connectivity, Ansible will mark it as unreachable since 
+            # it can’t connect to the host at all.
             ignore_unreachable: true
+            # Failed: It can ignore errors when the task is failed, except those syntax errors, 
+            # undefined variable errors, connection failures, execution issues.
+            # This occurs if Ansible can reach the host, but the task itself encounters an issue. This 
+            # could happen if the host is reachable but not fully ready to respond, or if a required
+            # port isn’t open yet.
+            ignore_errors: true
 
           # Retry block: sometimes system reboots twice
           # It will take some extra time.
@@ -760,7 +772,7 @@
               delay: 20
 
             # Waiting task after unlock to catch the right status
-            - name: Wait for {{ boot_wait_time }} seconds to ensure not affecting host status
+            - name: Waiting after second reboot for {{ boot_wait_time }} seconds to ensure not affecting host status
               wait_for:
                 timeout: "{{ boot_wait_time }}"
               register: waiting_after_new_reboot
@@ -774,7 +786,7 @@
               register: new_reboot
               when: waiting_after_new_reboot.failed
 
-            when: waiting_after_reboot.failed
+            when: waiting_after_reboot.failed or waiting_after_reboot.unreachable
 
           - name: Set retries to check resource reconciled status for simplex
             set_fact:
