@@ -749,6 +749,12 @@
             # if the host is network-inaccessible. For example, during a second reboot that
             # temporarily disrupts SSH connectivity, Ansible will mark it as unreachable since 
             # it can’t connect to the host at all.
+            # Unreachable: Ignore a task failure due to the host instance being ’UNREACHABLE’ 
+            # with the ignore_unreachable keyword. Ansible ignores the task errors but continues
+            # to execute future tasks against the unreachable host. This usually happens 
+            # if the host is network-inaccessible. For example, during a second reboot that
+            # temporarily disrupts SSH connectivity, Ansible will mark it as unreachable since 
+            # it can’t connect to the host at all.
             ignore_unreachable: true
             # Failed: It can ignore errors when the task is failed, except those syntax errors, 
             # undefined variable errors, connection failures, execution issues.
@@ -772,6 +778,7 @@
               delay: 20
 
             # Waiting task after unlock to catch the right status
+            - name: Waiting after second reboot for {{ boot_wait_time }} seconds to ensure not affecting host status
             - name: Waiting after second reboot for {{ boot_wait_time }} seconds to ensure not affecting host status
               wait_for:
                 timeout: "{{ boot_wait_time }}"
