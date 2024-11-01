@@ -1125,29 +1125,32 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		current.Certificates = &res
 	}
 
-	if spec.DeepEqual(current) {
-		logSystem.V(2).Info("no changes between spec and current configuration")
+	inSync := spec.DeepEqual(current)
+	oldDelta := instance.Status.Delta
+
+	if inSync {
 		instance.Status.Delta = ""
-		return nil, false
-	}
-
-	logSystem.Info("spec is:", "values", spec)
-
-	logSystem.Info("current is:", "values", current)
-
-	deltaString, err := common.GetDeltaString(current, spec, common.SystemProperties)
-	if err != nil {
+	} else if deltaString, err := common.GetDeltaString(current, spec, common.SystemProperties); err == nil {
+		instance.Status.Delta = deltaString
+	} else {
 		logSystem.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
 	}
 
-	if deltaString != "" {
-		logSystem.Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
-		instance.Status.Delta = deltaString
+	if oldDelta != instance.Status.Delta {
+		logSystem.Info(fmt.Sprintf("delta configuration:%s\n", instance.Status.Delta))
 		err = r.Client.Status().Update(context.TODO(), instance)
 		if err != nil {
 			logSystem.Info(fmt.Sprintf("failed to update status:  %s\n", err))
 		}
 	}
+
+	if inSync {
+		logSystem.V(2).Info("no changes between spec and current configuration")
+		return nil, false
+	}
+
+	logSystem.Info("spec is:", "values", spec)
+	logSystem.Info("current is:", "values", current)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
