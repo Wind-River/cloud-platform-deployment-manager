@@ -938,13 +938,13 @@ func (r *HostReconciler) CompareOSDs(in *starlingxv1.HostProfileSpec, other *sta
 // CompareAttributes determines if two profiles are identical for the
 // purpose of reconciling a current host configuration to its desired host
 // profile.
-func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string) bool {
+func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string, system_info *cloudManager.SystemInfo) bool {
 	// This could be replaced with in.DeepEqual(other) but it is coded this way
 	// (and tested this way) to ensure that if both the "enabled" and "disabled"
 	// comparisons are true then no reconciliation is missed.  The intent is
 	// that CompareEnabledAttributes && CompareDisabledAttributes will always
 	// be equivalent to DeepEqual.
-	return r.CompareEnabledAttributes(in, other, instance, personality) &&
+	return r.CompareEnabledAttributes(in, other, instance, personality, system_info) &&
 		r.CompareDisabledAttributes(in, other, instance.Namespace, personality, false)
 }
 
@@ -953,7 +953,7 @@ func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, othe
 // is enabled.  The only attributes that we can reconcile while enabled are the
 // storage OSD resources therefore return false if there are any differences
 // in the storage OSD list.
-func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string) bool {
+func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec, instance *starlingxv1.Host, personality string, system_info *cloudManager.SystemInfo) bool {
 	if other == nil {
 		return false
 	}
@@ -979,12 +979,41 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 
 	if utils.IsReconcilerEnabled(utils.FileSystemSizes) {
 		if in.Storage != nil && in.Storage.FileSystems != nil {
-			if other.Storage == nil {
+			if other.Storage == nil || other.Storage.FileSystems == nil {
 				return false
 			}
 
-			if !in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) {
-				return false
+			// Special case: 'ceph' filesystem must be ignored for All-in-one Duplex.
+			if system_info.SystemType == cloudManager.SystemTypeAllInOne && system_info.SystemMode != cloudManager.SystemModeSimplex {
+				for _, fsInfo := range *other.Storage.FileSystems {
+					// Skip ceph filesystem
+					if fsInfo.Name == "ceph" {
+						continue
+					}
+
+					// Compare 'in' and 'other' fileystems
+					found := false
+					for _, fs := range *in.Storage.FileSystems {
+						if fs.Name != fsInfo.Name {
+							continue
+						}
+
+						found = true
+						if fsInfo.Size != fs.Size {
+							return false
+						}
+					}
+
+					// If not found, return false
+					if !found {
+						return false
+					}
+				}
+			} else {
+				// Do a deep compare when this is not an All-in-one Duplex
+				if !in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) {
+					return false
+				}
 			}
 		}
 	}
@@ -1096,6 +1125,7 @@ func (r *HostReconciler) ReconcileHostByState(
 	current *starlingxv1.HostProfileSpec,
 	profile *starlingxv1.HostProfileSpec,
 	host *v1info.HostInfo,
+	system_info *cloudManager.SystemInfo,
 ) error {
 
 	principal := false
@@ -1113,7 +1143,7 @@ func (r *HostReconciler) ReconcileHostByState(
 	}
 
 	if host.IsUnlockedEnabled() {
-		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality) {
+		if !r.CompareEnabledAttributes(profile, current, instance, host.Personality, system_info) {
 			err := r.ReconcileEnabledHost(client, instance, profile, host)
 			if err != nil {
 				return err
@@ -1728,7 +1758,12 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		}
 	}
 
-	inSync := r.CompareAttributes(profile, current, instance, host.Personality)
+	system_info, err := r.CloudManager.GetSystemInfo(reqNs, client)
+	if err != nil {
+		msg := "failed to get system info"
+		return common.NewUserDataError(msg)
+	}
+	inSync := r.CompareAttributes(profile, current, instance, host.Personality, system_info)
 
 	// Continue the following steps even inSync:
 	// strategy not finished
@@ -1780,7 +1815,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		}
 	}
 
-	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo)
+	err = r.ReconcileHostByState(client, instance, current, profile, &hostInfo, system_info)
 	if err != nil {
 		return err
 	}
