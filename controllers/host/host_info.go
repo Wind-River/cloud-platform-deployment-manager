@@ -16,10 +16,15 @@ import (
 // fake host profile that can be used as a reference for the current settings
 // applied to the host.  The default settings are saved on the host status.
 func (r *HostReconciler) BuildHostDefaults(instance *starlingxv1.Host, host v1info.HostInfo) (*starlingxv1.HostProfileSpec, error) {
+	logHost.Info("building host defaults", "host", host.ID)
+
 	defaults, err := starlingxv1.NewHostProfileSpec(host)
 	if defaults == nil || err != nil {
+		err = perrors.Wrap(err, "failed to create host profile spec")
 		return nil, err
 	}
+
+	logHost.V(2).Info("host profile spec created", "defaults", defaults)
 
 	buffer, err := json.Marshal(defaults)
 	if err != nil {
@@ -35,6 +40,9 @@ func (r *HostReconciler) BuildHostDefaults(instance *starlingxv1.Host, host v1in
 		err = perrors.Wrap(err, "failed to update host defaults")
 		return nil, err
 	}
+
+	logHost.Info("host defaults successfully built and updated", "host", host.ID)
+	logHost.V(2).Info("host defaults data saved to status", "data", data)
 
 	return defaults, nil
 }
