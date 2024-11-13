@@ -6,6 +6,7 @@ package v1
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -201,6 +202,10 @@ func parseProcessorInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			}
 			node.Functions = append(node.Functions, data)
 		}
+
+		slices.SortFunc(node.Functions, func(a, b ProcessorFunctionInfo) int {
+			return strings.Compare(a.Function, b.Function)
+		})
 
 		result = append(result, node)
 	}
