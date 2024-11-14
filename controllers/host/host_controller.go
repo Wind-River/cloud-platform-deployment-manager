@@ -1763,37 +1763,19 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		msg := "failed to get system info"
 		return common.NewUserDataError(msg)
 	}
-	inSync := r.CompareAttributes(profile, current, instance, host.Personality, system_info)
+	instance.Status.InSync = r.CompareAttributes(profile, current, instance, host.Personality, system_info)
+	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Client.Status(), logHost)
 
-	// Continue the following steps even inSync:
 	// strategy not finished
-	if inSync &&
+	if instance.Status.InSync &&
 		(instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
 		logHost.V(2).Info("no changes between composite profile and current configuration")
-		instance.Status.Delta = ""
 		return nil
 	}
 
 	logHost.Info("defaults are:", "values", defaults)
-
 	logHost.Info("final profile is:", "values", profile)
-
 	logHost.Info("current config is:", "values", current)
-
-	deltaString, err := common.GetDeltaString(profile, current, common.HostProperties)
-	if err != nil {
-		logHost.Info(fmt.Sprintf("failed to get Delta status:  %s\n", err))
-	}
-
-	if deltaString != "" {
-		logHost.V(2).Info(fmt.Sprintf("delta configuration:%s\n", deltaString))
-		instance.Status.Delta = deltaString
-
-		err = r.Client.Status().Update(context.TODO(), instance)
-		if err != nil {
-			logHost.Info(fmt.Sprintf("failed to update status: %s", err))
-		}
-	}
 
 	if instance.Status.Reconciled &&
 		r.StopAfterInSync() &&
