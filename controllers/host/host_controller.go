@@ -1569,6 +1569,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	var defaults *starlingxv1.HostProfileSpec
 	var current *starlingxv1.HostProfileSpec
 	var platform_network_subreconciler_errs []error
+
 	if !host.Stable() {
 		msg := "waiting for a stable state for existing host"
 		m := NewStableHostMonitor(instance, host.ID)
@@ -1710,7 +1711,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {
-		logHost.Info("syncing interface name for N3000", "host", host.ID)
+		logHost.Info("syncing interface name", "host", host.ID)
 		SyncIFNameByUuid(profile, current)
 	}
 

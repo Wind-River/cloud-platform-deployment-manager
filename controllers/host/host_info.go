@@ -42,7 +42,6 @@ func (r *HostReconciler) BuildHostDefaults(instance *starlingxv1.Host, host v1in
 	}
 
 	logHost.Info("host defaults successfully built and updated", "host", host.ID)
-	logHost.V(2).Info("host defaults data saved to status", "data", data)
 
 	return defaults, nil
 }
