@@ -2345,7 +2345,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&
 		instance.Status.DeploymentScope == "bootstrap" &&
-		*instance.Status.AvailabilityStatus == "available" &&
+		instance.Status.AvailabilityStatus != nil && *instance.Status.AvailabilityStatus == "available" &&
 		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
 		!platformnetwork_update_required {
 
