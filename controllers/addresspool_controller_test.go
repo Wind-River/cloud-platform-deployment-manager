@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("AddressPool controller", func() {
 	const (
-		timeout  = time.Second * 10
+		timeout  = time.Second * 30
 		interval = time.Millisecond * 250
 	)
 

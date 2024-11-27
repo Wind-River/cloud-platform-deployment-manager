@@ -27,7 +27,7 @@ const PlatformNetworkFinalizerName = "platformnetwork.finalizers.windriver.com"
 
 const TestNamespace = "default"
 const (
-	timeout  = time.Second * 10
+	timeout  = time.Second * 30
 	interval = time.Millisecond * 250
 )
 

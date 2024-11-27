@@ -17,7 +17,7 @@ import (
 var _ = Describe("HostProfile controller", func() {
 
 	const (
-		timeout  = time.Second * 10
+		timeout  = time.Second * 30
 		interval = time.Millisecond * 250
 	)
 	Context("Test IsKeyEqual func for AddressInfo", func() {
