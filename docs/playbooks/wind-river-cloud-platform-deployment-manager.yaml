@@ -429,13 +429,37 @@
           failed_when: false
           register: scope_principal
 
-        - name: Fail if system subcloud enrollment finalized but have principal in scope
-          fail:
-            msg:
-              "Cannot apply principal scope on enrolled subcloud before unlock."
-          when:
-            - scope_principal.stdout_lines | length > 0
-            - subcloud_enrollment
+        - name: Pre-check and process for subcloud enrollment
+          block:
+          - name: Fail if system subcloud enrollment but have principal in scope
+            fail:
+              msg: "Principal scope cannot used in subcloud enrollment."
+            when: scope_principal.stdout_lines | length > 0
+
+          - name: Retrieve all system resource names
+            command: kubectl -n deployment get systems -o jsonpath='{.items[*].metadata.name}'
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            register: system_resource_names
+
+          - name: Parse the system resource names into a list
+            set_fact:
+              system_resources: "{{ system_resource_names.stdout.split() }}"
+            when: system_resource_names.stdout | length > 0
+
+          - name: Debug the list of system resource names
+            debug:
+              msg: "System resources to be deleted: {{ system_resources }}"
+            when: system_resources is defined
+
+          - name: Delete all system resources
+            command: |
+              kubectl -n deployment delete system {{ item }}
+            loop: "{{ system_resources }}"
+            environment:
+              KUBECONFIG: "/etc/kubernetes/admin.conf"
+            when: system_resources is defined and system_resources | length > 0
+          when: subcloud_enrollment
 
         # Check if there is any strategy-related alarm
         - name: Check if a VIM strategy is in progress
