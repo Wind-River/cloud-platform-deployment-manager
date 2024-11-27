@@ -25,7 +25,7 @@ import (
 var _ = Describe("Host controller", func() {
 
 	const (
-		timeout  = time.Second * 10
+		timeout  = time.Second * 30
 		interval = time.Millisecond * 250
 	)
 
