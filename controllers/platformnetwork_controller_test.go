@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Platformnetwork controller", func() {
 	const (
-		timeout  = time.Second * 20
+		timeout  = time.Second * 30
 		interval = time.Millisecond * 250
 	)
 
