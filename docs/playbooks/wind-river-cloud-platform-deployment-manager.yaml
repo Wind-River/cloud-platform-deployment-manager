@@ -840,11 +840,11 @@
                 host_reconcile_retries: >
                   {{ 120 if  hosts_count.stdout | int == 2 else 240 }}
 
-            - name: Get offline hosts if not simplex
+            - name: Get hosts not online or not available if not simplex
               shell: >
                 kubectl get hosts -o custom-columns='NAME:.metadata.name,
                 OPERATIONAL:.status.availabilityStatus' -n deployment |
-                awk '$NF ~ /offline/ {print}'
+                awk '$NF !~ /online/ {print}'
               environment:
                 KUBECONFIG: "/etc/kubernetes/admin.conf"
               register: get_offline_hosts
