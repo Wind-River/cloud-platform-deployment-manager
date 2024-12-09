@@ -538,6 +538,18 @@ type System struct {
 	Status SystemStatus `json:"status,omitempty"`
 }
 
+func (s *System) SetStatusDelta(delta string) {
+	s.Status.Delta = delta
+}
+
+func (s *System) GetStatusDelta() string {
+	return s.Status.Delta
+}
+
+func (s *System) GetInsync() bool {
+	return s.Status.InSync
+}
+
 // +kubebuilder:object:root=true
 // SystemList contains a list of System
 // +deepequal-gen=false
