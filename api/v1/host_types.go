@@ -155,6 +155,18 @@ type HostStatus struct {
 	Delta string `json:"delta"`
 }
 
+func (h *Host) SetStatusDelta(delta string) {
+	h.Status.Delta = delta
+}
+
+func (h *Host) GetStatusDelta() string {
+	return h.Status.Delta
+}
+
+func (h *Host) GetInsync() bool {
+	return h.Status.InSync
+}
+
 func (h *Host) GetStrategyRequired() string {
 	return h.Status.StrategyRequired
 }

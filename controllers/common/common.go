@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
 	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
@@ -91,6 +90,14 @@ var (
 	// RetryNever is used when the reconciler will be triggered by a separate
 	// mechanism and no retry is necessary.
 	RetryNever = reconcile.Result{Requeue: false}
+
+	// Properties contained on DataNetwork resouce
+	DataNetworkPropers = map[string]interface{}{
+		"type":        nil,
+		"description": nil,
+		"mtu":         nil,
+		"vxlan":       []string{"multicastgroup", "udpPortNumber", "ttl", "endpointMode"},
+	}
 
 	// Properties contained on System resource
 	SystemProperties = map[string]interface{}{
@@ -395,37 +402,6 @@ func (in *EventLogger) WarningEvent(object runtime.Object, reason string, messag
 	// logLevel is set to the debug level (1) because WarningEvent should be
 	// accompanied by a reconciler error which has its own log generated.
 	in.event(object, v1.EventTypeWarning, 1, reason, messageFmt, args...)
-}
-
-func GetDeltaString(spec interface{}, current interface{}, parameters map[string]interface{}) (string, error) {
-
-	specBytes, err := json.Marshal(spec)
-	if err != nil {
-		return "", err
-	}
-
-	currentBytes, err := json.Marshal(current)
-	if err != nil {
-		return "", err
-	}
-
-	var specData map[string]interface{}
-	var currentData map[string]interface{}
-
-	err = json.Unmarshal([]byte(specBytes), &specData)
-	if err != nil {
-		return "", err
-	}
-
-	err = json.Unmarshal([]byte(currentBytes), &currentData)
-	if err != nil {
-		return "", err
-	}
-
-	diff := cmp.Diff(currentData, specData)
-	deltaString := collectDiffValues(diff, parameters)
-	deltaString = strings.TrimSuffix(deltaString, "\n")
-	return deltaString, nil
 }
 
 /*
