@@ -28,7 +28,7 @@ const PlatformNetworkFinalizerName = "platformnetwork.finalizers.windriver.com"
 const TestNamespace = "default"
 const (
 	timeout  = time.Second * 30
-	interval = time.Millisecond * 250
+	interval = time.Millisecond * 500
 )
 
 func IntroducePlatformNetworkChange(platform_network *starlingxv1.PlatformNetwork) {

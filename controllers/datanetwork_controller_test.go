@@ -19,7 +19,7 @@ var _ = Describe("Datanetwork controller", func() {
 
 	const (
 		timeout  = time.Second * 30
-		interval = time.Millisecond * 250
+		interval = time.Millisecond * 500
 	)
 
 	Context("DataNetwork with data", func() {

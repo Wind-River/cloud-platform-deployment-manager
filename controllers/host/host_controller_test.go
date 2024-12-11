@@ -26,7 +26,7 @@ var _ = Describe("Host controller", func() {
 
 	const (
 		timeout  = time.Second * 30
-		interval = time.Millisecond * 250
+		interval = time.Millisecond * 500
 	)
 
 	Context("Host with data", func() {
