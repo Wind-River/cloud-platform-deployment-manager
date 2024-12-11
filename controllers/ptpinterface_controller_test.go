@@ -19,7 +19,7 @@ var _ = Describe("PtpInterface controller", func() {
 
 	const (
 		timeout  = time.Second * 30
-		interval = time.Millisecond * 250
+		interval = time.Millisecond * 500
 	)
 
 	Context("PtpInstance with data", func() {
