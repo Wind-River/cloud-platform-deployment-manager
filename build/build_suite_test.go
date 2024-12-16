@@ -51,15 +51,14 @@ metadata:
   namespace: fakens
 type: kubernetes.io/basic-auth
 ---
-Data:
+apiVersion: v1
+data:
   Fake Data: 'Warning: Incomplete secret, please replace it with the secret content'
-ObjectMeta:
+kind: Secret
+metadata:
   name: incomsec1
   namespace: bar
-Type: fake type
-TypeMeta:
-  apiVersion: v1
-  kind: Secret
+type: fake type
 ---
 metadata:
   name: sys1
@@ -297,10 +296,7 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				got := parseIncompleteSecret(&secret)
 				expect := IncompleteSecret{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "v1",
-						Kind:       "Secret",
-					},
+					TypeMeta: metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
@@ -679,10 +675,7 @@ var _ = Describe("Test Build utilities:", func() {
 				fakeInput := []byte("")
 
 				secret := v1.Secret{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "v1",
-						Kind:       "Secret",
-					},
+					TypeMeta: metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secName,
 						Namespace: ns,

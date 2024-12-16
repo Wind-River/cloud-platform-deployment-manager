@@ -95,9 +95,12 @@ func parseIncompleteSecret(secret *v1.Secret) *IncompleteSecret {
 	warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 	if secret.Type == v1.SecretTypeTLS {
 		return &IncompleteSecret{
-			TypeMeta:   secret.TypeMeta,
-			ObjectMeta: secret.ObjectMeta,
-			Type:       secret.Type,
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+			Type: secret.Type,
 			Data: map[string]string{
 				v1.TLSCertKey:              warningMsg,
 				v1.TLSPrivateKeyKey:        warningMsg,
@@ -132,10 +135,10 @@ func parseIncompleteSecret(secret *v1.Secret) *IncompleteSecret {
 // IncompleteSecret defines a struct that contains a warning message in the secret
 // data if the secret is incomplete
 type IncompleteSecret struct {
-	TypeMeta   metav1.TypeMeta
-	ObjectMeta metav1.ObjectMeta
-	Type       v1.SecretType
-	Data       map[string]string
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	Type              v1.SecretType     `json:"type"`
+	Data              map[string]string `json:"data"`
 }
 
 // Deployment defines the structure used to store all of the details of a
