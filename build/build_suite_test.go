@@ -51,15 +51,14 @@ metadata:
   namespace: fakens
 type: kubernetes.io/basic-auth
 ---
-Data:
+apiVersion: v1
+data:
   Fake Data: 'Warning: Incomplete secret, please replace it with the secret content'
-ObjectMeta:
+kind: Secret
+metadata:
   name: incomsec1
   namespace: bar
-Type: fake type
-TypeMeta:
-  apiVersion: v1
-  kind: Secret
+type: fake type
 ---
 metadata:
   name: sys1
