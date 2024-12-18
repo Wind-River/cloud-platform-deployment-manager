@@ -607,7 +607,7 @@ func (db *DeploymentBuilder) buildPlatformNetworks(d *Deployment) error {
 	}
 
 	d.PlatformNetworks = make([]*starlingxv1.PlatformNetwork, 0)
-	always_generate_networks := []string{"storage", "mgmt", "oam", "admin"}
+	always_generate_networks := []string{"storage", "mgmt", "oam", "admin", "cluster-host"}
 	sort.Strings(always_generate_networks)
 	for _, n := range results {
 		associated_pools_name = []string{}
