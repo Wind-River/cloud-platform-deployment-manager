@@ -33,7 +33,7 @@ const (
 // is required when defining these resources.
 type CertificateInfo struct {
 	// Type represents the intended usage of the certificate
-	// +kubebuilder:validation:Enum=ssl_ca
+	// +kubebuilder:validation:Enum=ssl;ssl_ca;openstack;openstack_ca;docker_registry;tpm_mode
 	Type string `json:"type"`
 
 	// Secret is the name of a TLS secret containing the public certificate and
