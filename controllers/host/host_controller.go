@@ -2323,6 +2323,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
+	// TODO(wasnio): remove this once migration from helm chart to fluxcd is done
 	// The status reaches its desired status post reconciled
 	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
 		instance.Status.Reconciled &&

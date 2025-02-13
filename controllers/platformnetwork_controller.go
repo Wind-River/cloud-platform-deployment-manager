@@ -253,7 +253,6 @@ func (r *PlatformNetworkReconciler) UpdateStatusForFactoryInstall(
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=platformnetworks/finalizers,verbs=update
 func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	var scope_updated bool
 	_ = log.FromContext(ctx)
 
 	// To reduce the repitition of adding the resource name to every log we
@@ -291,7 +290,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	err, scope_updated = r.UpdateDeploymentScope(instance)
+	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -304,16 +303,6 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-	}
-
-	// The status reaches its desired status post reconciled
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
-
-		if !scope_updated && !factory {
-			logPlatformNetwork.V(2).Info("reconcile finished, desired state reached after reconciled.")
-			return reconcile.Result{}, nil
 		}
 	}
 
@@ -363,7 +352,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	if !r.CloudManager.IsNotifyingActiveHost() {
 		r.CloudManager.SetNotifyingActiveHost(true)
-		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace, scope_updated)
+		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace, scopeUpdated)
 		r.CloudManager.SetNotifyingActiveHost(false)
 	} else {
 		err = common.NewHostNotifyError("waiting to notify active host")

@@ -160,10 +160,6 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation && instance.Status.Reconciled {
-		return ctrl.Result{}, nil
-	}
-
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.

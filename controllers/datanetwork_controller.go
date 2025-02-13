@@ -536,8 +536,7 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	err, scope_updated := r.UpdateDeploymentScope(instance)
-	if err != nil {
+	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -549,16 +548,6 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-	}
-
-	// The status reaches its desired status post reconciled
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
-
-		if !scope_updated && !factory {
-			logDataNetwork.V(2).Info("reconcile finished, desired state reached after reconciled.")
-			return reconcile.Result{}, nil
 		}
 	}
 
