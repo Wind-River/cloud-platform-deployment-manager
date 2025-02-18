@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2025 Wind River Systems, Inc. */
 
 package build
 
@@ -20,7 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -32,7 +32,7 @@ func TestBuild(t *testing.T) {
 var _ = BeforeSuite(func() {
 	th.SetupHTTP()
 	StartAPIHandlers()
-}, 60)
+})
 
 var expYaml = `---
 apiVersion: v1

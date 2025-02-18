@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022 Wind River Systems, Inc. */
+/* Copyright(c) 2022,2025 Wind River Systems, Inc. */
 
 package v1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // Webhook response reasons
@@ -23,18 +25,25 @@ var ptpinstancelog = logf.Log.WithName("ptpinstance-resource")
 func (r *PtpInstance) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithDefaulter(&PtpInstanceCustomDefaulter{}).
+		WithValidator(&PtpInstanceCustomValidator{}).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-ptpinstance,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,verbs=create;update,versions=v1,name=mptpinstance.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Defaulter = &PtpInstance{}
+type PtpInstanceCustomDefaulter struct{}
+
+var _ webhook.CustomDefaulter = &PtpInstanceCustomDefaulter{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *PtpInstance) Default() {
-	ptpinstancelog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+func (d *PtpInstanceCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
+	ptpInstance, ok := obj.(*PtpInstance)
+	if !ok {
+		return fmt.Errorf("expected a PtpInstance object but got %T", obj)
+	}
+	ptpinstancelog.Info("default", "name", ptpInstance.Name)
+	return nil
 }
 
 // Validates an incoming resource update/create request.  The intent of this validation is to perform only the
@@ -69,28 +78,37 @@ func (r *PtpInstance) validatePtpInstance() error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-ptpinstance,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinstances,versions=v1,name=vptpinstance.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Validator = &PtpInstance{}
+type PtpInstanceCustomValidator struct{}
+
+var _ webhook.CustomValidator = &PtpInstanceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInstance) ValidateCreate() error {
-	ptpinstancelog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return r.validatePtpInstance()
+func (v *PtpInstanceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	ptpInstance, ok := obj.(*PtpInstance)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInstance object but got %T", obj)
+	}
+	ptpinstancelog.Info("validate create", "name", ptpInstance.Name)
+	return nil, ptpInstance.validatePtpInstance()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInstance) ValidateUpdate(old runtime.Object) error {
-	ptpinstancelog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return r.validatePtpInstance()
+func (d *PtpInstanceCustomValidator) ValidateUpdate(cxt context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	ptpInstance, ok := newObj.(*PtpInstance)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInstance object but got %T", newObj)
+	}
+	ptpinstancelog.Info("validate update", "name", ptpInstance.Name)
+	return nil, ptpInstance.validatePtpInstance()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInstance) ValidateDelete() error {
-	ptpinstancelog.Info("validate delete", "name", r.Name)
-
+func (d *PtpInstanceCustomValidator) ValidateDelete(cxt context.Context, obj runtime.Object) (admission.Warnings, error) {
+	ptpInstance, ok := obj.(*PtpInstance)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInstance object but got %T", obj)
+	}
+	ptpinstancelog.Info("validate delete", "name", ptpInstance.Name)
 	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }

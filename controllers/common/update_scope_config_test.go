@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
 
 package common
 
@@ -181,7 +181,7 @@ func TestUpdateDeploymentScope(t *testing.T) {
 	s := runtime.NewScheme()
 	s.AddKnownTypes(schema.GroupVersion{Group: "test-group", Version: "v1"}, instance)
 
-	client := fake.NewClientBuilder().WithScheme(s).WithObjects(instance).Build()
+	client := fake.NewClientBuilder().WithScheme(s).WithObjects(instance).WithStatusSubresource(instance).Build()
 
 	updated, err := UpdateDeploymentScope(client, instance)
 	if err != nil {

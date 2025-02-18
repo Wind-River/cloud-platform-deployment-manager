@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
 
 package v1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -13,6 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -21,20 +23,25 @@ var hostprofilelog = logf.Log.WithName("hostprofile-resource")
 func (r *HostProfile) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithDefaulter(&HostProfileCustomDefaulter{}).
+		WithValidator(&HostProfileCustomValidator{}).
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-hostprofile,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=hostprofiles,verbs=create;update,versions=v1,name=mhostprofile.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Defaulter = &HostProfile{}
+type HostProfileCustomDefaulter struct{}
+
+var _ webhook.CustomDefaulter = &HostProfileCustomDefaulter{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *HostProfile) Default() {
-	hostprofilelog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+func (d *HostProfileCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
+	hostProfile, ok := obj.(*HostProfile)
+	if !ok {
+		return fmt.Errorf("expected a HostProfile object but got %T", obj)
+	}
+	hostprofilelog.Info("default", "name", hostProfile.Name)
+	return nil
 }
 
 func validateMemoryFunction(node MemoryNodeInfo, function MemoryFunctionInfo) error {
@@ -161,28 +168,36 @@ func (r *HostProfile) validateHostProfile() error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-hostprofile,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=hostprofiles,versions=v1,name=vhostprofile.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Validator = &HostProfile{}
+type HostProfileCustomValidator struct{}
+
+var _ webhook.CustomValidator = &HostProfileCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *HostProfile) ValidateCreate() error {
-	hostprofilelog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return r.validateHostProfile()
+func (v *HostProfileCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	hostProfile, ok := obj.(*HostProfile)
+	if !ok {
+		return nil, fmt.Errorf("expected a HostProfile object but got %T", obj)
+	}
+	hostprofilelog.Info("validate create", "name", hostProfile.Name)
+	return nil, hostProfile.validateHostProfile()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *HostProfile) ValidateUpdate(old runtime.Object) error {
-	hostprofilelog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return r.validateHostProfile()
+func (v *HostProfileCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	hostProfile, ok := newObj.(*HostProfile)
+	if !ok {
+		return nil, fmt.Errorf("expected a HostProfile object but got %T", newObj)
+	}
+	hostprofilelog.Info("validate update", "name", hostProfile.Name)
+	return nil, hostProfile.validateHostProfile()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *HostProfile) ValidateDelete() error {
-	hostprofilelog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+func (v *HostProfileCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	hostProfile, ok := obj.(*HostProfile)
+	if !ok {
+		return nil, fmt.Errorf("expected a HostProfile object but got %T", obj)
+	}
+	hostprofilelog.Info("validate delete", "name", hostProfile.Name)
+	return nil, nil
 }

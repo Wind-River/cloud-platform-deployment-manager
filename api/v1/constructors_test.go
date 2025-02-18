@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2023 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package v1
 
@@ -39,7 +39,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagebackends"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/storagetiers"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/volumegroups"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/platform"

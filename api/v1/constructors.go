@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package v1
 
@@ -1364,7 +1364,7 @@ func NewPtpInstanceSpec(inst ptpinstances.PTPInstance) (*PtpInstanceSpec, error)
 		Service: inst.Service,
 	}
 
-	if inst.Parameters != nil && len(inst.Parameters) > 0 {
+	if len(inst.Parameters) > 0 {
 		spec.InstanceParameters = inst.Parameters
 	} else {
 		spec.InstanceParameters = nil
@@ -1403,7 +1403,7 @@ func NewPtpInterfaceSpec(PTPint ptpinterfaces.PTPInterface) (*PtpInterfaceSpec, 
 		PtpInstance: PTPint.PTPInstanceName,
 	}
 
-	if PTPint.Parameters != nil && len(PTPint.Parameters) > 0 {
+	if len(PTPint.Parameters) > 0 {
 		spec.InterfaceParameters = PTPint.Parameters
 	} else {
 		spec.InterfaceParameters = nil
