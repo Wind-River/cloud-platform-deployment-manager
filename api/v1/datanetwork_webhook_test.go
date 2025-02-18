@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/datanetworks"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

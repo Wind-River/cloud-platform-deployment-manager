@@ -530,8 +530,9 @@ var _ = Describe("Host controller", func() {
 			namespace := "ns1"
 
 			k8sManager1, _ := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager1.GetClient(),
@@ -549,8 +550,9 @@ var _ = Describe("Host controller", func() {
 		It("SHould return false when other hostProfileSpec is nil", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
@@ -564,8 +566,9 @@ var _ = Describe("Host controller", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			other := &starlingxv1.HostProfileSpec{}
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
@@ -594,8 +597,9 @@ var _ = Describe("Host controller", func() {
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
@@ -632,8 +636,9 @@ var _ = Describe("Host controller", func() {
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
@@ -666,8 +671,9 @@ var _ = Describe("Host controller", func() {
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
@@ -700,8 +706,9 @@ var _ = Describe("Host controller", func() {
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme.Scheme,
-				MetricsBindAddress: "0",
+				Scheme: scheme.Scheme,
+				// TODO(wasnio): configure the bind address
+				// MetricsBindAddress: "0",
 			})
 			r := &HostReconciler{
 				Client: k8sManager.GetClient(),
