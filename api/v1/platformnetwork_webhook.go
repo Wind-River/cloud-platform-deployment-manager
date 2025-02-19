@@ -30,7 +30,6 @@ func (r *PlatformNetwork) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-platformnetwork,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=platformnetworks,verbs=create;update,versions=v1,name=mplatformnetwork.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-
 type PlatformNetworkCustomDefaulter struct{}
 
 var _ webhook.CustomDefaulter = &PlatformNetworkCustomDefaulter{}
