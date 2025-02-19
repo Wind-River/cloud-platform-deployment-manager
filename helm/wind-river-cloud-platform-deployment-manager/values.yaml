@@ -14,12 +14,6 @@ nameOverride: platform-deployment-manager
 imagePullSecrets:
  - name: default-registry-key
 
-rbacProxy:
-  enabled: true
-  port: 8443
-  image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
-  logLevel: 10
-
 manager:
   debugger:
     enabled: false
