@@ -49,7 +49,7 @@ ifeq (${DEBUG}, yes)
 	IMG ?= ${DEFAULT_IMG}:debug
 else
 	DOCKER_TARGET = production
-	GOBUILD_GCFLAGS = "-e"
+	GOBUILD_GCFLAGS = ""
 	IMG ?= ${DEFAULT_IMG}:latest
 endif
 

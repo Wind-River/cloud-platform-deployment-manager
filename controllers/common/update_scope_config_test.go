@@ -181,7 +181,7 @@ func TestUpdateDeploymentScope(t *testing.T) {
 	s := runtime.NewScheme()
 	s.AddKnownTypes(schema.GroupVersion{Group: "test-group", Version: "v1"}, instance)
 
-	client := fake.NewClientBuilder().WithScheme(s).WithObjects(instance).Build()
+	client := fake.NewClientBuilder().WithScheme(s).WithObjects(instance).WithStatusSubresource(instance).Build()
 
 	updated, err := UpdateDeploymentScope(client, instance)
 	if err != nil {
