@@ -620,8 +620,7 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	err, scope_updated := r.UpdateDeploymentScope(instance)
-	if err != nil {
+	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -633,15 +632,6 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-	}
-
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled {
-
-		if !scope_updated && !factory {
-			logPtpInterface.V(2).Info("reconcile finished, desired state reached after reconciled.")
-			return ctrl.Result{}, nil
 		}
 	}
 
