@@ -421,7 +421,7 @@ data:
     health:
       healthProbeBindAddress: :8081
     metrics:
-      bindAddress: 127.0.0.1:8080
+      bindAddress: :8443
     webhook:
       port: 9443
     leaderElection:
@@ -445,9 +445,9 @@ metadata:
 spec:
   ports:
   - name: https
-    port: {{ .Values.rbacProxy.port }}
+    port: 8443
     protocol: TCP
-    targetPort: https
+    targetPort: 8443
   selector:
     control-plane: controller-manager
 ---
@@ -510,25 +510,12 @@ spec:
 {{ toYaml . | indent 8 }}
 {{- end }}
       containers:
-      {{- if .Values.rbacProxy.enabled }}
-      - args:
-        - --secure-listen-address=0.0.0.0:{{ .Values.rbacProxy.port }}
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v={{ .Values.rbacProxy.logLevel }}
-        image: {{ .Values.rbacProxy.image }}
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: {{ .Values.rbacProxy.port }}
-          name: https
-          protocol: TCP
-      {{- end }}
       - args:
         {{- if .Values.manager.debugger.enabled }}
         - /manager
         {{- end }}
         - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
+        - --metrics-bind-address=:8443
         - --leader-elect={{ include "calculatedValue.leaderElection" . | trim }}
         - --zap-time-encoding=rfc3339nano
         - --zap-encoder=console
@@ -554,6 +541,9 @@ spec:
         ports:
         - containerPort: 9443
           name: webhook-server
+          protocol: TCP
+        - containerPort: 8443
+          name: metrics-server
           protocol: TCP
         readinessProbe:
           httpGet:

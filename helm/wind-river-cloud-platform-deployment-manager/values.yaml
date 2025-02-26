@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2022 Wind River Systems, Inc.
+# Copyright(c) 2021-2022, 2024-2025 Wind River Systems, Inc.
 
 # Default values for Deployment Manager instances
 
@@ -13,12 +13,6 @@ nameOverride: platform-deployment-manager
 
 imagePullSecrets:
  - name: default-registry-key
-
-rbacProxy:
-  enabled: true
-  port: 8443
-  image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
-  logLevel: 10
 
 manager:
   debugger:

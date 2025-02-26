@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -8,7 +8,7 @@ import (
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/clusters"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

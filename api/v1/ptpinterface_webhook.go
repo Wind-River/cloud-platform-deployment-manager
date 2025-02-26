@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022 Wind River Systems, Inc. */
+/* Copyright(c) 2022, 2024-2025 Wind River Systems, Inc. */
 
 package v1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // Webhook response reasons
@@ -23,18 +25,25 @@ var ptpinterfacelog = logf.Log.WithName("ptpinterface-resource")
 func (r *PtpInterface) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithDefaulter(&PtpInterfaceCustomDefaulter{}).
+		WithValidator(&PtpInterfaceCustomValidator{}).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-ptpinterface,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinterfaces,verbs=create;update,versions=v1,name=mptpinterface.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Defaulter = &PtpInterface{}
+type PtpInterfaceCustomDefaulter struct{}
+
+var _ webhook.CustomDefaulter = &PtpInterfaceCustomDefaulter{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *PtpInterface) Default() {
-	ptpinterfacelog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+func (d *PtpInterfaceCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
+	ptpInterface, ok := obj.(*PtpInterface)
+	if !ok {
+		return fmt.Errorf("expected a PtpInterface object but got %T", obj)
+	}
+	ptpinterfacelog.Info("default", "name", ptpInterface.Name)
+	return nil
 }
 
 // Validates an incoming resource update/create request.  The intent of this validation is to perform only the
@@ -70,28 +79,36 @@ func (r *PtpInterface) validatePtpInterface() error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-ptpinterface,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=ptpinterfaces,versions=v1,name=vptpinterface.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Validator = &PtpInterface{}
+type PtpInterfaceCustomValidator struct{}
+
+var _ webhook.CustomValidator = &PtpInterfaceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInterface) ValidateCreate() error {
-	ptpinterfacelog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return r.validatePtpInterface()
+func (v *PtpInterfaceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	ptpInterface, ok := obj.(*PtpInterface)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInterface object but got %T", obj)
+	}
+	ptpinterfacelog.Info("validate create", "name", ptpInterface.Name)
+	return nil, ptpInterface.validatePtpInterface()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInterface) ValidateUpdate(old runtime.Object) error {
-	ptpinterfacelog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return r.validatePtpInterface()
+func (d *PtpInterfaceCustomValidator) ValidateUpdate(cxt context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	ptpInterface, ok := newObj.(*PtpInterface)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInterface object but got %T", newObj)
+	}
+	ptpinterfacelog.Info("validate update", "name", ptpInterface.Name)
+	return nil, ptpInterface.validatePtpInterface()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *PtpInterface) ValidateDelete() error {
-	ptpinterfacelog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+func (d *PtpInterfaceCustomValidator) ValidateDelete(cxt context.Context, obj runtime.Object) (admission.Warnings, error) {
+	ptpInterface, ok := obj.(*PtpInterface)
+	if !ok {
+		return nil, fmt.Errorf("expected a PtpInteface object but got %T", obj)
+	}
+	ptpinterfacelog.Info("validate delete", "name", ptpInterface.Name)
+	return nil, nil
 }
