@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers"
@@ -113,7 +113,7 @@ var _ = BeforeSuite(func() {
 		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	th.TeardownHTTP()

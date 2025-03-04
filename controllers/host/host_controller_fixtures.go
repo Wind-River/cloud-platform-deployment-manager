@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
 package host
 
 import (
@@ -665,7 +665,7 @@ const KernelBodyResponse = `
 }
 `
 
-const Label = `
+const ILabel = `
 {
 	"ilabels": [
 	{
@@ -1119,7 +1119,7 @@ func HandleLabelRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, Label)
+		fmt.Fprint(w, ILabel)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}

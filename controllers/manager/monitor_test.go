@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2025 Wind River Systems, Inc. */
 
 package manager
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

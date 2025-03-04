@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
 package host
 
 import (
@@ -5,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
