@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022,2025 Wind River Systems, Inc. */
 
 package platform
 
@@ -432,13 +432,18 @@ func (in *HostInfo) FindInterfaceByName(name string) (*interfaces.Interface, boo
 
 // findVLANInterfaceUUID is a utility function to find a VLAN interface in the
 // list of interfaces returned by the systemAPI.
-func (in *HostInfo) FindVLANInterfaceUUID(vid int) (string, bool) {
+func (in *HostInfo) FindVLANInterfaceUUID(vid int, name string) (string, bool) {
 	for _, i := range in.Interfaces {
 		if i.Type != interfaces.IFTypeVLAN {
 			continue
 		}
 
-		if i.VID != nil && *i.VID == vid {
+		if i.VID == nil {
+			continue
+		}
+
+		// data class vlan can have the same uuid
+		if *i.VID == vid && i.Name == name {
 			return i.ID, true
 		}
 	}
