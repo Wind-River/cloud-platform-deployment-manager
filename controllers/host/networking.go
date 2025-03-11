@@ -1458,7 +1458,7 @@ func (r *HostReconciler) ReconcileVLANInterfaces(client *gophercloud.ServiceClie
 	for _, vlanInfo := range profile.Interfaces.VLAN {
 		// For each configured bond interface create or update the related
 		// system resource.
-		ifuuid, found := host.FindVLANInterfaceUUID(vlanInfo.VID)
+		ifuuid, found := host.FindVLANInterfaceUUID(vlanInfo.VID, vlanInfo.Name)
 		if !found {
 			// Create the interface
 			opts := commonInterfaceOptions(vlanInfo.CommonInterfaceInfo, profile, host)
