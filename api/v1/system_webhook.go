@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package v1
 
@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -78,18 +79,25 @@ func (r *System) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithDefaulter(&SystemCustomDefaulter{}).
+		WithValidator(&SystemCustomValidator{}).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-system,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=systems,verbs=create;update,versions=v1,name=msystem.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Defaulter = &System{}
+type SystemCustomDefaulter struct{}
+
+var _ webhook.CustomDefaulter = &SystemCustomDefaulter{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *System) Default() {
-	systemlog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+func (d *SystemCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
+	system, ok := obj.(*System)
+	if !ok {
+		return fmt.Errorf("expected a System object but got %T", obj)
+	}
+	systemlog.Info("default", "name", system.Name)
+	return nil
 }
 
 func validateBackendServices(backendType string, services []string) error {
@@ -222,26 +230,36 @@ func (r *System) validatingSystem() error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-system,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=systems,versions=v1,name=vsystem.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Validator = &System{}
+type SystemCustomValidator struct{}
+
+var _ webhook.CustomValidator = &SystemCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *System) ValidateCreate() error {
-	systemlog.Info("validate create", "name", r.Name)
-
-	return r.validatingSystem()
+func (v *SystemCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	system, ok := obj.(*System)
+	if !ok {
+		return nil, fmt.Errorf("expected a System object but got %T", obj)
+	}
+	systemlog.Info("validate create", "name", system.Name)
+	return nil, system.validatingSystem()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *System) ValidateUpdate(old runtime.Object) error {
-	systemlog.Info("validate update", "name", r.Name)
-
-	return r.validatingSystem()
+func (v *SystemCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	system, ok := newObj.(*System)
+	if !ok {
+		return nil, fmt.Errorf("expected a System object but got %T", newObj)
+	}
+	systemlog.Info("validate update", "name", system.Name)
+	return nil, system.validatingSystem()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *System) ValidateDelete() error {
-	systemlog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+func (v *SystemCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	system, ok := obj.(*System)
+	if !ok {
+		return nil, fmt.Errorf("expected a System object but got %T", obj)
+	}
+	systemlog.Info("validate delete", "name", system.Name)
+	return nil, nil
 }

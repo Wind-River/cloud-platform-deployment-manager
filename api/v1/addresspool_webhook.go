@@ -1,16 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
 
 package v1
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/wind-river/cloud-platform-deployment-manager/common"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // Webhook response reasons
@@ -28,18 +31,25 @@ var addresspoollog = logf.Log.WithName("addresspool-resource")
 func (r *AddressPool) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithDefaulter(&AddressPoolCustomDefaulter{}).
+		WithValidator(&AddressPoolCustomValidator{}).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/mutate-starlingx-windriver-com-v1-addresspool,mutating=true,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=addresspools,verbs=create;update,versions=v1,name=maddresspool.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Defaulter = &AddressPool{}
+type AddressPoolCustomDefaulter struct{}
+
+var _ webhook.CustomDefaulter = &AddressPoolCustomDefaulter{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *AddressPool) Default() {
-	addresspoollog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+func (d *AddressPoolCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
+	addressPool, ok := obj.(*AddressPool)
+	if !ok {
+		return fmt.Errorf("expected a AddressPool object but got %T", obj)
+	}
+	addresspoollog.Info("default", "name", addressPool.Name)
+	return nil
 }
 
 // Determines if a string is a valid IP address
@@ -132,28 +142,36 @@ func (r *AddressPool) validateAddressPool() error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-starlingx-windriver-com-v1-addresspool,mutating=false,failurePolicy=fail,sideEffects=None,groups=starlingx.windriver.com,resources=addresspools,versions=v1,name=vaddresspool.kb.io,admissionReviewVersions=v1,timeoutSeconds=30
 
-var _ webhook.Validator = &AddressPool{}
+type AddressPoolCustomValidator struct{}
+
+var _ webhook.CustomValidator = &AddressPoolCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *AddressPool) ValidateCreate() error {
-	addresspoollog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return r.validateAddressPool()
+func (v *AddressPoolCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	addrPool, ok := obj.(*AddressPool)
+	if !ok {
+		return nil, fmt.Errorf("expected a AddressPool object but got %T", obj)
+	}
+	systemlog.Info("validate create", "name", addrPool.Name)
+	return nil, addrPool.validateAddressPool()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *AddressPool) ValidateUpdate(old runtime.Object) error {
-	addresspoollog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return r.validateAddressPool()
+func (v *AddressPoolCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	addrPool, ok := newObj.(*AddressPool)
+	if !ok {
+		return nil, fmt.Errorf("expected a AddressPool object but got %T", newObj)
+	}
+	addresspoollog.Info("validate update", "name", addrPool.Name)
+	return nil, addrPool.validateAddressPool()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *AddressPool) ValidateDelete() error {
-	addresspoollog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+func (v *AddressPoolCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	addrPool, ok := obj.(*AddressPool)
+	if !ok {
+		return nil, fmt.Errorf("expected a AddressPool object but got %T", obj)
+	}
+	addresspoollog.Info("validate delete", "name", addrPool.Name)
+	return nil, nil
 }

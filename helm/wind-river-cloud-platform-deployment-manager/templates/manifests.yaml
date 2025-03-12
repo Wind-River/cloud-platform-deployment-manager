@@ -421,7 +421,7 @@ data:
     health:
       healthProbeBindAddress: :8081
     metrics:
-      bindAddress: 127.0.0.1:8080
+      bindAddress: :8443
     webhook:
       port: 9443
     leaderElection:
@@ -445,9 +445,9 @@ metadata:
 spec:
   ports:
   - name: https
-    port: {{ .Values.rbacProxy.port }}
+    port: 8443
     protocol: TCP
-    targetPort: https
+    targetPort: 8443
   selector:
     control-plane: controller-manager
 ---
@@ -510,25 +510,13 @@ spec:
 {{ toYaml . | indent 8 }}
 {{- end }}
       containers:
-      {{- if .Values.rbacProxy.enabled }}
-      - args:
-        - --secure-listen-address=0.0.0.0:{{ .Values.rbacProxy.port }}
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v={{ .Values.rbacProxy.logLevel }}
-        image: {{ .Values.rbacProxy.image }}
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: {{ .Values.rbacProxy.port }}
-          name: https
-          protocol: TCP
-      {{- end }}
       - args:
         {{- if .Values.manager.debugger.enabled }}
         - /manager
         {{- end }}
         - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
+        - --metrics-bind-address=:8443
+        - --metrics-cert-path=/tmp/k8s-metrics-server/metrics-certs
         - --leader-elect={{ include "calculatedValue.leaderElection" . | trim }}
         - --zap-time-encoding=rfc3339nano
         - --zap-encoder=console
@@ -555,6 +543,9 @@ spec:
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
+        - containerPort: 8443
+          name: metrics-server
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /readyz
@@ -573,6 +564,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /tmp/k8s-metrics-server/metrics-certs
+          name: metrics-cert
+          readOnly: true
         - mountPath: /etc/manager
           name: config
       securityContext:
@@ -590,6 +584,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ include "helm.name" . }}-webhook-server-secret
+      - name: metrics-cert
+        secret:
+          defaultMode: 420
+          secretName: {{ include "helm.name" . }}-metrics-server-secret
       - configMap:
           name: {{ include "helm.name" . }}-config
         name: config
@@ -607,6 +605,20 @@ spec:
     kind: Issuer
     name: {{ .Values.namespace }}-selfsigned-issuer
   secretName: {{ include "helm.name" . }}-webhook-server-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.namespace }}-metrics-cert
+  namespace: {{ .Values.namespace }}
+spec:
+  dnsNames:
+  - {{ .Values.namespace }}-metrics-service.{{ .Values.namespace }}.svc
+  - {{ .Values.namespace }}-metrics-service.{{ .Values.namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ .Values.namespace }}-selfsigned-issuer
+  secretName: {{ include "helm.name" . }}-metrics-server-secret
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
