@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022 Wind River Systems, Inc. */
+/* Copyright(c) 2022,2025 Wind River Systems, Inc. */
 package common
 
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 )

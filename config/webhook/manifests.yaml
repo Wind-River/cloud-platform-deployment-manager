@@ -31,6 +31,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-starlingx-windriver-com-v1-datanetwork
+  failurePolicy: Fail
+  name: mdatanetwork.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - datanetworks
+  sideEffects: None
+  timeoutSeconds: 30
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-starlingx-windriver-com-v1-host
   failurePolicy: Fail
   name: mhost.kb.io
@@ -176,6 +197,27 @@ webhooks:
     - UPDATE
     resources:
     - addresspools
+  sideEffects: None
+  timeoutSeconds: 30
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-starlingx-windriver-com-v1-datanetwork
+  failurePolicy: Fail
+  name: vdatanetwork.kb.io
+  rules:
+  - apiGroups:
+    - starlingx.windriver.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - datanetworks
   sideEffects: None
   timeoutSeconds: 30
 - admissionReviewVersions:

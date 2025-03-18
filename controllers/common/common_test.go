@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2025 Wind River Systems, Inc. */
 
 package common
 
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
