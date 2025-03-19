@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2024 Wind River Systems, Inc.
+# Copyright(c) 2021-2025 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -429,6 +429,15 @@
           failed_when: false
           register: scope_principal
 
+        - name: Set deployment namespace name fact
+          set_fact:
+            deployment_namespace: >-
+              {{ lookup('file', '{{ deploy_config }}')
+                | from_yaml
+                | selectattr('kind', 'equalto', 'Namespace')
+                | map(attribute='metadata.name')
+                | first }}
+
         - name: Pre-check and process for subcloud enrollment
           block:
           - name: Fail if system subcloud enrollment but have principal in scope
@@ -437,7 +446,7 @@
             when: scope_principal.stdout_lines | length > 0
 
           - name: Retrieve all system resource names
-            command: kubectl -n deployment get systems -o jsonpath='{.items[*].metadata.name}'
+            command: kubectl -n "{{ deployment_namespace }}" get systems -o jsonpath='{.items[*].metadata.name}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: system_resource_names
@@ -454,7 +463,7 @@
 
           - name: Delete all system resources
             command: |
-              kubectl -n deployment delete system {{ item }}
+              kubectl -n "{{ deployment_namespace }}" delete system {{ item }}
             loop: "{{ system_resources }}"
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -488,7 +497,7 @@
               kind: ConfigMap
               metadata:
                 name: factory-install
-                namespace: deployment
+                namespace: {{ deployment_namespace }}
               data:
                 factory-installed: "true"
                 factory-config-finalized: "false"
@@ -555,9 +564,11 @@
     # Search first in host resource config. If not present, search into hostprofile.
     - block:
         - name: Search administrativeState into host resource
-          shell: |
+          shell: >-
             source /etc/platform/openrc;
-            kubectl get host "{{ get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+            kubectl get host "{{ get_host_name.stdout}}" \
+              -n "{{ deployment_namespace }}" \
+              -o=jsonpath='{.spec.administrativeState}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_host_adminstate
@@ -565,9 +576,11 @@
 
         # If config not found in host -previous task- then search into hostprofile
         - name: Get hostprofile name for this host
-          shell: |
+          shell: >-
             source /etc/platform/openrc;
-            kubectl get host "{{get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.profile}'
+            kubectl get host "{{get_host_name.stdout}}" \
+              -n "{{ deployment_namespace }}" \
+              -o=jsonpath='{.spec.profile}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_hostprofile_name
@@ -575,9 +588,11 @@
           ignore_errors: yes
 
         - name: Search administrativeState into hostprofile resource
-          shell: |
+          shell: >-
             source /etc/platform/openrc;
-            kubectl get hostprofile "{{get_hostprofile_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+            kubectl get hostprofile "{{get_hostprofile_name.stdout}}" \
+              -n "{{ deployment_namespace }}" \
+              -o=jsonpath='{.spec.administrativeState}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_hostprofile_adminstate
@@ -638,7 +653,8 @@
           # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
           - name: Retrieve kubectl resources in unreconciled status
             shell: >-
-              kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
+              kubectl -n "{{ deployment_namespace }}" \
+                get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
               awk '$NF ~ /^false/ {print}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -730,7 +746,7 @@
 
               - name: Get post unlock state
                 shell: >-
-                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}" |
+                  kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout}}" |
                   awk 'NR == 1 { for (i=1; i<=NF; i++) { if ($i == "ADMINISTRATIVE") { col = i; break } } } NR > 1 { print $col }'
                 environment:
                   KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -742,8 +758,8 @@
 
               - name: Retrieve kubectl resources reconciled status
                 shell: >-
-                  (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
-                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}")
+                  (kubectl -n "{{ deployment_namespace }}" get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+                  kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout}}")
                 environment:
                   KUBECONFIG: "/etc/kubernetes/admin.conf"
                 register: resources_status
@@ -816,8 +832,8 @@
             set_fact:
               host_reconcile_retries: 80
 
-          - name: Check number of hosts from deployment namespace
-            shell: kubectl get hosts -n deployment |  grep -v NAME  | wc -l
+          - name: Check number of hosts from "{{ deployment_namespace }}" namespace
+            shell: kubectl get hosts -n "{{ deployment_namespace }}" |  grep -v NAME  | wc -l
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: hosts_count
@@ -833,18 +849,23 @@
 
           - name: Wait for subcloud hosts available if not simplex
             block:
-            - name: Set system type for monitor the deloyment
+            - name: Set system type for monitor the deployment
               set_fact:
                 host_offline_retries: >
                   {{ 60 if hosts_count.stdout | int == 2 else 120 }}
                 host_reconcile_retries: >
                   {{ 120 if  hosts_count.stdout | int == 2 else 240 }}
 
-            - name: Get hosts not online or not available if not simplex
-              shell: >
-                kubectl get hosts -o custom-columns='NAME:.metadata.name,
-                OPERATIONAL:.status.availabilityStatus' -n deployment |
-                awk '$NF !~ /online/ {print}'
+            - debug:
+                msg: >
+                  Retry for {{ host_offline_retries }} seconds until all hosts
+                  can be configured.
+
+            - name: Check hosts cannot be configured by the DM
+              shell: |
+                source /etc/platform/openrc;
+                system host-list --format value |
+                awk '$4 != "locked" && ($6 != "available" && $6 != "online") {print $2}'
               environment:
                 KUBECONFIG: "/etc/kubernetes/admin.conf"
               register: get_offline_hosts
@@ -855,10 +876,12 @@
               delay: 60
               failed_when: false
 
-            - name: Fail if any host remain offline
+            - name: Fail if any host still not able to be configured
               fail:
                 msg: >
-                  Host remain offline: {{ get_offline_hosts.stdout }}
+                  Hosts still cannot be configured by deployment manager,
+                  check their availablity and inventory status before
+                  configuring the system again: {{ get_offline_hosts.stdout }}
               when: get_offline_hosts.stdout != ""
             when: hosts_count.stdout != "1"
 
@@ -873,8 +896,8 @@
             shell: >
               (kubectl get "{{ resources }}"
               -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
-              -n deployment;
-              kubectl -n deployment get hosts "{{ get_host_name.stdout }}" -o
+              -n "{{ deployment_namespace }}";
+              kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout }}" -o
               custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled') |
               awk '$NF ~ /^false/ {print}'
             environment:
