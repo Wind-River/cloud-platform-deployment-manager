@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package host
 
@@ -780,31 +780,31 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 		//  these attributes for other interface classes, but for now limit our
 		//  handling of these for data interfaces only.
 
-		mode, pool := getInterfaceIPv4Addressing(info, profile, host)
-		if iface.IPv4Mode == nil && mode != interfaces.AddressModeDisabled ||
-			iface.IPv4Mode != nil && mode != *iface.IPv4Mode {
-			opts.IPv4Mode = &mode
+		v4mode, v4pool := getInterfaceIPv4Addressing(info, profile, host)
+		if iface.IPv4Mode == nil && v4mode != interfaces.AddressModeDisabled ||
+			iface.IPv4Mode != nil && v4mode != *iface.IPv4Mode {
+			opts.IPv4Mode = &v4mode
 			result = true
 		}
-		if pool == nil && iface.IPv4Pool != nil || pool != nil && iface.IPv4Pool == nil {
-			opts.IPv4Pool = pool
+		if v4pool == nil && iface.IPv4Pool != nil || v4pool != nil && iface.IPv4Pool == nil {
+			opts.IPv4Pool = v4pool
 			result = true
-		} else if pool != nil && iface.IPv4Pool != nil && *pool != *iface.IPv4Pool {
-			opts.IPv4Pool = pool
+		} else if v4pool != nil && iface.IPv4Pool != nil && *v4pool != *iface.IPv4Pool {
+			opts.IPv4Pool = v4pool
 			result = true
 		}
 
-		mode, pool = getInterfaceIPv6Addressing(info, profile, host)
-		if iface.IPv6Mode == nil && mode != interfaces.AddressModeDisabled ||
-			iface.IPv6Mode != nil && mode != *iface.IPv6Mode {
-			opts.IPv6Mode = &mode
+		v6mode, v6pool := getInterfaceIPv6Addressing(info, profile, host)
+		if iface.IPv6Mode == nil && v6mode != interfaces.AddressModeDisabled ||
+			iface.IPv6Mode != nil && v6mode != *iface.IPv6Mode {
+			opts.IPv6Mode = &v6mode
 			result = true
 		}
-		if pool == nil && iface.IPv6Pool != nil || pool != nil && iface.IPv6Pool == nil {
-			opts.IPv6Pool = pool
+		if v6pool == nil && iface.IPv6Pool != nil || v6pool != nil && iface.IPv6Pool == nil {
+			opts.IPv6Pool = v6pool
 			result = true
-		} else if pool != nil && iface.IPv6Pool != nil && *pool != *iface.IPv6Pool {
-			opts.IPv6Pool = pool
+		} else if v6pool != nil && iface.IPv6Pool != nil && *v6pool != *iface.IPv6Pool {
+			opts.IPv6Pool = v6pool
 			result = true
 		}
 	}
@@ -1458,7 +1458,7 @@ func (r *HostReconciler) ReconcileVLANInterfaces(client *gophercloud.ServiceClie
 	for _, vlanInfo := range profile.Interfaces.VLAN {
 		// For each configured bond interface create or update the related
 		// system resource.
-		ifuuid, found := host.FindVLANInterfaceUUID(vlanInfo.VID)
+		ifuuid, found := host.FindVLANInterfaceUUID(vlanInfo.VID, vlanInfo.Name)
 		if !found {
 			// Create the interface
 			opts := commonInterfaceOptions(vlanInfo.CommonInterfaceInfo, profile, host)

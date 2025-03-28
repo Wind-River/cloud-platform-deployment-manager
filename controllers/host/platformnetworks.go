@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
 
 package host
 
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
@@ -18,7 +20,6 @@ import (
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	"k8s.io/apimachinery/pkg/types"
-	"strings"
 )
 
 // makeRangeArray converts an array of range structs to an array of arrays where
@@ -1356,6 +1357,7 @@ func (r *HostReconciler) ReconcilePlatformNetworkAndAddrPoolResource(
 // associated AddressPool specs applied by the user.
 func (r *HostReconciler) ReconcilePlatformNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo, system_info *cloudManager.SystemInfo) []error {
 	var errs []error
+	var err error
 	if !utils.IsReconcilerEnabled(utils.HostPlatformNetwork) {
 		return nil
 	}
@@ -1383,5 +1385,11 @@ func (r *HostReconciler) ReconcilePlatformNetworks(client *gophercloud.ServiceCl
 		}
 	}
 
+	// Refresh the host networks in the end
+	logHost.V(2).Info("update platfrom network info before updating interface network association")
+	host.Networks, err = networks.ListNetworks(client)
+	if err != nil {
+		errs = append(errs, err)
+	}
 	return errs
 }

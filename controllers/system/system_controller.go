@@ -1722,8 +1722,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	err, scope_updated := r.UpdateDeploymentScope(instance)
-	if err != nil {
+	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -1735,17 +1734,6 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-	}
-
-	// The status reaches its desired status post reconciled
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled &&
-		platformClient != nil {
-
-		if !scope_updated && !factory {
-			logSystem.V(2).Info("reconcile finished, desired state reached after reconciled.")
-			return reconcile.Result{}, nil
 		}
 	}
 
