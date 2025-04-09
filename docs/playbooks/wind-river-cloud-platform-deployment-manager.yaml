@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2024 Wind River Systems, Inc.
+# Copyright(c) 2021-2025 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
@@ -767,20 +767,20 @@
             wait_for:
               timeout: "{{ boot_wait_time }}"
             register: waiting_after_reboot
-            # Unreachable: Ignore a task failure due to the host instance being ’UNREACHABLE’ 
+            # Unreachable: Ignore a task failure due to the host instance being ’UNREACHABLE’
             # with the ignore_unreachable keyword. Ansible ignores the task errors but continues
-            # to execute future tasks against the unreachable host. This usually happens 
+            # to execute future tasks against the unreachable host. This usually happens
             # if the host is network-inaccessible. For example, during a second reboot that
-            # temporarily disrupts SSH connectivity, Ansible will mark it as unreachable since 
+            # temporarily disrupts SSH connectivity, Ansible will mark it as unreachable since
             # it can’t connect to the host at all.
             ignore_unreachable: true
-            # Failed: It can ignore errors when the task is failed, except those syntax errors, 
+            # Failed: It can ignore errors when the task is failed, except those syntax errors,
             # undefined variable errors, connection failures, execution issues.
-            # This occurs if Ansible can reach the host, but the task itself encounters an issue. This 
+            # This occurs if Ansible can reach the host, but the task itself encounters an issue. This
             # could happen if the host is reachable but not fully ready to respond, or if a required
             # port isn’t open yet.
             ignore_errors: true
-            
+
           # Retry block: sometimes system reboots twice
           # It will take some extra time.
           - block:
@@ -833,18 +833,23 @@
 
           - name: Wait for subcloud hosts available if not simplex
             block:
-            - name: Set system type for monitor the deloyment
+            - name: Set system type for monitor the deployment
               set_fact:
                 host_offline_retries: >
                   {{ 60 if hosts_count.stdout | int == 2 else 120 }}
                 host_reconcile_retries: >
                   {{ 120 if  hosts_count.stdout | int == 2 else 240 }}
 
-            - name: Get hosts not online or not available if not simplex
-              shell: >
-                kubectl get hosts -o custom-columns='NAME:.metadata.name,
-                OPERATIONAL:.status.availabilityStatus' -n deployment |
-                awk '$NF !~ /online/ {print}'
+            - debug:
+                msg: >
+                  Retry for {{ host_offline_retries }} seconds until all hosts
+                  can be configured.
+
+            - name: Check hosts cannot be configured by the DM
+              shell: |
+                source /etc/platform/openrc;
+                system host-list --format value |
+                awk '$4 == "locked" && ($6 != "available" && $6 != "online") {print $2}'
               environment:
                 KUBECONFIG: "/etc/kubernetes/admin.conf"
               register: get_offline_hosts
@@ -855,10 +860,12 @@
               delay: 60
               failed_when: false
 
-            - name: Fail if any host remain offline
+            - name: Fail if any host still not able to be configured
               fail:
                 msg: >
-                  Host remain offline: {{ get_offline_hosts.stdout }}
+                  Hosts still cannot be configured by deployment manager,
+                  check their availablity and inventory status before
+                  configuring the system again: {{ get_offline_hosts.stdout }}
               when: get_offline_hosts.stdout != ""
             when: hosts_count.stdout != "1"
 
