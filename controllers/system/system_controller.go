@@ -1103,7 +1103,7 @@ func FixCertsToManage(specCerts, currentCerts *starlingxv1.CertificateList) star
 // is only allowed if the resource has not already been successfully reconciled
 // at least once; or the user has overridden this check by adding an annotation
 // on the resource.
-func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (err error, required bool) {
+func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (required bool, err error) {
 	// Build a new system spec based on the current configuration so that
 	// we can compare it to the desired configuration.
 	if !instance.Status.Reconciled {
@@ -1111,12 +1111,12 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		// allow reconciliation to proceed.  This will ensure that attributes
 		// that are not readily comparable with the DeepEqual (i.e., licenses
 		// and certificates) will get handled properly when needed.
-		return nil, true
+		return true, nil
 	}
 
 	current, err := starlingxv1.NewSystemSpec(*info)
 	if err != nil {
-		return err, false
+		return false, err
 	}
 
 	// We need to remove the runtime installed certificated from the current
@@ -1135,23 +1135,23 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
 		// synchronized state unless there is an annotation on the resource.
-		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
-			msg := common.NoChangesAfterReconciled
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
-			return common.NewChangeAfterInSync(msg), false
-		} else {
+		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; present {
 			logSystem.Info(common.ChangedAllowedAfterReconciled)
+			return true, nil
 		}
+
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, common.NoChangesAfterReconciled)
+		return false, nil
 	}
 
 	logSystem.V(2).Info("A System Reconcile is required")
-	return nil, true
+	return true, nil
 }
 
 // ReconcileSystem is the main top level reconciler for System resources.
 func (r *SystemReconciler) ReconcileSystem(client *gophercloud.ServiceClient, instance *starlingxv1.System, spec *starlingxv1.SystemSpec, info *v1info.SystemInfo) (ready bool, err error) {
 
-	if err, required := r.ReconcileRequired(instance, spec, info); err != nil {
+	if required, err := r.ReconcileRequired(instance, spec, info); err != nil {
 		return instance.Status.Reconciled, err
 	} else if !required {
 		return instance.Status.Reconciled, nil
