@@ -805,9 +805,10 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 		return err
 	}
 
-	err = r.ReconcileLabels(client, instance, profile, host)
-	if err != nil {
-		return err
+	// error return may be delayed till after processors are reconciled
+	labels_err := r.ReconcileLabels(client, instance, profile, host)
+	if (labels_err != nil) && (!profile.HasWorkerSubFunction()) {
+		return labels_err
 	}
 
 	err = r.ReconcilePTPInstances(client, instance, profile, host)
@@ -822,6 +823,11 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 		err = r.ReconcileProcessors(client, instance, profile, host)
 		if err != nil {
 			return err
+		}
+
+		// delayed labels error return
+		if labels_err != nil {
+			return labels_err
 		}
 
 		err = r.ReconcileMemory(client, instance, profile, host)
