@@ -17,7 +17,7 @@ HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
 # Parameters for deployctl tool
 GIT_HEAD := $(shell git rev-list -1 HEAD)
-GIT_LAST_TAG := 24.09.300
+GIT_LAST_TAG := 24.09.5
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_PATCH := ""
 
