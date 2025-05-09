@@ -805,11 +805,6 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 		return err
 	}
 
-	err = r.ReconcileLabels(client, instance, profile, host)
-	if err != nil {
-		return err
-	}
-
 	err = r.ReconcilePTPInstances(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -833,6 +828,11 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 		if err != nil {
 			return err
 		}
+	}
+
+	err = r.ReconcileLabels(client, instance, profile, host)
+	if err != nil {
+		return err
 	}
 
 	err = r.ReconcileNetworking(client, instance, profile, host)
