@@ -642,6 +642,21 @@ spec:
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
                           type: array
+                        maxRxRate:
+                          description: |-
+                            MaxRxRate defines the maximum rx rate of interfaces
+                            for rate limiting. Only applicable if the interface class  is set to
+                            "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                          type: integer
+                        maxTxRate:
+                          description: |-
+                            MaxTxRate defines the maximum tx rate of interfaces
+                            for rate limiting.
+                            1. Applicable if the interface class is set to "platform" and
+                            interface type is set to "ethernet" or "vlan" or "ae".
+                            2. Applicable if the interface class is set to "pci-sriov" and
+                            interface type is set to "vf".
+                          type: integer
                         members:
                           description: |-
                             Members defines the list of interfaces which, together, make up the Bond
@@ -747,6 +762,21 @@ spec:
                             configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        maxRxRate:
+                          description: |-
+                            MaxRxRate defines the maximum rx rate of interfaces
+                            for rate limiting. Only applicable if the interface class  is set to
+                            "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                          type: integer
+                        maxTxRate:
+                          description: |-
+                            MaxTxRate defines the maximum tx rate of interfaces
+                            for rate limiting.
+                            1. Applicable if the interface class is set to "platform" and
+                            interface type is set to "ethernet" or "vlan" or "ae".
+                            2. Applicable if the interface class is set to "pci-sriov" and
+                            interface type is set to "vf".
+                          type: integer
                         mtu:
                           description: MTU defines the maximum transmit unit for this interface.
                           maximum: 9216
@@ -848,11 +878,20 @@ spec:
                             configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        maxRxRate:
+                          description: |-
+                            MaxRxRate defines the maximum rx rate of interfaces
+                            for rate limiting. Only applicable if the interface class  is set to
+                            "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                          type: integer
                         maxTxRate:
                           description: |-
-                            MaxTxRate defines the maximum tx rate of SRIOV VF
-                            interfaces. Only applicable if the interface class is set to
-                            "pci-sriov" and interface type is set to "vf".
+                            MaxTxRate defines the maximum tx rate of interfaces
+                            for rate limiting.
+                            1. Applicable if the interface class is set to "platform" and
+                            interface type is set to "ethernet" or "vlan" or "ae".
+                            2. Applicable if the interface class is set to "pci-sriov" and
+                            interface type is set to "vf".
                           type: integer
                         mtu:
                           description: MTU defines the maximum transmit unit for this interface.
@@ -941,6 +980,21 @@ spec:
                             configured.
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        maxRxRate:
+                          description: |-
+                            MaxRxRate defines the maximum rx rate of interfaces
+                            for rate limiting. Only applicable if the interface class  is set to
+                            "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                          type: integer
+                        maxTxRate:
+                          description: |-
+                            MaxTxRate defines the maximum tx rate of interfaces
+                            for rate limiting.
+                            1. Applicable if the interface class is set to "platform" and
+                            interface type is set to "ethernet" or "vlan" or "ae".
+                            2. Applicable if the interface class is set to "pci-sriov" and
+                            interface type is set to "vf".
+                          type: integer
                         mtu:
                           description: MTU defines the maximum transmit unit for this interface.
                           maximum: 9216
@@ -1750,6 +1804,21 @@ spec:
                                 pattern: ^[a-zA-Z0-9\-_]+$
                                 type: string
                               type: array
+                            maxRxRate:
+                              description: |-
+                                MaxRxRate defines the maximum rx rate of interfaces
+                                for rate limiting. Only applicable if the interface class  is set to
+                                "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                              type: integer
+                            maxTxRate:
+                              description: |-
+                                MaxTxRate defines the maximum tx rate of interfaces
+                                for rate limiting.
+                                1. Applicable if the interface class is set to "platform" and
+                                interface type is set to "ethernet" or "vlan" or "ae".
+                                2. Applicable if the interface class is set to "pci-sriov" and
+                                interface type is set to "vf".
+                              type: integer
                             members:
                               description: |-
                                 Members defines the list of interfaces which, together, make up the Bond
@@ -1855,6 +1924,21 @@ spec:
                                 configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
+                            maxRxRate:
+                              description: |-
+                                MaxRxRate defines the maximum rx rate of interfaces
+                                for rate limiting. Only applicable if the interface class  is set to
+                                "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                              type: integer
+                            maxTxRate:
+                              description: |-
+                                MaxTxRate defines the maximum tx rate of interfaces
+                                for rate limiting.
+                                1. Applicable if the interface class is set to "platform" and
+                                interface type is set to "ethernet" or "vlan" or "ae".
+                                2. Applicable if the interface class is set to "pci-sriov" and
+                                interface type is set to "vf".
+                              type: integer
                             mtu:
                               description: MTU defines the maximum transmit unit for this interface.
                               maximum: 9216
@@ -1956,11 +2040,20 @@ spec:
                                 configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
+                            maxRxRate:
+                              description: |-
+                                MaxRxRate defines the maximum rx rate of interfaces
+                                for rate limiting. Only applicable if the interface class  is set to
+                                "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                              type: integer
                             maxTxRate:
                               description: |-
-                                MaxTxRate defines the maximum tx rate of SRIOV VF
-                                interfaces. Only applicable if the interface class is set to
-                                "pci-sriov" and interface type is set to "vf".
+                                MaxTxRate defines the maximum tx rate of interfaces
+                                for rate limiting.
+                                1. Applicable if the interface class is set to "platform" and
+                                interface type is set to "ethernet" or "vlan" or "ae".
+                                2. Applicable if the interface class is set to "pci-sriov" and
+                                interface type is set to "vf".
                               type: integer
                             mtu:
                               description: MTU defines the maximum transmit unit for this interface.
@@ -2049,6 +2142,21 @@ spec:
                                 configured.
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
+                            maxRxRate:
+                              description: |-
+                                MaxRxRate defines the maximum rx rate of interfaces
+                                for rate limiting. Only applicable if the interface class  is set to
+                                "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+                              type: integer
+                            maxTxRate:
+                              description: |-
+                                MaxTxRate defines the maximum tx rate of interfaces
+                                for rate limiting.
+                                1. Applicable if the interface class is set to "platform" and
+                                interface type is set to "ethernet" or "vlan" or "ae".
+                                2. Applicable if the interface class is set to "pci-sriov" and
+                                interface type is set to "vf".
+                              type: integer
                             mtu:
                               description: MTU defines the maximum transmit unit for this interface.
                               maximum: 9216
