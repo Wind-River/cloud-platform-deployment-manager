@@ -13,7 +13,6 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/gophercloud/gophercloud v1.8.0
 	github.com/imdario/mergo v0.3.16
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
 	github.com/pkg/errors v0.9.1
