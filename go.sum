@@ -41,8 +41,8 @@ cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/Wind-River/gophercloud v0.0.0-20240715132259-74cedf952abf h1:cQHL01X61NXwQv0hHicyr2gj5FHQQQxNa1PlUZRB7k0=
-github.com/Wind-River/gophercloud v0.0.0-20240715132259-74cedf952abf/go.mod h1:vVDhU9TrWNFfORJV7Tvx7UXsu/ImDlVeHhQCdrbzLEA=
+github.com/Wind-River/gophercloud v0.0.0-20250523125248-f913b1299bb5 h1:X1F4NZ/vFUWlpQm1KyeS9gp/5P0pCp1nGjpO+Y+QJC0=
+github.com/Wind-River/gophercloud v0.0.0-20250523125248-f913b1299bb5/go.mod h1:vVDhU9TrWNFfORJV7Tvx7UXsu/ImDlVeHhQCdrbzLEA=
 github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 h1:s6gZFSlWYmbqAuRjVTiNNhvNRfY2Wxp9nhfyel4rklc=
 github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137/go.mod h1:OMCwj8VM1Kc9e19TLln2VL61YJF0x1XFtfdL4JdbSyE=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

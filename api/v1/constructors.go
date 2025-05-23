@@ -316,6 +316,12 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		mtu := iface.MTU
 		data.MTU = &mtu
 
+		maxTxRate := iface.MaxTxRate
+		data.MaxTxRate = &maxTxRate
+
+		maxRxRate := iface.MaxRxRate
+		data.MaxRxRate = &maxRxRate
+
 		if iface.Class == "" {
 			data.Class = interfaces.IFClassNone
 		}
@@ -411,10 +417,9 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		case interfaces.IFTypeVF:
 
 			vf := VFInfo{
-				VFCount:   *iface.VFCount,
-				Lower:     iface.Uses[0],
-				VFDriver:  iface.VFDriver,
-				MaxTxRate: iface.MaxTxRate}
+				VFCount:  *iface.VFCount,
+				Lower:    iface.Uses[0],
+				VFDriver: iface.VFDriver}
 			vf.CommonInterfaceInfo = data
 			vfs = append(vfs, vf)
 		}

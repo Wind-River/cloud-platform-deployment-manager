@@ -441,6 +441,21 @@ type CommonInterfaceInfo struct {
 	// interface.
 	// +optional
 	PtpInterfaces *PtpInterfaceItemList `json:"ptpInterfaces,omitempty"`
+
+	// MaxTxRate defines the maximum tx rate of interfaces
+	// for rate limiting.
+	// 1. Applicable if the interface class is set to "platform" and
+	// interface type is set to "ethernet" or "vlan" or "ae".
+	// 2. Applicable if the interface class is set to "pci-sriov" and
+	// interface type is set to "vf".
+	// +optional
+	MaxTxRate *int `json:"maxTxRate,omitempty"`
+
+	// MaxRxRate defines the maximum rx rate of interfaces
+	// for rate limiting. Only applicable if the interface class  is set to
+	// "platform" and interface type is set to "ethernet" or "vlan" or "ae".
+	// +optional
+	MaxRxRate *int `json:"maxRxRate,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single
@@ -552,11 +567,6 @@ type VFInfo struct {
 	// SRIOV VF interface allocated.  Only applicable if the interface class is
 	// set to "pci-sriov".
 	VFDriver *string `json:"vfDriver,omitempty"`
-
-	// MaxTxRate defines the maximum tx rate of SRIOV VF
-	// interfaces. Only applicable if the interface class is set to
-	// "pci-sriov" and interface type is set to "vf".
-	MaxTxRate *int `json:"maxTxRate,omitempty"`
 }
 
 // VFList defines a type to represent a slice of SR-IOV virtual functions.

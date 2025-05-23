@@ -1,0 +1,5 @@
+bases:
+  - ../../default
+
+patches:
+  - ae_interfaces_with_rate_limit.yaml

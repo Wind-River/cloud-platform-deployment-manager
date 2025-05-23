@@ -1,0 +1,20 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  interfaces:
+    vlan:
+    - class: platform
+      dataNetworks: []
+      lower: sriov0
+      name: oam0
+      platformNetworks:
+      - oam
+      ptpRole: none
+      vid: 200
+      maxTxRate: 25
+      maxRxRate: 35

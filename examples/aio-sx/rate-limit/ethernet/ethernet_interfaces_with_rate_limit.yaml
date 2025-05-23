@@ -1,0 +1,44 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  interfaces:
+    ethernet:
+      - name: lo
+        class: platform
+        platformNetworks:
+          - mgmt
+          - cluster-host
+        port:
+          name: lo
+      - name: oam0
+        class: platform
+        platformNetworks:
+          - oam
+        port:
+          name: enp0s3
+        maxTxRate: 25
+        maxRxRate: 35
+      - name: data0
+        class: data
+        platformNetworks:
+          - group0-data0v4
+          - group0-data0v6
+        dataNetworks:
+          - group0-vxlan0
+          - group0-vxlan0b
+        port:
+          name: eth1000
+      - name: data1
+        class: data
+        platformNetworks:
+          - group0-data1v4
+          - group0-data1v6
+        dataNetworks:
+          - group0-vxlan1
+        port:
+          name: eth1001

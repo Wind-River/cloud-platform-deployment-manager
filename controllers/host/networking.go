@@ -775,6 +775,16 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 		result = true
 	}
 
+	if info.MaxTxRate != nil && *info.MaxTxRate != iface.MaxTxRate {
+		opts.MaxTxRate = info.MaxTxRate
+		result = true
+	}
+
+	if info.MaxRxRate != nil && *info.MaxRxRate != iface.MaxRxRate {
+		opts.MaxRxRate = info.MaxRxRate
+		result = true
+	}
+
 	if info.Class == interfaces.IFClassData || hasIPv4StaticAddresses(info, profile) || hasIPv6StaticAddresses(info, profile) {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our
@@ -1116,6 +1126,8 @@ func (r *HostReconciler) ReconcileEthernetInterfaces(client *gophercloud.Service
 				opts.Type = &iftype
 				uses := []string{ethInfo.Lower}
 				opts.Uses = &uses
+				opts.MaxTxRate = ethInfo.MaxTxRate
+				opts.MaxRxRate = ethInfo.MaxRxRate
 
 				logHost.Info("creating ethernet interface", "opts", opts)
 
@@ -1361,6 +1373,8 @@ func (r *HostReconciler) ReconcileBondInterfaces(client *gophercloud.ServiceClie
 			opts.AEPrimReselect = bondInfo.PrimaryReselect
 
 			opts.Uses = &bondInfo.Members
+			opts.MaxTxRate = bondInfo.MaxTxRate
+			opts.MaxRxRate = bondInfo.MaxRxRate
 
 			logHost.Info("creating bond interface", "opts", opts)
 
@@ -1468,6 +1482,8 @@ func (r *HostReconciler) ReconcileVLANInterfaces(client *gophercloud.ServiceClie
 			opts.VID = &vlanInfo.VID
 			uses := []string{vlanInfo.Lower}
 			opts.Uses = &uses
+			opts.MaxTxRate = vlanInfo.MaxTxRate
+			opts.MaxRxRate = vlanInfo.MaxRxRate
 
 			logHost.Info("creating vlan interface", "opts", opts)
 
