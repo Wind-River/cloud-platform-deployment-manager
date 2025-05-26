@@ -247,6 +247,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
 	$(KUSTOMIZE) build examples/standard/hw-settle > examples/standard-hw-settle.yaml
+	$(KUSTOMIZE) build examples/standard/rate-limit/ae > examples/standard-ae-rate-limit.yaml
 	$(KUSTOMIZE) build examples/storage/default > examples/storage.yaml
 	$(KUSTOMIZE) build examples/storage/day2-operation/bootstrap > examples/storage-day2-bootstrap.yaml
 	$(KUSTOMIZE) build examples/storage/day2-operation/principal > examples/storage-day2-principal.yaml
@@ -260,6 +261,8 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/kernel > examples/aio-sx-kernel.yaml
 	$(KUSTOMIZE) build examples/aio-sx/day2-operation/bootstrap > examples/aio-sx-day2-bootstrap.yaml
 	$(KUSTOMIZE) build examples/aio-sx/day2-operation/principal > examples/aio-sx-day2-principal.yaml
+	$(KUSTOMIZE) build examples/aio-sx/rate-limit/ethernet > examples/aio-sx-ethernet-rate-limit.yaml
+	$(KUSTOMIZE) build examples/aio-sx/rate-limit/vlan > examples/aio-sx-vlan-rate-limit.yaml
 	$(KUSTOMIZE) build examples/aio-dx/default > examples/aio-dx.yaml
 	$(KUSTOMIZE) build examples/aio-dx/vxlan > examples/aio-dx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-dx/day2-operation/bootstrap > examples/aio-dx-day2-bootstrap.yaml

@@ -1596,6 +1596,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				vFCount := 5
 				vFDriver := "VFDriver"
 				maxTxRate := 7
+				maxRxRate := 7
 				host := platform.HostInfo{
 					PTPInterfaces: []ptpinterfaces.PTPInterface{
 						{
@@ -1629,24 +1630,28 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 					Interfaces: []interfaces.Interface{
 						{
-							ID:       "infID",
-							Name:     "infName",
-							Class:    interfaces.IFClassPlatform,
-							MTU:      4,
-							IPv4Pool: &iPv4Pool,
-							IPv6Pool: &iPv6Pool,
-							PTPRole:  &pTPRole,
-							Type:     "ethernet",
-							Uses:     []string{"use1", "use2"},
+							ID:        "infID",
+							Name:      "infName",
+							Class:     interfaces.IFClassPlatform,
+							MTU:       4,
+							IPv4Pool:  &iPv4Pool,
+							IPv6Pool:  &iPv6Pool,
+							PTPRole:   &pTPRole,
+							Type:      "ethernet",
+							Uses:      []string{"use1", "use2"},
+							MaxTxRate: maxTxRate,
+							MaxRxRate: maxRxRate,
 						},
 						{
-							ID:    "infID1",
-							Name:  "infName1",
-							Class: interfaces.IFClassPlatform,
-							MTU:   10,
-							Type:  interfaces.IFTypeVLAN,
-							Uses:  []string{"use3"},
-							VID:   &vID,
+							ID:        "infID1",
+							Name:      "infName1",
+							Class:     interfaces.IFClassPlatform,
+							MTU:       10,
+							Type:      interfaces.IFTypeVLAN,
+							Uses:      []string{"use3"},
+							VID:       &vID,
+							MaxTxRate: maxTxRate,
+							MaxRxRate: maxRxRate,
 						},
 						{
 							ID:             "infID2",
@@ -1658,6 +1663,8 @@ var _ = Describe("Constructor utils for kind", func() {
 							AEMode:         &aEMode,
 							AETransmitHash: &aETransmitHash,
 							AEPrimReselect: &aEPrimReselect,
+							MaxTxRate:      maxTxRate,
+							MaxRxRate:      maxRxRate,
 						},
 						{
 							ID:    "infID3",
@@ -1676,7 +1683,7 @@ var _ = Describe("Constructor utils for kind", func() {
 							Uses:      []string{"use6"},
 							VFCount:   &vFCount,
 							VFDriver:  &vFDriver,
-							MaxTxRate: &maxTxRate,
+							MaxTxRate: maxTxRate,
 						},
 					},
 
