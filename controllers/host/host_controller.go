@@ -2376,7 +2376,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Build a composite profile based on the profile chain and host overrides
 	profile, err := r.BuildAndValidateCompositeProfile(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration
