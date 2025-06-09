@@ -52,7 +52,8 @@ import (
 var logSystem = log.Log.WithName("controller").WithName("system")
 
 const SystemControllerName = "system-controller"
-const RestAPIcertName = "system-restapi-gui-certificate"
+const RestAPICertName = "system-restapi-gui-certificate"
+const DefaultRestCertSecretNamespace = "deployment"
 
 var _ reconcile.Reconciler = &SystemReconciler{}
 
@@ -95,7 +96,7 @@ func InstallCertificate(filename string, data []byte) error {
 // secret.
 func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System) error {
 	secret := v1.Secret{}
-	secretName := types.NamespacedName{Namespace: instance.Namespace, Name: RestAPIcertName}
+	secretName := types.NamespacedName{Namespace: DefaultRestCertSecretNamespace, Name: RestAPICertName}
 	err := r.Client.Get(context.TODO(), secretName, &secret)
 	if err != nil {
 		return err
@@ -107,7 +108,7 @@ func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System)
 	for iter := 0; iter < numRetries; iter++ {
 		caBytes, ok = secret.Data[starlingxv1.SecretCaCertKey]
 		if !ok {
-			logSystem.Info("Platform certificate CA not ready/available", "name", RestAPIcertName)
+			logSystem.Info("Platform certificate CA not ready/available", "name", RestAPICertName)
 			time.Sleep(5 * time.Second)
 		} else {
 			logSystem.Info("Platform certificate CA ready!")
@@ -116,9 +117,9 @@ func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System)
 	}
 
 	if !ok {
-		logSystem.Info("Continuing deployment without a CA certificate", "name", RestAPIcertName)
+		logSystem.Info("Continuing deployment without a CA certificate", "name", RestAPICertName)
 	} else {
-		filename := fmt.Sprintf("%s-%s-ca-cert.pem", instance.Namespace, RestAPIcertName)
+		filename := fmt.Sprintf("%s-%s-ca-cert.pem", DefaultRestCertSecretNamespace, RestAPICertName)
 		err = InstallCertificate(filename, caBytes)
 		if err != nil {
 			logSystem.Error(err, "failed to install root certificate")
