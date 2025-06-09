@@ -27,6 +27,25 @@
         wait_for_dm_unlock: " {{ wait_for_dm_unlock| default(5) }}"
       when: deployment_config is defined
 
+    - block:
+        - name: Set deployment namespace name fact
+          set_fact:
+            deployment_namespace: >-
+              {{ lookup('file', '{{ deploy_config }}')
+              | from_yaml_all
+              | selectattr('kind', 'equalto', 'Namespace')
+              | map(attribute='metadata.name')
+              | first }}
+      # in case the user does not define the namespace, the default namespace deployment
+      # must already exist, created by sysinv.
+      rescue:
+        - name: Set deployment namespace name fallback
+          set_fact:
+            deployment_namespace: "deployment"
+
+    - debug:
+        msg: "The crd namespace configured is {{ deployment_namespace }}"
+
     - set_fact:
         manager_app_chart: "{{ manager_app_chart | default('/usr/local/share/applications/helm/deployment-manager-*.tgz') }}"
 
@@ -411,7 +430,7 @@
             when: scope_principal.stdout_lines | length > 0
 
           - name: Retrieve all system resource names
-            command: kubectl -n deployment get systems -o jsonpath='{.items[*].metadata.name}'
+            command: kubectl -n "{{ deployment_namespace }}" get systems -o jsonpath='{.items[*].metadata.name}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: system_resource_names
@@ -428,7 +447,7 @@
 
           - name: Delete all system resources
             command: |
-              kubectl -n deployment delete system {{ item }}
+              kubectl -n "{{ deployment_namespace }}" delete system {{ item }}
             loop: "{{ system_resources }}"
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -462,7 +481,7 @@
               kind: ConfigMap
               metadata:
                 name: factory-install
-                namespace: deployment
+                namespace: {{ deployment_namespace }}
               data:
                 factory-installed: "true"
                 factory-config-finalized: "false"
@@ -515,7 +534,7 @@
         - name: Search administrativeState into host resource
           shell: |
             source /etc/platform/openrc;
-            kubectl get host "{{ get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+            kubectl get host "{{ get_host_name.stdout}}" -n "{{ deployment_namespace }}" -o=jsonpath='{.spec.administrativeState}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_host_adminstate
@@ -525,7 +544,7 @@
         - name: Get hostprofile name for this host
           shell: |
             source /etc/platform/openrc;
-            kubectl get host "{{get_host_name.stdout}}" -n deployment -o=jsonpath='{.spec.profile}'
+            kubectl get host "{{get_host_name.stdout}}" -n "{{ deployment_namespace }}" -o=jsonpath='{.spec.profile}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_hostprofile_name
@@ -535,7 +554,7 @@
         - name: Search administrativeState into hostprofile resource
           shell: |
             source /etc/platform/openrc;
-            kubectl get hostprofile "{{get_hostprofile_name.stdout}}" -n deployment -o=jsonpath='{.spec.administrativeState}'
+            kubectl get hostprofile "{{get_hostprofile_name.stdout}}" -n "{{ deployment_namespace }}" -o=jsonpath='{.spec.administrativeState}'
           environment:
             KUBECONFIG: "/etc/kubernetes/admin.conf"
           register: get_hostprofile_adminstate
@@ -596,7 +615,7 @@
           # TODO(ecandotti): This will eliminate the need to always have the RECONCILED column as the last column when a new state is added.
           - name: Retrieve kubectl resources in unreconciled status
             shell: >-
-              kubectl -n deployment get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
+              kubectl -n "{{ deployment_namespace }}" get datanetworks,hostprofiles,hosts,platformnetworks,systems,ptpinstances,ptpinterfaces |
               awk '$NF ~ /^false/ {print}'
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -688,7 +707,7 @@
 
               - name: Get post unlock state
                 shell: >-
-                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}" |
+                  kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout}}" |
                   awk 'NR == 1 { for (i=1; i<=NF; i++) { if ($i == "ADMINISTRATIVE") { col = i; break } } } NR > 1 { print $col }'
                 environment:
                   KUBECONFIG: "/etc/kubernetes/admin.conf"
@@ -700,8 +719,8 @@
 
               - name: Retrieve kubectl resources reconciled status
                 shell: >-
-                  (kubectl -n deployment get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
-                  kubectl -n deployment get hosts "{{ get_host_name.stdout}}")
+                  (kubectl -n "{{ deployment_namespace }}" get datanetworks,platformnetworks,systems,ptpinstances,ptpinterfaces;
+                  kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout}}")
                 environment:
                   KUBECONFIG: "/etc/kubernetes/admin.conf"
                 register: resources_status
@@ -774,8 +793,8 @@
             set_fact:
               host_reconcile_retries: 80
 
-          - name: Check number of hosts from deployment namespace
-            shell: kubectl get hosts -n deployment |  grep -v NAME  | wc -l
+          - name: Check number of hosts from "{{ deployment_namespace }}" namespace
+            shell: kubectl get hosts -n "{{ deployment_namespace }}" |  grep -v NAME  | wc -l
             environment:
               KUBECONFIG: "/etc/kubernetes/admin.conf"
             register: hosts_count
@@ -838,8 +857,8 @@
             shell: >
               (kubectl get "{{ resources }}"
               -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
-              -n deployment;
-              kubectl -n deployment get hosts "{{ get_host_name.stdout }}" -o
+              -n "{{ deployment_namespace }}";
+              kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout }}" -o
               custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled') |
               awk '$NF ~ /^false/ {print}'
             environment:
