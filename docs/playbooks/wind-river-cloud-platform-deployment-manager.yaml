@@ -28,23 +28,28 @@
       when: deployment_config is defined
 
     - block:
-        - name: Set deployment namespace name fact
-          set_fact:
-            deployment_namespace: >-
-              {{ lookup('file', '{{ deploy_config }}')
-              | from_yaml_all
-              | selectattr('kind', 'equalto', 'Namespace')
-              | map(attribute='metadata.name')
-              | first }}
-      # in case the user does not define the namespace, the default namespace deployment
-      # must already exist, created by sysinv.
-      rescue:
-        - name: Set deployment namespace name fallback
-          set_fact:
-            deployment_namespace: "deployment"
+      - name: Get deployment namespace configured
+        shell: |
+          import yaml
+          with open("{{ deploy_config }}") as f:
+              resources = list(yaml.safe_load_all(f))
+          namespace = "deployment"
+          for resource in resources:
+              if isinstance(resource, dict) and resource.get("kind") == "Namespace":
+                  namespace = resource["metadata"]["name"]
+                  break
+          print(namespace.strip())
+        args:
+          executable: /usr/bin/python
+        delegate_to: localhost
+        register: get_deployment_namespace
 
-    - debug:
-        msg: "The crd namespace configured is {{ deployment_namespace }}"
+      - set_fact:
+          deployment_namespace: "{{ get_deployment_namespace.stdout }}"
+
+      - debug:
+          msg: "The crd namespace configured is {{ deployment_namespace }}"
+      when: deploy_config is defined
 
     - set_fact:
         manager_app_chart: "{{ manager_app_chart | default('/usr/local/share/applications/helm/deployment-manager-*.tgz') }}"
