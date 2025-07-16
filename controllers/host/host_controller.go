@@ -819,11 +819,14 @@ func (r *HostReconciler) ReconcileDisabledHost(client *gophercloud.ServiceClient
 			return err
 		}
 
-		err = r.ReconcileMemory(client, instance, profile, host)
-		if err != nil {
-			return err
-		}
+	}
 
+	err = r.ReconcileMemory(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
+	if profile.HasWorkerSubFunction() {
 		err = r.ReconcileKernel(client, instance, profile, host)
 		if err != nil {
 			return err

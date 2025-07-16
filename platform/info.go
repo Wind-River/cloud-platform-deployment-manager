@@ -699,13 +699,13 @@ func (in *HostInfo) FindPhysicalVolume(groupName string, typ string, path string
 
 // FindMemory is a utility function which finds a memory resource for a given
 // processor node.
-func (in *HostInfo) FindMemory(node int) (*memory.Memory, bool) {
+func (in *HostInfo) FindMemory(node int) *memory.Memory {
 	for _, m := range in.Memory {
 		if m.Processor == node {
-			return &m, true
+			return &m
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // BuildNetworkIDList is a utility function which takes a set of network names
