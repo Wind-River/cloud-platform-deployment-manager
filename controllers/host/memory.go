@@ -147,8 +147,6 @@ func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts mem
 // ReconcileMemory is responsible for reconciling the Memory configuration of a
 // host resource.
 func (r *HostReconciler) ReconcileMemory(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
-	updated := false
-
 	if len(profile.Memory) == 0 || !common.IsReconcilerEnabled(common.Memory) {
 		return nil
 	}
@@ -160,38 +158,21 @@ func (r *HostReconciler) ReconcileMemory(client *gophercloud.ServiceClient, inst
 		return err
 	}
 
-	for _, nodeInfo := range profile.Memory {
-		// For each NUMA node configuration
-		mem, ok := host.FindMemory(nodeInfo.Node)
-		if !ok {
-			msg := fmt.Sprintf("failed to find memory resource for node %d", nodeInfo.Node)
-			return starlingxv1.NewMissingSystemResource(msg)
-		}
+	memories, err := getMemoryOpts(profile, objects, host)
+	if err != nil {
+		return err
+	}
 
-		for _, f := range nodeInfo.Functions {
-			// For each function within a NUMA node configuration
-			pageSize := starlingxv1.PageSize(f.PageSize)
-			count, err := memoryCountByFunction(objects, nodeInfo.Node, f.Function, pageSize)
-			if err != nil {
-				return err
-			}
-
-			if opts, ok := memoryUpdateRequired(f, count); ok {
-				logHost.Info("updating memory configuration", "opts", opts)
-
-				_, err := memory.Update(client, mem.ID, opts).Extract()
-				if err != nil {
-					err = perrors.Wrapf(err, "failed to update memory: %s, %s",
-						host.ID, utils.FormatStruct(opts))
-					return err
-				}
-
-				updated = true
-			}
+	for _, m := range memories {
+		logHost.Info("updating memory configuration", "opts", m.Opts)
+		if _, err := memory.Update(client, m.Mem.ID, m.Opts).Extract(); err != nil {
+			err = perrors.Wrapf(err, "failed to update memory: %s, %s",
+				host.ID, utils.FormatStruct(m.Opts))
+			return err
 		}
 	}
 
-	if updated {
+	if len(memories) > 0 {
 		r.NormalEvent(instance, utils.ResourceUpdated,
 			"memory allocations have been updated")
 
@@ -205,4 +186,51 @@ func (r *HostReconciler) ReconcileMemory(client *gophercloud.ServiceClient, inst
 	}
 
 	return nil
+}
+
+type memoryWithOpts struct {
+	Mem  *memory.Memory
+	Opts memory.MemoryOpts
+}
+
+// getMemoryOpts is a utility function to get the memories settings based on the host's
+// personality or subfunction. If the host is a worker, it will allow and add all the
+// kinds of memory configuartion, but if the host is a controller, it will allow
+// only plataform memory configuration.
+func getMemoryOpts(
+	profile *starlingxv1.HostProfileSpec,
+	memories []memory.Memory,
+	host *v1info.HostInfo,
+) (memWithOptsList []memoryWithOpts, err error) {
+
+	isWorker := profile.HasWorkerSubFunction()
+	for _, nodeInfo := range profile.Memory {
+		// For each NUMA node configuration
+		mem := host.FindMemory(nodeInfo.Node)
+		if mem == nil {
+			msg := fmt.Sprintf("failed to find memory resource for node %d", nodeInfo.Node)
+			return memWithOptsList, starlingxv1.NewMissingSystemResource(msg)
+		}
+
+		for _, f := range nodeInfo.Functions {
+			if !isWorker && f.Function != memory.MemoryFunctionPlatform {
+				msg := fmt.Sprintf("Ignoring memory of function %s as it's only allowed for worker nodes", f.Function)
+				logHost.Info(msg)
+				continue
+			}
+
+			// For each function within a NUMA node configuration
+			pageSize := starlingxv1.PageSize(f.PageSize)
+			count, err := memoryCountByFunction(memories, nodeInfo.Node, f.Function, pageSize)
+			if err != nil {
+				return memWithOptsList, err
+			}
+
+			if opts, ok := memoryUpdateRequired(f, count); ok {
+				memWithOptsList = append(memWithOptsList, memoryWithOpts{Mem: mem, Opts: opts})
+			}
+		}
+	}
+
+	return memWithOptsList, err
 }

@@ -876,11 +876,12 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 			return nil, err
 		}
 
-		// Fill-in Memory attributes
-		err = parseMemoryInfo(&spec, host)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	// Fill-in Memory attributes
+	err = parseMemoryInfo(&spec, host)
+	if err != nil {
+		return nil, err
 	}
 
 	// Fill-in Interface attributes
