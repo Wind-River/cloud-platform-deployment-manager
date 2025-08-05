@@ -157,6 +157,9 @@ var _ = Describe("Networking utils", func() {
 						{Name: "eth5",
 							InterfaceID: "uuid-eth5",
 						},
+						{Name: "eth0",
+							InterfaceID: "uuid-mgmt0",
+						},
 					},
 					Interfaces: []interfaces.Interface{
 						{Name: "lo",
@@ -186,15 +189,21 @@ var _ = Describe("Networking utils", func() {
 							ID:   "uuid-eth5",
 							Type: interfaces.IFTypeEthernet,
 						},
+						{Name: "mgmt0",
+							ID:   "uuid-mgmt0",
+							Type: interfaces.IFTypeEthernet,
+						},
 						{Name: "cluster0",
 							ID:   "uuid-cluster0",
 							Type: interfaces.IFTypeVLAN,
-							Uses: []string{"eth0"},
+							Uses: []string{"mgmt0"},
+							VID:  &vid10,
 						},
 						{Name: "vid20",
 							ID:   "uuid-vid20",
 							Type: interfaces.IFTypeVLAN,
 							Uses: []string{"infra0"},
+							VID:  &vid20,
 						},
 						{Name: "infra0",
 							ID:   "uuid-infra0",
@@ -302,7 +311,7 @@ var _ = Describe("Networking utils", func() {
 								Name: "cluster0",
 								Type: interfaces.IFTypeVLAN,
 								VID:  &vid10,
-								Uses: []string{"eth0"},
+								Uses: []string{"mgmt0"},
 							},
 							host: &info,
 						},
@@ -318,6 +327,21 @@ var _ = Describe("Networking utils", func() {
 								Type: interfaces.IFTypeVLAN,
 								VID:  &vid20,
 								Uses: []string{"infra0"},
+							},
+							host: &info,
+						},
+						want:  nil,
+						want1: false,
+					},
+					{name: "find-vlan-same-name-different-vid",
+						args: args{
+							profile: &sample,
+							iface: &interfaces.Interface{
+								ID:   "uuid-cluster0",
+								Name: "cluster0",
+								Type: interfaces.IFTypeVLAN,
+								VID:  &vid20,
+								Uses: []string{"mgmt0"},
 							},
 							host: &info,
 						},
@@ -352,19 +376,20 @@ var _ = Describe("Networking utils", func() {
 						want:  &sample.Interfaces.Bond[1].CommonInterfaceInfo,
 						want1: true,
 					},
-					{name: "find-bond-renamed-members",
+					{name: "find-vf-same-name-different-lower",
 						args: args{
 							profile: &sample,
 							iface: &interfaces.Interface{
-								ID:   "uuid-bond0",
-								Name: "bond0",
-								Type: interfaces.IFTypeAE,
-								Uses: []string{"eth3", "eth4"},
+								ID:      "uuid-sriov1",
+								Name:    "sriov1",
+								Type:    interfaces.IFTypeVF,
+								VFCount: &vfcount1,
+								Uses:    []string{"sriov2"},
 							},
 							host: &info,
 						},
-						want:  &sample.Interfaces.Bond[1].CommonInterfaceInfo,
-						want1: true,
+						want:  nil,
+						want1: false,
 					},
 					{name: "find-bond-not-configured",
 						args: args{
@@ -414,6 +439,12 @@ var _ = Describe("Networking utils", func() {
 
 				for _, tt := range tests {
 					got, got1 := findConfiguredInterface(tt.args.iface, tt.args.profile, tt.args.host)
+					if !reflect.DeepEqual(got, tt.want) {
+						GinkgoWriter.Printf("Test case '%s' failed: expected interface %+v, got %+v\n", tt.name, tt.want, got)
+					}
+					if got1 != tt.want1 {
+						GinkgoWriter.Printf("Test case '%s' failed: expected found=%v, got found=%v\n", tt.name, tt.want1, got1)
+					}
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 					Expect(got1).To(Equal(tt.want1))
 				}
