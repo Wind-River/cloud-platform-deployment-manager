@@ -70,26 +70,37 @@ func findConfiguredVLANInterface(profile *starlingxv1.HostProfileSpec, iface *in
 	// remain the same but the interface can be moved over a different
 	// lower interface.
 	for _, v := range profile.Interfaces.VLAN {
-		if iface.VID == nil || v.VID != *iface.VID {
+		// if the name does not match then skip this interface
+		if v.Name != iface.Name {
 			continue
 		}
 
-		// We found a matching VID so repeat the same process on the lower
+		// If the name matches but VID is different, no match was found.
+		if iface.VID == nil || v.VID != *iface.VID {
+			return nil, false
+		}
+
+		// We found a matching name and VID so repeat the same process on the lower
 		// interface to determine if the lower interface is still configured
-		// as the same type of interface.  Only
-		// return true if that search also succeeds.
-		if oldLower, ok := host.FindInterfaceByName(iface.Uses[0]); ok {
-			// We found the interface object for the lower interface so
-			// check to see if it is still configured.
-			if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
-				// The interface is still in the configured list so
-				// return true as long as the name still matches; otherwise
-				// that means that it is now pointing elsewhere.
-				if v.Lower == newLower.Name {
-					return &v.CommonInterfaceInfo, true
+		// as the same type of interface.
+		if len(iface.Uses) > 0 {
+			if oldLower, ok := host.FindInterfaceByName(iface.Uses[0]); ok {
+				// We found the interface object for the lower interface so
+				// check to see if it is still configured.
+				if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
+					// The interface is still in the configured list so
+					// return true as long as the lower interface name still matches; otherwise
+					// that means that it is now pointing elsewhere.
+					if v.Lower == newLower.Name {
+						return &v.CommonInterfaceInfo, true
+					}
 				}
 			}
 		}
+		// the name of the interface aligns, but the lower interface changed,
+		// as the system does not allow multiple interfaces with the same name,
+		// assume no match was found.
+		return nil, false
 	}
 
 	// No equivalent interface was found.
@@ -103,18 +114,26 @@ func findConfiguredVLANInterface(profile *starlingxv1.HostProfileSpec, iface *in
 // is still the same.
 func findConfiguredVFInterface(profile *starlingxv1.HostProfileSpec, iface *interfaces.Interface, host *v1info.HostInfo) (*starlingxv1.CommonInterfaceInfo, bool) {
 	for _, v := range profile.Interfaces.VF {
+		if v.Name != iface.Name {
+			continue
+		}
+
 		if oldLower, ok := host.FindInterfaceByName(iface.Uses[0]); ok {
 			// We found the interface object for the lower interface so
 			// check to see if it is still configured.
 			if newLower, found := findConfiguredInterface(oldLower, profile, host); found {
 				// The interface is still in the configured list so
-				// return true as long as the name still matches; otherwise
+				// return true as long as the lower interface name still matches; otherwise
 				// that means that it is now pointing elsewhere.
 				if v.Lower == newLower.Name {
 					return &v.CommonInterfaceInfo, true
 				}
 			}
 		}
+		// name matches, but the lower interface changed.
+		// as the system does not allow multiple interfaces with the same name,
+		// assume no match was found.
+		return nil, false
 	}
 
 	// No equivalent interface was found.
