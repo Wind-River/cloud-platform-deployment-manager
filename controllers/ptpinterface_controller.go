@@ -5,7 +5,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -608,18 +607,6 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, err
 	}
 
-	// Restore the PtpInterface status
-	if r.checkRestoreInProgress(instance) {
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' PtpInterface resource status without doing actual reconciliation", instance.Name)
-		if err := r.RestorePtpinterfaceStatus(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := r.ClearRestoreInProgress(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -712,62 +699,4 @@ func (r *PtpInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PtpInterface{}).
 		Complete(r)
-}
-
-// Verify whether we have annotation restore-in-progress
-func (r *PtpInterfaceReconciler) checkRestoreInProgress(instance *starlingxv1.PtpInterface) bool {
-	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
-	if ok && restoreInProgress != "" {
-		return true
-	}
-	return false
-}
-
-// Update status
-func (r *PtpInterfaceReconciler) RestorePtpinterfaceStatus(instance *starlingxv1.PtpInterface) error {
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	config, ok := annotation[cloudManager.RestoreInProgress]
-	if ok {
-		restoreStatus := &cloudManager.RestoreStatus{}
-		err := json.Unmarshal([]byte(config), &restoreStatus)
-		if err == nil {
-			if restoreStatus.InSync != nil {
-				instance.Status.InSync = *restoreStatus.InSync
-			}
-			instance.Status.Reconciled = true
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-			instance.Status.DeploymentScope = "bootstrap"
-			instance.Status.StrategyRequired = "not_required"
-			err = r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				log_err_msg := fmt.Sprintf(
-					"Failed to update ptp interface status while restoring '%s' resource. Error: %s",
-					instance.Name,
-					err)
-				return common.NewResourceStatusDependency(log_err_msg)
-			} else {
-				StatusUpdate := fmt.Sprintf("Status updated for PtpInterface resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
-					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
-
-			}
-		} else {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
-		}
-	}
-	return nil
-}
-
-// Clear annotation RestoreInProgress
-func (r *PtpInterfaceReconciler) ClearRestoreInProgress(instance *starlingxv1.PtpInterface) error {
-	delete(instance.Annotations, cloudManager.RestoreInProgress)
-	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
-	}
-	err := r.Client.Update(context.TODO(), instance)
-	if err != nil {
-		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' ptp interface resource after removing '%s' annotation during restoration.",
-			instance.Name, cloudManager.RestoreInProgress))
-	}
-	return nil
 }

@@ -5,7 +5,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -278,18 +277,6 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, err
 	}
 
-	// Restore the PlatformNetwork status
-	if r.checkRestoreInProgress(instance) {
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' PlatformNetwork resource status without doing actual reconciliation", instance.Name)
-		if err := r.RestorePlatformNetworkStatus(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := r.ClearRestoreInProgress(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
 	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -380,59 +367,4 @@ func (r *PlatformNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PlatformNetwork{}).
 		Complete(r)
-}
-
-// Verify whether we have annotation restore-in-progress
-func (r *PlatformNetworkReconciler) checkRestoreInProgress(instance *starlingxv1.PlatformNetwork) bool {
-	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
-	if ok && restoreInProgress != "" {
-		return true
-	}
-	return false
-}
-
-// Update status
-func (r *PlatformNetworkReconciler) RestorePlatformNetworkStatus(instance *starlingxv1.PlatformNetwork) error {
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	config, ok := annotation[cloudManager.RestoreInProgress]
-	if ok {
-		restoreStatus := &cloudManager.RestoreStatus{}
-		err := json.Unmarshal([]byte(config), &restoreStatus)
-		if err == nil {
-			instance.Status.InSync = true
-			instance.Status.Reconciled = true
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-			instance.Status.DeploymentScope = "bootstrap"
-			err = r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				log_err_msg := fmt.Sprintf(
-					"Failed to update platform network status while restoring '%s' resource. Error: %s",
-					instance.Name,
-					err)
-				return common.NewResourceStatusDependency(log_err_msg)
-			} else {
-				StatusUpdate := fmt.Sprintf("Status updated for PlatformNetwork resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
-					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
-
-			}
-		} else {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
-		}
-	}
-	return nil
-}
-
-// Clear annotation RestoreInProgress
-func (r *PlatformNetworkReconciler) ClearRestoreInProgress(instance *starlingxv1.PlatformNetwork) error {
-	delete(instance.Annotations, cloudManager.RestoreInProgress)
-	if !utils.ContainsString(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName) {
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PlatformNetworkFinalizerName)
-	}
-	err := r.Client.Update(context.TODO(), instance)
-	if err != nil {
-		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' platform network resource after removing '%s' annotation during restoration.",
-			instance.Name, cloudManager.RestoreInProgress))
-	}
-	return nil
 }
