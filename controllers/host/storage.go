@@ -20,6 +20,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/common"
+	controller_common "github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	ctrlcommon "github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
@@ -769,7 +770,8 @@ func (r *HostReconciler) ReconcileFileSystemSizes(client *gophercloud.ServiceCli
 	}
 
 	if !host.IsUnlockedAvailable() {
-		msg := "waiting for host to reach available state"
+		msg := "waiting for host to reach available state: unlocked/enabled/available"
+		r.ReconcilerEventLogger.NormalEvent(instance, controller_common.ResourceDependency, msg)
 		m := NewUnlockedAvailableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
 	}
