@@ -724,7 +724,8 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 	personality := profile.Personality
 	if *personality == hosts.PersonalityWorker || *personality == hosts.PersonalityStorage {
 		if !r.AllControllerNodesEnabled(2) {
-			msg := "waiting for all controller nodes to be ready"
+			msg := "waiting for all controller nodes to be unlocked/enabled and no task running"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewEnabledControllerNodeMonitor(instance, MinimumEnabledControllerNodesForNonController)
 			return r.CloudManager.StartMonitor(m, msg)
 		}
@@ -1190,6 +1191,7 @@ func (r *HostReconciler) ReconcileHostByState(
 			}
 
 			msg := "waiting for locked state before applying out-of-service attributes"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewLockedDisabledHostMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
 		}
@@ -1231,10 +1233,12 @@ func (r *HostReconciler) ReconcileHostByState(
 			}
 		}
 		msg := "waiting for the unlocked state before applying in-service attributes"
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 		m := NewUnlockedEnabledHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	} else {
-		msg := "waiting for a stable state in unknown state"
+		msg := "waiting for a stable state in unknown state: unlocked/enabled/avaiable and no task running"
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1484,6 +1488,7 @@ func (r *HostReconciler) ReconcileNewHost(client *gophercloud.ServiceClient, ins
 			// We only create missing hosts for statically provisioned hosts.
 			// For dynamic, hosts we wait for them to appear in the system
 			msg := "waiting for dynamic host to appear in inventory"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewDynamicHostMonitor(instance, instance.Name, instance.Spec.Match, profile.BootMAC)
 			return nil, r.CloudManager.StartMonitor(m, msg)
 
@@ -1532,6 +1537,7 @@ func (r *HostReconciler) ReconcileNewHost(client *gophercloud.ServiceClient, ins
 
 		} else {
 			msg := "waiting for system to allow creating static hosts"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewProvisioningAllowedMonitor(instance)
 			return nil, r.CloudManager.StartMonitor(m, msg)
 		}
@@ -1574,7 +1580,8 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	var platform_network_subreconciler_errs []error
 
 	if !host.Stable() {
-		msg := "waiting for a stable state for existing host"
+		msg := "waiting host to be in a stable state: unlocked/enabled or locked/disabled"
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
@@ -1633,13 +1640,15 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 			// when provisioning a system from scratch, but for cases where
 			// an operator may want to start with a partially configured system
 			// then using any stable state is sufficient.
-			msg := "waiting for a stable state before collecting defaults"
+			msg := "waiting host to be in a stable state: unlocked/enabled or locked/disabled"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewInventoryCollectedMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
 		}
 
 		if !hostInfo.IsInventoryCollected() {
-			msg := "waiting for inventory collection to complete before collecting defaults"
+			msg := "waiting the host to be inventoried"
+			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 			m := NewInventoryCollectedMonitor(instance, host.ID)
 			return r.CloudManager.StartMonitor(m, msg)
 		}
@@ -1795,7 +1804,8 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		instance.Status.StrategyRequired != cloudManager.StrategyLockRequired {
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			if !host.IsUnlockedAvailable() {
-				msg := "waiting for the host reach available state"
+				msg := "waiting for the host reach available state: unlocked/enabled/evailable"
+				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 				m := NewUnlockedAvailableHostMonitor(instance, host.ID)
 				return r.CloudManager.StartMonitor(m, msg)
 			} else {
@@ -1833,7 +1843,8 @@ func (r *HostReconciler) ReconcileDeletedHost(client *gophercloud.ServiceClient,
 	}
 
 	if !host.Stable() {
-		msg := "waiting for a stable state before deleting host"
+		msg := "waiting for a stable state before deleting host: unlocked/enabled or locked/disabled"
+		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDependency, msg)
 		m := NewStableHostMonitor(instance, host.ID)
 		return r.CloudManager.StartMonitor(m, msg)
 	}
