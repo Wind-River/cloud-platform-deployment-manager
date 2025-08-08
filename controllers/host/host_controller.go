@@ -5,7 +5,6 @@ package host
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -2300,18 +2299,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	if r.checkRestoreInProgress(instance) {
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Restoring '%s' host resource status without doing actual reconciliation", instance.Name)
-		if err := r.RestoreHostStatus(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := r.ClearRestoreInProgress(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	err, platformnetwork_update_required := r.PlatformNetworkUpdateRequired(instance)
+	err, updateRequired := r.PlatformNetworkUpdateRequired(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -2333,7 +2321,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		instance.Status.DeploymentScope == "bootstrap" &&
 		instance.Status.AvailabilityStatus != nil && *instance.Status.AvailabilityStatus == "available" &&
 		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
-		!platformnetwork_update_required {
+		!updateRequired {
 
 		if !scope_updated {
 			logHost.V(2).Info("reconcile finished, desired state reached after reconciled.")
@@ -2453,64 +2441,6 @@ func (r *HostReconciler) PlatformNetworkUpdateRequired(instance *starlingxv1.Hos
 	}
 
 	return nil, false
-}
-
-// Verify whether we have annotation restore-in-progress
-func (r *HostReconciler) checkRestoreInProgress(instance *starlingxv1.Host) bool {
-	restoreInProgress, ok := instance.Annotations[cloudManager.RestoreInProgress]
-	if ok && restoreInProgress != "" {
-		return true
-	}
-	return false
-}
-
-// Update status
-func (r *HostReconciler) RestoreHostStatus(instance *starlingxv1.Host) error {
-	annotation := instance.GetObjectMeta().GetAnnotations()
-	config, ok := annotation[cloudManager.RestoreInProgress]
-	if ok {
-		restoreStatus := &cloudManager.RestoreStatus{}
-		err := json.Unmarshal([]byte(config), &restoreStatus)
-		if err == nil {
-			if restoreStatus.InSync != nil {
-				instance.Status.InSync = *restoreStatus.InSync
-			}
-			instance.Status.Reconciled = true
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
-			instance.Status.DeploymentScope = "bootstrap"
-			instance.Status.StrategyRequired = "not_required"
-			err = r.Client.Status().Update(context.TODO(), instance)
-			if err != nil {
-				log_err_msg := fmt.Sprintf(
-					"Failed to update host status while restoring '%s' resource. Error: %s",
-					instance.Name,
-					err)
-				return common.NewResourceStatusDependency(log_err_msg)
-			} else {
-				StatusUpdate := fmt.Sprintf("Status updated for host resource '%s' during restore with following values: Reconciled=%t InSync=%t DeploymentScope=%s",
-					instance.Name, instance.Status.Reconciled, instance.Status.InSync, instance.Status.DeploymentScope)
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, StatusUpdate)
-
-			}
-		} else {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "Failed to unmarshal '%s'", err)
-		}
-	}
-	return nil
-}
-
-// Clear annotation RestoreInProgress
-func (r *HostReconciler) ClearRestoreInProgress(instance *starlingxv1.Host) error {
-	delete(instance.Annotations, cloudManager.RestoreInProgress)
-	if !utils.ContainsString(instance.ObjectMeta.Finalizers, HostFinalizerName) {
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, HostFinalizerName)
-	}
-	err := r.Client.Update(context.TODO(), instance)
-	if err != nil {
-		return common.NewResourceStatusDependency(fmt.Sprintf("Failed to update '%s' host resource after removing '%s' annotation during restoration.",
-			instance.Name, cloudManager.RestoreInProgress))
-	}
-	return nil
 }
 
 // ListPlatformNetworks returns all of PlatformNetwork instances or errors while
