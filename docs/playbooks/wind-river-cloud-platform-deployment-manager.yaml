@@ -267,67 +267,6 @@
                 '{{ app_apply_status.stdout }}' state."
         when: not ("applied" in app_apply_status.stdout)
 
-      when: get_software_version.stdout >= "24.09"
-
-    - block:
-      # Remove webhook and webhook service
-      - name: Search webhook configurations for v1
-        shell: |
-          kubectl get ValidatingWebhookConfigurations validating-webhook-configuration --no-headers | awk 'NR == 1 { print $1 }'
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        ignore_errors: yes
-        register: validation_webhook
-
-      - name: Query for validating webhook configuration
-        shell: |
-          grep -iq 'validating-webhook-configuration' <<< {{ validation_webhook.stdout_lines }}
-        ignore_errors: yes
-        register: webhook_config_exists
-
-      - name: Delete validating webhook configuration
-        shell: |
-          kubectl delete ValidatingWebhookConfigurations validating-webhook-configuration
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        when: webhook_config_exists.rc == 0
-
-      - name: Search webhook service for v1
-        shell: |
-          kubectl get svc webhook-server-service -n platform-deployment-manager --no-headers | awk 'NR == 1 { print $1 }'
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        register: webhook_service
-
-      - name: Query for webhook-server-service
-        shell: |
-          grep -iq 'webhook-server-service' <<< {{ webhook_service.stdout_lines }}
-        ignore_errors: yes
-        register: webhook_service_exists
-
-      - name: Delete webhook-server-service
-        shell: |
-          kubectl delete svc webhook-server-service -n platform-deployment-manager
-        environment:
-          KUBECONFIG: "/etc/kubernetes/admin.conf"
-        when: webhook_service_exists.rc == 0
-
-      # Install Helm Based Deployment Manager
-      - name: Install Helm Based Deployment Manager
-        shell: KUBECONFIG=/etc/kubernetes/admin.conf /usr/sbin/helm upgrade --install deployment-manager {% if helm_chart_overrides is defined %}--values {{ helm_chart_overrides }}{% endif %} {{ manager_chart }}
-
-      # Install or Upgrade DM-Monitor
-      - name: "Install or Upgrade Helm Based DM-monitor"
-        shell: "ansible-playbook {{ dm_monitor_playbook }}"
-        become: yes
-        ignore_errors: yes
-        when: dm_monitor_playbook
-
-      when:
-        - get_software_version.stdout < "24.09"
-        - "'subcloud' in get_distributed_cloud_role.stdout"
-        - user_uploaded_artifacts is false
-
     # Delete old Deployment Manager pod if it was reinstalled,
     # the pod to delete may already be terminated by helm
     - name: Restart Deployment Manager if reinstalled
@@ -877,14 +816,9 @@
 
           # After reboot, wait for resource reconciliation. This ensures the
           # playbook doesn't fail if resources are properly reconciled.
-          - name: Define resource list based on version
-            set_fact:
-              resources: "{{ 'systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces' if get_software_version.stdout < '24.09'
-                        else 'systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces,addresspools' }}"
-
           - name: Get not reconciled resource
             shell: >
-              (kubectl get "{{ resources }}"
+              (kubectl get systems,datanetworks,platformnetworks,ptpinstances,ptpinterfaces,addresspools
               -o custom-columns='NAME:.metadata.name,RECONCILED:.status.reconciled'
               -n "{{ deployment_namespace }}";
               kubectl -n "{{ deployment_namespace }}" get hosts "{{ get_host_name.stdout }}" -o
