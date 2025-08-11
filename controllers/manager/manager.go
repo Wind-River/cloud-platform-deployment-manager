@@ -45,7 +45,6 @@ const (
 	// Defines annotation keys for resources.
 	NotificationCountKey = "deployment-manager/notifications"
 	ReconcileAfterInSync = "deployment-manager/reconcile-after-insync"
-	RestoreInProgress    = "deployment-manager/restore-in-progress"
 )
 
 const (
