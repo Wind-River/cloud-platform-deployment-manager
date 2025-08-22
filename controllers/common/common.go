@@ -194,6 +194,20 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	cause := perrors.Cause(in)
 
 	switch cause.(type) {
+	case *gophercloud.ErrUnableToReauthenticate, gophercloud.ErrUnableToReauthenticate:
+		resetClient = true
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to re-authenticate, this can happen due to changes in the credential. Please verify the system-endpoint secret values.")
+
+	case gophercloud.ErrDefault401:
+		resetClient = false
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to authenticate, please verify the system-endpoint secret values.")
+
 	case gophercloud.ErrDefault400, gophercloud.ErrDefault403,
 		gophercloud.ErrDefault404, gophercloud.ErrDefault405:
 		// These errors are resource based errors.  This means we successfully
@@ -541,30 +555,4 @@ func searchParameters(lines []string, lineNumber int, parameters map[string]inte
 	}
 
 	return result
-}
-
-// UpdateDefaultRequired checks if the host default need to be updated.
-func UpdateDefaultsRequired(
-	manager manager.CloudManager,
-	namespace string,
-	name string,
-	factory bool,
-) (bool, error) {
-	// TODO(yuxing) currently the UpdateDefaultsRequired only works on factory
-	// installed scenario, consider remove this restriction for generic usage
-	if !factory {
-		return false, nil
-	}
-
-	defaultUpdated, err := manager.GetFactoryResourceDataUpdated(
-		namespace,
-		name,
-		"default",
-	)
-
-	if err != nil {
-		// Failed to get the info, force to update it again
-		return true, NewValidationError(err.Error())
-	}
-	return !defaultUpdated, nil
 }

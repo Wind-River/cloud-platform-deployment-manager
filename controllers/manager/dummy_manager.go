@@ -4,18 +4,11 @@
 package manager
 
 import (
-	"context"
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,7 +28,6 @@ type Dummymanager struct {
 	strategyCreateRequest systemconfigupdate.SystemConfigUpdateOpts
 	retryCount            int
 
-	defaultUpdated     bool          // Simulate default update status
 	DefaultUpdateError error         // Simulate error for default update method
 	Client             client.Client // Added client field for the Kubernetes client
 }
@@ -203,110 +195,4 @@ func (m *Dummymanager) SetDefaultGetPlatformClient() {
 }
 func (m *Dummymanager) SetGetPlatformClient(f func(namespace string) *gophercloud.ServiceClient) {
 
-}
-
-func (m *Dummymanager) GetFactoryInstall(namespace string) (bool, error) {
-	// Assuming factory install is always false for this dummy implementation
-	return false, nil
-}
-
-func (m *Dummymanager) SetFactoryConfigFinalized(namespace string, value bool) error {
-	configMap := &v1.ConfigMap{}
-	configMapName := client.ObjectKey{Namespace: namespace, Name: FactoryInstallConfigMapName}
-	err := m.Client.Get(context.TODO(), configMapName, configMap)
-	if err != nil {
-		return err
-	}
-
-	if configMap.Data == nil {
-		configMap.Data = make(map[string]string)
-	}
-	configMap.Data[FactoryConfigFinalized] = strconv.FormatBool(value)
-	// Update all keys that end with "*reconciled-updated" to false in case
-	// need a retry.
-	// The data "*default-updated" remains true as no need to re-collect.
-	for key := range configMap.Data {
-		if strings.HasSuffix(key, "reconciled-updated") {
-			configMap.Data[key] = "false"
-		}
-	}
-
-	return m.Client.Update(context.TODO(), configMap)
-}
-
-func (m *Dummymanager) SetFactoryResourceDataUpdated(
-	namespace string,
-	name string,
-	data string,
-	value bool,
-) error {
-	if m.Client == nil {
-		return errors.New("kubernetes client is not initialized")
-	}
-
-	configMap := &v1.ConfigMap{}
-	configMapName := client.ObjectKey{Namespace: namespace, Name: FactoryInstallConfigMapName}
-	err := m.Client.Get(context.TODO(), configMapName, configMap)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			return err
-		}
-		// Create a new ConfigMap if not found
-		configMap = &v1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      FactoryInstallConfigMapName,
-				Namespace: namespace,
-			},
-			Data: make(map[string]string),
-		}
-	}
-
-	if configMap.Data == nil {
-		configMap.Data = make(map[string]string)
-	}
-	key := name + "-" + data + "-updated"
-	configMap.Data[key] = strconv.FormatBool(value)
-
-	if err := m.Client.Update(context.TODO(), configMap); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			return err
-		}
-		// Create the ConfigMap if it does not exist
-		return m.Client.Create(context.TODO(), configMap)
-	}
-	m.defaultUpdated = value
-	return nil
-}
-
-func (m *Dummymanager) GetFactoryResourceDataUpdated(
-	namespace,
-	name string,
-	data string,
-) (bool, error) {
-	if m.Client == nil {
-		return false, errors.New("kubernetes client is not initialized")
-	}
-
-	configMap := &v1.ConfigMap{}
-	configMapName := client.ObjectKey{Namespace: namespace, Name: FactoryInstallConfigMapName}
-	err := m.Client.Get(context.TODO(), configMapName, configMap)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			return false, err
-		}
-		return false, nil
-	}
-
-	key := name + "-" + data + "-updated"
-	valueStr, ok := configMap.Data[key]
-	if !ok {
-		return false, nil
-	}
-
-	value, err := strconv.ParseBool(valueStr)
-	if err != nil {
-		return false, fmt.Errorf("error parsing boolean value from key %s in ConfigMap %s: %v", key, configMapName, err)
-	}
-
-	return value, nil
 }

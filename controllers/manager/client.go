@@ -306,8 +306,7 @@ func (m *PlatformManager) BuildPlatformClient(namespace string, endpointName str
 			}
 
 			authOptions.Password = "***REDACTED***" // redact for logging
-			log.Error(err, "failed to authenticate client", "url", authOptions.IdentityEndpoint, "options", authOptions)
-
+			log.WithCallDepth(1).Error(err, "failed to authenticate client", "url", authOptions.IdentityEndpoint, "options", authOptions)
 		} else {
 			// Use the first successful client
 			break

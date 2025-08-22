@@ -11,16 +11,9 @@
         manager_chart: "{{ deployment_manager_chart | default('wind-river-cloud-platform-deployment-manager.tgz') }}"
 
     - set_fact:
-        user_uploaded_artifacts: "{{ user_uploaded_artifacts | default(true) }}"
-
-    - set_fact:
         ansible_port: "{{ ansible_port | default(22) }}"
         wait_for_timeout: " {{ wait_for_timeout | default(400) }}"
         boot_wait_time: " {{ boot_wait_time | default(180) }}"
-
-    - set_fact:
-        helm_chart_overrides: "{{ deployment_manager_overrides }}"
-      when: deployment_manager_overrides is defined
 
     - set_fact:
         deploy_config: "{{ deployment_config }}"
@@ -58,23 +51,18 @@
         dm_monitor_playbook: "{{ dm_monitor_playbook | default('/usr/local/share/applications/playbooks/dm-monitor-book.yaml') }}"
 
     - block:
-      # Information to be used at final DM checks.
+        # Information to be used at final DM checks.
         - name: Get host name
-          shell: |
-            source /etc/platform/openrc; hostname
+          shell: hostname
           register: get_host_name
 
         # In order to determine if the host is a subcloud's node
         - name: Get distributed_cloud_role
-          shell: >-
-            source /etc/platform/openrc; system show |
-            awk '$2 ~ /^distributed_cloud_role/ {print $4}'
+          shell: awk -F "=" '/^distributed_cloud_role=/ {print $2}' /etc/platform/platform.conf
           register: get_distributed_cloud_role
 
         - name: Get software version
-          shell: >-
-            source /etc/platform/openrc; system show |
-            awk '$2 ~ /^software_version/ {print $4}'
+          shell: awk -F "=" '/sw_version=/ {print $2}' /etc/platform/platform.conf
           register: get_software_version
 
         - name: Show dc_role and hostname
@@ -84,61 +72,13 @@
             - "dc_role: {{ get_distributed_cloud_role.stdout }}"
             - "software_version: {{ get_software_version.stdout }}"
 
-    - block:
-      # Copy required files up to the target host if this playbook is being
-      # executed remotely.
+        - name: Check for the presence of the subcloud enrollment completed
+          stat:
+            path: /var/run/.subcloud_enrollment_completed
+          register: subcloud_enrollment_status
 
-      - block:
-        # Download a copy of the deployment manager helm chart if the location
-        # supplied by the end user references a git repo.
-
-        - name: Create A Temporary Download Directory
-          tempfile:
-            state: directory
-          register: temp
-          delegate_to: localhost
-
-        - name: Download Deployment Manager Helm Chart From Repo
-          shell: "git archive --remote={{ manager_chart }} | tar -x -C {{ temp.path }}"
-          delegate_to: localhost
-
-        - name: Reference Downloaded Helm Chart
-          set_fact:
-            manager_chart: "{{ lookup('fileglob', '{{ temp.path }}/docs/charts/wind-river-cloud-platform-deployment-manager-*.tgz', wantlist=true) | first }}"
-
-        when: manager_chart | regex_search("^https|^git")
-
-      - name: Upload Deployment Manager Helm Chart
-        copy:
-          src: "{{ manager_chart }}"
-          dest: /home/{{ ansible_ssh_user }}/
-          owner: "{{ ansible_ssh_user }}"
-          group: root
-          mode: 0644
-
-      - set_fact:
-          manager_chart: "/home/{{ ansible_ssh_user }}/{{ manager_chart | basename }}"
-
-      - name: Upload Deployment Manager Helm Chart Overrides
-        copy:
-          src: "{{ helm_chart_overrides }}"
-          dest: /home/{{ ansible_ssh_user }}/
-          group: root
-          mode: 0644
-        when: helm_chart_overrides is defined
-
-      - set_fact:
-          helm_chart_overrides: "/home/{{ ansible_ssh_user }}/{{ helm_chart_overrides | basename }}"
-        when: helm_chart_overrides is defined
-
-      - name: Clean download directory
-        file:
-          path: "{{ temp.path }}"
-          state: absent
-        delegate_to: localhost
-        when: temp.path is defined
-
-      when: inventory_hostname != 'localhost'
+        - set_fact:
+            subcloud_enrollment: "{{ subcloud_enrollment_status.stat.exists }}"
 
     - name: Retrieve software version number
       shell: source /etc/build.info; echo $SW_VERSION
@@ -163,20 +103,31 @@
         path: /etc/platform/.unlock_ready
       register: is_unlock_ready
 
-    - name: Check if host is provisioned
-      shell: |
+    - name: Retrieve host state values
+      shell: >-
         source /etc/platform/openrc;
-        system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^invprovision/ {print $4}'
-      register: get_host_invprovision
+        system host-show "{{ get_host_name.stdout}}" |
+        awk ' $2 ~ /^administrative/ {print $4} $2 ~/invprovision/ {print $4 }'
+      register: get_host_states_values
+
+    - name: Set host state variables
+      set_fact:
+        current_administrative_state: "{{ get_host_states_values.stdout_lines[0] }}"
+        current_invprovision: "{{ get_host_states_values.stdout_lines[1] }}"
+
+    - debug:
+        msg:
+          - "host invprovision: {{ current_invprovision }}"
+          - "host administrative state: {{ current_administrative_state }}"
 
     - name: Fail to update the deployment manager when host is upgrading
       fail:
         msg: "Fail to update the deployment manager when the host is upgrading"
-      when: get_host_invprovision.stdout == 'upgrading'
+      when: current_administrative_state == 'upgrading'
 
     - name: Set initial configuration fact
       set_fact:
-        initial_config_done: "{{ true if (get_host_invprovision.stdout == 'provisioned')
+        initial_config_done: "{{ true if (current_invprovision == 'provisioned')
                         else false }}"
 
     - name: Mark the bootstrap as finalized
@@ -266,6 +217,7 @@
                 Expected 'applied' state but the app is in
                 '{{ app_apply_status.stdout }}' state."
         when: not ("applied" in app_apply_status.stdout)
+      when: not subcloud_enrollment
 
     # Delete old Deployment Manager pod if it was reinstalled,
     # the pod to delete may already be terminated by helm
@@ -274,7 +226,9 @@
         kubectl -n platform-deployment-manager delete pods {{ deployment_manager_pod_name.stdout }}
       environment:
         KUBECONFIG: "/etc/kubernetes/admin.conf"
-      when: deployment_manager_pod_name.stdout is defined and deployment_manager_pod_name.stdout
+      when:
+        - deployment_manager_pod_name.stdout is defined and deployment_manager_pod_name.stdout
+        - not subcloud_enrollment
       failed_when: false
 
     - name: Wait for Deployment Manager to be ready
@@ -321,18 +275,10 @@
             deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
           when: inventory_hostname != 'localhost'
 
-        - name: Check for the presence of the subcloud enrollment completed
-          stat:
-            path: /var/run/.subcloud_enrollment_completed
-          register: subcloud_enrollment_status
-
-        - set_fact:
-            subcloud_enrollment: "{{ subcloud_enrollment_status.stat.exists }}"
-
         - name: Configure required region value if not systemcontroller
           block:
           - name: Get region name from environment
-            shell: source /etc/platform/openrc; echo $OS_REGION_NAME
+            shell: awk -F "=" '/^export.*OS_REGION_NAME=/ {print $2}' /etc/platform/openrc
             register: os_region_name_from_env
 
           - name: Show region name
@@ -354,6 +300,7 @@
             # we apply the config in the next steps.
             timeout: 10
             msg: Waiting for the Deployment Manager validation webhooks to start
+          when: not subcloud_enrollment
 
         # Search for both cases:
         #   deploymentScope: "principal"
@@ -454,20 +401,7 @@
         - wait_for:
             timeout: 5
             msg: Waiting after apply DM config
-
-        - name: Restart the deployment manager if subcloud enrollment
-          command: >-
-            kubectl -n platform-deployment-manager delete pods --selector control-plane=controller-manager
-          environment:
-            KUBECONFIG: "/etc/kubernetes/admin.conf"
-          when: subcloud_enrollment
-
-        # Check the current administrativestate
-        - name: Get current administrativeState
-          shell: |
-            source /etc/platform/openrc;
-            system host-show "{{ get_host_name.stdout}}" | awk '$2 ~ /^administrative/ {print $4}'
-          register: current_administrativestate
+          when: not subcloud_enrollment
 
       when: deploy_config is defined
 
@@ -541,7 +475,7 @@
         - not initial_config_done
         - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
-        - "'unlocked' not in current_administrativestate.stdout"
+        - "'unlocked' not in current_administrative_state"
 
 
       # Main verification block.
@@ -897,5 +831,5 @@
         - not initial_config_done
         - deploy_config is defined
         - "'subcloud' in get_distributed_cloud_role.stdout"
-        - "'unlocked' not in current_administrativestate.stdout"
+        - "'unlocked' not in current_administrative_state"
         - "'unlocked' in administrative_state"
