@@ -52,6 +52,10 @@ const (
 	ScopePrincipal = "principal"
 )
 
+const (
+	AvailabilityStatusAvailable = "available"
+)
+
 // TODO: Assign these consts in platform network controller instead.
 // Note that the AdminNetworkType is being referenced from host controller as well
 // as platform network controller.

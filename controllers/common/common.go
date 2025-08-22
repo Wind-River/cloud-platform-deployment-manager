@@ -194,6 +194,20 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	cause := perrors.Cause(in)
 
 	switch cause.(type) {
+	case *gophercloud.ErrUnableToReauthenticate, gophercloud.ErrUnableToReauthenticate:
+		resetClient = true
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to re-authenticate, this can happen due to changes in the credential. Please verify the system-endpoint secret values.")
+
+	case gophercloud.ErrDefault401:
+		resetClient = false
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to authenticate, please verify the system-endpoint secret values.")
+
 	case gophercloud.ErrDefault400, gophercloud.ErrDefault403,
 		gophercloud.ErrDefault404, gophercloud.ErrDefault405:
 		// These errors are resource based errors.  This means we successfully

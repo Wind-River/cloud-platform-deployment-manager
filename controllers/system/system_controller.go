@@ -1126,9 +1126,9 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 		current.Certificates = &res
 	}
 
-	logSystem.Info("spec is:", "values", spec)
+	// logSystem.Info("spec is:", "values", spec)
 
-	logSystem.Info("current is:", "values", current)
+	// logSystem.Info("current is:", "values", current)
 
 	instance.Status.InSync = spec.DeepEqual(current)
 	common.SetInstanceDelta(instance, current, spec, common.SystemProperties, r.Client.Status(), logSystem)
@@ -1680,6 +1680,8 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	logSystem.Info(fmt.Sprintf("XXX system is factory insalled: %t", factory))
 	if factory {
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
