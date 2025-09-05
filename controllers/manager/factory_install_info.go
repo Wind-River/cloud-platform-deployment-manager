@@ -44,18 +44,12 @@ const FactoryConfigFinalized = "factory-config-finalized"
 func (m *PlatformManager) GetFactoryInstall(ns string) (bool, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	configMap := &v1.ConfigMap{}
-	configMapName := types.NamespacedName{Namespace: ns, Name: FactoryInstallConfigMapName}
-
-	// Lookup the factory install ConfigMap from this namespace
-	err := m.GetClient().Get(context.TODO(), configMapName, configMap)
+	configMap, err := m.GetFactoryConfigMap(ns)
 	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			// Any error other than NotFound is returned
-			return false, err
-		}
-		// ConfigMap not found, return false with no error
-		log.V(2).Info("Factory install configmap not found", "namespace", ns)
+		return false, err
+	}
+
+	if configMap == nil {
 		return false, nil
 	}
 
@@ -71,7 +65,7 @@ func (m *PlatformManager) GetFactoryInstall(ns string) (bool, error) {
 		return false, err
 	}
 	if !factoryInstalled {
-		return false, err
+		return false, nil
 	}
 
 	// Read the factory-config-finalized status
@@ -90,11 +84,7 @@ func (m *PlatformManager) GetFactoryInstall(ns string) (bool, error) {
 	return !factoryConfigFinalized, nil
 }
 
-// SetFactoryConfigFinalized is to set the FactoryConfigFinalized with the value.
-func (m *PlatformManager) SetFactoryConfigFinalized(ns string, value bool) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
+func (m *PlatformManager) GetFactoryConfigMap(ns string) (*v1.ConfigMap, error) {
 	configMap := &v1.ConfigMap{}
 	configMapName := types.NamespacedName{Namespace: ns, Name: FactoryInstallConfigMapName}
 
@@ -103,10 +93,27 @@ func (m *PlatformManager) SetFactoryConfigFinalized(ns string, value bool) error
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			// Any error other than NotFound is returned
-			return err
+			return nil, err
 		}
 		// ConfigMap not found, return false with no error
 		log.V(2).Info("Factory install configmap not found", "namespace", ns)
+		return nil, nil
+	}
+
+	return configMap, nil
+}
+
+// SetFactoryConfigFinalized is to set the FactoryConfigFinalized with the value.
+func (m *PlatformManager) SetFactoryConfigFinalized(ns string, value bool) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	configMap, err := m.GetFactoryConfigMap(ns)
+	if err != nil {
+		return err
+	}
+
+	if configMap == nil {
 		return nil
 	}
 
@@ -146,20 +153,12 @@ func (m *PlatformManager) SetFactoryResourceDataUpdated(
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	configMap := &v1.ConfigMap{}
-	configMapName := types.NamespacedName{
-		Namespace: ns,
-		Name:      FactoryInstallConfigMapName,
-	}
-	// Lookup the factory install configMap from this namespace
-	err := m.GetClient().Get(context.TODO(), configMapName, configMap)
+	configMap, err := m.GetFactoryConfigMap(ns)
 	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			// Any error other than NotFound is returned
-			return err
-		}
-		// ConfigMap not found, return false with no error
-		log.V(2).Info("Factory install configmap not found", "namespace", ns)
+		return err
+	}
+
+	if configMap == nil {
 		return nil
 	}
 
@@ -193,20 +192,13 @@ func (m *PlatformManager) GetFactoryResourceDataUpdated(
 ) (bool, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	configMap := &v1.ConfigMap{}
-	configMapName := types.NamespacedName{
-		Namespace: ns,
-		Name:      FactoryInstallConfigMapName,
-	}
-	// Lookup the factory install configMap from this namespace
-	err := m.GetClient().Get(context.TODO(), configMapName, configMap)
+
+	configMap, err := m.GetFactoryConfigMap(ns)
 	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			// Any error other than NotFound is returned
-			return false, err
-		}
-		// ConfigMap not found, return false with no error
-		log.V(2).Info("Factory install configmap not found", "namespace", ns)
+		return false, err
+	}
+
+	if configMap == nil {
 		return false, nil
 	}
 
@@ -224,7 +216,7 @@ func (m *PlatformManager) GetFactoryResourceDataUpdated(
 		return false, fmt.Errorf(
 			"error parsing boolean value from key %s in ConfigMap %s: %v",
 			key,
-			configMapName,
+			FactoryInstallConfigMapName,
 			err,
 		)
 	}

@@ -1794,9 +1794,9 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return nil
 	}
 
-	logHost.Info("defaults are:", "values", defaults)
-	logHost.Info("final profile is:", "values", profile)
-	logHost.Info("current config is:", "values", current)
+	// logHost.Info("defaults are:", "values", defaults)
+	// logHost.Info("final profile is:", "values", profile)
+	// logHost.Info("current config is:", "values", current)
 
 	if instance.Status.Reconciled &&
 		r.StopAfterInSync() &&
@@ -2277,6 +2277,38 @@ func (r *HostReconciler) UpdateStatusForFactoryInstall(
 	return nil
 }
 
+func (r *HostReconciler) isDayConfigComplete(instance *starlingxv1.Host) bool {
+	// TODO describe the reason
+	isFactory, err := r.GetFactoryInstall("deployment")
+	if err != nil {
+		logHost.Info("Error retrieving the factory install value!!!!!")
+	}
+	if err == nil && isFactory {
+		return false
+	}
+	logHost.Info("It's not factory installed!")
+	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		return false
+	}
+	if !instance.Status.Reconciled {
+		return false
+	}
+	if instance.Status.DeploymentScope != cloudManager.ScopeBootstrap {
+		return false
+	}
+	// AvailabilityStatus can be empty resulting in crash if trying to access the value
+	if instance.Status.AvailabilityStatus == nil {
+		return false
+	}
+	if *instance.Status.AvailabilityStatus != cloudManager.AvailabilityStatusAvailable {
+		return false
+	}
+	if instance.Status.StrategyRequired != cloudManager.StrategyNotRequired {
+		return false
+	}
+	return true
+}
+
 // Reconcile reads that state of the cluster for a Host object and makes changes
 // based on the state read and what is in the Host.Spec
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=hosts,verbs=get;list;watch;create;update;patch;delete
@@ -2310,12 +2342,12 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	err, updateRequired := r.PlatformNetworkUpdateRequired(instance)
+	err, platformNetUpdateRequired := r.PlatformNetworkUpdateRequired(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	err, scope_updated := r.UpdateDeploymentScope(instance)
+	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -2325,19 +2357,9 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		return reconcile.Result{}, err
 	}
 
-	// TODO(wasnio): remove this once migration from helm chart to fluxcd is done
-	// The status reaches its desired status post reconciled
-	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
-		instance.Status.Reconciled &&
-		instance.Status.DeploymentScope == "bootstrap" &&
-		instance.Status.AvailabilityStatus != nil && *instance.Status.AvailabilityStatus == "available" &&
-		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
-		!updateRequired {
-
-		if !scope_updated {
-			logHost.V(2).Info("reconcile finished, desired state reached after reconciled.")
-			return reconcile.Result{}, nil
-		}
+	if r.isDayConfigComplete(instance) && !platformNetUpdateRequired && !scopeUpdated {
+		logHost.Info("reconcile finished, desired state reached after reconciled.")
+		return reconcile.Result{}, nil
 	}
 
 	if instance.DeletionTimestamp.IsZero() {
