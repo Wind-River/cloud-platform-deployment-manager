@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -74,4 +75,19 @@ func (r *HostReconciler) setFactoryReconfigAsFinalized() error {
 
 	configMap.Data[common.FactoryConfigFinalized] = "true"
 	return r.Client.Update(context.TODO(), configMap)
+}
+
+func (r *HostReconciler) getFactoryConfigMap() (v1.ConfigMap, error) {
+	configMap := v1.ConfigMap{}
+	configMapName := client.ObjectKey{
+		Namespace: r.GetNamespace(),
+		Name:      common.FactoryInstallConfigMapName,
+	}
+	if err := r.Client.Get(context.TODO(), configMapName, &configMap); err != nil {
+		if errors.IsNotFound(err) {
+			return configMap, nil
+		}
+		return configMap, err
+	}
+	return configMap, nil
 }

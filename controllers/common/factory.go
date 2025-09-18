@@ -27,6 +27,9 @@ func GetFactoryConfigMapPredicate() predicate.Funcs {
 // FactoryReconfigAllowed check if factory re-configuration is allowed based on the factory
 // install config-map data.
 func FactoryReconfigAllowed(namespace string, obj client.Object) (*v1.ConfigMap, bool) {
+	if obj == nil {
+		return nil, false
+	}
 	if obj.GetName() != FactoryInstallConfigMapName {
 		return nil, false
 	}

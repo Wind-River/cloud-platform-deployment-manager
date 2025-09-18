@@ -1603,6 +1603,22 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return err
 	}
 
+	configMap, err := r.getFactoryConfigMap()
+	if err != nil {
+		return err
+	}
+
+	_, factory := common.FactoryReconfigAllowed(instance.Namespace, &configMap)
+	if factory && host.IsUnlockedEnabled() {
+		// finalize factory install if host already unlocked
+		logHost.Info("finalizing factory install", "host", host.ID)
+		err = r.setFactoryReconfigAsFinalized()
+		if err != nil {
+			return perrors.Wrap(err, "failed to finalize factory config")
+		}
+
+	}
+
 	if defaults == nil {
 		logHost.Info("defaults are nil or update required", "host", host.ID)
 		if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
