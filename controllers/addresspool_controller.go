@@ -13,10 +13,14 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -117,6 +121,45 @@ func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceCli
 	return nil
 }
 
+// During factory reconfig, the reconciled status is expected to be updated to
+// false to unblock the configuration as the day 1 configuration.
+// updateStatusForFactoryInstall updates the reconciler status based
+// on the factory install config map.
+func (r *AddressPoolReconciler) updateStatusForFactoryInstall(ctx context.Context, obj client.Object) []reconcile.Request {
+	IgnoreReconcile := []reconcile.Request{}
+	namespace := r.GetNamespace()
+	if _, ok := common.FactoryReconfigAllowed(namespace, obj); !ok {
+		return IgnoreReconcile
+	}
+
+	log := logAddressPool.WithName("enrollment")
+	log.Info("starting config update")
+
+	addressPools := &starlingxv1.AddressPoolList{}
+	opts := client.ListOptions{Namespace: namespace}
+
+	if err := r.Client.List(context.TODO(), addressPools, &opts); err != nil {
+		log.Error(err, "failed to retrieve resources")
+		return IgnoreReconcile
+	}
+
+	if len(addressPools.Items) == 0 {
+		log.Info("no items found")
+		return IgnoreReconcile
+	}
+
+	for _, pool := range addressPools.Items {
+		pool.Status.Reconciled = false
+		if err := r.Client.Status().Update(context.TODO(), &pool); err != nil {
+			log.Info(fmt.Sprintf("updating status of %s for factory install", pool.Name))
+			return IgnoreReconcile
+		}
+	}
+
+	namespacedName := types.NamespacedName{Namespace: namespace, Name: "addresspools"}
+	return []reconcile.Request{{NamespacedName: namespacedName}}
+}
+
 // Reconcile reads that state of the cluster for a AddressPool object and makes changes based on the state read
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=addresspools,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=addresspools/status,verbs=get;update;patch
@@ -211,5 +254,10 @@ func (r *AddressPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Logger:        logAddressPool}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.AddressPool{}).
+		Watches(
+			&v1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.updateStatusForFactoryInstall),
+			builder.WithPredicates(common.GetFactoryConfigMapPredicate()),
+		).
 		Complete(r)
 }

@@ -17,12 +17,15 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -537,45 +540,44 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 	return nil
 }
 
-// During factory install, the reconciled status is expected to be updated to
+// During factory reconfig, the reconciled status is expected to be updated to
 // false to unblock the configuration as the day 1 configuration.
-// UpdateStatusForFactoryInstall updates the status by checking the factory
-// install data.
-func (r *PtpInterfaceReconciler) UpdateStatusForFactoryInstall(
-	ns string,
-	instance *starlingxv1.PtpInterface,
-) error {
-	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
-		ns,
-		instance.Name,
-		"reconciled",
-	)
-	if err != nil {
-		return err
+// updateStatusForFactoryInstall updates the reconciler status based
+// on the factory install config map.
+func (r *PtpInterfaceReconciler) updateStatusForFactoryInstall(ctx context.Context, obj client.Object) []reconcile.Request {
+	IgnoreReconcile := []reconcile.Request{}
+	namespace := r.GetNamespace()
+
+	if _, ok := common.FactoryReconfigAllowed(namespace, obj); !ok {
+		return IgnoreReconcile
 	}
 
-	if !reconciledUpdated {
-		instance.Status.Reconciled = false
-		err = r.Client.Status().Update(context.TODO(), instance)
-		if err != nil {
-			return err
-		}
-		err = r.CloudManager.SetFactoryResourceDataUpdated(
-			ns,
-			instance.Name,
-			"reconciled",
-			true,
-		)
-		if err != nil {
-			return err
-		}
-		r.ReconcilerEventLogger.NormalEvent(
-			instance,
-			common.ResourceUpdated,
-			"Set Reconciled false for factory install",
-		)
+	log := logPtpInterface.WithName("enrollment")
+	log.Info("starting config update")
+
+	ptpInterfaces := &starlingxv1.PtpInterfaceList{}
+	opts := client.ListOptions{Namespace: namespace}
+
+	if err := r.Client.List(context.TODO(), ptpInterfaces, &opts); err != nil {
+		return IgnoreReconcile
 	}
-	return nil
+
+	if len(ptpInterfaces.Items) == 0 {
+		log.Info("no resources found")
+		return IgnoreReconcile
+	}
+
+	for _, ptpInterface := range ptpInterfaces.Items {
+		ptpInterface.Status.Reconciled = false
+		log.Info(fmt.Sprintf("updating status of %s for factory install", ptpInterface.Name))
+		if err := r.Client.Status().Update(context.TODO(), &ptpInterface); err != nil {
+			log.Error(err, "failed to update ptp interface")
+			return IgnoreReconcile
+		}
+	}
+
+	namespacedName := types.NamespacedName{Namespace: namespace, Name: "ptpinterfaces"}
+	return []reconcile.Request{{NamespacedName: namespacedName}}
 }
 
 // Reconcile reads that state of the cluster for a PTPInterface object and makes
@@ -589,8 +591,6 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	savedLog := logPtpInterface
 	logPtpInterface = logPtpInterface.WithName(request.NamespacedName.String())
 	defer func() { logPtpInterface = savedLog }()
-
-	logPtpInterface.Info("PTP interface reconcile called")
 
 	// Fetch the PTPInterface instance
 	instance := &starlingxv1.PtpInterface{}
@@ -609,17 +609,6 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
-	}
-
-	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if factory {
-		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration.
@@ -698,5 +687,10 @@ func (r *PtpInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Logger:        logPtpInterface}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PtpInterface{}).
+		Watches(
+			&v1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.updateStatusForFactoryInstall),
+			builder.WithPredicates(common.GetFactoryConfigMapPredicate()),
+		).
 		Complete(r)
 }

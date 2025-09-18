@@ -52,6 +52,10 @@ const (
 	ScopePrincipal = "principal"
 )
 
+const (
+	AvailabilityStatusAvailable = "available"
+)
+
 // TODO: Assign these consts in platform network controller instead.
 // Note that the AdminNetworkType is being referenced from host controller as well
 // as platform network controller.
@@ -144,11 +148,6 @@ type CloudManager interface {
 	SetNotifyingActiveHost(status bool)
 	SetStrategyExpectedByOtherReconcilers(status bool)
 	GetStrategyExpectedByOtherReconcilers() bool
-	// factory install related methods
-	GetFactoryInstall(namespace string) (bool, error)
-	SetFactoryConfigFinalized(namespace string, value bool) error
-	SetFactoryResourceDataUpdated(namespace string, name string, data string, value bool) error
-	GetFactoryResourceDataUpdated(namespace string, name string, data string) (bool, error)
 
 	// gophercloud
 	GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error)
