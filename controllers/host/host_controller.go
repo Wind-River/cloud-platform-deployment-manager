@@ -2265,7 +2265,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	if r.instanceConfigCompleted(instance) && !platformNetUpdateRequired && !scopeUpdated {

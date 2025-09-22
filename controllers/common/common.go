@@ -183,6 +183,20 @@ type ErrorHandler struct {
 	manager.CloudManager
 }
 
+func (h *ErrorHandler) webhookUnavailable(err error) bool {
+	status := err.(*errors.StatusError).ErrStatus
+	if status.Status != "Failure" {
+		return false
+	}
+	if !strings.Contains(status.Message, "failed calling webhook") {
+		return false
+	}
+	if !strings.Contains(status.Message, "connect: connection refused") {
+		return false
+	}
+	return true
+}
+
 // HandleReconcilerError is the common error handler implementation for all
 // controllers.  It is responsible for looking at the type of error that was
 // caught and determine what the best resolution might be.
@@ -240,6 +254,10 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 			// This is likely a status update conflict so immediately retry.
 			result = RetryImmediate
 			h.Info("status update conflict", "request", request)
+		} else if h.webhookUnavailable(cause) {
+			result = RetryTransientError
+			h.Info("mutating webhook not yet available")
+			h.V(2).Info("status errors", "request", request)
 		} else {
 			result = RetryTransientError
 			h.Error(in, "status error", "request", request)

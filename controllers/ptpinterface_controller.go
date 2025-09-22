@@ -608,16 +608,15 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration.
 	logPtpInterface.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance, request.Namespace)
-	if err != nil {
-		logPtpInterface.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
-		return reconcile.Result{}, err
+	if err := r.UpdateConfigStatus(instance, request.Namespace); err != nil {
+		return r.HandleReconcilerError(request, err)
 	}
+
 	logPtpInterface.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	if instance.DeletionTimestamp.IsZero() {

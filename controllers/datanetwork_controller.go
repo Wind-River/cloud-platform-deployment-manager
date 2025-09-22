@@ -408,7 +408,6 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 	})
 
 	if err != nil {
-		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
 		return err
 	}
 
@@ -450,13 +449,7 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 		return r.Client.Status().Update(context.TODO(), instance)
 	})
 
-	if err != nil {
-		err = perrors.Wrapf(err, "failed to update status: %s",
-			common.FormatStruct(instance.Status))
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // During factory reconfig, the reconciled status is expected to be updated to
@@ -526,15 +519,14 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	}
 
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration
 	logDataNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance, request.Namespace)
 	if err != nil {
-		logDataNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	logDataNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
