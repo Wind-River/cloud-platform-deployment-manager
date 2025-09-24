@@ -14,15 +14,12 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -209,42 +206,45 @@ func (r *PlatformNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.Pla
 	return nil
 }
 
-// During factory reconfig, the reconciled status is expected to be updated to
+// During factory install, the reconciled status is expected to be updated to
 // false to unblock the configuration as the day 1 configuration.
-// updateStatusForFactoryInstall updates the reconciler status based
-// on the factory install config map.
-func (r *PlatformNetworkReconciler) updateStatusForFactoryInstall(ctx context.Context, obj client.Object) []reconcile.Request {
-	IgnoreReconcile := []reconcile.Request{}
-	namespace := r.GetNamespace()
-	if _, ok := common.FactoryReconfigAllowed(namespace, obj); !ok {
-		return IgnoreReconcile
+// UpdateStatusForFactoryInstall updates the status by checking the factory
+// install data.
+func (r *PlatformNetworkReconciler) UpdateStatusForFactoryInstall(
+	ns string,
+	instance *starlingxv1.PlatformNetwork,
+) error {
+	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+		ns,
+		instance.Name,
+		"reconciled",
+	)
+	if err != nil {
+		return err
 	}
 
-	log := logPlatformNetwork.WithName("enrollment")
-	log.Info("starting config update")
-
-	networks := &starlingxv1.PlatformNetworkList{}
-	opts := client.ListOptions{Namespace: namespace}
-
-	if err := r.Client.List(context.TODO(), networks, &opts); err != nil {
-		return IgnoreReconcile
-	}
-
-	if len(networks.Items) == 0 {
-		return IgnoreReconcile
-	}
-
-	for _, network := range networks.Items {
-		network.Status.Reconciled = false
-		log.Info(fmt.Sprintf("updating status of %s for factory install", network.Name))
-		if err := r.Client.Status().Update(context.TODO(), &network); err != nil {
-			log.Error(err, "failed to update network status")
-			return IgnoreReconcile
+	if !reconciledUpdated {
+		instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return err
 		}
+		err = r.CloudManager.SetFactoryResourceDataUpdated(
+			ns,
+			instance.Name,
+			"reconciled",
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		r.ReconcilerEventLogger.NormalEvent(
+			instance,
+			common.ResourceUpdated,
+			"Set Reconciled false for factory install",
+		)
 	}
-
-	namespacedName := types.NamespacedName{Namespace: namespace, Name: "platformnetworks"}
-	return []reconcile.Request{{NamespacedName: namespacedName}}
+	return nil
 }
 
 // Reconcile reads that state of the cluster for a PlatformNetwork object and makes changes based on the state read
@@ -280,6 +280,17 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if factory {
+		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Update ReconciledAfterInSync and ObservedGeneration.
@@ -355,10 +366,5 @@ func (r *PlatformNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Logger:        logPlatformNetwork}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.PlatformNetwork{}).
-		Watches(
-			&v1.ConfigMap{},
-			handler.EnqueueRequestsFromMapFunc(r.updateStatusForFactoryInstall),
-			builder.WithPredicates(common.GetFactoryConfigMapPredicate()),
-		).
 		Complete(r)
 }

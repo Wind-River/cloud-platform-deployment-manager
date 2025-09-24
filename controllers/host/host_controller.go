@@ -28,9 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -752,7 +750,8 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 		"host has been unlocked")
 
 	logHost.Info("finalizing factory install")
-	if err := r.setFactoryReconfigAsFinalized(); err != nil {
+	err = r.SetFactoryConfigFinalized(instance.Namespace, true)
+	if err != nil {
 		return err
 	}
 
@@ -1603,23 +1602,36 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return err
 	}
 
-	configMap, err := r.getFactoryConfigMap()
+	// Check factory install config map
+	logHost.V(2).Info("checking factory install config map", "namespace", reqNs)
+	factory, err := r.CloudManager.GetFactoryInstall(reqNs)
 	if err != nil {
-		return err
+		return perrors.Wrap(err, "failed to get factory install config map")
 	}
 
-	_, factory := common.FactoryReconfigAllowed(instance.Namespace, &configMap)
 	if factory && host.IsUnlockedEnabled() {
 		// finalize factory install if host already unlocked
 		logHost.Info("finalizing factory install", "host", host.ID)
-		err = r.setFactoryReconfigAsFinalized()
+		err = r.SetFactoryConfigFinalized(instance.Namespace, true)
 		if err != nil {
 			return perrors.Wrap(err, "failed to finalize factory config")
 		}
-
+		factory = false
 	}
 
-	if defaults == nil {
+	// Determine if we need to update the default configuration
+	logHost.V(2).Info("checking if update to defaults is required", "host", host.ID)
+	updatedRequired, err := common.UpdateDefaultsRequired(
+		r.CloudManager,
+		reqNs,
+		instance.Name,
+		factory,
+	)
+	if err != nil {
+		return perrors.Wrap(err, "failed to check if update to defaults is required")
+	}
+
+	if defaults == nil || updatedRequired {
 		logHost.Info("defaults are nil or update required", "host", host.ID)
 		if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
 			// Ideally we would only ever collect the defaults when the host is
@@ -1648,6 +1660,19 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
 			"defaults collected and stored")
+
+		if factory {
+			logHost.V(2).Info("setting factory resource data updated", "namespace", reqNs, "host", host.ID)
+			err := r.CloudManager.SetFactoryResourceDataUpdated(
+				reqNs,
+				instance.Name,
+				"default",
+				true,
+			)
+			if err != nil {
+				return perrors.Wrap(err, "failed to set factory resource data updated")
+			}
+		}
 
 		current = defaults.DeepCopy()
 	} else {
@@ -2203,28 +2228,53 @@ func (r *HostReconciler) UpdateConfigStatus(
 	return nil
 }
 
-// instanceConfigCompleted determines whether day-1 configuration is complete
-func (r *HostReconciler) instanceConfigCompleted(instance *starlingxv1.Host) bool {
-	if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
-		return false
+// During factory install, the reconciled status is expected to be updated to
+// false to unblock the configuration as the day 1 configuration.
+// UpdateStatusForFactoryInstall updates the status by checking the factory
+// install data.
+func (r *HostReconciler) UpdateStatusForFactoryInstall(
+	ns string,
+	instance *starlingxv1.Host,
+) error {
+	factory, err := r.CloudManager.GetFactoryInstall(ns)
+	if err != nil {
+		return err
 	}
-	if !instance.Status.Reconciled {
-		return false
+	if !factory {
+		return nil
 	}
-	if instance.Status.DeploymentScope != cloudManager.ScopeBootstrap {
-		return false
+
+	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+		ns,
+		instance.Name,
+		"reconciled",
+	)
+	if err != nil {
+		return err
 	}
-	// AvailabilityStatus can be empty resulting in crash if trying to access the value
-	if instance.Status.AvailabilityStatus == nil {
-		return false
+
+	if !reconciledUpdated {
+		instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return err
+		}
+		err = r.CloudManager.SetFactoryResourceDataUpdated(
+			ns,
+			instance.Name,
+			"reconciled",
+			true,
+		)
+		if err != nil {
+			return err
+		}
 	}
-	if *instance.Status.AvailabilityStatus != cloudManager.AvailabilityStatusAvailable {
-		return false
-	}
-	if instance.Status.StrategyRequired != cloudManager.StrategyNotRequired {
-		return false
-	}
-	return true
+	r.ReconcilerEventLogger.NormalEvent(
+		instance,
+		common.ResourceUpdated,
+		"Set Reconciled false for factory install",
+	)
+	return nil
 }
 
 // Reconcile reads that state of the cluster for a Host object and makes changes
@@ -2240,6 +2290,8 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	savedLog := logHost
 	logHost = logHost.WithName(request.NamespacedName.String())
 	defer func() { logHost = savedLog }()
+
+	logHost.V(2).Info("reconcile called")
 
 	// Fetch the Host instance
 	instance := &starlingxv1.Host{}
@@ -2258,19 +2310,34 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	// Cancel any existing monitors
 	r.CloudManager.CancelMonitor(instance)
 
-	err, platformNetUpdateRequired := r.PlatformNetworkUpdateRequired(instance)
+	err, updateRequired := r.PlatformNetworkUpdateRequired(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	err, scopeUpdated := r.UpdateDeploymentScope(instance)
+	err, scope_updated := r.UpdateDeploymentScope(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if r.instanceConfigCompleted(instance) && !platformNetUpdateRequired && !scopeUpdated {
-		logHost.Info("reconcile finished, desired state reached after reconciled.")
-		return reconcile.Result{}, nil
+	err = r.UpdateStatusForFactoryInstall(request.Namespace, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(wasnio): remove this once migration from helm chart to fluxcd is done
+	// The status reaches its desired status post reconciled
+	if instance.Status.ObservedGeneration == instance.ObjectMeta.Generation &&
+		instance.Status.Reconciled &&
+		instance.Status.DeploymentScope == "bootstrap" &&
+		instance.Status.AvailabilityStatus != nil && *instance.Status.AvailabilityStatus == "available" &&
+		instance.Status.StrategyRequired == cloudManager.StrategyNotRequired &&
+		!updateRequired {
+
+		if !scope_updated {
+			logHost.V(2).Info("reconcile finished, desired state reached after reconciled.")
+			return reconcile.Result{}, nil
+		}
 	}
 
 	if instance.DeletionTimestamp.IsZero() {
@@ -2496,13 +2563,7 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostControllerName),
 		Logger:        logHost}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.Host{}).
-		Watches(
-			&v1.ConfigMap{},
-			handler.EnqueueRequestsFromMapFunc(r.updateStatusForFactoryInstall),
-			builder.WithPredicates(common.GetFactoryConfigMapPredicate()),
-		).
 		Complete(r)
 }
