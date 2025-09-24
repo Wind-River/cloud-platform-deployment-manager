@@ -1386,7 +1386,22 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 		return err
 	}
 
-	if defaults == nil {
+	// Check facotry install config map
+	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	if err != nil {
+		return err
+	}
+
+	updatedRequired, err := common.UpdateDefaultsRequired(
+		r.CloudManager,
+		instance.Namespace,
+		instance.Name,
+		factory,
+	)
+	if err != nil {
+		return err
+	}
+	if defaults == nil || updatedRequired {
 		logSystem.Info("collecting system default values")
 
 		defaults, err = r.BuildSystemDefaults(instance, systemInfo)
@@ -1396,6 +1411,20 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 
 		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
 			"system defaults collected and stored")
+
+		if factory {
+			// Update the resource default updated to prevent the next update,
+			// it will be checked in UpdateDefaultsRequired.
+			err := r.CloudManager.SetFactoryResourceDataUpdated(
+				instance.Namespace,
+				instance.Name,
+				"default",
+				true,
+			)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// Same problem applies to the License file attribute
@@ -1571,6 +1600,47 @@ func clean_deprecated_certificates(certs starlingxv1.CertificateList) starlingxv
 	return filteredCerts
 }
 
+// During factory install, the reconciled status is expected to be updated to
+// false to unblock the configuration as the day 1 configuration.
+// UpdateStatusForFactoryInstall updates the status by checking the factory
+// install data.
+func (r *SystemReconciler) UpdateStatusForFactoryInstall(
+	ns string,
+	instance *starlingxv1.System,
+) error {
+	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+		ns,
+		instance.Name,
+		"reconciled",
+	)
+	if err != nil {
+		return err
+	}
+
+	if !reconciledUpdated {
+		instance.Status.Reconciled = false
+		err = r.Client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return err
+		}
+		err = r.CloudManager.SetFactoryResourceDataUpdated(
+			ns,
+			instance.Name,
+			"reconciled",
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		r.ReconcilerEventLogger.NormalEvent(
+			instance,
+			common.ResourceUpdated,
+			"Set Reconciled false for factory install",
+		)
+	}
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a SystemNamespace object and makes
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=starlingx.windriver.com,resources=systems/status,verbs=get;update;patch
@@ -1604,6 +1674,17 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
+	}
+
+	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if factory {
+		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Filter out certificates with type other than "ssl_ca"

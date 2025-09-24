@@ -5,14 +5,18 @@ package common
 
 import (
 	errpkg "errors"
+	"testing"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -222,4 +226,96 @@ func (l *DummyLogSink) WithValues(keysAndValues ...interface{}) logr.LogSink {
 }
 func (l *DummyLogSink) WithName(name string) logr.LogSink {
 	return nil
+}
+
+func TestUpdateDefaultsRequired(t *testing.T) {
+	// Create a scheme and add ConfigMap to it
+	scheme := runtime.NewScheme()
+	err := v1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatalf("failed to add v1 scheme: %v", err)
+	}
+
+	tests := []struct {
+		name                   string
+		configMapData          map[string]string
+		expectedDefaultUpdated bool
+		expectedError          error
+	}{
+		{
+			name: "No update needed if factory install is false",
+			configMapData: map[string]string{
+				"factory-installed": "false",
+			},
+			expectedDefaultUpdated: false,
+			expectedError:          nil,
+		},
+		{
+			name: "Update needed if factory install is true and defaults not updated",
+			configMapData: map[string]string{
+				"factory-installed": "true",
+			},
+			expectedDefaultUpdated: true,
+			expectedError:          nil,
+		},
+		{
+			name: "No update needed if factory install is true and defaults are updated",
+			configMapData: map[string]string{
+				"factory-installed":           "true",
+				"system-abcd-default-updated": "true",
+			},
+			expectedDefaultUpdated: true,
+			expectedError:          nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a fake client with a ConfigMap
+			configMap := &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      manager.FactoryInstallConfigMapName,
+					Namespace: "deployment",
+				},
+				Data: tt.configMapData,
+			}
+			k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(configMap).Build()
+
+			// Create the Dummymanager with the fake client
+			manager := &manager.Dummymanager{
+				Resource: make(map[string]*manager.ResourceInfo),
+				Client:   k8sClient, // Assign the fake client to the manager
+			}
+
+			// Test setting resource default updated
+			err := manager.SetFactoryResourceDataUpdated(
+				"deployment",
+				"system-abcd",
+				"default",
+				tt.expectedDefaultUpdated,
+			)
+			if err != nil && tt.expectedError == nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if err == nil && tt.expectedError != nil {
+				t.Fatalf("expected error %v, got none", tt.expectedError)
+			}
+
+			// Test getting resource default updated
+			result, err := manager.GetFactoryResourceDataUpdated(
+				"deployment",
+				"system-abcd",
+				"default",
+			)
+			if err != nil && tt.expectedError == nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if err == nil && tt.expectedError != nil {
+				t.Fatalf("expected error %v, got none", tt.expectedError)
+			}
+			if result != tt.expectedDefaultUpdated {
+				t.Fatalf("expected result %v, got %v", tt.expectedDefaultUpdated, result)
+			}
+		})
+	}
 }
