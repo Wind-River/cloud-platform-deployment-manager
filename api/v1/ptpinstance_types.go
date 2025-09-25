@@ -10,7 +10,7 @@ import (
 // PtpInstanceSpec defines the desired state of PtpInstance
 type PtpInstanceSpec struct {
 	// Serivce defines the service type of the ptp instance
-	// +kubebuilder:validation:Enum=ptp4l;phc2sys;ts2phc;clock
+	// +kubebuilder:validation:Enum=ptp4l;phc2sys;ts2phc;clock;gnss-monitor
 	Service string `json:"service"`
 
 	// Parameters contains a list of parameters assigned to the ptp instance
