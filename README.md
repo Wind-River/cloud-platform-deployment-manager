@@ -533,6 +533,8 @@ Note: only one host is expected to deployed before updating again, and the host
 is expected to be locked. Otherwise, the configMap will be set as finalized
 to block the further operation.
 
+Note: The config map must be applied before the deployment configuration.
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
