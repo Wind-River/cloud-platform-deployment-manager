@@ -583,7 +583,7 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	}
 
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
@@ -601,8 +601,7 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	logPtpInstance.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(instance, request.Namespace)
 	if err != nil {
-		logPtpInstance.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	logPtpInstance.V(2).Info("after UpdateConfigStatus", "instance", instance)
 

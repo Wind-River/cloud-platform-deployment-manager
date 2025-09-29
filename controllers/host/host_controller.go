@@ -2317,7 +2317,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err, scope_updated := r.UpdateDeploymentScope(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	err = r.UpdateStatusForFactoryInstall(request.Namespace, instance)

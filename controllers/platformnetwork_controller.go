@@ -279,7 +279,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	err, scopeUpdated := r.UpdateDeploymentScope(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
@@ -295,10 +295,8 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	// Update ReconciledAfterInSync and ObservedGeneration.
 	logPlatformNetwork.V(2).Info("before UpdateConfigStatus", "instance", instance)
-	err = r.UpdateConfigStatus(instance, request.Namespace)
-	if err != nil {
-		logPlatformNetwork.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration.")
-		return reconcile.Result{}, err
+	if err := r.UpdateConfigStatus(instance, request.Namespace); err != nil {
+		return r.HandleReconcilerError(request, err)
 	}
 	logPlatformNetwork.V(2).Info("after UpdateConfigStatus", "instance", instance)
 

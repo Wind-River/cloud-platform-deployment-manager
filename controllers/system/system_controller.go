@@ -1707,10 +1707,8 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// Update ReconciledAfterInSync and ObservedGeneration
 	logSystem.V(2).Info("before UpdateConfigStatus", "instance", instance)
 
-	err = r.UpdateConfigStatus(instance, request.Namespace)
-	if err != nil {
-		logSystem.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
-		return reconcile.Result{}, err
+	if err := r.UpdateConfigStatus(instance, request.Namespace); err != nil {
+		return r.HandleReconcilerError(request, err)
 	}
 	logSystem.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
