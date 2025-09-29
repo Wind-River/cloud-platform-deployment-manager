@@ -44,10 +44,10 @@ var (
 
 	// RetryMissingClient should be used for any object reconciliation that
 	// fails because of the platform client is missing or was reset.  The system
-	// controller is responsible for re-creating the client and it will kick
-	// the other controllers once it has re-established a connection to the
-	// target system.
-	RetryMissingClient = reconcile.Result{Requeue: false}
+	// controller is responsible for re-creating the client and it will kick a reconcile.
+	// But we need to ensure a new round because during enrollment re-configuration,
+	// a resource that is being created may not be available to the system controller.
+	RetryMissingClient = reconcile.Result{Requeue: true, RequeueAfter: 2 * time.Second}
 
 	// RetryTransientError should be used for any object reconciliation that
 	// fails because of a transient error and needs to be re-attempted at a
@@ -208,6 +208,20 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	cause := perrors.Cause(in)
 
 	switch cause.(type) {
+	case *gophercloud.ErrUnableToReauthenticate, gophercloud.ErrUnableToReauthenticate:
+		resetClient = true
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to re-authenticate, this can happen due to changes in the credential. Please verify the system-endpoint secret values.")
+
+	case gophercloud.ErrDefault401:
+		resetClient = false
+		result = RetryUserError
+		err = nil
+
+		h.Info("Failed to authenticate, please verify the system-endpoint secret values.")
+
 	case gophercloud.ErrDefault400, gophercloud.ErrDefault403,
 		gophercloud.ErrDefault404, gophercloud.ErrDefault405:
 		// These errors are resource based errors.  This means we successfully
