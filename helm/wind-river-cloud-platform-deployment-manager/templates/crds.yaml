@@ -2901,6 +2901,7 @@ spec:
                 - phc2sys
                 - ts2phc
                 - clock
+                - gnss-monitor
                 type: string
             required:
             - service
