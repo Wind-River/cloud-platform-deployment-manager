@@ -4,5 +4,5 @@ apiVersion: v1
 appVersion: "1.0"
 description: A Helm chart for the Deployment Manager
 name: wind-river-cloud-platform-deployment-manager
-version: 24.09.1
+version: 25.09.0
 icon: https://www.windriver.com/resources/images/wr-logo-red-2018.png
