@@ -409,6 +409,17 @@
             msg: Waiting after apply DM config
           when: not subcloud_enrollment
 
+        # To keep compatibility with 24.09 release, we need to restart the dm pod
+        # so the pod can handle subcloud enrollment re-configuration.
+        - name: Restart the deployment manager if subcloud enrollment
+          command: >-
+            kubectl -n platform-deployment-manager delete pods --selector control-plane=controller-manager
+          environment:
+            KUBECONFIG: "/etc/kubernetes/admin.conf"
+          when:
+            - subcloud_enrollment
+            - "get_software_version.stdout is version('25.09' , '<')"
+
       when: deploy_config is defined
 
     # Pre-verification block: it will search for administrative state applied
