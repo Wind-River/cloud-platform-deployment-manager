@@ -1,0 +1,21 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Replace OS_REGION_NAME when target is a subcloud
+  replace:
+    path: "{{ deploy_config }}"
+    regexp: '^(\s*OS_REGION_NAME:).*$'
+    replace: '\1 {{ os_region_name }}'
+  when: >-
+    distributed_cloud_role == "subcloud" or
+    distributed_cloud_role == ""
+
+- name: Apply deployment configuration file
+  shell: kubectl apply -f {{ deploy_config }}
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: apply_deploy_config
+  retries: 5
+  delay: 10
+  until: apply_deploy_config.rc == 0
+  ignore_errors: true

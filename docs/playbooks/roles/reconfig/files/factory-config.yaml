@@ -1,0 +1,10 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: factory-install
+data:
+  factory-installed: "true"
+  factory-config-finalized: "false"

@@ -1,0 +1,26 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- set_fact:
+    wait_for_dm_unlock: "{{ wait_for_dm_unlock | default(5) }}"
+    wait_for_dm_unlock_retries: "{{ wait_for_dm_unlock_retries | default(60) }}"
+
+# TODO: Remove this workaround once Ansible 2.11+ is available in WRCP.
+# Replace with reboot_command: /bin/true in the reboot task below.
+# The reboot task will not trigger the shutdown, but will follow the
+# system power off/on triggered by unlock operation.
+- name: Copy fake shutdown script to remote host
+  copy:
+    src: shutdown
+    dest: /tmp/shutdown
+    mode: "0755"
+
+- name: Wait unlock reboot
+  reboot:
+    # did you read the comment above?
+    # The search_paths is defined to restrict the reboot task to look
+    # for shutdown in /tmp/, so the fake shutdown will be executed.
+    # The reboot is triggered by the unlock operation.
+    search_paths:
+      - "/tmp/"
+  register: unlock_reboot_status

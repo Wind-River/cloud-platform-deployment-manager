@@ -1,0 +1,8 @@
+#!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+
+# No-op shutdown script for the ansible reboot task. The reboot task calls shutdown,
+# which we override using search_path to invoke this fake script. The task then waits
+# for shutdown, which is triggered gracefully by host unlock via DM's sysinv API.
+/bin/true
