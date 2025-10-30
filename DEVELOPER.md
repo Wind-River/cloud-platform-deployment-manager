@@ -33,13 +33,13 @@ cd downloads
 ```
 
 The Deployment Manager was developed during the period when GoLang version
-1.22.2 was prominent.  A newer version may work fine, but the minimum guaranteed
-version that will work with the tools and Makefile provided is v1.22.2.
+1.23.0 was prominent.  A newer version may work fine, but the minimum guaranteed
+version that will work with the tools and Makefile provided is v1.23.0.
 
 ```bash
 cd ${GOPATH}/downloads
-wget https://dl.google.com/go/go1.22.2.linux-amd64.tar.gz
-sudo tar -C /usr/local -zxf go1.22.2.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.23.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxf go1.23.0.linux-amd64.tar.gz
 export PATH=${PATH}:/usr/local/go/bin
 ```
 
@@ -49,13 +49,13 @@ The recommended installation method of the Deployment Manager is to use a Helm
 chart.  This ensures that the required CRD resources are installed before the
 Deployment Manager pods are created.  It also ensures that recommended default
 values for specific Kubernetes attributes are used.  The minimum required
-version of Helm is v3.6.2 and can be installed on your workstation using the
+version of Helm is v3.17.1 and can be installed on your workstation using the
 following commands.
 
 ```bash
 cd ${GOPATH}/downloads
-wget https://get.helm.sh/helm-v3.6.2-linux-amd64.tar.gz
-tar zxf helm-v3.6.2-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v3.17.1-linux-amd64.tar.gz
+tar zxf helm-v3.17.1-linux-amd64.tar.gz
 sudo cp linux-amd64/helm /usr/local/bin/
 ```
 
@@ -485,8 +485,8 @@ public key to ~/.ssh/authorized_keys.
 
 #### Versions
 
-Try using Go 1.22.2 if newer versions aren't working. Check with:
+Try using Go 1.23.0 if newer versions aren't working. Check with:
 ```bash
 > go version
-go version go1.22.2 linux/amd64
+go version go1.23.0 linux/amd64
 ```
