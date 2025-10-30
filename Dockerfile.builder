@@ -3,9 +3,11 @@ FROM golang:1.23.0-bullseye
 # Install our required version of Kustomize to generate the examples
 RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
 
-# Install our current version of Helm.  We can probably upgrade to a new version
-# but this one has been tested and verified to work.
-RUN wget https://get.helm.sh/helm-v2.16.10-linux-amd64.tar.gz -q -O - | tar zx -C /bin --strip-components=1 linux-amd64/helm
+# Install Helm v3.17.1
+RUN wget https://get.helm.sh/helm-v3.17.1-linux-amd64.tar.gz -O /tmp/helm.tar.gz && \
+    tar -zxf /tmp/helm.tar.gz -C /tmp && \
+    mv /tmp/linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
 
 # Install our required version of Kubebuilder.  We cannot upgrade to a later
 # version without significant effort.
@@ -31,9 +33,7 @@ ENV PATH="${PATH}:/usr/local/kubebuilder/bin:/bin"
 WORKDIR /go/src/github.com/wind-river/cloud-platform-deployment-manager
 RUN git config --global --add safe.directory /go/src/github.com/wind-river/cloud-platform-deployment-manager
 
-# Initialize helm within the container otherwise no helm commands will work.
-RUN helm init --stable-repo-url=https://charts.helm.sh/stable --client-only
-
+# Helm v3 is ready to use for packaging and linting
 # The entry command can be overwritten when launched but by default these are
 # the build steps that we will be running.
-CMD make && DEBUG=yes make docker-build
+CMD ["sh", "-c", "make && DEBUG=yes make docker-build"]

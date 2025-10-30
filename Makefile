@@ -11,7 +11,7 @@ HELM_FORCE ?= 0
 DEFAULT_IMG ?= wind-river/cloud-platform-deployment-manager
 BUILDER_IMG ?= ${DEFAULT_IMG}-builder:latest
 
-HELM_CLIENT_VER := $(shell helm version --client --short 2>/dev/null | awk '{print $$NF}' | sed 's/^v//')
+HELM_CLIENT_VER := $(shell helm version --short 2>/dev/null | awk '{print $$1}' | sed 's/^v//')
 HELM_CLIENT_VER_REL := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$1}')
 HELM_CLIENT_VER_MAJ := $(shell echo ${HELM_CLIENT_VER} | awk -F. '{print $$2}')
 
@@ -210,8 +210,8 @@ builder-run: builder-build
 
 # Check minimum helm version
 helm-ver-check:
-	@if [[ ${HELM_CLIENT_VER_REL} < 2 || ( ${HELM_CLIENT_VER_REL} == 2 && ${HELM_CLIENT_VER_MAJ} < 16 ) ]]; then
-		@echo "Minimum required helm client version is v2.16. Installed version is ${HELM_CLIENT_VER}"
+	@if [[ ${HELM_CLIENT_VER_REL} < 3 ]]; then
+		@echo "Minimum required helm client version is v3.0. Installed version is ${HELM_CLIENT_VER}"
 		@/bin/false
 	@fi
 
