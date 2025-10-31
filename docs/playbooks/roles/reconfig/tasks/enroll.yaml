@@ -1,0 +1,50 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- set_fact:
+    factory_configmap_path: >-
+      {{
+        factory_configmap_path
+        | default('/home/sysadmin/factory-configmap.yaml')
+      }}
+
+# yamllint disable-line rule:line-length
+- name: Fail if principal scope is configured for enroll re-configuration
+  fail:
+    msg: >-
+      Principal scope cannot be used during
+      subcloud enroll re-configuration
+  when: scope_principal
+
+- name: Copy factory config-map to target
+  copy:
+    src: factory-config.yaml
+    dest: "{{ factory_configmap_path }}"
+    mode: "0444"
+
+- name: Apply factory config-map
+  shell: >-
+    kubectl -n {{ deployment_namespace }} apply -f {{ factory_configmap_path }}
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+- name: Delete all the system resources for enroll re-configuration
+  shell: >-
+    kubectl -n {{ deployment_namespace }}
+    delete system --all
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+- include_role:
+    name: common
+    tasks_from: apply-config
+
+# To keep compatibility with 24.09 release, we need to restart the
+# dm pod, so the pod can handle subcloud enrollment re-configuration
+- name: Restart the deployment manager if subcloud enrollment
+  command: >-
+    kubectl -n {{ pod_namespace }}
+    delete pods --selector 'app=platform-deployment-manager'
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  when: "software_version is version('25.09' , '<')"

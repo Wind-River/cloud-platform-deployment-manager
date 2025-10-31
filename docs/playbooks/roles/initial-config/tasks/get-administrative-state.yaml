@@ -1,0 +1,63 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Search administrativeState into host resource
+  shell: >-
+    kubectl get host {{ hostname }}
+    -n {{ deployment_namespace }}
+    -o=go-template
+    --template
+    {% raw %}
+    '{{ if .spec.overrides.administrativeState }}
+    {{ .spec.overrides.administrativeState }}
+    {{ end }}'
+    {% endraw %}
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: get_host_admin_state
+
+- name: Get hostprofile name for this host
+  shell: >-
+    kubectl get host {{ hostname }}
+    -n {{ deployment_namespace }}
+    -o=jsonpath='{.spec.profile}'
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: get_hostprofile_name
+
+- name: Search administrativeState into hostprofile resource
+  shell: >-
+    kubectl get hostprofile {{ get_hostprofile_name.stdout }}
+    -n {{ deployment_namespace }}
+    -o=jsonpath='{.spec.administrativeState}'
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: get_hostprofile_adminstate
+
+- name: Show administrative state from host and hostprofile
+  debug:
+    msg:
+      - "host administrative state is '{{get_host_admin_state.stdout.strip()}}'"
+      - "profile administrative state is '{{get_hostprofile_adminstate.stdout.strip()}}'"
+
+- name: Fail if unable to retrieve desired administrative state
+  fail:
+    msg:
+      - "Add administrative state in host or hostprofile and retry."
+  when:
+    - get_host_admin_state.stdout.strip() == ""
+    - get_hostprofile_adminstate.stdout.strip() == ""
+
+- name: Set administrative state value
+  set_fact:
+    administrative_state: >-
+      {{
+        get_host_admin_state.stdout.strip()
+        if get_host_admin_state.stdout.strip() != ""
+        else get_hostprofile_adminstate.stdout.strip()
+      }}
+
+- name: Show config administrativeState
+  debug:
+    msg:
+    - "administrative state: {{ administrative_state }}"

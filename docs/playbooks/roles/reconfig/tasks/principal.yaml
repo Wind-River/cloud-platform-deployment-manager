@@ -1,0 +1,30 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- include_role:
+    name: common
+    tasks_from: apply-config
+
+- name: Restart deployment manager pod
+  shell: >-
+    kubectl -n {{ pod_namespace }}
+    delete pods --selector 'app=platform-deployment-manager'
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+- name: Wait until deployment-manager pod is ready
+  shell: >-
+    kubectl -n {{ pod_namespace }} wait --for=condition=Ready
+    pods --selector 'app=platform-deployment-manager'
+    --timeout 60s
+  register: get_pod_status
+  ignore_errors: true
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+
+- name: Fail if pod isn't ready within timeout
+  fail:
+    msg: |
+      The deployment manager was not ready within timeout
+      Command output: "{{ get_pod_status.stderr }}"
+  when: get_pod_status.rc != 0

@@ -1,0 +1,22 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Copy get-config-facts to remote
+  copy:
+    src: get-config-facts
+    dest: /tmp/get-config-facts
+    mode: '0755'
+- name: Get deployment configuration info
+  shell: "/tmp/get-config-facts {{ deploy_config }}"
+  register: config_info
+- name: Set variable names
+  set_fact:
+    deployment_namespace: >-
+      {{ (config_info.stdout | from_json).namespace }}
+    scope_principal: >-
+      {{ (config_info.stdout | from_json).principal }}
+- name: Dump config file info
+  debug:
+    msg:
+      - "deployment_namespace: {{ deployment_namespace }}"
+      - "scope_principal: {{ scope_principal }}"

@@ -1,0 +1,36 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Set default facts
+  set_fact:
+    scope_principal: false
+    subcloud_enrollment: false
+    deployment_namespace: "deployment"
+    pod_namespace: "platform-deployment-manager"
+
+- set_fact:
+    deploy_config: "{{ deployment_config }}"
+  when: deployment_config is defined
+
+- name: Handle remote target
+  when:
+    - deploy_config is defined
+    - ansible_connection != 'local'
+  block:
+    - name: Upload Deployment Configuration File
+      copy:
+        src: "{{ deploy_config }}"
+        dest: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
+        owner: "{{ ansible_ssh_user }}"
+        group: root
+        mode: 0655
+
+    - set_fact:
+        deploy_config: "/home/{{ ansible_ssh_user }}/deployment-config.yaml"
+
+- include_tasks:
+    file: get-config-file-facts.yaml
+  when: deploy_config is defined
+
+- import_tasks:
+    file: get-host-facts.yaml

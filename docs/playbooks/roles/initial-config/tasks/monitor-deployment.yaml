@@ -1,0 +1,98 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Get the number of configured hosts
+  shell: >-
+    kubectl -n {{ deployment_namespace }}
+    get hosts --no-headers | wc -l
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: hosts_count
+  until: hosts_count.stdout | int > 0
+  retries: 20
+  delay: 30
+  failed_when: false
+
+- name: Fail if failed to get the number of hosts
+  fail:
+    msg: "Failed to get host resource from cluster"
+  when: hosts_count.stdout == "0"
+
+- name: Set host retries facts based on the number of hosts
+  set_fact:
+    host_offline_retries: >-
+      {{
+        120 if hosts_count.stdout | int > 2
+        else 60
+      }}
+    host_reconcile_retries: >-
+      {{
+        240 if hosts_count.stdout | int > 2
+        else 120
+      }}
+
+- debug:
+    msg:
+      - "host_offline_retries: {{ host_offline_retries }}"
+      - "host_reconcile_retries: {{ host_reconcile_retries }}"
+
+- name: Wait until all hosts can be configured by dm
+  shell: >-
+    source /etc/platform/openrc;
+    system host-list --format value |
+    awk '$4 == "locked" && $6 != "available" && $6 != "online" { print $2 }' |
+    wc -l
+  register: get_offline_hosts
+  retries: "{{ host_offline_retries }}"
+  delay: 60
+  until:
+    - get_offline_hosts.stderr == ""
+    - get_offline_hosts.stdout == "0"
+  failed_when: false
+
+- name: Fail if host(s) cannot be configured
+  fail:
+    msg: >-
+      Host(s) cannot be configured, please check the host inventory:
+      system host-list
+  when: get_offline_hosts.stdout | int > 0
+
+- name: Wait until all resources are reconciled
+  shell: >-
+    (kubectl -n deployment get --no-headers -o custom-columns='R:.status.reconciled'
+    system,datanetwork,platformnetwork,addresspool,ptpinstance,ptpinterface;
+    kubectl -n deployment get --no-headers -o custom-columns='R:.status.reconciled'
+    hosts {{ hostname }}) | awk '/false/' | wc -l
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: unreconciled
+  retries: "{{ host_reconcile_retries  }}"
+  until:
+    - unreconciled.stderr == ""
+    - unreconciled.stdout | int == 0
+  delay: 30
+  failed_when: false
+
+- debug:
+    msg: >
+      stderr is: {{ unreconciled.stderr }}
+      stdout is: {{ unreconciled.stdout }}
+
+- name: Get DM pod error logs
+  shell: >-
+    kubectl {{ pod_namespace }} logs
+    deployments/platform-deployment-manager manager |
+    awk
+    '/ERROR/
+    && !/validation/
+    && !/waiting/
+    && !/Reconciler error/
+    && !(seen[$10, $NF]++)
+    {print $0}'
+  environment:
+    KUBECONFIG: "/etc/kubernetes/admin.conf"
+  register: pod_error_logs
+
+- name: Show errors from logs
+  debug:
+    msg: "Pod logs: {{ pod_error_logs.stdout }}"

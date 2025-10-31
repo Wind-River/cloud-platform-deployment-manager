@@ -1,0 +1,83 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Get host name
+  shell: hostname
+  register: get_hostname
+  changed_when: false
+
+# In order to determine if the host is a subcloud's node
+- name: Get distributed_cloud_role
+  shell: >-
+    awk -F "=" '/^distributed_cloud_role=/
+    {print $2}' /etc/platform/platform.conf
+  register: get_distributed_cloud_role
+  changed_when: false
+
+- name: Get software version
+  shell: awk -F "=" '/sw_version=/ {print $2}' /etc/platform/platform.conf
+  register: get_software_version
+  changed_when: false
+
+- name: Get region name from environment
+  shell: >-
+    awk -F "=" '/^export.*OS_REGION_NAME=/ {print $2}' /etc/platform/openrc
+  register: get_region_name
+  changed_when: false
+
+- name: Check if it's subcloud enrollment
+  stat:
+    path: /var/run/.subcloud_enrollment_completed
+  register: get_subcloud_enrollment_status
+
+
+- name: Set platform facts
+  set_fact:
+    distributed_cloud_role: "{{ get_distributed_cloud_role.stdout }}"
+    hostname: "{{ get_hostname.stdout }}"
+    software_version: "{{ get_software_version.stdout }}"
+    os_region_name: "{{ get_region_name.stdout }}"
+    subcloud_enrollment: "{{ get_subcloud_enrollment_status.stat.exists }}"
+    config_permdir: >-
+      /opt/platform/config/{{ get_software_version.stdout }}/
+
+# if we can verify that the subcloud was enrolled, we can just set
+# the administrative facts, as we expect the subcloud to be locked
+# and to be provisioned at this point.
+- name: Set administrative state values if enrollment
+  when: subcloud_enrollment
+  set_fact:
+    current_administrative_state: 'locked'
+    current_inventory_provision: 'provisioned'
+
+- name: Retrieve host state values if not subcloud enrollment
+  when: not subcloud_enrollment
+  block:
+    - shell: >-
+        source /etc/platform/openrc;
+        system host-show "{{ get_hostname.stdout }}" |
+        awk ' $2 ~ /^administrative/ {print $4} $2 ~/invprovision/ {print $4 }'
+      register: get_host_states_values
+
+    - set_fact:
+        current_administrative_state: >-
+          {{ get_host_states_values.stdout_lines[0] }}
+        current_inventory_provision: >-
+          {{ get_host_states_values.stdout_lines[1] }}
+
+- name: Set initial configuration fact
+  set_fact:
+    initial_configuration_done: >-
+      {{ current_inventory_provision == 'provisioned' }}
+
+- name: Dump facts
+  debug:
+    msg:
+      - "distributed_cloud_role: {{ distributed_cloud_role }}"
+      - "software_version: {{ software_version }}"
+      - "subcloud_enrollment: {{ subcloud_enrollment }}"
+      - "config_permdir: {{ config_permdir }}"
+      - "os_region_name: {{ os_region_name }}"
+      - "current_administrative_state: {{ current_administrative_state }}"
+      - "current_inventory_provision: {{ current_inventory_provision }}"
+      - "initial_configuration_done: {{ initial_configuration_done }}"

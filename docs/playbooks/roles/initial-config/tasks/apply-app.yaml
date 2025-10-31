@@ -1,0 +1,94 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Get system application status
+  shell: >-
+    source /etc/platform/openrc;
+    system application-list --nowrap
+    | awk '/deployment-manager/ {print $10}'
+  changed_when: false
+  register: dm_app_initial_status
+
+- name: Set app_helm_chart variable if it isn't defined
+  when: app_helm_chart is not defined
+  block:
+    - name: Find chart in the application directory
+      find:
+        path: "/usr/local/share/applications/helm/"
+        pattern: "deployment-manager*.tgz"
+      register: find_chart_app
+
+    - name: Fail if chart isn't in the application directory
+      fail:
+        msg: >-
+          The helm chart could not be found
+          in /usr/local/share/applications/helm/
+      when: find_chart_app.files[0].path | length == 0
+
+    - name: Set app_helm_chart
+      set_fact:
+        app_helm_chart: "{{ find_chart_app.files[0].path }}"
+
+- name: Get file {{ app_helm_chart }} information
+  stat:
+    path: "{{ app_helm_chart }}"
+  register: app_helm_chart_status
+
+- name: Fail if {{ app_helm_chart }} file does not exist
+  fail:
+    msg: "The app {{ app_helm_chart }} file does not exist"
+  when: not app_helm_chart_status.stat.exists
+
+- name: Get deployment-manager app state
+  shell: >-
+    source /etc/platform/openrc;
+    system application-list --nowrap
+    | awk '/ deployment-manager / {print $10}'
+  register: app_initial_status
+  changed_when: false
+
+- name: App upload and verification
+  when: app_initial_status.stdout == ""
+  block:
+    - name: Upload app {{ app_helm_chart }}
+      shell: >-
+        source /etc/platform/openrc;
+        system application-upload {{ app_helm_chart }}
+
+    - name: Wait until deployment-manager app is uploaded
+      shell: >-
+        source /etc/platform/openrc;
+        system application-list --nowrap
+        | awk '/ deployment-manager / {print $10}'
+      register: app_upload
+      retries: 10
+      delay: 6
+      until: app_upload.stdout == "uploaded"
+
+    - name: Fail if app upload failed
+      when: app_upload.stdout != "uploaded"
+      fail:
+        msg: >
+          Fail to upload {{ app_helm_chart }}. The app
+          status is {{ app_upload.stdout }}. Please look
+          system application-show deployment-manager for more
+          information
+
+- name: Apply deployment-manager app
+  shell: >-
+    source /etc/platform/openrc;
+    system application-apply deployment-manager
+  when: >
+    app_initial_status.stdout == "uploaded"
+    or app_upload.changed
+
+- name: Wait until deployment-manager app is applied
+  shell: >-
+    source /etc/platform/openrc;
+    system application-list --nowrap
+    | awk '/ deployment-manager / {print $10}'
+  # TODO(wasnio): remove hard-coded values
+  register: app_apply
+  until: app_apply.stdout == "applied"
+  retries: 30
+  delay: 10
