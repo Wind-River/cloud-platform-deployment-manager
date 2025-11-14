@@ -30,7 +30,6 @@
     path: /var/run/.subcloud_enrollment_completed
   register: get_subcloud_enrollment_status
 
-
 - name: Set platform facts
   set_fact:
     distributed_cloud_role: "{{ get_distributed_cloud_role.stdout }}"
