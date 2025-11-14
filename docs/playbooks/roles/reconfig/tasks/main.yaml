@@ -1,0 +1,10 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- include_tasks:
+    file: enroll.yaml
+  when: subcloud_enrollment
+
+- include_tasks:
+    file: principal.yaml
+  when: scope_principal

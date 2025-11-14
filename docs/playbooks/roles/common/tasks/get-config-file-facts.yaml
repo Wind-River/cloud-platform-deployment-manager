@@ -1,0 +1,19 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2025 Wind River Systems, Inc.
+- name: Get deployment configuration info
+  script: "get-config-facts.py {{ deploy_config }}"
+  register: config_info
+
+- name: Set variable names
+  set_fact:
+    deployment_namespace: >-
+      {{ (config_info.stdout | from_json).namespace }}
+    scope_principal: >-
+      {{ (config_info.stdout | from_json).principal }}
+
+- name: Dump config file info
+  debug:
+    msg:
+      - "deployment_namespace: {{ deployment_namespace }}"
+      - "scope_principal: {{ scope_principal }}"
