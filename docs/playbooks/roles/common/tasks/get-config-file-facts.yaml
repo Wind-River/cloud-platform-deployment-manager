@@ -11,9 +11,12 @@
       {{ (config_info.stdout | from_json).namespace }}
     scope_principal: >-
       {{ (config_info.stdout | from_json).principal }}
+    configured_hosts: >-
+      {{ (config_info.stdout | from_json).hosts }}
 
 - name: Dump config file info
   debug:
     msg:
       - "deployment_namespace: {{ deployment_namespace }}"
       - "scope_principal: {{ scope_principal }}"
+      - "configured_hosts: {{ configured_hosts }}"
