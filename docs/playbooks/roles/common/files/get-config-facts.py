@@ -9,6 +9,7 @@ Parses YAML deployment configuration file to extract namespace and deployment sc
 Identifies:
 - namespace from host resources (defaults to 'deployment')
 - principal deployment scope flag from resource status
+- hosts configured
 
 Usage: python3 get-config-facts.py <deploy-config.yaml>
 Output: json with namespace and principal scope boolean
@@ -63,11 +64,12 @@ def parse_config(file_path: str) -> dict:
     if any resource has deploymentScope set to 'principal'.
 
     Returns:
-        dict: Configuration facts with 'namespace' (from host resource) and
-              'principal' (True if any resource has principal scope)
+        dict: Configuration facts with 'namespace' (from host resource),
+              'principal' (True if any resource has principal scope) and
+              'hosts' with the number of Host resources
     """
 
-    facts = {"namespace": "deployment", "principal": False}
+    facts = {"namespace": "deployment", "principal": False, "hosts": 0}
 
     try:
         with open(file_path) as f:
@@ -80,15 +82,17 @@ def parse_config(file_path: str) -> dict:
                 facts["principal"] = facts["principal"] or safe_get_principal_scope(r)
                 if r.get("kind").lower() == "host":
                     facts["namespace"] = safe_get_namespace(r)
+                    facts["hosts"] += 1
 
     except Exception as e:
         pass
 
     return facts
 
+
 try:
     config = parse_config(sys.argv[1])
 except (IndexError, Exception):
-    config = {"namespace": "deployment", "principal": False}
+    config = {"namespace": "deployment", "principal": False, "hosts": 0}
 
 print(json.dumps(config))

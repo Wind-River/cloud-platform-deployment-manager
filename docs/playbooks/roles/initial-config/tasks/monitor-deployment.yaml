@@ -1,44 +1,61 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Wind River Systems, Inc.
-- name: Get the number of configured hosts
-  shell: >-
-    kubectl -n {{ deployment_namespace }}
-    get hosts --no-headers | wc -l
-  environment:
-    KUBECONFIG: "/etc/kubernetes/admin.conf"
-  register: hosts_count
-  until: hosts_count.stdout | int > 0
-  retries: 20
-  delay: 30
-  failed_when: false
-
 - name: Fail if failed to get the number of hosts
   fail:
     msg: "Failed to get host resource from cluster"
-  when: hosts_count.stdout == "0"
+  when: configured_hosts | int == 0
 
 - name: Set host retries facts based on the number of hosts
   set_fact:
     host_offline_retries: >-
       {{
-        120 if hosts_count.stdout | int > 2
-        else 60
+        120 if configured_hosts | int > 2 else 60
       }}
     host_reconcile_retries: >-
       {{
-        240 if hosts_count.stdout | int > 2
-        else 120
+        240 if configured_hosts | int > 2 else 120
+      }}
+    host_appear_retries: >-
+      {{
+        host_appear_retries | default(30)
+      }}
+    host_appear_timeout: >-
+      {{
+        host_appear_timeout | default(20)
       }}
 
 - debug:
     msg:
       - "host_offline_retries: {{ host_offline_retries }}"
       - "host_reconcile_retries: {{ host_reconcile_retries }}"
+      - "host_appear_retries: {{ host_appear_retries }}"
+
+- name: Wait until all hosts appear in the inventory
+  shell: >-
+    source /etc/platform/openrc > /dev/stderr;
+    system host-list --format value | wc -l
+  register: get_host_count
+  retries: "{{ host_appear_retries }}"
+  delay: "{{ host_appear_timeout }}"
+  until:
+    - get_host_count.stderr == ""
+    - get_host_count.stdout|int >= configured_hosts|int
+  failed_when: false
+
+- name: Fail if expected hosts are missing from inventory
+  fail:
+    msg: >-
+      Expected {{ configured_hosts }} hosts but only found
+      {{ get_host_count.stdout }} in the inventory,
+      please check the host inventory: system host-list
+  when: >-
+    get_host_count.stderr != "" or
+    configured_hosts|int > get_host_count.stdout|int
 
 - name: Wait until all hosts can be configured by dm
   shell: >-
-    source /etc/platform/openrc;
+    source /etc/platform/openrc > /dev/stderr;
     system host-list --format value |
     awk '$4 == "locked" && $6 != "available" && $6 != "online" { print $2 }' |
     wc -l
@@ -55,13 +72,14 @@
     msg: >-
       Host(s) cannot be configured, please check the host inventory:
       system host-list
-  when: get_offline_hosts.stdout | int > 0
+  when: >-
+    get_offline_hosts.stderr != "" or get_offline_hosts.stdout != "0"
 
 - name: Wait until all resources are reconciled
   shell: >-
-    (kubectl -n deployment get --no-headers -o custom-columns='R:.status.reconciled'
+    (kubectl -n {{ deployment_namespace }} get --no-headers -o custom-columns='R:.status.reconciled'
     system,datanetwork,platformnetwork,addresspool,ptpinstance,ptpinterface;
-    kubectl -n deployment get --no-headers -o custom-columns='R:.status.reconciled'
+    kubectl -n {{ deployment_namespace }} get --no-headers -o custom-columns='R:.status.reconciled'
     hosts {{ hostname }}) | awk '/false/' | wc -l
   environment:
     KUBECONFIG: "/etc/kubernetes/admin.conf"
