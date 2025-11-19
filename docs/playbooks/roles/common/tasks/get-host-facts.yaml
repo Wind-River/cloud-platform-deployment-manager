@@ -40,6 +40,16 @@
     config_permdir: >-
       /opt/platform/config/{{ get_software_version.stdout }}/
 
+- name: Check if controller credential file exists
+  stat:
+    path: "/opt/platform/.keyring/{{ software_version }}/.CREDENTIAL"
+  register: credential_file_status
+
+- name: Fail if controller is not active
+  fail:
+    msg: "Controller {{ hostname }} is not active"
+  when: not credential_file_status.stat.exists
+
 # if we can verify that the subcloud was enrolled, we can just set
 # the administrative facts, as we expect the subcloud to be locked
 # and to be provisioned at this point.
