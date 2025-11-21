@@ -1963,8 +1963,19 @@ func (in *PtpInstanceSpec) DeepCopyInto(out *PtpInstanceSpec) {
 	*out = *in
 	if in.InstanceParameters != nil {
 		in, out := &in.InstanceParameters, &out.InstanceParameters
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			var outVal []string
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
+				*out = make([]string, len(*in))
+				copy(*out, *in)
+			}
+			(*out)[key] = outVal
+		}
 	}
 }
 

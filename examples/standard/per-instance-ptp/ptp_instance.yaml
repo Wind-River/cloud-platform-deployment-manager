@@ -8,8 +8,9 @@ metadata:
 spec:
   service: ptp4l
   parameters:
-    - domainNumber=24
-    - clientOnly=0
+    global:
+      - domainNumber=24
+      - clientOnly=0
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: PtpInstance
@@ -21,4 +22,5 @@ metadata:
 spec:
   service: phc2sys
   parameters:
-    - cmdline_opts=-a -r
+    global:
+      - cmdline_opts=-a -r

@@ -53,11 +53,13 @@ spec:
             description: PtpInstanceSpec defines the desired state of PtpInstance
             properties:
               parameters:
-                description: Parameters contains a list of parameters assigned to
-                  the ptp instance
-                items:
-                  type: string
-                type: array
+                additionalProperties:
+                  items:
+                    type: string
+                  type: array
+                description: Parameters contains a list of parameters grouped by section
+                  assigned to the ptp instance
+                type: object
               service:
                 description: Serivce defines the service type of the ptp instance
                 enum:

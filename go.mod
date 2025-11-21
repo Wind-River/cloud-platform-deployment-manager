@@ -119,5 +119,5 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-// replace github.com/gophercloud/gophercloud => ./external/gophercloud
-replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20250523125248-f913b1299bb5
+replace github.com/gophercloud/gophercloud => ./external/gophercloud
+// replace github.com/gophercloud/gophercloud => github.com/Wind-River/gophercloud v0.0.0-20250523125248-f913b1299bb5
