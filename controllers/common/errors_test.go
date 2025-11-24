@@ -4,60 +4,85 @@
 package common
 
 import (
+	"errors"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Test Build utilities:", func() {
-	Describe("Test NewSystemDependency", func() {
+	It("Test NewSystemDependency", func() {
 		msg := "message"
 		want := ErrSystemDependency{BaseError{msg}}
 		got := NewSystemDependency(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewMissingKubernetesResource", func() {
+
+	It("Test NewMissingKubernetesResource", func() {
 		msg := "message"
 		want := ErrMissingKubernetesResource{BaseError{msg}}
 		got := NewMissingKubernetesResource(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewResourceStatusDependency", func() {
+
+	It("Test NewResourceStatusDependency", func() {
 		msg := "message"
 		want := ErrResourceStatusDependency{BaseError{msg}}
 		got := NewResourceStatusDependency(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewResourceConfigurationDependency", func() {
+
+	It("Test NewResourceConfigurationDependency", func() {
 		msg := "message"
 		want := ErrResourceConfigurationDependency{BaseError{msg}}
 		got := NewResourceConfigurationDependency(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewUserDataError", func() {
+
+	It("Test NewUserDataError", func() {
 		msg := "message"
 		want := ErrUserDataError{BaseError{msg}}
 		got := NewUserDataError(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewValidationError", func() {
+
+	It("Test NewValidationError", func() {
 		msg := "message"
 		want := ValidationError{BaseError{msg}}
 		got := NewValidationError(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewHTTPSClientRequired", func() {
+
+	It("Test NewHTTPSClientRequired", func() {
 		msg := "message"
 		want := HTTPSClientRequired{BaseError{msg}}
 		got := NewHTTPSClientRequired(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test NewChangeAfterInSync", func() {
+
+	It("Test NewChangeAfterInSync", func() {
 		msg := "message"
 		want := ChangeAfterReconciled{BaseError{msg}}
 		got := NewChangeAfterInSync(msg)
 		Expect(got).To(Equal(want))
 	})
-	Describe("Test Error", func() {
+
+	It("Test NewUnlockError with simple message", func() {
+		expectedMessage := "Failed to unlock controller-0: Kernel upgrade in progress"
+		want := ErrUnlockError{BaseError{expectedMessage}}
+		reason := errors.New("Kernel upgrade in progress")
+		got := NewUnlockError("controller-0", reason)
+		Expect(got).To(Equal(want))
+	})
+
+	It("Test NewUnlockError extract fault string reason", func() {
+		want := ErrUnlockError{BaseError{"Failed to unlock controller-0: Kernel upgrade in progress"}}
+		reason := errors.New(`Some kind of error codes, faultstring\\: \\\\\"Kernel upgrade in progress\\\", more error codes here`)
+		got := NewUnlockError("controller-0", reason)
+		Expect(got).To(Equal(want))
+	})
+
+	It("Test Error", func() {
 		msg := "message"
 		baseErr := BaseError{msg}
 		want := msg

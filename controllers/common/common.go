@@ -54,6 +54,11 @@ var (
 	// future time.
 	RetryTransientError = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 
+	// RetryUnlockError is used when the RPC call to unlock the host fails.
+	// Most unlock failures are transient, so we retry the unlock operation
+	// after a short delay.
+	RetryUnlockError = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+
 	// RetryUserError should be used for any errors caught after an API request
 	// that is likely due to data validation errors.  These could theoretically
 	// not retry and just sit and wait for the user to correct the error, but
@@ -208,6 +213,14 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	cause := perrors.Cause(in)
 
 	switch cause.(type) {
+
+	case ErrUnlockError:
+		resetClient = false
+		result = RetryUnlockError
+		err = nil
+
+		h.Info(in.Error())
+
 	case *gophercloud.ErrUnableToReauthenticate, gophercloud.ErrUnableToReauthenticate:
 		resetClient = true
 		result = RetryUserError

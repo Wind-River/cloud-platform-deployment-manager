@@ -3,6 +3,11 @@
 
 package common
 
+import (
+	"fmt"
+	"regexp"
+)
+
 // Defines common log strings from commonly performed validation checks across
 // all different reconcilers.
 const (
@@ -11,6 +16,23 @@ const (
 	NoProvisioningAfterReconciled      = "resource provisioning ignored after initial synchronization has completed"
 	ProvisioningAllowedAfterReconciled = "manual override; allowing resource provisioning after initial synchronization"
 )
+
+// extractFaultString extracts the fault message from the fault error.
+// It searches for the faultstring pattern and returns the extracted message,
+// or the original error string if no pattern is found.
+func extractFaultString(err error) string {
+	var reason string
+	if err != nil {
+		reason = err.Error()
+	}
+
+	faultRe := regexp.MustCompile(`faultstring.*?:.*?"(.*?)\\`)
+	if result := faultRe.FindStringSubmatch(reason); len(result) > 0 {
+		return result[1]
+	}
+
+	return reason
+}
 
 // BaseError defines the common error reporting struct for all other errors
 // defined in this package
@@ -50,6 +72,12 @@ type ErrResourceStatusDependency struct {
 // that an operation is unable to continue because a resource is not configured
 // correctly.
 type ErrResourceConfigurationDependency struct {
+	BaseError
+}
+
+// ErrUnlockError defines an error to be returned when the RPC call
+// to unlock the host fails.
+type ErrUnlockError struct {
 	BaseError
 }
 
@@ -116,6 +144,12 @@ func NewResourceStatusDependency(msg string) error {
 // ErrResourceStatusDependency error type.
 func NewResourceConfigurationDependency(msg string) error {
 	return ErrResourceConfigurationDependency{BaseError{msg}}
+}
+
+// NewUnlockError defines a constructor for the UnlockError error type.
+func NewUnlockError(hostname string, in error) error {
+	msg := fmt.Sprintf("Failed to unlock %s: %s", hostname, extractFaultString(in))
+	return ErrUnlockError{BaseError{msg}}
 }
 
 // NewUserDataError defines a constructor for the ErrUserDataError error type.
