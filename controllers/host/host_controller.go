@@ -739,9 +739,7 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 
 	result, err := hosts.Update(client, host.ID, opts).Extract()
 	if err != nil || result == nil {
-		err = perrors.Wrapf(err, "failed to unlock host: %s, %s",
-			host.ID, common.FormatStruct(opts))
-		return err
+		return common.NewUnlockError(host.Hostname, err)
 	}
 
 	host.Host = *result
