@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025 Wind River Systems, Inc.
 - set_fact:
-    wait_for_dm_unlock: "{{ wait_for_dm_unlock | default(5) }}"
-    wait_for_dm_unlock_retries: "{{ wait_for_dm_unlock_retries | default(60) }}"
+    dm_unlock_timeout: "{{ dm_unlock_timeout | default(1200) }}"
 
 # TODO: Remove this workaround once Ansible 2.11+ is available in WRCP.
 # Replace with reboot_command: /bin/true in the reboot task below.
@@ -23,4 +22,5 @@
     # The reboot is triggered by the unlock operation.
     search_paths:
       - "/tmp/"
+    reboot_timeout: "{{ dm_unlock_timeout }}"
   register: unlock_reboot_status
