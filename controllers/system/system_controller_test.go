@@ -5,6 +5,8 @@ package system
 import (
 	"context"
 
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +15,88 @@ import (
 )
 
 var _ = Describe("System controller", func() {
+	Describe("dnsUpdateRequired function", func() {
+		Context("When dns servers are configured", func() {
+			It("Should return true if DNS arrays have different sizes", func() {
+				spec := starlingxv1.SystemSpec{
+					DNSServers: []string{},
+				}
+				info := dns.DNS{Nameservers: "1.1.1.1,8.8.8.8,8.8.4.4"}
+				opts, required := dnsUpdateRequired(&spec, &info)
+				Expect(required).To(BeTrue())
+				Expect(*opts.Nameservers).To(Equal("NC"))
+			})
+		})
+
+		It("Should return false when current and desired DNS servers are identical", func() {
+			spec := starlingxv1.SystemSpec{
+				DNSServers: []string{"1.1.1.1", "8.8.8.8", "8.8.4.4"},
+			}
+			info := dns.DNS{Nameservers: "1.1.1.1,8.8.8.8,8.8.4.4"}
+			opts, required := dnsUpdateRequired(&spec, &info)
+			Expect(opts.Nameservers).To(BeNil())
+			Expect(required).To(BeFalse())
+		})
+
+		It("Should return true when current DNS is empty and desired has DNS servers", func() {
+			spec := starlingxv1.SystemSpec{
+				DNSServers: []string{"1.1.1.1", "8.8.8.8", "8.8.4.4"},
+			}
+			info := dns.DNS{Nameservers: ""}
+			opts, required := dnsUpdateRequired(&spec, &info)
+			Expect(required).To(BeTrue())
+			Expect(*opts.Nameservers).To(Equal("1.1.1.1,8.8.8.8,8.8.4.4"))
+		})
+
+		It("Should return true when current has DNS servers but desired has none", func() {
+			spec := starlingxv1.SystemSpec{DNSServers: []string{}}
+			info := dns.DNS{Nameservers: "1.1.1.1,8.8.8.8,8.8.4.4"}
+			opts, required := dnsUpdateRequired(&spec, &info)
+			Expect(required).To(BeTrue())
+			Expect(*opts.Nameservers).To(Equal("NC"))
+		})
+	})
+
+	Describe("ntpUpdateRequired function", func() {
+		Context("When dns servers are configured", func() {
+			It("Should return true if NTP arrays have different sizes", func() {
+				spec := starlingxv1.SystemSpec{NTPServers: []string{}}
+				info := ntp.NTP{NTPServers: "0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"}
+				opts, required := ntpUpdateRequired(&spec, &info)
+				Expect(required).To(BeTrue())
+				Expect(*opts.NTPServers).To(Equal("NC"))
+			})
+
+			It("Should return false when current and desired NTP servers are identical", func() {
+				spec := starlingxv1.SystemSpec{
+					NTPServers: []string{"0.ubuntu.pool.ntp.org", "1.ubuntu.pool.ntp.org"},
+				}
+				info := ntp.NTP{NTPServers: "0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"}
+				opts, required := ntpUpdateRequired(&spec, &info)
+				Expect(opts.NTPServers).To(BeNil())
+				Expect(required).To(BeFalse())
+			})
+
+			It("Should return true when current NTP is empty and desired has DNS servers", func() {
+				spec := starlingxv1.SystemSpec{
+					NTPServers: []string{"0.ubuntu.pool.ntp.org", "1.ubuntu.pool.ntp.org"},
+				}
+				info := ntp.NTP{NTPServers: ""}
+				opts, required := ntpUpdateRequired(&spec, &info)
+				Expect(required).To(BeTrue())
+				Expect(*opts.NTPServers).To(Equal("0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"))
+			})
+
+			It("Should return true when current has NTP servers but desired has none", func() {
+				spec := starlingxv1.SystemSpec{NTPServers: []string{}}
+				info := ntp.NTP{NTPServers: "0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"}
+				opts, required := ntpUpdateRequired(&spec, &info)
+				Expect(required).To(BeTrue())
+				Expect(*opts.NTPServers).To(Equal("NC"))
+			})
+		})
+
+	})
 
 	Context("System with data", func() {
 		It("Should created successfully", func() {
@@ -22,8 +106,8 @@ var _ = Describe("System controller", func() {
 			contact := string("A sample contact")
 			latitude := string("45.35189954974955")
 			longitude := string("-75.91866628453701")
-			dnsServers := starlingxv1.StringsToDNSServerList([]string{"8.8.8.8", "4.4.4.4"})
-			ntpServers := starlingxv1.StringsToNTPServerList([]string{"time.ntp.org", "1.2.3.4"})
+			dnsServers := []string{"8.8.8.8", "4.4.4.4"}
+			ntpServers := []string{"time.ntp.org", "1.2.3.4"}
 			ptpMode := "hardware"
 			created := &starlingxv1.System{
 				ObjectMeta: metav1.ObjectMeta{
@@ -36,8 +120,8 @@ var _ = Describe("System controller", func() {
 					Latitude:    &latitude,
 					Longitude:   &longitude,
 					Contact:     &contact,
-					DNSServers:  &dnsServers,
-					NTPServers:  &ntpServers,
+					DNSServers:  dnsServers,
+					NTPServers:  ntpServers,
 					PTP: &starlingxv1.PTPInfo{
 						Mode: &ptpMode,
 					},
@@ -53,7 +137,7 @@ var _ = Describe("System controller", func() {
 
 	Context("Test clean_deprecated_certificates func", func() {
 		It("Should filter all deprecated certficate types successfully", func() {
-			certs := starlingxv1.CertificateList{
+			certs := []starlingxv1.CertificateInfo{
 				{
 					Type:      starlingxv1.PlatformCertificate,
 					Signature: "ssl_10886226602156394257",
@@ -67,13 +151,13 @@ var _ = Describe("System controller", func() {
 					Signature: "docker_registry_10886226602156394257",
 				},
 			}
-			expOutCerts := starlingxv1.CertificateList{
+			expOutCerts := []starlingxv1.CertificateInfo{
 				{
 					Type:      starlingxv1.PlatformCACertificate,
 					Signature: "ssl_ca_10886226602156394257",
 				},
 			}
-			outCerts := clean_deprecated_certificates(certs)
+			outCerts := cleanDeprecatedCerts(certs)
 			Expect(outCerts).To(Equal(expOutCerts))
 		})
 	})
@@ -90,7 +174,7 @@ var _ = Describe("System controller", func() {
 				},
 				Spec: starlingxv1.SystemSpec{
 					Storage: &starlingxv1.SystemStorageInfo{
-						Backends: &starlingxv1.StorageBackendList{
+						Backends: starlingxv1.StorageBackendList{
 							{
 								Name:       nameBackend,
 								Type:       typeBackend,
@@ -116,7 +200,7 @@ var _ = Describe("System controller", func() {
 				},
 				Spec: starlingxv1.SystemSpec{
 					Storage: &starlingxv1.SystemStorageInfo{
-						Backends: &starlingxv1.StorageBackendList{
+						Backends: starlingxv1.StorageBackendList{
 							{
 								Name:       nameBackend,
 								Type:       typeBackend,
@@ -144,14 +228,14 @@ var _ = Describe("System controller", func() {
 				},
 				Spec: starlingxv1.SystemSpec{
 					Storage: &starlingxv1.SystemStorageInfo{
-						Backends: &starlingxv1.StorageBackendList{
+						Backends: starlingxv1.StorageBackendList{
 							{
 								Name:       nameBackend,
 								Type:       typeBackend,
 								Deployment: deploymentModel,
 							},
 						},
-						FileSystems: &starlingxv1.ControllerFileSystemList{
+						FileSystems: starlingxv1.ControllerFileSystemList{
 							{
 								Name: nameControllerFs,
 								Size: sizeControllerFs,
@@ -165,7 +249,7 @@ var _ = Describe("System controller", func() {
 	})
 	Context("For the FixCertsToManage func when current has runtimeCerts", func() {
 		It("Should remove the rutime certs and return the remaining", func() {
-			specCerts := &starlingxv1.CertificateList{
+			specCerts := []starlingxv1.CertificateInfo{
 				{
 					Type:      "ssl_ca",
 					Secret:    "ssl-ca-secret-1",
@@ -182,7 +266,7 @@ var _ = Describe("System controller", func() {
 					Signature: "",
 				},
 			}
-			currentCerts := &starlingxv1.CertificateList{
+			currentCerts := []starlingxv1.CertificateInfo{
 				{
 					Type:      "ssl_ca",
 					Secret:    "ssl-ca-secret-1",
@@ -200,7 +284,7 @@ var _ = Describe("System controller", func() {
 				},
 			}
 
-			expRes := starlingxv1.CertificateList{
+			expRes := []starlingxv1.CertificateInfo{
 				{
 					Type:      "ssl_ca",
 					Secret:    "ssl-ca-secret-1",

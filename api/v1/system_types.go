@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package v1
 
@@ -230,13 +230,15 @@ type ControllerFileSystemList []ControllerFileSystemInfo
 // +deepequal-gen:ignore-nil-fields=true
 type SystemStorageInfo struct {
 	// Backends is a set of backend storage methods to be configured.  Only
-	Backends *StorageBackendList `json:"backends,omitempty"`
+	// +nullable
+	Backends StorageBackendList `json:"backends,omitempty"`
 
 	// DRBD defines the set of DRBD configuration attributes for the system.
 	DRBD *DRBDConfiguration `json:"drbd,omitempty"`
 
 	// Filesystems defines the set of controller file system definitions.
-	FileSystems *ControllerFileSystemList `json:"filesystems,omitempty"`
+	// +nullable
+	FileSystems ControllerFileSystemList `json:"filesystems,omitempty"`
 }
 
 // PTPInfo defines the system level precision time protocol attributes that are
@@ -261,65 +263,13 @@ type PTPInfo struct {
 	Mechanism *string `json:"mechanism,omitempty"`
 }
 
-type DNSServer string
-
 // DNSServerList defines a type to represent a slice of DNSServer objects.
 // +deepequal-gen:unordered-array=true
-type DNSServerList []DNSServer
-
-// DNSServerListToStrings is to convert from list type to string array
-func DNSServerListToStrings(items DNSServerList) []string {
-	if items == nil {
-		return nil
-	}
-	a := make([]string, 0)
-	for _, i := range items {
-		a = append(a, string(i))
-	}
-	return a
-}
-
-// StringsToDNSServerList is to convert from string array to list type
-func StringsToDNSServerList(items []string) DNSServerList {
-	if items == nil {
-		return nil
-	}
-	a := make(DNSServerList, 0)
-	for _, i := range items {
-		a = append(a, DNSServer(i))
-	}
-	return a
-}
-
-type NTPServer string
+type DNSServerList []string
 
 // NTPServerList defines a type to represent a slice of NTPServer objects.
 // +deepequal-gen:unordered-array=true
-type NTPServerList []NTPServer
-
-// NTPServerListToStrings is to convert from list type to string array
-func NTPServerListToStrings(items NTPServerList) []string {
-	if items == nil {
-		return nil
-	}
-	a := make([]string, 0)
-	for _, i := range items {
-		a = append(a, string(i))
-	}
-	return a
-}
-
-// StringsToNTPServerList is to convert from string array to list type
-func StringsToNTPServerList(items []string) NTPServerList {
-	if items == nil {
-		return nil
-	}
-	a := make(NTPServerList, 0)
-	for _, i := range items {
-		a = append(a, NTPServer(i))
-	}
-	return a
-}
+type NTPServerList []string
 
 // SystemSpec defines the desired state of System
 // +deepequal-gen:ignore-nil-fields=true
@@ -360,30 +310,34 @@ type SystemSpec struct {
 	// Nameservers is an array of Domain SystemName servers.  Each server can be
 	// specified as either an IPv4 or IPv6
 	// address.
+	// +nullable
 	// +optional
-	DNSServers *DNSServerList `json:"dnsServers,omitempty"`
+	DNSServers DNSServerList `json:"dnsServers,omitempty"`
 
 	// NTPServers is an array of Network Time Protocol servers.  Each server can
 	// be specified as either an IPv4 or IPv6
 	// address, or a FQDN hostname.
+	// +nullable
 	// +optional
-	NTPServers *NTPServerList `json:"ntpServers,omitempty"`
+	NTPServers NTPServerList `json:"ntpServers,omitempty"`
 
 	// PTP defines the Precision Time Protocol configuration for the system.
 	PTP *PTPInfo `json:"ptp,omitempty"`
 
 	// Certificates is a list of references to certificates that must be
 	// installed.
+	// +nullable
 	// +optional
-	Certificates *CertificateList `json:"certificates,omitempty"`
+	Certificates CertificateList `json:"certificates,omitempty"`
 
 	// License is a reference to a license file that must be installed.
 	// +optional
 	License *LicenseInfo `json:"license,omitempty"`
 
 	// ServiceParameters is a list of service parameters
+	// +nullable
 	// +optional
-	ServiceParameters *ServiceParameterList `json:"serviceParameters,omitempty"`
+	ServiceParameters ServiceParameterList `json:"serviceParameters,omitempty"`
 
 	// Storage is a set of storage specific attributes to be configured for the
 	// system.

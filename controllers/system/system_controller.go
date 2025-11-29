@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package system
 
@@ -141,20 +141,19 @@ const NoContent = "NC"
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
 func ntpUpdateRequired(spec *starlingxv1.SystemSpec, info *ntp.NTP) (ntpOpts ntp.NTPOpts, result bool) {
-	if spec.NTPServers != nil {
-		var timeservers string
+	desired := NoContent
+	if len(spec.NTPServers) > 0 {
+		desired = strings.Join(spec.NTPServers, ",")
+	}
 
-		if len(*spec.NTPServers) != 0 {
-			n := starlingxv1.NTPServerListToStrings(*spec.NTPServers)
-			timeservers = strings.Join(n, ",")
-		} else {
-			timeservers = NoContent
-		}
+	current := info.NTPServers
+	if len(info.NTPServers) == 0 {
+		current = NoContent
+	}
 
-		if (timeservers != NoContent && info.NTPServers != timeservers) || timeservers == NoContent && info.NTPServers != "" {
-			ntpOpts.NTPServers = &timeservers
-			result = true
-		}
+	if current != desired {
+		ntpOpts.NTPServers = &desired
+		result = true
 	}
 
 	return ntpOpts, result
@@ -197,7 +196,7 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 	}
 
 	updated := false
-	for _, spec_sb := range *spec.Storage.Backends {
+	for _, spec_sb := range spec.Storage.Backends {
 		found := false
 		for _, info_sb := range info.StorageBackends {
 			// The Type parameter in the spec maps to the Backend
@@ -274,21 +273,22 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 // dnsUpdateRequired determines whether an update is required to the DNS
 // system attributes and returns the attributes to be changed if an update
 // is necessary.
+// TODO(wasnio): create a test case for it
 func dnsUpdateRequired(spec *starlingxv1.SystemSpec, info *dns.DNS) (dnsOpts dns.DNSOpts, result bool) {
-	if spec.DNSServers != nil {
-		var nameservers string
+	// TODO(wasnio): Does not sysinv accept an empty array/None?
+	desired := NoContent
+	if len(spec.DNSServers) > 0 {
+		desired = strings.Join(spec.DNSServers, ",")
+	}
 
-		if len(*spec.DNSServers) != 0 {
-			d := starlingxv1.DNSServerListToStrings(*spec.DNSServers)
-			nameservers = strings.Join(d, ",")
-		} else {
-			nameservers = NoContent
-		}
+	current := info.Nameservers
+	if len(info.Nameservers) == 0 {
+		current = NoContent
+	}
 
-		if (nameservers != NoContent && info.Nameservers != nameservers) || nameservers == NoContent && info.Nameservers != "" {
-			dnsOpts.Nameservers = &nameservers
-			result = true
-		}
+	if current != desired {
+		dnsOpts.Nameservers = &desired
+		result = true
 	}
 
 	return dnsOpts, result
@@ -444,11 +444,8 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 	if !utils.IsReconcilerEnabled(utils.ServiceParameters) {
 		return nil
 	}
-	if spec.ServiceParameters == nil {
-		return nil
-	}
 	updated := false
-	for _, spec_sp := range *spec.ServiceParameters {
+	for _, spec_sp := range spec.ServiceParameters {
 		found := false
 		for _, info_sp := range info.ServiceParameters {
 			// A match occurs when service, section and paramname are equal
@@ -501,7 +498,7 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 
 	for _, info_sp := range info.ServiceParameters {
 		found := false
-		for _, spec_sp := range *spec.ServiceParameters {
+		for _, spec_sp := range spec.ServiceParameters {
 			// A match occurs when service, section and paramname are equal
 			if info_sp.Service == spec_sp.Service &&
 				info_sp.Section == spec_sp.Section &&
@@ -621,7 +618,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 		return nil
 	}
 
-	if spec.Storage == nil || spec.Storage.FileSystems == nil {
+	if spec.Storage == nil {
 		return nil
 	}
 
@@ -639,7 +636,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 
 	updated := false
 	fs_to_update := make([]controllerFilesystems.FileSystemOpts, 0)
-	for _, fsInfo := range *spec.Storage.FileSystems {
+	for _, fsInfo := range spec.Storage.FileSystems {
 		found := false
 		for _, fs := range info.FileSystems {
 			if fs.Name != fsInfo.Name {
@@ -702,7 +699,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 	updated = false
 	for _, fsInfo := range info.FileSystems {
 		found := false
-		for _, fs := range *spec.Storage.FileSystems {
+		for _, fs := range spec.Storage.FileSystems {
 			if fs.Name != fsInfo.Name {
 				// do nothing as it should be able to be updated by previous section
 				found = true
@@ -836,15 +833,11 @@ func (r *SystemReconciler) ReconcileCertificates(client *gophercloud.ServiceClie
 		return nil
 	}
 
-	if spec.Certificates == nil {
-		return nil
-	}
-
 	// Certificates cannot be deleted once they are installed so look at the
 	// list of certificates coming from the user and add any that are missing
 	// from the system.
 	updated := false
-	for _, c := range *spec.Certificates {
+	for _, c := range spec.Certificates {
 		secret := v1.Secret{}
 
 		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
@@ -1082,20 +1075,21 @@ func (r *SystemReconciler) ReconcileSystemFinal(client *gophercloud.ServiceClien
 }
 
 // Fixes extra certs from the response of the current configuration according to the certs specified in the profile.
-func FixCertsToManage(specCerts, currentCerts *starlingxv1.CertificateList) starlingxv1.CertificateList {
-	var res starlingxv1.CertificateList
+func FixCertsToManage(specCerts, currentCerts []starlingxv1.CertificateInfo) []starlingxv1.CertificateInfo {
 	certificateMap := make(map[string]bool)
 
 	//signature of spec certs are empty at this point so secrets are checked rather than signatures
-	for _, cert := range *specCerts {
+	for _, cert := range specCerts {
 		certificateMap[cert.Secret] = true
 	}
-	for _, cert := range *currentCerts {
+
+	result := []starlingxv1.CertificateInfo{}
+	for _, cert := range currentCerts {
 		if _, ok := certificateMap[cert.Secret]; ok {
-			res = append(res, cert)
+			result = append(result, cert)
 		}
 	}
-	return res
+	return result
 }
 
 // ReconcileRequired determines whether reconciliation is allowed/required on
@@ -1121,9 +1115,9 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 	}
 
 	// We need to remove the runtime installed certificated from the current
-	if spec.Certificates != nil && current.Certificates != nil {
+	if len(spec.Certificates) > 0 && len(current.Certificates) > 0 {
 		res := FixCertsToManage(spec.Certificates, current.Certificates)
-		current.Certificates = &res
+		current.Certificates = res
 	}
 
 	logSystem.Info("spec is:", "values", spec)
@@ -1279,8 +1273,8 @@ func MergeSystemSpecs(a, b *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, er
 
 // After MergeSystemSpecs fill out any missing optional value
 func FillOptionalMergedSystemSpec(spec *starlingxv1.SystemSpec) (*starlingxv1.SystemSpec, error) {
-	if spec.Storage != nil && spec.Storage.Backends != nil {
-		backends := *spec.Storage.Backends
+	if spec.Storage != nil {
+		backends := spec.Storage.Backends
 		for i := range backends {
 			sb := backends[i]
 			// Fill missing network parameter for ceph backend
@@ -1291,21 +1285,15 @@ func FillOptionalMergedSystemSpec(spec *starlingxv1.SystemSpec) (*starlingxv1.Sy
 			backends[i] = sb
 		}
 
-		spec.Storage.Backends = &backends
+		spec.Storage.Backends = backends
 	}
 
 	return spec, nil
 }
 
 func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System) error {
-	var cert *x509.Certificate
-	result := make([]starlingxv1.CertificateInfo, 0)
-
-	if instance.Spec.Certificates == nil {
-		return nil
-	}
-
-	for _, c := range *instance.Spec.Certificates {
+	result := []starlingxv1.CertificateInfo{}
+	for _, c := range instance.Spec.Certificates {
 		// Ignore certificates installed during bootstrap/initial unlock
 		// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
 		if c.Type == starlingxv1.OpenstackCACertificate || c.Type == starlingxv1.DockerCertificate ||
@@ -1345,7 +1333,7 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 			return common.NewUserDataError(msg)
 		}
 
-		cert, err = x509.ParseCertificate(block.Bytes)
+		cert, err := x509.ParseCertificate(block.Bytes)
 		if cert == nil || err != nil {
 			msg := fmt.Sprintf("corrupt certificate contents in secret %s", c.Secret)
 			return common.NewUserDataError(msg)
@@ -1363,11 +1351,7 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 		result = append(result, certificate)
 	}
 
-	if len(result) == 0 {
-		result = nil
-	}
-	*instance.Spec.Certificates = result
-
+	instance.Spec.Certificates = result
 	return nil
 }
 
@@ -1589,15 +1573,14 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns s
 }
 
 // Filter out certificates with type other than "ssl_ca"
-func clean_deprecated_certificates(certs starlingxv1.CertificateList) starlingxv1.CertificateList {
-	originalLength := len(certs)
-	filteredCerts := make([]starlingxv1.CertificateInfo, 0, originalLength)
+func cleanDeprecatedCerts(certs []starlingxv1.CertificateInfo) []starlingxv1.CertificateInfo {
+	platformCerts := []starlingxv1.CertificateInfo{}
 	for _, cert := range certs {
 		if cert.Type == starlingxv1.PlatformCACertificate {
-			filteredCerts = append(filteredCerts, cert)
+			platformCerts = append(platformCerts, cert)
 		}
 	}
-	return filteredCerts
+	return platformCerts
 }
 
 // During factory install, the reconciled status is expected to be updated to
@@ -1688,14 +1671,15 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	// Filter out certificates with type other than "ssl_ca"
-	if instance.Spec.Certificates != nil {
-		originalLength := len(*instance.Spec.Certificates)
-		filteredCerts := clean_deprecated_certificates(*instance.Spec.Certificates)
+	if len(instance.Spec.Certificates) > 0 {
+		originalLength := len(instance.Spec.Certificates)
+		// TODO(wasnio): check if we still need this logic.
+		filteredCerts := cleanDeprecatedCerts(instance.Spec.Certificates)
 
 		// Update the instance if any certificates were removed
 		if len(filteredCerts) != originalLength {
 			logSystem.Info("Removed certificates with all other deprecated types except ssl_ca", "system", instance.Name)
-			*instance.Spec.Certificates = starlingxv1.CertificateList(filteredCerts)
+			instance.Spec.Certificates = filteredCerts
 			err = r.Client.Update(ctx, instance)
 			if err != nil {
 				logSystem.Error(err, "Failed to update System instance after removing certificates")

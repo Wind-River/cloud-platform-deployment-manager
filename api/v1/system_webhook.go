@@ -139,7 +139,7 @@ func validateBackendAttributes(backend StorageBackend) error {
 func validateStorageBackends(obj *System) error {
 	var present = make(map[string]bool)
 
-	for _, b := range *obj.Spec.Storage.Backends {
+	for _, b := range obj.Spec.Storage.Backends {
 		if present[b.Type] {
 			return errors.New("backend services may only be specified once.")
 		}
@@ -178,34 +178,32 @@ func validateStorage(obj *System) error {
 }
 
 func validateCertificates(obj *System) error {
-	if obj.Spec.Certificates != nil {
-		for _, c := range *obj.Spec.Certificates {
-			// Ignore certificates installed during bootstrap/initial unlock
-			// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
-			if c.Type == OpenstackCACertificate || c.Type == OpenLDAPCertificate ||
-				c.Type == DockerCertificate || c.Type == PlatformCertificate {
-				continue
-			}
+	for _, c := range obj.Spec.Certificates {
+		// Ignore certificates installed during bootstrap/initial unlock
+		// - Openstack_CA/OpenLDAP/Docker/SSL(HTTPS)
+		if c.Type == OpenstackCACertificate || c.Type == OpenLDAPCertificate ||
+			c.Type == DockerCertificate || c.Type == PlatformCertificate {
+			continue
+		}
 
-			secret := &corev1.Secret{}
-			secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.ObjectMeta.Namespace}
-			found := false
+		secret := &corev1.Secret{}
+		secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.ObjectMeta.Namespace}
+		found := false
 
-			for count := 0; count < SecretRetrieveTryCount; count++ {
-				err := cl.Get(context.TODO(), secretName, secret)
-				if err != nil {
-					systemlog.Info("unable to retrieve secret, try again...", "secretName", secretName, "count", count)
-				} else {
-					systemlog.Info("find secret", "secretName", secretName)
-					found = true
-					break
-				}
-				time.Sleep(SecretRetrieveTryInterval)
+		for count := 0; count < SecretRetrieveTryCount; count++ {
+			err := cl.Get(context.TODO(), secretName, secret)
+			if err != nil {
+				systemlog.Info("unable to retrieve secret, try again...", "secretName", secretName, "count", count)
+			} else {
+				systemlog.Info("find secret", "secretName", secretName)
+				found = true
+				break
 			}
-			if !found {
-				msg := fmt.Sprintf("unable to retrieve %s secret %s", c.Type, secretName)
-				return errors.New(msg)
-			}
+			time.Sleep(SecretRetrieveTryInterval)
+		}
+		if !found {
+			msg := fmt.Sprintf("unable to retrieve %s secret %s", c.Type, secretName)
+			return errors.New(msg)
 		}
 	}
 

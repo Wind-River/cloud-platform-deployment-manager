@@ -123,12 +123,10 @@ func validateVolumeGroupInfo(obj *VolumeGroupInfo) error {
 }
 
 func validateStorageInfo(obj *HostProfile) error {
-	if obj.Spec.Storage.VolumeGroups != nil {
-		for _, vg := range *obj.Spec.Storage.VolumeGroups {
-			err := validateVolumeGroupInfo(&vg)
-			if err != nil {
-				return err
-			}
+	for _, vg := range obj.Spec.Storage.VolumeGroups {
+		err := validateVolumeGroupInfo(&vg)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -334,7 +334,7 @@ func (r *HostReconciler) ReconcileStalePTPInterfaces(client *gophercloud.Service
 			// Get the lists of current and configured networks on this interface
 			current := host.FindPTPInterfaceNameByInterface(iface)
 
-			configured := starlingxv1.PtpInterfaceItemListToStrings(*info.PtpInterfaces)
+			configured := info.PtpInterfaces
 
 			// Diff the lists to determine if changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -529,7 +529,7 @@ func (r *HostReconciler) ReconcileStaleInterfaceNetworks(client *gophercloud.Ser
 
 			// Get the lists of current and configured networks on this interface
 			current := host.BuildInterfaceNetworkList(iface)
-			configured := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+			configured := info.PlatformNetworks
 
 			// Diff the lists to determine what changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -605,7 +605,7 @@ func (r *HostReconciler) ReconcileStaleInterfaceDataNetworks(client *gophercloud
 
 			// Get the lists of current and configured networks on this interface
 			current := host.BuildInterfaceDataNetworkList(iface)
-			configured := starlingxv1.DataNetworkItemListToStrings(*info.DataNetworks)
+			configured := info.DataNetworks
 
 			// Diff the lists to determine what changes need to be applied
 			_, removed, _ := utils.ListDelta(current, configured)
@@ -690,7 +690,7 @@ func hasIPv4DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.
 		return nil, false
 	}
 
-	networks := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	networks := info.PlatformNetworks
 	for _, networkName := range networks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
@@ -717,7 +717,7 @@ func hasIPv6DynamicAddresses(info starlingxv1.CommonInterfaceInfo, host *v1info.
 		return nil, false
 	}
 
-	networks := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	networks := info.PlatformNetworks
 	for _, networkName := range networks {
 		pool := host.FindAddressPoolByName(networkName)
 		if pool != nil {
@@ -893,7 +893,7 @@ func (r *HostReconciler) ReconcileInterfaceNetworks(client *gophercloud.ServiceC
 
 	// Get the lists of current and configured networks on this interface
 	current := host.BuildInterfaceNetworkList(iface)
-	configured := starlingxv1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	configured := info.PlatformNetworks
 
 	// Diff the lists to determine what changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)
@@ -975,7 +975,7 @@ func (r *HostReconciler) ReconcilePTPInterface(client *gophercloud.ServiceClient
 
 	// Get the current and configured PTP interface on this interface
 	current := host.FindPTPInterfaceNameByInterface(iface)
-	configured := starlingxv1.PtpInterfaceItemListToStrings(*info.PtpInterfaces)
+	configured := info.PtpInterfaces
 
 	// Diff the lists to determine if changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)
@@ -1042,7 +1042,7 @@ func (r *HostReconciler) ReconcileInterfaceDataNetworks(client *gophercloud.Serv
 
 	// Get the lists of current and configured networks on this interface
 	current := host.BuildInterfaceDataNetworkList(iface)
-	configured := starlingxv1.DataNetworkItemListToStrings(*info.DataNetworks)
+	configured := info.DataNetworks
 
 	// Diff the lists to determine what changes need to be applied
 	added, removed, _ := utils.ListDelta(current, configured)

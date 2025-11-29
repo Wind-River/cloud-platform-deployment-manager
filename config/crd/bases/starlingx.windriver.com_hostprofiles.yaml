@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: hostprofiles.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -295,6 +295,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         maxRxRate:
                           description: |-
@@ -346,6 +347,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         primaryReselect:
                           description: |-
@@ -360,6 +362,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave,
@@ -415,6 +418,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         lower:
                           description: |-
@@ -457,6 +461,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         port:
                           description: |-
@@ -480,6 +485,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave,
@@ -538,6 +544,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         lower:
                           description: |-
@@ -580,6 +587,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpInterfaces:
                           description: |-
@@ -589,6 +597,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave,
@@ -647,6 +656,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         lower:
                           description: |-
@@ -689,6 +699,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpInterfaces:
                           description: |-
@@ -698,6 +709,7 @@ spec:
                             maxLength: 255
                             pattern: ^[a-zA-Z0-9\-_]+$
                             type: string
+                          nullable: true
                           type: array
                         ptpRole:
                           description: PTPRole defines the ptp role as master, slave,
@@ -975,6 +987,7 @@ spec:
                       - name
                       - size
                       type: object
+                    nullable: true
                     type: array
                   monitor:
                     description: |-
@@ -1039,6 +1052,7 @@ spec:
                       - function
                       - path
                       type: object
+                    nullable: true
                     type: array
                   volumeGroups:
                     description: VolumeGroups defines the list of volume groups to
@@ -1098,6 +1112,7 @@ spec:
                       - name
                       - physicalVolumes
                       type: object
+                    nullable: true
                     type: array
                 type: object
               subfunctions:
