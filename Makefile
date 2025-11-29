@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2023 Wind River Systems, Inc.
+# Copyright(c) 2019-2025 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -76,22 +76,6 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, DeepEqual, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	## Replace array to rarray type
-	## This is fix for https://github.com/kubernetes-sigs/controller-tools/issues/586
-	## For example, []PlatformNetworkItem -> PlatformNetworkItemList
-	##
-	sed -i 's#\[\]PlatformNetworkItem#PlatformNetworkItemList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]DataNetworkItem#DataNetworkItemList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]PtpInterfaceItem#PtpInterfaceItemList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]OSDInfo#OSDList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]VolumeGroupInfo#VolumeGroupList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]FileSystemInfo#FileSystemList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]DNSServer#DNSServerList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]NTPServer#NTPServerList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]CertificateInfo#CertificateList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]ServiceParameterInfo#ServiceParameterList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]StorageBackend#StorageBackendList#g' $(DEEPCOPY_GEN_FILE)
-	sed -i 's#\[\]ControllerFileSystemInfo#ControllerFileSystemList#g' $(DEEPCOPY_GEN_FILE)
 	$(DEEPEQUAL_GEN) -v 1 -o ${PWD} -O zz_generated.deepequal -i ./api/v1 -h ./hack/boilerplate.go.txt  --gen-package-path ./api/v1
 
 .PHONY: fmt
@@ -171,7 +155,7 @@ DEEPEQUAL_GEN ?= $(LOCALBIN)/deepequal-gen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.15.0
 SETPUP_ENVTEST_VERSION ?= release-0.16
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"

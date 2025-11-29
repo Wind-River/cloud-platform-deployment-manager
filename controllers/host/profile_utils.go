@@ -99,7 +99,7 @@ func FixProfileDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostI
 func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
 
 	result := make([]starlingxv1.OSDInfo, 0)
-	for _, o := range *a.Storage.OSDs {
+	for _, o := range a.Storage.OSDs {
 		found := false
 		o.Path = starlingxv1.FixDevicePath(o.Path, *hostInfo)
 
@@ -119,15 +119,14 @@ func FixOSDDevicePath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo)
 			result = append(result, o)
 		}
 	}
-	list := starlingxv1.OSDList(result)
-	a.Storage.OSDs = &list
+	a.Storage.OSDs = result
 }
 
 // FixVolumeGroupPath is to fix device path in the profile's VolumeGroup spec
 func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInfo) {
 
 	result := make([]starlingxv1.VolumeGroupInfo, 0)
-	for _, vg := range *a.Storage.VolumeGroups {
+	for _, vg := range a.Storage.VolumeGroups {
 		pvs := FixPhysicalVolumesPath(&vg.PhysicalVolumes, hostInfo)
 		vgInfo := starlingxv1.VolumeGroupInfo{
 			Name:            vg.Name,
@@ -137,8 +136,7 @@ func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInf
 
 		result = append(result, vgInfo)
 	}
-	list := starlingxv1.VolumeGroupList(result)
-	a.Storage.VolumeGroups = &list
+	a.Storage.VolumeGroups = result
 }
 
 // FixPhysicalVolumesPath is to fix device path in the profile's physical volume spec

@@ -23,39 +23,38 @@ var _ = Describe("Test filters utilities:", func() {
 		system := v1.System{}
 		deployment := Deployment{}
 		Context("If default service parameter fileter", func() {
-			It("defaults should be filtered", func() {
-				list := make([]v1.ServiceParameterInfo, 0)
+			It("Should filter defaults", func() {
+				parameters := v1.ServiceParameterList{}
 				for _, param := range utils.DefaultParameters {
-					sp := v1.ServiceParameterInfo{
-						Service:   param.Service,
-						Section:   param.Section,
-						ParamName: param.ParamName,
-					}
-					list = append(list, sp)
+					parameters = append(
+						parameters,
+						v1.ServiceParameterInfo{
+							Service:   param.Service,
+							Section:   param.Section,
+							ParamName: param.ParamName,
+						},
+					)
 				}
+
 				sp := v1.ServiceParameterInfo{
 					Service:   "foo",
 					Section:   "bar",
 					ParamName: "foobar",
 				}
-				list = append(list, sp)
-				spList := v1.ServiceParameterList(list)
-				system.Spec.ServiceParameters = &spList
-
+				system.Spec.ServiceParameters = append(parameters, sp)
 				spFilter := ServiceParameterFilter{}
 				err := spFilter.Filter(&system, &deployment)
 				Expect(err).To(BeNil())
+
 				got := system.Spec.ServiceParameters
-				expectSpArrary := make([]v1.ServiceParameterInfo, 0)
-				expectSpArrary = append(expectSpArrary, sp)
-				expectSpList := v1.ServiceParameterList(expectSpArrary)
-				Expect(reflect.DeepEqual(got, &expectSpList)).To(BeTrue())
+				expected := v1.ServiceParameterList{sp}
+				Expect(reflect.DeepEqual(got, expected)).To(BeTrue())
 			})
 		})
 
 		Context("If no service parameter filter", func() {
 			It("all should be filtered", func() {
-				list := make([]v1.ServiceParameterInfo, 0)
+				list := make(v1.ServiceParameterList, 0)
 				for _, param := range utils.DefaultParameters {
 					sp := v1.ServiceParameterInfo{
 						Service:   param.Service,
@@ -69,9 +68,7 @@ var _ = Describe("Test filters utilities:", func() {
 					Section:   "bar",
 					ParamName: "foobar",
 				}
-				list = append(list, sp)
-				spList := v1.ServiceParameterList(list)
-				system.Spec.ServiceParameters = &spList
+				system.Spec.ServiceParameters = append(list, sp)
 
 				//the default service parameter filter should be always applied
 				spFilter := ServiceParameterFilter{}
@@ -96,10 +93,10 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 
 		Context("when no service parameters filter", func() {
-			It("should return an NoServiceParameterFilter", func() {
+			It("should return a NoServiceParameterFilter", func() {
 				got := NewNoServiceParametersSystemFilter()
-				expect := NoServiceParameterFilter{}
-				Expect(reflect.DeepEqual(got, &expect)).To(BeTrue())
+				expect := &NoServiceParameterFilter{}
+				Expect(reflect.DeepEqual(got, expect)).To(BeTrue())
 			})
 		})
 	})
@@ -288,7 +285,7 @@ var _ = Describe("Test filters utilities:", func() {
 				system := &v1.System{
 					Spec: v1.SystemSpec{
 						Storage: &v1.SystemStorageInfo{
-							FileSystems: &v1.ControllerFileSystemList{
+							FileSystems: v1.ControllerFileSystemList{
 								{ // Adding file systems for testing
 									Name: "backup",
 									Size: 100,
@@ -321,7 +318,7 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(err).To(BeNil())
 
 				// Check if file systems have been filtered as expected
-				expectedFilteredFileSystems := []v1.ControllerFileSystemInfo{
+				expectedFilteredFileSystems := v1.ControllerFileSystemList{
 					{
 						Name: "backup",
 						Size: 100,
@@ -339,8 +336,7 @@ var _ = Describe("Test filters utilities:", func() {
 						Size: 400,
 					},
 				}
-				list := v1.ControllerFileSystemList(expectedFilteredFileSystems)
-				Expect(&list).To(Equal(system.Spec.Storage.FileSystems))
+				Expect(expectedFilteredFileSystems).To(Equal(system.Spec.Storage.FileSystems))
 
 			})
 		})
@@ -354,7 +350,7 @@ var _ = Describe("Test filters utilities:", func() {
 				// Create a test case with sample input
 				system := &v1.System{
 					Spec: v1.SystemSpec{
-						Certificates: &v1.CertificateList{
+						Certificates: []v1.CertificateInfo{
 
 							{ // Adding certificate info for testing
 								Type: v1.PlatformCACertificate, // this will be filtered out
@@ -385,13 +381,12 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(err).To(BeNil())
 
 				// Check if file systems have been filtered as expected
-				expectedFilteredCertificates := []v1.CertificateInfo{
+				expectedFilteredCertificates := v1.CertificateList{
 					{
 						Type: v1.TPMCertificate,
 					},
 				}
-				list := v1.CertificateList(expectedFilteredCertificates)
-				Expect(&list).To(Equal(system.Spec.Certificates))
+				Expect(expectedFilteredCertificates).To(Equal(system.Spec.Certificates))
 
 			})
 		})
@@ -405,8 +400,7 @@ var _ = Describe("Test filters utilities:", func() {
 				// Create a test case with sample input
 				system := &v1.System{
 					Spec: v1.SystemSpec{
-						ServiceParameters: &v1.ServiceParameterList{
-
+						ServiceParameters: []v1.ServiceParameterInfo{
 							{ // Adding certificate info for testing
 								Service:   utils.ServiceTypeIdentity,
 								Section:   utils.ServiceParamSectionIdentityConfig,
@@ -434,15 +428,14 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(err).To(BeNil())
 
 				// Check if file systems have been filtered as expected
-				expectedFilteredServiceParams := []v1.ServiceParameterInfo{
+				expectedFilteredServiceParams := v1.ServiceParameterList{
 					{
 						Service:   "service",
 						Section:   "extra",
 						ParamName: "fake",
 					},
 				}
-				list := v1.ServiceParameterList(expectedFilteredServiceParams)
-				Expect(list).To(Equal(*system.Spec.ServiceParameters))
+				Expect(expectedFilteredServiceParams).To(Equal(system.Spec.ServiceParameters))
 			})
 		})
 	})
@@ -813,7 +806,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test StorageMonitorFilter", func() {
 		Context("When volumeGrps,OSDS,Fs are not nil", func() {
-			It("doesnt filters profile spec storage ", func() {
+			It("Doesnt filter profile spec storage ", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
 				size := 1
@@ -821,10 +814,10 @@ var _ = Describe("Test filters utilities:", func() {
 					Size: &size,
 				}
 				hpSpec := &v1.ProfileStorageInfo{
-					VolumeGroups: &v1.VolumeGroupList{},
+					VolumeGroups: v1.VolumeGroupList{},
 					Monitor:      &mInfo,
-					OSDs:         &v1.OSDList{},
-					FileSystems:  &v1.FileSystemList{},
+					OSDs:         v1.OSDList{},
+					FileSystems:  v1.FileSystemList{},
 				}
 				hp := &v1.HostProfile{
 					Spec: v1.HostProfileSpec{
@@ -1109,7 +1102,7 @@ var _ = Describe("Test filters utilities:", func() {
 				hp := &v1.HostProfile{
 					Spec: v1.HostProfileSpec{
 						Storage: &v1.ProfileStorageInfo{
-							VolumeGroups: &v1.VolumeGroupList{
+							VolumeGroups: v1.VolumeGroupList{
 								{
 									Name:    "vg1",
 									LVMType: &lvmType,
@@ -1147,7 +1140,7 @@ var _ = Describe("Test filters utilities:", func() {
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
 				Expect(err).To(BeNil())
-				Expect(*hp.Spec.Storage.VolumeGroups).To(Equal(expVgs))
+				Expect(hp.Spec.Storage.VolumeGroups).To(Equal(expVgs))
 			})
 		})
 	})
@@ -1221,7 +1214,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				info := &v1.CommonInterfaceInfo{
 					MTU:              &mtu,
-					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+					PlatformNetworks: v1.PlatformNetworkItemList{"admin"},
 				}
 				// Call the CheckMTU method
 				filter.CheckMTU(info)
@@ -1237,7 +1230,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				info := &v1.CommonInterfaceInfo{
 					MTU:              &mtu,
-					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+					PlatformNetworks: v1.PlatformNetworkItemList{"admin"},
 				}
 				// Call the CheckMTU method
 				filter.CheckMTU(info)
@@ -1252,7 +1245,7 @@ var _ = Describe("Test filters utilities:", func() {
 				mtu := 1400
 				info := &v1.CommonInterfaceInfo{
 					MTU:              &mtu,
-					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+					PlatformNetworks: v1.PlatformNetworkItemList{"admin"},
 				}
 				// Call the CheckMTU method
 				filter.CheckMTU(info)
@@ -1486,7 +1479,7 @@ var _ = Describe("Test filters utilities:", func() {
 				infoName := "eth0"
 				info := &v1.CommonInterfaceInfo{
 					Name:             infoName,
-					PlatformNetworks: &v1.PlatformNetworkItemList{"admin"},
+					PlatformNetworks: v1.PlatformNetworkItemList{"admin"},
 				}
 				// Call the CheckInterface method
 				filter.CheckInterface(info)
@@ -1502,7 +1495,7 @@ var _ = Describe("Test filters utilities:", func() {
 				infoName := "eth0"
 				info := &v1.CommonInterfaceInfo{
 					Name:             infoName,
-					PlatformNetworks: &v1.PlatformNetworkItemList{pxebootNetwork},
+					PlatformNetworks: v1.PlatformNetworkItemList{pxebootNetwork},
 				}
 				// Call the CheckInterface method
 				filter.CheckInterface(info)
@@ -1518,7 +1511,7 @@ var _ = Describe("Test filters utilities:", func() {
 				infoName := "eth0"
 				info := &v1.CommonInterfaceInfo{
 					Name:             infoName,
-					PlatformNetworks: &v1.PlatformNetworkItemList{mgmtNetwork},
+					PlatformNetworks: v1.PlatformNetworkItemList{mgmtNetwork},
 				}
 				// Call the CheckInterface method
 				filter.CheckInterface(info)
@@ -1534,7 +1527,7 @@ var _ = Describe("Test filters utilities:", func() {
 				infoName := "eth0"
 				info := &v1.CommonInterfaceInfo{
 					Name:             infoName,
-					PlatformNetworks: &v1.PlatformNetworkItemList{clusterNetwork},
+					PlatformNetworks: v1.PlatformNetworkItemList{clusterNetwork},
 				}
 				// Call the CheckInterface method
 				filter.CheckInterface(info)
@@ -1550,7 +1543,7 @@ var _ = Describe("Test filters utilities:", func() {
 				infoName := "eth0"
 				info := &v1.CommonInterfaceInfo{
 					Name:             infoName,
-					PlatformNetworks: &v1.PlatformNetworkItemList{oamNetwork},
+					PlatformNetworks: v1.PlatformNetworkItemList{oamNetwork},
 				}
 				// Call the CheckInterface method
 				filter.CheckInterface(info)

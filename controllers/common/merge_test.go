@@ -79,7 +79,7 @@ var _ = Describe("MergeTransformer utils", func() {
 							},
 							src: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup"},
 									},
 								},
@@ -88,7 +88,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup"},
 								},
 							},
@@ -98,7 +98,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						args: args{
 							dst: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup"},
 									},
 								},
@@ -110,7 +110,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup"},
 								},
 							},
@@ -123,7 +123,7 @@ var _ = Describe("MergeTransformer utils", func() {
 							},
 							src: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup"},
 									},
 								},
@@ -132,7 +132,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup"},
 								},
 							},
@@ -142,7 +142,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						args: args{
 							dst: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup"},
 									},
 								},
@@ -154,7 +154,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup"},
 								},
 							},
@@ -164,14 +164,14 @@ var _ = Describe("MergeTransformer utils", func() {
 						args: args{
 							dst: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup", Size: 10},
 									},
 								},
 							},
 							src: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup", Size: 20},
 									},
 								},
@@ -180,7 +180,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup", Size: 20},
 								},
 							},
@@ -190,14 +190,14 @@ var _ = Describe("MergeTransformer utils", func() {
 						args: args{
 							dst: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "backup"},
 									},
 								},
 							},
 							src: &v1.HostProfileSpec{
 								Storage: &v1.ProfileStorageInfo{
-									FileSystems: &v1.FileSystemList{
+									FileSystems: v1.FileSystemList{
 										v1.FileSystemInfo{Name: "docker"},
 									},
 								},
@@ -206,7 +206,7 @@ var _ = Describe("MergeTransformer utils", func() {
 						wantErr: false,
 						wantStruct: v1.HostProfileSpec{
 							Storage: &v1.ProfileStorageInfo{
-								FileSystems: &v1.FileSystemList{
+								FileSystems: v1.FileSystemList{
 									v1.FileSystemInfo{Name: "backup"},
 									v1.FileSystemInfo{Name: "docker"},
 								},

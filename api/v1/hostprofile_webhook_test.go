@@ -227,7 +227,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 				obj := &HostProfile{
 					Spec: HostProfileSpec{
 						Storage: &ProfileStorageInfo{
-							VolumeGroups: &VolumeGroupList{
+							VolumeGroups: VolumeGroupList{
 								{
 									Name: "VolGrpList",
 									PhysicalVolumes: PhysicalVolumeList{
@@ -261,7 +261,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					Spec: HostProfileSpec{
 						Base: &baseEmpty,
 						Storage: &ProfileStorageInfo{
-							VolumeGroups: &VolumeGroupList{
+							VolumeGroups: VolumeGroupList{
 								{
 									Name: "VolGrpList",
 									PhysicalVolumes: PhysicalVolumeList{
@@ -339,7 +339,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 							},
 						},
 						Storage: &ProfileStorageInfo{
-							VolumeGroups: &VolumeGroupList{
+							VolumeGroups: VolumeGroupList{
 								{
 									Name: "VolGrpList",
 									PhysicalVolumes: PhysicalVolumeList{
