@@ -62,7 +62,7 @@ func (r *PtpInstance) validatePtpInstance() error {
 		present := make(map[string]bool)
 		for _, parameter := range parameters {
 
-			//TODO check if '=' exists, and only one, not the first character
+			// check if '=' exists, and only one, not the first character
 			delim := "="
 			if strings.Count(parameter, delim) != 1 || parameter[0:1] == delim {
 				msg := fmt.Sprintf("Invalid parameter %s. Parameters must come in the form <parameterKey>=<parameterValue>.",
