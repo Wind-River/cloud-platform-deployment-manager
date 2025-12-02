@@ -583,7 +583,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	Describe("Test NewPtpInstanceSpec", func() {
 		Context("When params are not nil", func() {
 			It("should give spec InterfaceParams as PTPInstance params", func() {
-				params := []string{"param1", "param2"}
+				params := map[string][]string{"global": []string{"param1", "param2"}}
 				inst := ptpinstances.PTPInstance{
 					Service:    "PTPInstanceService",
 					Parameters: params,
@@ -606,7 +606,79 @@ var _ = Describe("Constructor utils for kind", func() {
 				name := "NewPTPInstancename"
 				namespace := "NewPTPInstanceNameSpace"
 
-				params := []string{"param1", "param2"}
+				params := map[string][]string{"global": []string{"param1", "param2"}}
+				inst := ptpinstances.PTPInstance{
+					Service:    "PTPInstanceService",
+					Parameters: params,
+				}
+				expSpec := PtpInstanceSpec{
+					Service:            inst.Service,
+					InstanceParameters: params,
+				}
+				expPtpInstance := PtpInstance{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: APIVersion,
+						Kind:       KindPTPInstance,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: namespace,
+						Labels: map[string]string{
+							ControllerToolsLabel: ControllerToolsVersion,
+						},
+					},
+					Spec: expSpec,
+				}
+				ptpInstance, err := NewPTPInstance(name, namespace, inst)
+				Expect(err).To(BeNil())
+				Expect(*ptpInstance).To(Equal(expPtpInstance))
+			})
+		})
+	})
+
+	Describe("Test NewPtpInstanceSpec", func() {
+		Context("When params are not nil and with multiple sections", func() {
+			It("should give spec InstanceParams as PTPInstance params", func() {
+				params := map[string][]string{
+					"global": []string{"param1", "param2"},
+					"unicast_master_table_1": []string{
+						"table_id=1",
+						"UDPv4=1.2.3.4", "UDPv4=2.3.4.5",
+						"L2=00:01:FF:00:01:CD", "L2=00:02:FF:00:01:CD",
+						"UDPv6=ffff::1", "UDPv6=ffff::2",
+						"peer_address=::1"},
+				}
+				inst := ptpinstances.PTPInstance{
+					Service:    "PTPInstanceService",
+					Parameters: params,
+				}
+				expSpec := PtpInstanceSpec{
+					Service:            inst.Service,
+					InstanceParameters: params,
+				}
+
+				ptpInSpec, err := NewPtpInstanceSpec(inst)
+				Expect(err).To(BeNil())
+				Expect(*ptpInSpec).To(Equal(expSpec))
+			})
+		})
+	})
+
+	Describe("Test NewPTPInstance", func() {
+		Context("When params are not nil and with multiple sections", func() {
+			It("should give spec InstanceParams as PTPInstance params", func() {
+				name := "NewPTPInstancename"
+				namespace := "NewPTPInstanceNameSpace"
+
+				params := map[string][]string{
+					"global": []string{"param1", "param2"},
+					"unicast_master_table_1": []string{
+						"table_id=1",
+						"UDPv4=1.2.3.4", "UDPv4=2.3.4.5",
+						"L2=00:01:FF:00:01:CD", "L2=00:02:FF:00:01:CD",
+						"UDPv6=ffff::1", "UDPv6=ffff::2",
+						"peer_address=::1"},
+				}
 				inst := ptpinstances.PTPInstance{
 					Service:    "PTPInstanceService",
 					Parameters: params,
@@ -1955,7 +2027,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				rootDevice := "rootDevice"
 				bootDevice := "BootDevice"
 				fakeClock := "fakeClock"
-				params := []string{"param1", "param2"}
+				params := map[string][]string{"global": []string{"param1", "param2"}}
 				worker := "worker"
 				console := "console"
 				powerOn := true
@@ -2041,7 +2113,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				rootDevice := "rootDevice"
 				bootDevice := "BootDevice"
 				fakeClock := "fakeClock"
-				params := []string{"param1", "param2"}
+				params := map[string][]string{"global": []string{"param1", "param2"}}
 				worker := "worker"
 				console := "console"
 				powerOn := true

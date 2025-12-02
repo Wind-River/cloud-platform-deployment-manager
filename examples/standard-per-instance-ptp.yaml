@@ -240,7 +240,8 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - cmdline_opts=-a -r
+    global:
+    - cmdline_opts=-a -r
   service: phc2sys
 ---
 apiVersion: starlingx.windriver.com/v1
@@ -252,8 +253,9 @@ metadata:
   namespace: deployment
 spec:
   parameters:
-  - domainNumber=24
-  - clientOnly=0
+    global:
+    - domainNumber=24
+    - clientOnly=0
   service: ptp4l
 ---
 apiVersion: starlingx.windriver.com/v1

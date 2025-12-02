@@ -73,6 +73,45 @@ func ListDelta(a, b []string) (added []string, removed []string, same []string) 
 	return added, removed, same
 }
 
+// MapsDelta compares two map[string][]string and returns maps of added and removed entries.
+func MapsDelta(oldMap, newMap map[string][]string) (added, removed, same map[string][]string) {
+	added = make(map[string][]string, 0)
+	removed = make(map[string][]string, 0)
+	same = make(map[string][]string, 0)
+
+	// Find added and modified entries in newMap
+	for key, newValue := range newMap {
+		oldValue, exists := oldMap[key]
+		if !exists {
+			// Key exists in newMap but not in oldMap, so it's added
+			added[key] = newValue
+		} else {
+			// Key exists in both, but values could be same or different
+			addedList, removedList, sameList := ListDelta(oldValue, newValue)
+			if len(addedList) > 0 {
+				added[key] = addedList
+			}
+			if len(removedList) > 0 {
+				removed[key] = removedList
+			}
+			if len(sameList) > 0 {
+				same[key] = sameList
+			}
+		}
+	}
+
+	// Find removed entries in oldMap
+	for key, oldValue := range oldMap {
+		_, exists := newMap[key]
+		if !exists {
+			// Key exists in oldMap but not in newMap, so it's removed
+			removed[key] = oldValue
+		}
+	}
+
+	return added, removed, same
+}
+
 // ListChanged is a utility function which determines if a list of names
 // provided in a spec is equivalent to the list of names return by the system
 // API.  Since the spec accepts nil as a list that wasn't specified we consider

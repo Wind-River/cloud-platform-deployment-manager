@@ -57,28 +57,34 @@ func instanceUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.P
 	return result
 }
 
-func instanceParameterUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.PTPInstance, r *PtpInstanceReconciler) (added []string, removed []string, result bool) {
+func instanceParameterUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpinstances.PTPInstance, r *PtpInstanceReconciler) (added map[string][]string, removed map[string][]string, result bool) {
 	configured := instance.Spec.InstanceParameters
 	current := i.Parameters
 	result = false
 
-	// Diff the lists to determine if changes need to be applied
-	added, removed, _ = utils.ListDelta(current, configured)
+	// Diff the maps of list to determine if changes need to be applied
+	added, removed, _ = utils.MapsDelta(current, configured)
 	var delta strings.Builder
 
 	if len(added) > 0 || len(removed) > 0 {
 		result = true
 
-		for _, a := range added {
-			delta.WriteString("\t+ ")
-			delta.WriteString(a)
-			delta.WriteString("\n")
+		for added_section, addedParams := range added {
+			delta.WriteString("\t" + added_section + ":\n")
+			for _, a := range addedParams {
+				delta.WriteString("\t+ ")
+				delta.WriteString(a)
+				delta.WriteString("\n")
+			}
 		}
 
-		for _, r := range removed {
-			delta.WriteString("\t- ")
-			delta.WriteString(r)
-			delta.WriteString("\n")
+		for removed_section, removedParams := range removed {
+			delta.WriteString("\t" + removed_section + ":\n")
+			for _, r := range removedParams {
+				delta.WriteString("\t- ")
+				delta.WriteString(r)
+				delta.WriteString("\n")
+			}
 		}
 	}
 	deltaString := delta.String()
@@ -98,21 +104,23 @@ func instanceParameterUpdateRequired(instance *starlingxv1.PtpInstance, i *ptpin
 
 // ReconcileParamAdded is a method which handles adding new Parameters to
 // associate with an existing PTP instance
-func (r *PtpInstanceReconciler) ReconcileParamAdded(client *gophercloud.ServiceClient, params []string, i *ptpinstances.PTPInstance) (*ptpinstances.PTPInstance, error) {
+func (r *PtpInstanceReconciler) ReconcileParamAdded(client *gophercloud.ServiceClient, sectionParams map[string][]string, i *ptpinstances.PTPInstance) (*ptpinstances.PTPInstance, error) {
 
 	id := i.UUID
-	for _, param := range params {
-		opts := ptpinstances.PTPParamToPTPInstOpts{Parameter: &param}
+	for section, params := range sectionParams {
+		for _, param := range params {
+			opts := ptpinstances.PTPParamToPTPInstOpts{Parameter: &param}
 
-		logPtpInstance.Info("adding ptp parameter", "opts", opts)
+			logPtpInstance.Info("adding ptp parameter", "opts", opts, "to section", section)
 
-		new, err := ptpinstances.AddPTPParamToPTPInst(client, id, opts).Extract()
+			new, err := ptpinstances.AddPTPParamToPTPInst(client, id, section, opts).Extract()
 
-		if err != nil {
-			return i, err
+			if err != nil {
+				return i, err
+			}
+
+			*i = *new
 		}
-
-		*i = *new
 	}
 
 	return i, nil
@@ -120,21 +128,23 @@ func (r *PtpInstanceReconciler) ReconcileParamAdded(client *gophercloud.ServiceC
 
 // ReconcileParamAdded is a method which handles removing new Parameters from
 // an existing PTP instance
-func (r *PtpInstanceReconciler) ReconcileParamRemoved(client *gophercloud.ServiceClient, params []string, i *ptpinstances.PTPInstance) (*ptpinstances.PTPInstance, error) {
+func (r *PtpInstanceReconciler) ReconcileParamRemoved(client *gophercloud.ServiceClient, sectionParams map[string][]string, i *ptpinstances.PTPInstance) (*ptpinstances.PTPInstance, error) {
 
 	id := i.UUID
-	for _, param := range params {
-		opts := ptpinstances.PTPParamToPTPInstOpts{Parameter: &param}
+	for section, params := range sectionParams {
+		for _, param := range params {
+			opts := ptpinstances.PTPParamToPTPInstOpts{Parameter: &param}
 
-		logPtpInstance.Info("removing ptp parameter", "opts", opts)
+			logPtpInstance.Info("removing ptp parameter", "opts", opts, "from section", section)
 
-		new, err := ptpinstances.RemovePTPParamFromPTPInst(client, id, opts).Extract()
+			new, err := ptpinstances.RemovePTPParamFromPTPInst(client, id, section, opts).Extract()
 
-		if err != nil {
-			return i, err
+			if err != nil {
+				return i, err
+			}
+
+			*i = *new
 		}
-
-		*i = *new
 	}
 
 	return i, nil

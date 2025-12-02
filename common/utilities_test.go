@@ -160,6 +160,183 @@ var _ = Describe("Common utils", func() {
 		})
 	})
 
+	Describe("MapsDelta utility", func() {
+		Context("with two maps", func() {
+			It("should calculate the difference", func() {
+				empty := make(map[string][]string, 0)
+				type args struct {
+					a map[string][]string
+					b map[string][]string
+				}
+				tests := []struct {
+					name        string
+					args        args
+					wantAdded   map[string][]string
+					wantRemoved map[string][]string
+					wantSame    map[string][]string
+				}{
+					{name: "add_single_first",
+						args: args{
+							a: map[string][]string{},
+							b: map[string][]string{"global": []string{"1"}},
+						},
+						wantAdded:   map[string][]string{"global": []string{"1"}},
+						wantRemoved: empty,
+						wantSame:    empty,
+					},
+					{name: "add_single_second",
+						args: args{
+							a: map[string][]string{"global": []string{"2"}},
+							b: map[string][]string{"global": []string{"1", "2"}},
+						},
+						wantAdded:   map[string][]string{"global": []string{"1"}},
+						wantRemoved: empty,
+						wantSame:    map[string][]string{"global": []string{"2"}},
+					},
+					{name: "add_both_first",
+						args: args{
+							a: map[string][]string{},
+							b: map[string][]string{
+								"global":   []string{"1"},
+								"sectionA": []string{"A_1"},
+							},
+						},
+						wantAdded: map[string][]string{
+							"global":   []string{"1"},
+							"sectionA": []string{"A_1"},
+						},
+						wantRemoved: empty,
+						wantSame:    empty,
+					},
+					{name: "add_both_second",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"2"},
+								"sectionA": []string{"A_2"},
+							},
+							b: map[string][]string{
+								"global":   []string{"1", "2"},
+								"sectionA": []string{"A_2", "A_1"},
+							},
+						},
+						wantAdded: map[string][]string{
+							"global":   []string{"1"},
+							"sectionA": []string{"A_1"},
+						},
+						wantRemoved: empty,
+						wantSame: map[string][]string{
+							"global":   []string{"2"},
+							"sectionA": []string{"A_2"},
+						},
+					},
+					{name: "add_both_multiple",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"2"},
+								"sectionA": []string{"A_2"},
+							},
+							b: map[string][]string{
+								"global":   []string{"2", "3", "4", "5"},
+								"sectionA": []string{"A_2", "A_3", "A_4"},
+							},
+						},
+						wantAdded: map[string][]string{
+							"global":   []string{"3", "4", "5"},
+							"sectionA": []string{"A_3", "A_4"},
+						},
+						wantRemoved: empty,
+						wantSame: map[string][]string{
+							"global":   []string{"2"},
+							"sectionA": []string{"A_2"},
+						},
+					},
+					{name: "remove_both_last",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"1"},
+								"sectionA": []string{"A_1"},
+							},
+							b: map[string][]string{},
+						},
+						wantAdded: empty,
+						wantRemoved: map[string][]string{
+							"global":   []string{"1"},
+							"sectionA": []string{"A_1"},
+						},
+						wantSame: empty,
+					},
+					{name: "remove_both_one",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"2", "3", "4", "5"},
+								"sectionA": []string{"A_2", "A_3", "A_4"},
+							},
+							b: map[string][]string{
+								"global":   []string{"2", "3", "5"},
+								"sectionA": []string{"A_2", "A_3"},
+							},
+						},
+						wantAdded: empty,
+						wantRemoved: map[string][]string{
+							"global":   []string{"4"},
+							"sectionA": []string{"A_4"},
+						},
+						wantSame: map[string][]string{
+							"global":   []string{"2", "3", "5"},
+							"sectionA": []string{"A_2", "A_3"},
+						},
+					},
+					{name: "remove_both_multiple",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"2", "3", "4", "5"},
+								"sectionA": []string{"A_2", "A_3", "A_4"},
+							},
+							b: map[string][]string{
+								"global":   []string{"3", "5"},
+								"sectionA": []string{"A_3"},
+							},
+						},
+						wantAdded: empty,
+						wantRemoved: map[string][]string{
+							"global":   []string{"2", "4"},
+							"sectionA": []string{"A_2", "A_4"},
+						},
+						wantSame: map[string][]string{
+							"global":   []string{"3", "5"},
+							"sectionA": []string{"A_3"},
+						},
+					},
+					{name: "identical",
+						args: args{
+							a: map[string][]string{
+								"global":   []string{"2", "3"},
+								"sectionA": []string{"A_3", "A_4"},
+							},
+							b: map[string][]string{
+								"sectionA": []string{"A_3", "A_4"},
+								"global":   []string{"3", "2"},
+							},
+						},
+						wantAdded:   empty,
+						wantRemoved: empty,
+						wantSame: map[string][]string{
+							"sectionA": []string{"A_3", "A_4"},
+							"global":   []string{"3", "2"},
+						},
+					},
+				}
+
+				for _, tt := range tests {
+					gotAdded, gotRemoved, gotSame := MapsDelta(tt.args.a, tt.args.b)
+					Expect(reflect.DeepEqual(gotAdded, tt.wantAdded)).To(BeTrue())
+					Expect(reflect.DeepEqual(gotRemoved, tt.wantRemoved)).To(BeTrue())
+					Expect(reflect.DeepEqual(gotSame, tt.wantSame)).To(BeTrue())
+				}
+			})
+		})
+	})
+
 	Describe("ListChanged utility", func() {
 		Context("with two string arrays", func() {
 			It("should identify changed", func() {

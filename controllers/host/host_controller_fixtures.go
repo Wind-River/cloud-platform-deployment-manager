@@ -861,7 +861,7 @@ const PTPInstanceListBody = `
 		 	"updated_at": null,
 		 	"capabilities": {},
 		 	"hostnames": [],
-		 	"parameters": [],
+			"parameters": {},
 		 	"type": "ptp-instance",
 		 	"id": 2,
 		 	"name": "phc2sys1"
@@ -873,7 +873,7 @@ const PTPInstanceListBody = `
 			"updated_at": null,
 			"capabilities": {},
 			"hostnames": [],
-			"parameters": [],
+			"parameters": {},
 			"type": "ptp-instance",
 			"id": 1,
 			"name": "ptp1"
