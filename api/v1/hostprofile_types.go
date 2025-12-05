@@ -283,15 +283,15 @@ type ProfileStorageInfo struct {
 	// OSDs defines the list of OSD devices to be created on the host.  This is
 	// only applicable to storage related nodes.
 	// +optional
-	OSDs *OSDList `json:"osds,omitempty"`
+	OSDs OSDList `json:"osds,omitempty"`
 
 	// VolumeGroups defines the list of volume groups to be created on the host.
 	// +optional
-	VolumeGroups *VolumeGroupList `json:"volumeGroups,omitempty"`
+	VolumeGroups VolumeGroupList `json:"volumeGroups,omitempty"`
 
 	// FileSystems defines the list of file systems to be defined on the host.
 	// +optional
-	FileSystems *FileSystemList `json:"filesystems,omitempty"`
+	FileSystems FileSystemList `json:"filesystems,omitempty"`
 }
 
 // EthernetPortInfo defines the attributes specific to a single
@@ -303,101 +303,29 @@ type EthernetPortInfo struct {
 	Name string `json:"name"`
 }
 
-// +kubebuilder:validation:MaxLength=255
-// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-type PlatformNetworkItem string
-
-// PlatformNetworkItemList defines a type to represent a slice of PlatformNetworkItem objects.
+// TODO(wasnio): remove this type once deepequal-gen can generate deepequal code
+// for slice attributes in a struct.
+//
+// PlatformNetworkItemList defines a type to represent a slice of string objects.
 // +deepequal-gen:unordered-array=true
-type PlatformNetworkItemList []PlatformNetworkItem
+// +kubebuilder:validation:items:MaxLength=255
+// +kubebuilder:validation:items:Pattern=^[a-zA-Z0-9\-_]+$
+type PlatformNetworkItemList []string
 
-// PlatformNetworkItemListToStrings is to convert from list type to string array
-func PlatformNetworkItemListToStrings(items PlatformNetworkItemList) []string {
-	if items == nil {
-		return nil
-	}
-	a := make([]string, 0)
-	for _, i := range items {
-		a = append(a, string(i))
-	}
-	return a
-}
-
-// StringsToPlatformNetworkItemList is to convert from string array to list type
-func StringsToPlatformNetworkItemList(items []string) PlatformNetworkItemList {
-	if items == nil {
-		return nil
-	}
-	a := make(PlatformNetworkItemList, 0)
-	for _, i := range items {
-		a = append(a, PlatformNetworkItem(i))
-	}
-	return a
-}
-
-// +kubebuilder:validation:MaxLength=255
-// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-type DataNetworkItem string
-
+// TODO(wasnio): remove this type once deepequal-gen can generate deepequal code
+// for slice attributes in a struct.
+//
 // DataNetworkItemList defines a type to represent a slice of DataNetworkItem objects.
+// +kubebuilder:validation:items:MaxLength=255
+// +kubebuilder:validation:items:Pattern=^[a-zA-Z0-9\-_]+$
 // +deepequal-gen:unordered-array=true
-type DataNetworkItemList []DataNetworkItem
-
-// DataNetworkItemListToStrings is to convert from list type to string array
-func DataNetworkItemListToStrings(items DataNetworkItemList) []string {
-	if items == nil {
-		return nil
-	}
-	a := make([]string, 0)
-	for _, i := range items {
-		a = append(a, string(i))
-	}
-	return a
-}
-
-// StringsToDataNetworkItemList is to convert from string array to list type
-func StringsToDataNetworkItemList(items []string) DataNetworkItemList {
-	if items == nil {
-		return nil
-	}
-	a := make(DataNetworkItemList, 0)
-	for _, i := range items {
-		a = append(a, DataNetworkItem(i))
-	}
-	return a
-}
-
-// +kubebuilder:validation:MaxLength=255
-// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_]+$
-type PtpInterfaceItem string
+type DataNetworkItemList []string
 
 // PtpInterfaceItemList defines a type to represent a slice of PtpInterfaceItem objects.
+// +kubebuilder:validation:items:MaxLength=255
+// +kubebuilder:validation:items:Pattern=^[a-zA-Z0-9\-_]+$
 // +deepequal-gen:unordered-array=true
-type PtpInterfaceItemList []PtpInterfaceItem
-
-// PtpInterfaceItemListToStrings is to convert from list type to string array
-func PtpInterfaceItemListToStrings(items PtpInterfaceItemList) []string {
-	if items == nil {
-		return nil
-	}
-	a := make([]string, 0)
-	for _, i := range items {
-		a = append(a, string(i))
-	}
-	return a
-}
-
-// StringsToPtpInterfaceItemList is to convert from string array to list type
-func StringsToPtpInterfaceItemList(items []string) PtpInterfaceItemList {
-	if items == nil {
-		return nil
-	}
-	a := make(PtpInterfaceItemList, 0)
-	for _, i := range items {
-		a = append(a, PtpInterfaceItem(i))
-	}
-	return a
-}
+type PtpInterfaceItemList []string
 
 // CommonInterfaceInfo defines the attributes common to all interface
 // types.  They are defined once, here,
@@ -426,12 +354,12 @@ type CommonInterfaceInfo struct {
 	// PlatformNetworks defines the list of platform networks to be configured
 	// against this interface.
 	// +optional
-	PlatformNetworks *PlatformNetworkItemList `json:"platformNetworks,omitempty"`
+	PlatformNetworks PlatformNetworkItemList `json:"platformNetworks,omitempty"`
 
 	// DataNetworks defines the list of data networks to be configured against
 	// this interface.
 	// +optional
-	DataNetworks *DataNetworkItemList `json:"dataNetworks,omitempty"`
+	DataNetworks DataNetworkItemList `json:"dataNetworks,omitempty"`
 
 	// PTPRole defines the ptp role as master, slave, or none
 	// +kubebuilder:validation:Enum=master;slave;none
@@ -440,7 +368,7 @@ type CommonInterfaceInfo struct {
 	// PtpInterfaces defines the ptp interfaces to be configured against this
 	// interface.
 	// +optional
-	PtpInterfaces *PtpInterfaceItemList `json:"ptpInterfaces,omitempty"`
+	PtpInterfaces PtpInterfaceItemList `json:"ptpInterfaces,omitempty"`
 
 	// MaxTxRate defines the maximum tx rate of interfaces
 	// for rate limiting.

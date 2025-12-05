@@ -289,15 +289,11 @@ func (r *HostReconciler) ReconcilePhysicalVolumes(client *gophercloud.ServiceCli
 func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 	updated := false
 
-	if profile.Storage.VolumeGroups == nil {
-		return nil
-	}
-
 	if !common.IsReconcilerEnabled(common.VolumeGroup) {
 		return nil
 	}
 
-	for _, vgInfo := range *profile.Storage.VolumeGroups {
+	for _, vgInfo := range profile.Storage.VolumeGroups {
 		var ok bool
 
 		if _, ok = host.FindVolumeGroup(vgInfo.Name); !ok {
@@ -343,7 +339,7 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 		host.VolumeGroups = result
 	}
 
-	for _, vgInfo := range *profile.Storage.VolumeGroups {
+	for _, vgInfo := range profile.Storage.VolumeGroups {
 		// Reconcile the state of each physical volume on this group.
 		err := r.ReconcilePhysicalVolumes(client, instance, profile, host, vgInfo)
 		if err != nil {
@@ -389,7 +385,7 @@ func (r *HostReconciler) ReconcileStaleOSDs(client *gophercloud.ServiceClient, i
 		return nil
 	}
 
-	for _, osdInfo := range *profile.Storage.OSDs {
+	for _, osdInfo := range profile.Storage.OSDs {
 		if osd, ok := host.FindOSDByPath(osdInfo.Path); ok {
 			present[osd.ID] = true
 
@@ -547,7 +543,7 @@ func buildOSDOpts(host *v1info.HostInfo, osdInfo starlingxv1.OSDInfo) (osds.OSDO
 func (r *HostReconciler) ReconcileOSDsByType(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo, function string) error {
 	updated := false
 
-	for _, osdInfo := range *profile.Storage.OSDs {
+	for _, osdInfo := range profile.Storage.OSDs {
 		if osdInfo.Function != function {
 			continue
 		}
@@ -621,7 +617,7 @@ func (r *HostReconciler) ReconcileOSDs(client *gophercloud.ServiceClient, instan
 		return nil
 	}
 
-	if len(*profile.Storage.OSDs) == 0 {
+	if len(profile.Storage.OSDs) == 0 {
 		return nil
 	}
 
@@ -671,7 +667,7 @@ func (r *HostReconciler) CreateFileSystems(client *gophercloud.ServiceClient, ad
 
 	updated := false
 	for _, fsInfo := range added {
-		for _, fs := range *profile.Storage.FileSystems {
+		for _, fs := range profile.Storage.FileSystems {
 			if fsInfo == fs.Name {
 				opts := hostFilesystems.CreateFileSystemOpts{
 					Name:     fs.Name,
@@ -702,22 +698,18 @@ func (r *HostReconciler) CreateFileSystems(client *gophercloud.ServiceClient, ad
 // file system types(and size) configuration of a host resource before the initial unlock.
 func (r *HostReconciler) ReconcileFileSystemTypes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if profile.Storage.FileSystems == nil {
-		return nil
-	}
-
 	if !common.IsReconcilerEnabled(common.FileSystemTypes) {
 		return nil
 	}
 
-	if len(*profile.Storage.FileSystems) == 0 {
+	if len(profile.Storage.FileSystems) == 0 {
 		return nil
 	}
 
 	configured := []string{}
 	current := []string{}
 
-	for _, fsInfo := range *profile.Storage.FileSystems {
+	for _, fsInfo := range profile.Storage.FileSystems {
 		configured = append(configured, fsInfo.Name)
 	}
 
@@ -757,15 +749,11 @@ func (r *HostReconciler) ReconcileFileSystemTypes(client *gophercloud.ServiceCli
 // configuration of a host resource.
 func (r *HostReconciler) ReconcileFileSystemSizes(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
 
-	if profile.Storage.FileSystems == nil {
-		return nil
-	}
-
 	if !common.IsReconcilerEnabled(common.FileSystemSizes) {
 		return nil
 	}
 
-	if len(*profile.Storage.FileSystems) == 0 {
+	if len(profile.Storage.FileSystems) == 0 {
 		return nil
 	}
 
@@ -777,7 +765,7 @@ func (r *HostReconciler) ReconcileFileSystemSizes(client *gophercloud.ServiceCli
 	}
 
 	updates := make([]hostFilesystems.FileSystemOpts, 0)
-	for _, fsInfo := range *profile.Storage.FileSystems {
+	for _, fsInfo := range profile.Storage.FileSystems {
 		found := false
 		for _, fs := range host.FileSystems {
 			if fs.Name != fsInfo.Name {

@@ -877,15 +877,13 @@ func (r *HostReconciler) CompareFileSystemTypes(in *starlingxv1.HostProfileSpec,
 		configured := []string{}
 		current := []string{}
 
-		if in.Storage.FileSystems != nil {
-			for _, fsInfo := range *in.Storage.FileSystems {
-				configured = append(configured, fsInfo.Name)
-			}
+		for _, fsInfo := range in.Storage.FileSystems {
+			configured = append(configured, fsInfo.Name)
 		}
 
 		if other.Storage != nil {
 			if other.Storage.FileSystems != nil {
-				for _, fs := range *other.Storage.FileSystems {
+				for _, fs := range other.Storage.FileSystems {
 					current = append(current, fs.Name)
 				}
 			}
@@ -906,6 +904,10 @@ func (r *HostReconciler) CompareFileSystemTypes(in *starlingxv1.HostProfileSpec,
 // CompareOSDs determine if there has been a change to the list of OSDs between
 // two profile specs. This method takes into consideration that the storage
 // section may be completely empty on either side of the comparison.
+//
+// TODO(wasnio): create a test case and remove the osds.deepequal
+//
+//	as storage.deepqual(other) must be enough
 func (r *HostReconciler) CompareOSDs(in *starlingxv1.HostProfileSpec, other *starlingxv1.HostProfileSpec) bool {
 	if other == nil {
 		return false
@@ -922,14 +924,14 @@ func (r *HostReconciler) CompareOSDs(in *starlingxv1.HostProfileSpec, other *sta
 
 		if in.Storage.OSDs != nil {
 			// Otherwise just check the OSD list and ignore the other attributes.
-			if !in.Storage.OSDs.DeepEqual(other.Storage.OSDs) {
+			if !in.Storage.OSDs.DeepEqual(&other.Storage.OSDs) {
 				return false
 			}
-		} else if other.Storage.OSDs != nil && len(*other.Storage.OSDs) > 0 {
+		} else if len(other.Storage.OSDs) > 0 {
 			return false
 		}
 
-	} else if other.Storage.OSDs != nil && len(*other.Storage.OSDs) > 0 {
+	} else if len(other.Storage.OSDs) > 0 {
 		return false
 	}
 
@@ -980,13 +982,13 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 
 	if utils.IsReconcilerEnabled(utils.FileSystemSizes) {
 		if in.Storage != nil && in.Storage.FileSystems != nil {
-			if other.Storage == nil || other.Storage.FileSystems == nil {
+			if other.Storage == nil {
 				return false
 			}
 
 			// Special case: 'ceph' filesystem must be ignored for All-in-one Duplex.
 			if system_info.SystemType == cloudManager.SystemTypeAllInOne && system_info.SystemMode != cloudManager.SystemModeSimplex {
-				for _, fsInfo := range *other.Storage.FileSystems {
+				for _, fsInfo := range other.Storage.FileSystems {
 					// Skip ceph filesystem
 					if fsInfo.Name == "ceph" {
 						continue
@@ -994,7 +996,7 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 
 					// Compare 'in' and 'other' fileystems
 					found := false
-					for _, fs := range *in.Storage.FileSystems {
+					for _, fs := range in.Storage.FileSystems {
 						if fs.Name != fsInfo.Name {
 							continue
 						}
@@ -1012,7 +1014,7 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 				}
 			} else {
 				// Do a deep compare when this is not an All-in-one Duplex
-				if !in.Storage.FileSystems.DeepEqual(other.Storage.FileSystems) {
+				if !in.Storage.FileSystems.DeepEqual(&other.Storage.FileSystems) {
 					return false
 				}
 			}
@@ -1272,7 +1274,7 @@ func hasEthernetAdminNetworkChange(profileInterfaces, currentInterfaces *starlin
 		}
 
 		if !reflect.DeepEqual(profileEth.PlatformNetworks, currentEth.PlatformNetworks) {
-			return &profileEth, containsAdminPlatformNetwork(*profileEth.PlatformNetworks)
+			return &profileEth, containsAdminPlatformNetwork(profileEth.PlatformNetworks)
 		}
 	}
 
@@ -1289,7 +1291,7 @@ func hasVLANAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1
 		}
 
 		if !reflect.DeepEqual(profileVLAN.PlatformNetworks, currentVLAN.PlatformNetworks) {
-			return &profileVLAN, containsAdminPlatformNetwork(*profileVLAN.PlatformNetworks)
+			return &profileVLAN, containsAdminPlatformNetwork(profileVLAN.PlatformNetworks)
 		}
 	}
 
@@ -1306,7 +1308,7 @@ func hasBondAdminNetworkChange(profileInterfaces, currentInterfaces *starlingxv1
 		}
 
 		if !reflect.DeepEqual(profileBond.PlatformNetworks, currentBond.PlatformNetworks) {
-			return &profileBond, containsAdminPlatformNetwork(*profileBond.PlatformNetworks)
+			return &profileBond, containsAdminPlatformNetwork(profileBond.PlatformNetworks)
 		}
 	}
 

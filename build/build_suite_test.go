@@ -666,7 +666,7 @@ var _ = Describe("Test Build utilities:", func() {
 				d := Deployment{
 					System: starlingxv1.System{
 						Spec: starlingxv1.SystemSpec{
-							Certificates: &starlingxv1.CertificateList{
+							Certificates: []starlingxv1.CertificateInfo{
 								{
 									Secret: secName,
 								},

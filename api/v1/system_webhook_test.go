@@ -109,7 +109,7 @@ var _ = Describe("system_webhook functions", func() {
 				obj := &System{
 					Spec: SystemSpec{
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
+							Backends: StorageBackendList{
 								{
 									PartitionSize:     &prtSize,
 									ReplicationFactor: &repFac,
@@ -132,7 +132,7 @@ var _ = Describe("system_webhook functions", func() {
 				obj := &System{
 					Spec: SystemSpec{
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
+							Backends: StorageBackendList{
 								{
 									PartitionSize:     &prtSize,
 									ReplicationFactor: &repFac,
@@ -162,7 +162,7 @@ var _ = Describe("system_webhook functions", func() {
 				obj := &System{
 					Spec: SystemSpec{
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
+							Backends: StorageBackendList{
 								{
 									Type:     ceph,
 									Services: []string{"cinder", "nova"},
@@ -187,7 +187,7 @@ var _ = Describe("system_webhook functions", func() {
 				obj := &System{
 					Spec: SystemSpec{
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
+							Backends: StorageBackendList{
 								{
 									Type:     ceph,
 									Services: []string{"cinder", "nova"},
@@ -212,7 +212,7 @@ var _ = Describe("system_webhook functions", func() {
 				obj := &System{
 					Spec: SystemSpec{
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
+							Backends: StorageBackendList{
 								{
 									PartitionSize:     &prtSize,
 									ReplicationFactor: &repFac,

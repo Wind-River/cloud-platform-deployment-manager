@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package build
 
@@ -537,15 +537,13 @@ func (db *DeploymentBuilder) buildLicenseSecret(d *Deployment, license *licenses
 func (db *DeploymentBuilder) buildCertificateSecrets(d *Deployment) error {
 	// Create any system level secrets that are required to instantiate
 	// certificates.
-	if d.System.Spec.Certificates != nil {
-		for _, c := range *d.System.Spec.Certificates {
-			cert, err := starlingxv1.NewCertificateSecret(c.Secret, db.namespace)
-			if err != nil {
-				return err
-			}
-			incompleteSecret := parseIncompleteSecret(cert)
-			d.IncompleteSecrets = append(d.IncompleteSecrets, incompleteSecret)
+	for _, c := range d.System.Spec.Certificates {
+		cert, err := starlingxv1.NewCertificateSecret(c.Secret, db.namespace)
+		if err != nil {
+			return err
 		}
+		incompleteSecret := parseIncompleteSecret(cert)
+		d.IncompleteSecrets = append(d.IncompleteSecrets, incompleteSecret)
 	}
 
 	return nil

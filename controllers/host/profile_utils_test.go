@@ -194,17 +194,17 @@ var _ = Describe("Profile utils", func() {
 							a: &starlingxv1.HostProfileSpec{
 								Storage: &starlingxv1.ProfileStorageInfo{
 									Monitor:      &starlingxv1.MonitorInfo{Size: &size1},
-									OSDs:         &osds1,
-									VolumeGroups: &vgs1,
-									FileSystems:  &fs1,
+									OSDs:         osds1,
+									VolumeGroups: vgs1,
+									FileSystems:  fs1,
 								},
 							},
 							b: &starlingxv1.HostProfileSpec{
 								Storage: &starlingxv1.ProfileStorageInfo{
 									Monitor:      &starlingxv1.MonitorInfo{Size: &size1},
-									OSDs:         &osds2,
-									VolumeGroups: &vgs2,
-									FileSystems:  &fs2,
+									OSDs:         osds2,
+									VolumeGroups: vgs2,
+									FileSystems:  fs2,
 								},
 							},
 						},
@@ -212,9 +212,9 @@ var _ = Describe("Profile utils", func() {
 						want: &starlingxv1.HostProfileSpec{
 							Storage: &starlingxv1.ProfileStorageInfo{
 								Monitor:      &starlingxv1.MonitorInfo{Size: &size1},
-								OSDs:         &osds2,
-								VolumeGroups: &vgs2,
-								FileSystems:  &fs2,
+								OSDs:         osds2,
+								VolumeGroups: vgs2,
+								FileSystems:  fs2,
 							},
 						},
 					},
