@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
+	cloudManager"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,6 +30,7 @@ type HostProfileReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	common.ReconcilerEventLogger
+	common.ReconcilerErrorHandler
 }
 
 var _ reconcile.Reconciler = &HostProfileReconciler{}
@@ -45,7 +46,6 @@ func (r *HostProfileReconciler) ProfileUses(namespace, base, target string) (boo
 		err := r.Client.Get(context.TODO(), name, profile)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				err = perrors.Wrapf(err, "failed to lookup profile: %s", base)
 				return false, err
 			}
 
@@ -74,7 +74,6 @@ func (r *HostProfileReconciler) UpdateHosts(instance *starlingxv1.HostProfile) e
 	opts.Namespace = instance.Namespace
 	err := r.List(context.TODO(), hosts, &opts)
 	if err != nil {
-		err = perrors.Wrap(err, "failed to get host list")
 		return err
 	}
 
@@ -106,7 +105,6 @@ func (r *HostProfileReconciler) UpdateHosts(instance *starlingxv1.HostProfile) e
 
 			err = r.Client.Update(context.TODO(), &h)
 			if err != nil {
-				err = perrors.Wrapf(err, "failed to update profile annotation on host %s", h.Name)
 				return err
 			}
 		}
@@ -140,13 +138,13 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		}
 		logHostProfile.Error(err, "unable to read object: %v", request)
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	// Force an update to each of the hosts that reference this profile.
 	err = r.UpdateHosts(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
@@ -157,8 +155,13 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *HostProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	tMgr := cloudManager.GetInstance(mgr)
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
+	r.ReconcilerErrorHandler = &common.ErrorHandler{
+		CloudManager: tMgr,
+		Logger:       logAddressPool,
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostProfileControllerName),
 		Logger:        logHostProfile}
