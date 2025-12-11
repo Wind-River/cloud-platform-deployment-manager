@@ -81,7 +81,7 @@ var _ = Describe("Host controller", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 					},
 				}
 
@@ -92,7 +92,7 @@ var _ = Describe("Host controller", func() {
 				eth0Current := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{},
 					},
 				}
 
@@ -106,7 +106,7 @@ var _ = Describe("Host controller", func() {
 						Name:             "eth0",
 						Class:            "",
 						MTU:              nil,
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 						DataNetworks:     nil,
 						PTPRole:          nil,
 						PtpInterfaces:    nil,
@@ -130,7 +130,7 @@ var _ = Describe("Host controller", func() {
 				vlan0Profile := starlingxv1.VLANInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "vlan0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 					},
 				}
 
@@ -141,7 +141,7 @@ var _ = Describe("Host controller", func() {
 				vlan0Current := starlingxv1.VLANInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "vlan0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{},
 					},
 				}
 
@@ -155,7 +155,7 @@ var _ = Describe("Host controller", func() {
 						Name:             "vlan0",
 						Class:            "",
 						MTU:              nil,
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 						DataNetworks:     nil,
 						PTPRole:          nil,
 						PtpInterfaces:    nil,
@@ -174,7 +174,7 @@ var _ = Describe("Host controller", func() {
 				mgmt0Profile := starlingxv1.BondInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "mgmt0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
 					},
 				}
 
@@ -185,7 +185,7 @@ var _ = Describe("Host controller", func() {
 				mgmt0Current := starlingxv1.BondInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "mgmt0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
 					},
 				}
 
@@ -199,7 +199,7 @@ var _ = Describe("Host controller", func() {
 						Name:             "mgmt0",
 						Class:            "",
 						MTU:              nil,
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt", "admin"},
 						DataNetworks:     nil,
 						PTPRole:          nil,
 						PtpInterfaces:    nil,
@@ -218,14 +218,14 @@ var _ = Describe("Host controller", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
 					},
 				}
 
 				eth1Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth1",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 					},
 				}
 
@@ -247,7 +247,7 @@ var _ = Describe("Host controller", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"admin"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"admin"},
 					},
 				}
 
@@ -269,14 +269,14 @@ var _ = Describe("Host controller", func() {
 				eth0Current := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
 					},
 				}
 
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
-						PlatformNetworks: &starlingxv1.PlatformNetworkItemList{"mgmt, oam"},
+						PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt, oam"},
 					},
 				}
 
@@ -574,20 +574,30 @@ var _ = Describe("Host controller", func() {
 		})
 		It("Should return true when in and other storage is equal", func() {
 			in := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "backup",
-						Size: 1,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "backup",
+							Size: 1,
+						},
 					},
-				}},
+				},
 			}
 			other := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "backup",
-						Size: 1,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "backup",
+							Size: 1,
+						},
 					},
-				}},
+				},
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
@@ -603,28 +613,38 @@ var _ = Describe("Host controller", func() {
 		})
 		It("Should return true when in and other storage is not equal and have unallowed filesystem types", func() {
 			in := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "backup",
-						Size: 5,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "backup",
+							Size: 5,
+						},
+						{
+							Name: "docker",
+							Size: 2,
+						},
 					},
-					{
-						Name: "docker",
-						Size: 2,
-					},
-				}},
+				},
 			}
 			other := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "backup",
-						Size: 1,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "backup",
+							Size: 1,
+						},
+						{
+							Name: "docker",
+							Size: 3,
+						},
 					},
-					{
-						Name: "docker",
-						Size: 3,
-					},
-				}},
+				},
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
@@ -640,24 +660,34 @@ var _ = Describe("Host controller", func() {
 		})
 		It("Should return false when in and other storage is not equal and have allowed filesystem types", func() {
 			in := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "instances",
-						Size: 5,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "instances",
+							Size: 5,
+						},
 					},
-				}},
+				},
 			}
 			other := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "instances",
-						Size: 2,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "instances",
+							Size: 2,
+						},
+						{
+							Name: "image-conversion",
+							Size: 1,
+						},
 					},
-					{
-						Name: "image-conversion",
-						Size: 1,
-					},
-				}},
+				},
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
@@ -673,24 +703,34 @@ var _ = Describe("Host controller", func() {
 		})
 		It("Should return true when in and other storage are not equal, since ceph fs does not support removal", func() {
 			in := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "instances",
-						Size: 5,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "instances",
+							Size: 5,
+						},
 					},
-				}},
+				},
 			}
 			other := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{
-					{
-						Name: "instances",
-						Size: 2,
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems: starlingxv1.FileSystemList{
+						{
+							Name: "instances",
+							Size: 2,
+						},
+						{
+							Name: "ceph",
+							Size: 1,
+						},
 					},
-					{
-						Name: "ceph",
-						Size: 1,
-					},
-				}},
+				},
 			}
 
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
@@ -724,10 +764,20 @@ var _ = Describe("Host controller", func() {
 		})
 		It("Should return true when in and other storage is equal", func() {
 			in := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{}},
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems:  starlingxv1.FileSystemList{},
+				},
 			}
 			other := &starlingxv1.HostProfileSpec{
-				Storage: &starlingxv1.ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &starlingxv1.FileSystemList{}},
+				Storage: &starlingxv1.ProfileStorageInfo{
+					Monitor:      nil,
+					OSDs:         nil,
+					VolumeGroups: nil,
+					FileSystems:  starlingxv1.FileSystemList{},
+				},
 			}
 			r := &HostReconciler{}
 
@@ -738,25 +788,25 @@ var _ = Describe("Host controller", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor: nil,
-					OSDs: &starlingxv1.OSDList{
+					OSDs: starlingxv1.OSDList{
 						{
 							Function: "osd",
 						},
 					},
 					VolumeGroups: nil,
-					FileSystems:  &starlingxv1.FileSystemList{},
+					FileSystems:  starlingxv1.FileSystemList{},
 				},
 			}
 			other := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor: nil,
-					OSDs: &starlingxv1.OSDList{
+					OSDs: starlingxv1.OSDList{
 						{
 							Function: "journal",
 						},
 					},
 					VolumeGroups: nil,
-					FileSystems:  &starlingxv1.FileSystemList{},
+					FileSystems:  starlingxv1.FileSystemList{},
 				},
 			}
 
@@ -769,13 +819,13 @@ var _ = Describe("Host controller", func() {
 			other := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor: nil,
-					OSDs: &starlingxv1.OSDList{
+					OSDs: starlingxv1.OSDList{
 						{
 							Function: "journal",
 						},
 					},
 					VolumeGroups: nil,
-					FileSystems:  &starlingxv1.FileSystemList{},
+					FileSystems:  starlingxv1.FileSystemList{},
 				},
 			}
 			r := &HostReconciler{}

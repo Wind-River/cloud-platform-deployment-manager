@@ -123,84 +123,6 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test StringsToPtpInterfaceItemList func", func() {
-		It("Should return the array of PtpInterfaceItem with input items", func() {
-			items := []string{"item1", "item2"}
-			item1 := PtpInterfaceItem("item1")
-			item2 := PtpInterfaceItem("item2")
-			list := make([]PtpInterfaceItem, 0)
-			list = append(list, item1, item2)
-			exp := PtpInterfaceItemList(list)
-			got := StringsToPtpInterfaceItemList(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
-	Context("Test PtpInterfaceItemListToStrings func", func() {
-		It("Should return the array of string items with input PtpInterfaceItems", func() {
-			item1 := PtpInterfaceItem("PtpInterfaceItem1")
-			item2 := PtpInterfaceItem("PtpInterfaceItem2")
-			list := make([]PtpInterfaceItem, 0)
-			list = append(list, item1, item2)
-			items := PtpInterfaceItemList(list)
-			exp := []string{"PtpInterfaceItem1", "PtpInterfaceItem2"}
-			got := PtpInterfaceItemListToStrings(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
-	Context("Test StringsToDataNetworkItemList func", func() {
-		It("Should return the array of DataNetworkItem with input item strings", func() {
-			items := []string{"item1", "item2"}
-			item1 := DataNetworkItem("item1")
-			item2 := DataNetworkItem("item2")
-			list := make([]DataNetworkItem, 0)
-			list = append(list, item1, item2)
-			exp := DataNetworkItemList(list)
-			got := StringsToDataNetworkItemList(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
-	Context("Test DataNetworkItemListToStrings func", func() {
-		It("Should return the array of string items with input DataNetworkItems", func() {
-			item1 := DataNetworkItem("DataNetworkItem1")
-			item2 := DataNetworkItem("DataNetworkItem2")
-			list := make([]DataNetworkItem, 0)
-			list = append(list, item1, item2)
-			items := DataNetworkItemList(list)
-			exp := []string{"DataNetworkItem1", "DataNetworkItem2"}
-			got := DataNetworkItemListToStrings(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
-	Context("Test StringsToPlatformNetworkItemList func", func() {
-		It("Should return the array of PlatformNetworkItem with input item strings", func() {
-			items := []string{"item1", "item2"}
-			item1 := PlatformNetworkItem("item1")
-			item2 := PlatformNetworkItem("item2")
-			list := make([]PlatformNetworkItem, 0)
-			list = append(list, item1, item2)
-			exp := PlatformNetworkItemList(list)
-			got := StringsToPlatformNetworkItemList(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
-	Context("Test PlatformNetworkItemListToStrings func", func() {
-		It("Should return the array of string items with input PlatformNetworkItems", func() {
-			item1 := PlatformNetworkItem("PlatformNetworkItem1")
-			item2 := PlatformNetworkItem("PlatformNetworkItem2")
-			list := make([]PlatformNetworkItem, 0)
-			list = append(list, item1, item2)
-			items := PlatformNetworkItemList(list)
-			exp := []string{"PlatformNetworkItem1", "PlatformNetworkItem2"}
-			got := PlatformNetworkItemListToStrings(items)
-			Expect(got).To(Equal(exp))
-		})
-	})
-
 	Context("Test GetClusterName with clusterName not nil", func() {
 		It("gives cluserName of OSDInfo", func() {
 			name := "ClusterName"
@@ -222,16 +144,6 @@ var _ = Describe("HostProfile controller", func() {
 			want := clusters.CephClusterName
 			got := in.GetClusterName()
 			Expect(got).To(Equal(want))
-		})
-	})
-
-	Context("Test StringsToPtpInstanceItemList", func() {
-		It("It gives PtpInstanceItemList from input string array", func() {
-			strArr := []string{"random1", "random2"}
-			want := []PtpInstanceItem{"random1", "random2"}
-			wantList := PtpInstanceItemList(want)
-			got := StringsToPtpInstanceItemList(strArr)
-			Expect(got).To(Equal(wantList))
 		})
 	})
 

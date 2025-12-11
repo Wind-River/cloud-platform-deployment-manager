@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: systems.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -101,6 +101,7 @@ spec:
                   - secret
                   - type
                   type: object
+                nullable: true
                 type: array
               contact:
                 description: |-
@@ -122,6 +123,7 @@ spec:
                   address.
                 items:
                   type: string
+                nullable: true
                 type: array
               latitude:
                 description: |-
@@ -162,6 +164,7 @@ spec:
                   address, or a FQDN hostname.
                 items:
                   type: string
+                nullable: true
                 type: array
               ptp:
                 description: PTP defines the Precision Time Protocol configuration
@@ -237,6 +240,7 @@ spec:
                   - section
                   - service
                   type: object
+                nullable: true
                 type: array
               storage:
                 description: |-
@@ -306,6 +310,7 @@ spec:
                       - name
                       - type
                       type: object
+                    nullable: true
                     type: array
                   drbd:
                     description: DRBD defines the set of DRBD configuration attributes
@@ -340,6 +345,7 @@ spec:
                       - name
                       - size
                       type: object
+                    nullable: true
                     type: array
                 type: object
               vswitchType:

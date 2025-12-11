@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
 
 package build
 
@@ -414,7 +414,7 @@ func (in *VolumeGroupFilter) Filter(profile *v1.HostProfile, deployment *Deploym
 
 	storage := profile.Spec.Storage
 	groups := v1.VolumeGroupList{}
-	for _, vg := range *storage.VolumeGroups {
+	for _, vg := range storage.VolumeGroups {
 		if utils.ContainsString(in.Blacklist, vg.Name) {
 			// This group is blacklisted so skip it.
 			continue
@@ -423,9 +423,8 @@ func (in *VolumeGroupFilter) Filter(profile *v1.HostProfile, deployment *Deploym
 		groups = append(groups, vg)
 	}
 
-	if len(groups) != 0 {
-		list := v1.VolumeGroupList(groups)
-		storage.VolumeGroups = &list
+	if len(groups) > 0 {
+		storage.VolumeGroups = v1.VolumeGroupList(groups)
 	} else {
 		storage.VolumeGroups = nil
 	}
@@ -464,7 +463,7 @@ func (in *InterfaceNamingFilter) CheckInterface(info *v1.CommonInterfaceInfo) {
 		return
 	}
 
-	networks := v1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
+	networks := info.PlatformNetworks
 
 	if utils.ContainsString(networks, pxebootNetwork) {
 		if info.Name != pxebootIface {
@@ -571,8 +570,7 @@ func (in *InterfaceMTUFilter) CheckMTU(info *v1.CommonInterfaceInfo) {
 		return
 	}
 
-	networks := v1.PlatformNetworkItemListToStrings(*info.PlatformNetworks)
-	for _, network := range networks {
+	for _, network := range info.PlatformNetworks {
 		if max, ok := in.highwatermarks[network]; ok {
 			if value > max {
 				in.highwatermarks[network] = value
@@ -797,7 +795,7 @@ func NewFileSystemFilter() *FileSystemFilter {
 func (in *FileSystemFilter) Filter(system *v1.System, deployment *Deployment) error {
 	result := make([]v1.ControllerFileSystemInfo, 0)
 
-	for _, fs := range *system.Spec.Storage.FileSystems {
+	for _, fs := range system.Spec.Storage.FileSystems {
 		if fs.Name == "backup" || fs.Name == "database" || fs.Name == "instances" || fs.Name == "image-conversion" {
 			info := v1.ControllerFileSystemInfo{
 				Name: fs.Name,
@@ -806,8 +804,7 @@ func (in *FileSystemFilter) Filter(system *v1.System, deployment *Deployment) er
 			result = append(result, info)
 		}
 	}
-	list := v1.ControllerFileSystemList(result)
-	system.Spec.Storage.FileSystems = &list
+	system.Spec.Storage.FileSystems = result
 
 	return nil
 }
@@ -834,15 +831,14 @@ func (in *CACertificateFilter) Filter(system *v1.System, deployment *Deployment)
 	}
 
 	result := make([]v1.CertificateInfo, 0)
-	for _, c := range *system.Spec.Certificates {
+	for _, c := range system.Spec.Certificates {
 		if c.Type == v1.TPMCertificate || c.Type == v1.OpenstackCertificate {
 			result = append(result, c)
 		}
 	}
 
 	if len(result) > 0 {
-		list := v1.CertificateList(result)
-		system.Spec.Certificates = &list
+		system.Spec.Certificates = v1.CertificateList(result)
 	} else {
 		system.Spec.Certificates = nil
 	}
@@ -865,7 +861,7 @@ func (in *ServiceParameterFilter) Filter(
 	}
 
 	result := make([]v1.ServiceParameterInfo, 0)
-	for _, sp := range *system.Spec.ServiceParameters {
+	for _, sp := range system.Spec.ServiceParameters {
 
 		// If is a default service parameter, skip to add it
 		if v1.IsDefaultServiceParameter(&sp) {
@@ -876,8 +872,7 @@ func (in *ServiceParameterFilter) Filter(
 	}
 
 	if len(result) > 0 {
-		list := v1.ServiceParameterList(result)
-		system.Spec.ServiceParameters = &list
+		system.Spec.ServiceParameters = result
 	} else {
 		system.Spec.ServiceParameters = nil
 	}

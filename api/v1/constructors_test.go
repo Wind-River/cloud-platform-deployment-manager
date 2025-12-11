@@ -1028,7 +1028,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				want := StorageBackendList(storageBackends)
 				err := parseStorageBackendInfo(spec, storageBackendsIn)
 				Expect(err).To(BeNil())
-				Expect(*spec.Storage.Backends).To(Equal(want))
+				Expect(spec.Storage.Backends).To(Equal(want))
 			})
 		})
 	})
@@ -1062,7 +1062,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				want := ControllerFileSystemList(fsInfo)
 				err := parseFileSystemInfo(spec, fileSystems)
 				Expect(err).To(BeNil())
-				Expect(*spec.Storage.FileSystems).To(Equal(want))
+				Expect(spec.Storage.FileSystems).To(Equal(want))
 			})
 		})
 	})
@@ -1090,7 +1090,7 @@ var _ = Describe("Constructor utils for kind", func() {
 						Personality: &personality2,
 					},
 				}
-				serviceInfo := []ServiceParameterInfo{
+				want := ServiceParameterList{
 					{
 						Service:     "service1",
 						Section:     "Section1",
@@ -1108,10 +1108,9 @@ var _ = Describe("Constructor utils for kind", func() {
 						Personality: &personality2,
 					},
 				}
-				want := ServiceParameterList(serviceInfo)
 				err := parseServiceParameterInfo(spec, serviceParams)
 				Expect(err).To(BeNil())
-				Expect(*spec.ServiceParameters).To(Equal(want))
+				Expect(spec.ServiceParameters).To(Equal(want))
 			})
 		})
 	})
@@ -1130,7 +1129,7 @@ var _ = Describe("Constructor utils for kind", func() {
 						Signature: "hash2",
 					},
 				}
-				certInfo := []CertificateInfo{
+				want := CertificateList{
 					{
 						Type:      "T1",
 						Signature: "hash1",
@@ -1142,10 +1141,9 @@ var _ = Describe("Constructor utils for kind", func() {
 						Secret:    "T2-cert-secret-1",
 					},
 				}
-				want := CertificateList(certInfo)
 				err := parseCertificateInfo(spec, certificates)
 				Expect(err).To(BeNil())
-				Expect(*spec.Certificates).To(Equal(want))
+				Expect(spec.Certificates).To(Equal(want))
 			})
 		})
 	})
@@ -1176,17 +1174,17 @@ var _ = Describe("Constructor utils for kind", func() {
 						Signature: "hash5",
 					},
 				}
-				certInfo := []CertificateInfo{
+				want := CertificateList{
 					{
 						Type:      "T1",
 						Signature: "hash1",
 						Secret:    "T1-cert-secret-0",
 					},
 				}
-				want := CertificateList(certInfo)
+
 				err := parseCertificateInfo(spec, certificates)
 				Expect(err).To(BeNil())
-				Expect(*spec.Certificates).To(Equal(want))
+				Expect(spec.Certificates).To(Equal(want))
 			})
 		})
 	})
@@ -1250,7 +1248,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 				err := parseHostFileSystemInfo(spec, fileSystems)
 				Expect(err).To(BeNil())
-				Expect(*spec.Storage.FileSystems).To(Equal(want))
+				Expect(spec.Storage.FileSystems).To(Equal(want))
 			})
 		})
 	})
@@ -1380,7 +1378,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 				err := parseOSDInfo(profile, host)
 				Expect(err).To(BeNil())
-				Expect(*profile.Storage.OSDs).To(Equal(exp))
+				Expect(profile.Storage.OSDs).To(Equal(exp))
 			})
 		})
 	})
@@ -1548,7 +1546,7 @@ var _ = Describe("Constructor utils for kind", func() {
 			It("Stored volumegroup data into the profile storage volume gropus without error", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
-						VolumeGroups: &VolumeGroupList{},
+						VolumeGroups: VolumeGroupList{},
 					},
 				}
 				lvmType := "LVMType"
@@ -1598,7 +1596,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 				err := parseVolumeGroupInfo(profile, host)
 				Expect(err).To(BeNil())
-				Expect(*profile.Storage.VolumeGroups).To(Equal(exp))
+				Expect(profile.Storage.VolumeGroups).To(Equal(exp))
 			})
 		})
 	})
@@ -1608,7 +1606,7 @@ var _ = Describe("Constructor utils for kind", func() {
 			It("Stores storageInfo to profile spec", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
-						VolumeGroups: &VolumeGroupList{},
+						VolumeGroups: VolumeGroupList{},
 					},
 				}
 				lvmType := "LVMType"
@@ -1655,7 +1653,7 @@ var _ = Describe("Constructor utils for kind", func() {
 			It("Stores interface data into profile spec", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
-						VolumeGroups: &VolumeGroupList{},
+						VolumeGroups: VolumeGroupList{},
 					},
 				}
 				iPv4Pool := "01:22:33:12"
@@ -1843,14 +1841,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Latitude:    &latitude,
 					Longitude:   &longitude,
 					Contact:     &contact,
-					DNSServers:  &DNSServerList{"DNS1", "DNS2"},
-					NTPServers:  &NTPServerList{"NTP1", "NTP2"},
+					DNSServers:  []string{"DNS1", "DNS2"},
+					NTPServers:  NTPServerList{"NTP1", "NTP2"},
 					PTP: &PTPInfo{
 						Mode:      &mode,
 						Transport: &transport,
 						Mechanism: &mechanism,
 					},
-					Certificates: &CertificateList{
+					Certificates: []CertificateInfo{
 						{
 							Type:      "T1",
 							Secret:    "T1-cert-secret-0",
@@ -1860,17 +1858,30 @@ var _ = Describe("Constructor utils for kind", func() {
 					License: &LicenseInfo{
 						Secret: "system-license",
 					},
-					ServiceParameters: &ServiceParameterList{
-						{Service: "service1", Section: "Section1", ParamName: "", ParamValue: "", Personality: nil, Resource: nil},
+					ServiceParameters: []ServiceParameterInfo{
+						{
+							Service:     "service1",
+							Section:     "Section1",
+							ParamName:   "",
+							ParamValue:  "",
+							Personality: nil,
+							Resource:    nil,
+						},
 					},
 					Storage: &SystemStorageInfo{
-						Backends: &StorageBackendList{
-							{Name: "strBnd1", Type: "strBackend1", Services: nil, ReplicationFactor: &repFactor, PartitionSize: nil, Network: &network},
+						Backends: StorageBackendList{
+							{
+								Name: "strBnd1",
+								Type: "strBackend1", Services: nil,
+								ReplicationFactor: &repFactor,
+								PartitionSize:     nil,
+								Network:           &network,
+							},
 						},
 						DRBD: &DRBDConfiguration{
 							LinkUtilization: 27,
 						},
-						FileSystems: &ControllerFileSystemList{
+						FileSystems: ControllerFileSystemList{
 							{Name: "fsName1", Size: 100},
 						},
 					},
@@ -1972,14 +1983,14 @@ var _ = Describe("Constructor utils for kind", func() {
 						Latitude:    &latitude,
 						Longitude:   &longitude,
 						Contact:     &contact,
-						DNSServers:  &DNSServerList{"DNS1", "DNS2"},
-						NTPServers:  &NTPServerList{"NTP1", "NTP2"},
+						DNSServers:  []string{"DNS1", "DNS2"},
+						NTPServers:  NTPServerList{"NTP1", "NTP2"},
 						PTP: &PTPInfo{
 							Mode:      &mode,
 							Transport: &transport,
 							Mechanism: &mechanism,
 						},
-						Certificates: &CertificateList{
+						Certificates: []CertificateInfo{
 							{
 								Type:      "T1",
 								Secret:    "T1-cert-secret-0",
@@ -1989,17 +2000,31 @@ var _ = Describe("Constructor utils for kind", func() {
 						License: &LicenseInfo{
 							Secret: "system-license",
 						},
-						ServiceParameters: &ServiceParameterList{
-							{Service: "service1", Section: "Section1", ParamName: "", ParamValue: "", Personality: nil, Resource: nil},
+						ServiceParameters: []ServiceParameterInfo{
+							{
+								Service:     "service1",
+								Section:     "Section1",
+								ParamName:   "",
+								ParamValue:  "",
+								Personality: nil,
+								Resource:    nil,
+							},
 						},
 						Storage: &SystemStorageInfo{
-							Backends: &StorageBackendList{
-								{Name: "strBnd1", Type: "strBackend1", Services: nil, ReplicationFactor: &repFactor, PartitionSize: nil, Network: &network},
+							Backends: StorageBackendList{
+								{
+									Name:              "strBnd1",
+									Type:              "strBackend1",
+									Services:          nil,
+									ReplicationFactor: &repFactor,
+									PartitionSize:     nil,
+									Network:           &network,
+								},
 							},
 							DRBD: &DRBDConfiguration{
 								LinkUtilization: 27,
 							},
-							FileSystems: &ControllerFileSystemList{
+							FileSystems: ControllerFileSystemList{
 								{Name: "fsName1", Size: 100},
 							},
 						},
@@ -2086,10 +2111,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					BoardManagement: &BMInfo{Type: &bmiInfoType, Address: nil, Credentials: nil},
 					Processors:      nil,
 					Memory:          nil,
-					Storage:         &ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &FileSystemList{}},
-					Interfaces:      &InterfaceInfo{Ethernet: nil, VLAN: nil, Bond: nil, VF: nil},
-					Addresses:       nil,
-					Routes:          nil,
+					Storage: &ProfileStorageInfo{
+						Monitor:      nil,
+						OSDs:         nil,
+						VolumeGroups: nil,
+						FileSystems:  FileSystemList{},
+					},
+					Interfaces: &InterfaceInfo{Ethernet: nil, VLAN: nil, Bond: nil, VF: nil},
+					Addresses:  nil,
+					Routes:     nil,
 				}
 				outSpec, err := NewHostProfileSpec(host)
 				Expect(err).To(BeNil())
@@ -2172,10 +2202,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					BoardManagement: &BMInfo{Type: &bmiInfoType, Address: nil, Credentials: nil},
 					Processors:      nil,
 					Memory:          nil,
-					Storage:         &ProfileStorageInfo{Monitor: nil, OSDs: nil, VolumeGroups: nil, FileSystems: &FileSystemList{}},
-					Interfaces:      &InterfaceInfo{Ethernet: nil, VLAN: nil, Bond: nil, VF: nil},
-					Addresses:       nil,
-					Routes:          nil,
+					Storage: &ProfileStorageInfo{
+						Monitor:      nil,
+						OSDs:         nil,
+						VolumeGroups: nil,
+						FileSystems:  FileSystemList{},
+					},
+					Interfaces: &InterfaceInfo{Ethernet: nil, VLAN: nil, Bond: nil, VF: nil},
+					Addresses:  nil,
+					Routes:     nil,
 				}
 				exp := HostProfile{
 					TypeMeta: metav1.TypeMeta{

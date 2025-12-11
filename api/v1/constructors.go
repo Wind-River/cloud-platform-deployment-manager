@@ -348,19 +348,10 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 			}
 		}
 
-		netList := StringsToPlatformNetworkItemList(nets)
-		data.PlatformNetworks = &netList
-
-		dataNets := host.BuildInterfaceDataNetworkList(iface)
-
-		dataNetList := StringsToDataNetworkItemList(dataNets)
-		data.DataNetworks = &dataNetList
-
+		data.PlatformNetworks = nets
+		data.DataNetworks = host.BuildInterfaceDataNetworkList(iface)
 		data.PTPRole = iface.PTPRole
-
-		dataPtpInterfaceList := host.FindPTPInterfaceNameByInterface(iface)
-		dataPtpInterfaces := StringsToPtpInterfaceItemList(dataPtpInterfaceList)
-		data.PtpInterfaces = &dataPtpInterfaces
+		data.PtpInterfaces = host.FindPTPInterfaceNameByInterface(iface)
 
 		switch iface.Type {
 		case interfaces.IFTypeEthernet:
@@ -560,8 +551,7 @@ func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error 
 	}
 
 	if len(result) > 0 {
-		list := VolumeGroupList(result)
-		profile.Storage.VolumeGroups = &list
+		profile.Storage.VolumeGroups = result
 	}
 
 	return nil
@@ -611,8 +601,7 @@ func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	}
 
 	if len(result) > 0 {
-		list := OSDList(result)
-		profile.Storage.OSDs = &list
+		profile.Storage.OSDs = result
 	}
 
 	return nil
@@ -648,8 +637,7 @@ func parseHostFileSystemInfo(spec *HostProfileSpec, fileSystems []hostFilesystem
 		result = append(result, info)
 	}
 
-	list := FileSystemList(result)
-	spec.Storage.FileSystems = &list
+	spec.Storage.FileSystems = result
 
 	return nil
 }
@@ -843,9 +831,7 @@ func NewHostProfileSpec(host v1info.HostInfo) (*HostProfileSpec, error) {
 	clock := *host.ClockSynchronization
 	clockCopied := clock[0:] // Copy ClockSynchronization value
 	spec.ClockSynchronization = &clockCopied
-	ptpInstances := host.BuildPTPInstanceList()
-	ptpInstanceList := StringsToPtpInstanceItemList(ptpInstances)
-	spec.PtpInstances = ptpInstanceList
+	spec.PtpInstances = host.BuildPTPInstanceList()
 
 	// Assume that the board is powered on unless there is a clear indication
 	// that it is not.
@@ -965,8 +951,7 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 	}
 
 	if len(result) > 0 {
-		list := CertificateList(result)
-		spec.Certificates = &list
+		spec.Certificates = result
 	} else {
 		spec.Certificates = nil
 	}
@@ -975,8 +960,7 @@ func parseCertificateInfo(spec *SystemSpec, certificates []certificates.Certific
 }
 
 func parseServiceParameterInfo(spec *SystemSpec, serviceParams []serviceparameters.ServiceParameter) error {
-	result := make([]ServiceParameterInfo, 0)
-
+	result := []ServiceParameterInfo{}
 	for _, sp := range serviceParams {
 		info := ServiceParameterInfo{
 			Service:     sp.Service,
@@ -989,10 +973,7 @@ func parseServiceParameterInfo(spec *SystemSpec, serviceParams []serviceparamete
 
 		result = append(result, info)
 	}
-
-	list := ServiceParameterList(result)
-	spec.ServiceParameters = &list
-
+	spec.ServiceParameters = result
 	return nil
 }
 
@@ -1012,8 +993,7 @@ func parseFileSystemInfo(spec *SystemSpec, fileSystems []controllerFilesystems.F
 		spec.Storage = &SystemStorageInfo{}
 	}
 
-	list := ControllerFileSystemList(result)
-	spec.Storage.FileSystems = &list
+	spec.Storage.FileSystems = result
 
 	return nil
 }
@@ -1036,8 +1016,7 @@ func parseStorageBackendInfo(spec *SystemSpec, storageBackends []storagebackends
 		spec.Storage = &SystemStorageInfo{}
 	}
 
-	list := StorageBackendList(result)
-	spec.Storage.Backends = &list
+	spec.Storage.Backends = StorageBackendList(result)
 
 	return nil
 }
@@ -1103,22 +1082,18 @@ func NewSystemSpec(systemInfo v1info.SystemInfo) (*SystemSpec, error) {
 	}
 
 	if systemInfo.DNS != nil {
-		if systemInfo.DNS.Nameservers != "" {
-			nameservers := StringsToDNSServerList(strings.Split(systemInfo.DNS.Nameservers, ","))
-			spec.DNSServers = &nameservers
+		if len(systemInfo.DNS.Nameservers) > 0 {
+			spec.DNSServers = strings.Split(systemInfo.DNS.Nameservers, ",")
 		} else {
-			empty := StringsToDNSServerList(make([]string, 0))
-			spec.DNSServers = &empty
+			spec.DNSServers = []string{}
 		}
 	}
 
 	if systemInfo.NTP != nil {
-		if systemInfo.NTP.NTPServers != "" {
-			nameservers := StringsToNTPServerList(strings.Split(systemInfo.NTP.NTPServers, ","))
-			spec.NTPServers = &nameservers
+		if len(systemInfo.NTP.NTPServers) > 0 {
+			spec.NTPServers = strings.Split(systemInfo.NTP.NTPServers, ",")
 		} else {
-			empty := StringsToNTPServerList(make([]string, 0))
-			spec.NTPServers = &empty
+			spec.NTPServers = []string{}
 		}
 	}
 
