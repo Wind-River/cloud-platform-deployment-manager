@@ -11,9 +11,7 @@
 
     - include_role:
         name: initial-config
-      when:
-        - not subcloud_enrollment
-        - not scope_principal
+      when: not initial_configuration_done
 
     - include_role:
         name: reconfig
