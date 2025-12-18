@@ -27,6 +27,7 @@
   block:
     - include_tasks:
         file: lock-unlock.yaml
+      when: current_administrative_state == "locked"
 
     - include_tasks:
         file: monitor-deployment.yaml
