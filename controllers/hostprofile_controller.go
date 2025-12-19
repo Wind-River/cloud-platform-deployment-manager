@@ -10,7 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/controllers/common"
-	cloudManager"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
