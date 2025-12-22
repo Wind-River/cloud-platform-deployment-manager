@@ -3,7 +3,7 @@ FROM golang:1.23.0 AS dlvbuilder
 
 # Build delve debugger
 RUN apt-get update && apt-get install -y git
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.25.2
 
 # Build the manager binary
 FROM dlvbuilder AS builder
