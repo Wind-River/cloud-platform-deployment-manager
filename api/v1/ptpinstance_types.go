@@ -4,6 +4,8 @@
 package v1
 
 import (
+	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -17,6 +19,57 @@ type PtpInstanceSpec struct {
 	// Parameters contains a list of parameters grouped by section assigned to the ptp instance
 	// +optional
 	InstanceParameters map[string][]string `json:"parameters,omitempty"`
+}
+
+// TODO(@wasnio): drop this method once ptp instances migration is completed
+// UnmarshalJSON implements custom JSON unmarshaling for PtpInstanceSpec.
+// It handles the parameters field which can be either:
+// - A map[string][]string for named parameter groups
+// - A []string array (legacy format) which gets assigned to the "global" group
+// - Empty/missing, which results in nil InstanceParameters
+func (p *PtpInstanceSpec) UnmarshalJSON(data []byte) error {
+	type Alias PtpInstanceSpec
+	tmp := &struct {
+		Parameters json.RawMessage `json:"parameters"`
+		*Alias
+	}{
+		Alias: (*Alias)(p),
+	}
+
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	// Handle missing or empty parameters field
+	if len(tmp.Parameters) == 0 {
+		p.InstanceParameters = nil
+		return nil
+	}
+
+	// try map first. If it fails, it may be legacy array data
+	var paramMap map[string][]string
+	if err := json.Unmarshal(tmp.Parameters, &paramMap); err == nil {
+		p.InstanceParameters = paramMap
+		return nil
+	}
+
+	// since map unmarshal failed, try legacy array format
+	var paramArray []string
+	if err := json.Unmarshal(tmp.Parameters, &paramArray); err != nil {
+		return err
+	}
+
+	if len(paramArray) == 0 {
+		p.InstanceParameters = map[string][]string{}
+		return nil
+	}
+
+	// legacy array format, we need to add global section for all historical data
+	p.InstanceParameters = map[string][]string{
+		"global": paramArray,
+	}
+
+	return nil
 }
 
 // PtpInstanceStatus defines the observed state of PtpInstance
