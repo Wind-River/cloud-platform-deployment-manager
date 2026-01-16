@@ -4,6 +4,7 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -12,12 +13,93 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = Describe("Datanetwork controller", func() {
+var _ = Describe("PtpInstance controller", func() {
 
 	const (
 		timeout  = time.Second * 30
 		interval = time.Millisecond * 500
 	)
+
+	Describe("PtpInstanceSpec", func() {
+		Context("UnmarshalJSON", func() {
+			It("Should unmarshall if parameters are omit", func() {
+				var spec PtpInstanceSpec
+				err := json.Unmarshal([]byte(`{"service": "ptp4l"}`), &spec)
+
+				Expect(err).To(BeNil())
+				Expect(spec.InstanceParameters).To(BeNil())
+
+				Expect(spec.Service).To(Equal("ptp4l"))
+			})
+
+			It("Should unmarshall if parameters are an empty array", func() {
+				var spec PtpInstanceSpec
+				expected := map[string][]string{}
+
+				err := json.Unmarshal([]byte(`{"service": "ptp4l", "parameters": []}`), &spec)
+
+				Expect(err).To(BeNil())
+				Expect(spec.InstanceParameters).To(Equal(expected))
+
+				Expect(spec.Service).To(Equal("ptp4l"))
+			})
+
+			It("Should unmarshall array paramaters format", func() {
+				jsonSpec := `{"service": "ptp4l", "parameters": ["param1", "param2", "param3"]}`
+				expected := map[string][]string{
+					"global": {"param1", "param2", "param3"},
+				}
+
+				var spec PtpInstanceSpec
+				err := json.Unmarshal([]byte(jsonSpec), &spec)
+
+				Expect(err).To(BeNil())
+				Expect(spec.InstanceParameters).To(Equal(expected))
+
+				Expect(spec.Service).To(Equal("ptp4l"))
+			})
+
+			It("Should unmarshall sectioned paramaters format", func() {
+				jsonSpec := `{
+				    "service": "ptp4l",
+				    "parameters": {"global": ["param1", "param2", "param3"]}
+				}`
+				expected := map[string][]string{
+					"global": {"param1", "param2", "param3"},
+				}
+
+				var spec PtpInstanceSpec
+				err := json.Unmarshal([]byte(jsonSpec), &spec)
+
+				Expect(err).To(BeNil())
+				Expect(spec.InstanceParameters).To(Equal(expected))
+
+				Expect(spec.Service).To(Equal("ptp4l"))
+			})
+
+			It("Should unmarshall sectioned paramaters format with multiple paramaters", func() {
+				jsonSpec := `{
+				    "service": "ptp4l",
+				    "parameters": {
+				        "global": ["param1", "param2", "param3"],
+				        "unicast_master_table_x": ["param1", "param2"]
+				    }
+				}`
+				expected := map[string][]string{
+					"global": {"param1", "param2", "param3"},
+					"unicast_master_table_x": {"param1", "param2"},
+				}
+
+				var spec PtpInstanceSpec
+				err := json.Unmarshal([]byte(jsonSpec), &spec)
+
+				Expect(err).To(BeNil())
+				Expect(spec.InstanceParameters).To(Equal(expected))
+
+				Expect(spec.Service).To(Equal("ptp4l"))
+			})
+		})
+	})
 
 	Describe("PtpInstance", func() {
 		Context("with single section data", func() {
