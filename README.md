@@ -368,7 +368,7 @@ kubectl get <resource> -n deployment --output=custom-columns=DELTA:.status.delta
 
 Example:
 ```bash
-sysadmin@controller-0:~/config/dm-config$ kubectl get host -n deployment --output=custom-columns=DELTA:.status.delta
+kubectl get host -n deployment --output=custom-columns=DELTA:.status.delta
 DELTA
 interfaces:
       "ethernet":
