@@ -62,6 +62,18 @@ Recorded events can show actions taken by deployment-manager and system events.
 kubectl -n deployment get events --sort-by='.metadata.creationTimestamp'
 ```
 
+## Resource cannot reconciled
+Find the resource "final profile" and "current config" in the dm log, compare the difference
+via text compare tool, e.g.: https://text-compare.com/ Or find the errors of a config cannot
+be applied.
+
+The delta status can also be used for quick check the difference between the final profile
+and current config.
+
+```bash
+kubectl get <resource> -n deployment --output=custom-columns=DELTA:.status.delta
+```
+
 ## Increasing the log level
 The DM log level can be increased by specifying the desired log level with the 
 "--zap-log-level" parameter when running the "manager" binary.  The manager Container
