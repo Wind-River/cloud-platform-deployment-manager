@@ -59,8 +59,15 @@ HELM_CRDS=helm/wind-river-cloud-platform-deployment-manager/templates/crds.yaml
 # DeepCopy auto generated file
 DEEPCOPY_GEN_FILE=./api/v1/zz_generated.deepcopy.go
 
+BUILD_TEST ?= 1
+ifeq ($(BUILD_TEST),1)
+ALL_TARGETS = helm-ver-check test build tools helm-package docker-build examples
+else
+ALL_TARGETS = helm-ver-check build tools helm-package docker-build examples
+endif
+
 .PHONY: all
-all: helm-ver-check test build tools helm-package docker-build examples
+all: $(ALL_TARGETS)
 
 # Publish all artifacts
 publish: helm-package docker-push
@@ -185,7 +192,7 @@ $(DEEPEQUAL_GEN): $(LOCALBIN)
 
 # Build the builder image
 builder-build:
-	docker build . --no-cache -t ${BUILDER_IMG} -f Dockerfile.builder
+	docker build . --no-cache --build-arg "BUILD_TEST=${BUILD_TEST}" -t ${BUILDER_IMG} -f Dockerfile.builder
 
 builder-run: builder-build
 	docker run -v /var/run/docker.sock:/var/run/docker.sock \

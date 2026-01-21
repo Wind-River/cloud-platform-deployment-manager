@@ -33,7 +33,9 @@ ENV PATH="${PATH}:/usr/local/kubebuilder/bin:/bin"
 WORKDIR /go/src/github.com/wind-river/cloud-platform-deployment-manager
 RUN git config --global --add safe.directory /go/src/github.com/wind-river/cloud-platform-deployment-manager
 
+ARG BUILD_TEST=1
+
 # Helm v3 is ready to use for packaging and linting
 # The entry command can be overwritten when launched but by default these are
 # the build steps that we will be running.
-CMD ["sh", "-c", "make && DEBUG=yes make docker-build"]
+CMD ["sh", "-c", "DEBUG=yes BUILD_TEST=${BUILD_TEST} make"]
