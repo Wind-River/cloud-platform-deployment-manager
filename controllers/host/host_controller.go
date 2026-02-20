@@ -346,6 +346,7 @@ func (r *HostReconciler) UpdateRequired(instance *starlingxv1.Host, profile *sta
 			if err != nil {
 				if errors.IsNotFound(err) {
 					msg := fmt.Sprintf("waiting for BM credentials secret: %q", info.Secret)
+					r.NormalEvent(instance, common.ResourceDependency, msg)
 					name := types.NamespacedName{Namespace: instance.Namespace, Name: info.Secret}
 					m := NewKubernetesSecretMonitor(instance, name)
 					return hosts.HostOpts{}, result, r.CloudManager.StartMonitor(m, msg)
