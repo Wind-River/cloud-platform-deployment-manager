@@ -78,6 +78,9 @@ metadata:
   namespace: deployment
 spec:
   overrides:
+    labels:
+      ceph-mgr-placement: enabled
+      ceph-mon-placement: enabled
     bootMAC: COMPUTE0MAC
     storage:
       filesystems:
@@ -173,7 +176,10 @@ spec:
       port:
         name: enp0s3
   labels:
+    ceph-mgr-placement: enabled
+    ceph-mon-placement: enabled
     openstack-control-plane: enabled
+    topology.rook.io/chassis: "group-0"
   personality: controller
   storage:
     filesystems:
@@ -213,6 +219,7 @@ spec:
     openstack-compute-node: enabled
     openvswitch: enabled
     sriov: enabled
+    topology.rook.io/chassis: "group-0"
   personality: worker
   processors:
   - functions:

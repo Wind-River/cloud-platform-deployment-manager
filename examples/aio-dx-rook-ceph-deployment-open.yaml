@@ -184,10 +184,13 @@ spec:
       port:
         name: eth1001
   labels:
+    ceph-mgr-placement: enabled
+    ceph-mon-placement: enabled
     openstack-compute-node: enabled
     openstack-control-plane: enabled
     openvswitch: enabled
     sriov: enabled
+    topology.rook.io/chassis: "group-0"
   personality: controller
   processors:
   - functions:
@@ -250,9 +253,12 @@ spec:
       port:
         name: eth1001
   labels:
+    ceph-mgr-placement: enabled
+    ceph-mon-placement: enabled
     openstack-compute-node: enabled
     openvswitch: enabled
     sriov: enabled
+    topology.rook.io/chassis: "group-0"
   personality: worker
   processors:
   - functions:
