@@ -20,4 +20,4 @@ jobs:
         cache: false
 
     - name: Build the Docker image
-      run: make builder-run
+      run: make BUILD_TEST=0 builder-run
