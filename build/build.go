@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2026 Wind River Systems, Inc. */
 
 package build
 
@@ -24,7 +24,7 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
-	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

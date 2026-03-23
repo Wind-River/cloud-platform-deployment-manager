@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - hw-settle.yaml
+  - path: hw-settle.yaml

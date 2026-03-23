@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - deployment-model-controller.yaml
+  - path: deployment-model-controller.yaml

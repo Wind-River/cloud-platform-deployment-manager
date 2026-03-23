@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - storage-day2-principal.yaml
+  - path: storage-day2-principal.yaml

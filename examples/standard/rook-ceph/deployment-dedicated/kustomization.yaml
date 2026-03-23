@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - deployment-model-dedicated.yaml
+  - path: deployment-model-dedicated.yaml

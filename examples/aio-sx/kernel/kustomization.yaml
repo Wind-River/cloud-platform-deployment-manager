@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - kernel.yaml
+  - path: kernel.yaml

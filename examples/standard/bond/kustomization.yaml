@@ -1,6 +1,6 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - bond_platform_interface_patch.yaml
-  - bond_data_interface_patch.yaml
+  - path: bond_platform_interface_patch.yaml
+  - path: bond_data_interface_patch.yaml

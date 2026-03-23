@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - vf_data_interface_patch.yaml
+  - path: vf_data_interface_patch.yaml

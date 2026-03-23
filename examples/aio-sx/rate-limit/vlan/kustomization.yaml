@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../single-nic
 
 patches:
-  - vlan_interfaces_with_rate_limit.yaml
+  - path: vlan_interfaces_with_rate_limit.yaml

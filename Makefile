@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2019-2025 Wind River Systems, Inc.
+# Copyright(c) 2019-2026 Wind River Systems, Inc.
 
 # The Helm package command is not capable of figuring out if a package actually
 # needs to be re-built therefore this Makefile will only invoke that command
@@ -28,7 +28,7 @@ DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitHead=${GIT_HEAD}
 DEPLOY_LDFLAGS += -X ${APP_MODULE}/cmd/deployctl/cmd.GitBranch=${GIT_BRANCH}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26
+ENVTEST_K8S_VERSION = 1.32
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -94,7 +94,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager main.go
+	go build -gcflags "${GOBUILD_GCFLAGS}" -o bin/manager cmd/main.go
 
 .PHONY: tools
 tools: generate fmt vet ## Build deployctl binary.
@@ -154,9 +154,9 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 DEEPEQUAL_GEN ?= $(LOCALBIN)/deepequal-gen
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
-SETPUP_ENVTEST_VERSION ?= release-0.20
+KUSTOMIZE_VERSION ?= v5.4.3
+CONTROLLER_TOOLS_VERSION ?= v0.16.3
+SETUP_ENVTEST_VERSION ?= release-0.20
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 
@@ -175,7 +175,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETPUP_ENVTEST_VERSION)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION)
 
 .PHONY: deepequal-gen
 deepequal-gen: $(DEEPEQUAL_GEN) ## Download deepequal-gen locally if necessary.

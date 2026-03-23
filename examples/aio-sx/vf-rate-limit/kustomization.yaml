@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../single-nic
 
 patches:
-  - vf_interfaces_with_rate_limit.yaml
+  - path: vf_interfaces_with_rate_limit.yaml

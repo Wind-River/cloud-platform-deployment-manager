@@ -1,10 +1,8 @@
-bases:
-  - ../default
-
 resources:
+  - ../default
   - vxlan_platform_networks.yaml
   - vxlan_data_networks.yaml
 
 patches:
-  - vxlan_data_networks_patch.yaml
-  - vxlan_interface_addressing_patch.yaml
+  - path: vxlan_data_networks_patch.yaml
+  - path: vxlan_interface_addressing_patch.yaml

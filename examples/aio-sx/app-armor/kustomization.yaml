@@ -1,6 +1,6 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - app-armor.yaml
+  - path: app-armor.yaml
 

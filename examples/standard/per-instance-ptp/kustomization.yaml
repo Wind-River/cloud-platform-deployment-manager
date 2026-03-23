@@ -1,9 +1,7 @@
-bases:
-  - ../default
-
 resources:
+  - ../default
   - ptp_instance.yaml
   - ptp_interface.yaml
 
 patches:
-  - ptp_configuration_patch.yaml
+  - path: ptp_configuration_patch.yaml

@@ -1,6 +1,6 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - aio-dx-day2-principal.yaml
+  - path: aio-dx-day2-principal.yaml
 

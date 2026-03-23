@@ -1,8 +1,6 @@
-bases:
-  - ../../default
-
 resources:
+  - ../../default
   - workers.yaml
 
 patches:
-  - deployment-model-open.yaml
+  - path: deployment-model-open.yaml
