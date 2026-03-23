@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - aio-sx-day2-bootstrap.yaml
+  - path: aio-sx-day2-bootstrap.yaml

@@ -1,8 +1,6 @@
-bases:
-  - ../default
-
 resources:
+  - ../default
   - data_networks.yaml
 
 patches:
-  - single_nic_interfaces.yaml
+  - path: single_nic_interfaces.yaml

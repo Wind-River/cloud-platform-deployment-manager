@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2024 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2024,2026 Wind River Systems, Inc. */
 
 package cmd
 
@@ -14,7 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/spf13/cobra"
 	"github.com/wind-river/cloud-platform-deployment-manager/build"
-	"github.com/wind-river/cloud-platform-deployment-manager/controllers/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 )
 
 const (

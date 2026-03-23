@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: addresspools.starlingx.windriver.com
 spec:
@@ -46,7 +46,9 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "AddressPool defines the attributes that represent the addresspool level\nattributes of a StarlingX system.  This represents following StarlingX endpoint:\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+        description: "AddressPool defines the attributes that represent the addresspool
+          level\nattributes of a StarlingX system.  This represents following StarlingX
+          endpoint:\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
         properties:
           apiVersion:
             description: |-
@@ -69,7 +71,8 @@ spec:
             description: AddressPoolSpec defines the desired state of AddressPool
             properties:
               allocation:
-                description: Allocation defines the allocation scheme details for the network
+                description: Allocation defines the allocation scheme details for
+                  the network
                 properties:
                   order:
                     description: |-
@@ -85,13 +88,15 @@ spec:
                       If omitted addresses the entire network address space is
                       considered available.
                     items:
-                      description: AllocationRange defines the start and end address for an allocation range
+                      description: AllocationRange defines the start and end address
+                        for an allocation range
                       properties:
                         end:
                           description: End defines the end of the address range (inclusively)
                           type: string
                         start:
-                          description: Start defines the beginning of the address range (inclusively)
+                          description: Start defines the beginning of the address
+                            range (inclusively)
                           type: string
                       required:
                       - end
@@ -100,13 +105,16 @@ spec:
                     type: array
                 type: object
               controller0Address:
-                description: Controller0Address is the controller-0 IPv4 or IPv6 network address value.
+                description: Controller0Address is the controller-0 IPv4 or IPv6 network
+                  address value.
                 type: string
               controller1Address:
-                description: Controller1Address is the controller-1 IPv4 or IPv6 network address value.
+                description: Controller1Address is the controller-1 IPv4 or IPv6 network
+                  address value.
                 type: string
               floatingAddress:
-                description: FloatingAddress defines the floating IPv4 or IPv6 network address for the network
+                description: FloatingAddress defines the floating IPv4 or IPv6 network
+                  address for the network
                 type: string
               gateway:
                 description: Gateway defines the nexthop gateway IP address if applicable
@@ -116,7 +124,8 @@ spec:
                 minimum: 1
                 type: integer
               subnet:
-                description: Subnet defines the subdivision IPv4 or IPv6 network address for the network
+                description: Subnet defines the subdivision IPv4 or IPv6 network address
+                  for the network
                 type: string
             required:
             - allocation
@@ -138,7 +147,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -164,7 +174,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: datanetworks.starlingx.windriver.com
 spec:
@@ -207,7 +217,9 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "DataNetworks defines the attributes that represent the data network level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
+        description: "DataNetworks defines the attributes that represent the data
+          network level\nattributes of a StarlingX system.  This is a composition
+          of the following\nStarlingX API endpoints.\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#data-networks"
         properties:
           apiVersion:
             description: |-
@@ -242,14 +254,16 @@ spec:
                 minimum: 576
                 type: integer
               type:
-                description: Type defines the encapsulation method used for the data network.
+                description: Type defines the encapsulation method used for the data
+                  network.
                 enum:
                 - flat
                 - vlan
                 - vxlan
                 type: string
               vxlan:
-                description: VxLan defines VxLAN specific attributes for the data network.
+                description: VxLan defines VxLAN specific attributes for the data
+                  network.
                 properties:
                   endpointMode:
                     description: |-
@@ -269,7 +283,8 @@ spec:
                       network.
                     type: string
                   ttl:
-                    description: TTL defines the time-to-live value to assign to the data network.
+                    description: TTL defines the time-to-live value to assign to the
+                      data network.
                     maximum: 255
                     minimum: 1
                     type: integer
@@ -314,7 +329,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -348,7 +364,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: hostprofiles.starlingx.windriver.com
 spec:
@@ -379,7 +395,10 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "HostProfile defines the attributes that represent the host level\nattributes of a StarlingX system.  This is represents the bulk of the\nsystem API attributes and is the most complex part of the schema definition.\nRefer the full list of API documentation here:\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/index.html"
+        description: "HostProfile defines the attributes that represent the host level\nattributes
+          of a StarlingX system.  This is represents the bulk of the\nsystem API attributes
+          and is the most complex part of the schema definition.\nRefer the full list
+          of API documentation here:\n\n\thttps://docs.starlingx.io/api-ref/stx-config/index.html"
         properties:
           apiVersion:
             description: |-
@@ -408,7 +427,8 @@ spec:
                   be specified if this profile is only going to be used to configure a
                   single host.
                 items:
-                  description: AddressInfo defines the attributes specific to a single address.
+                  description: AddressInfo defines the attributes specific to a single
+                    address.
                   properties:
                     address:
                       description: Address defines the IPv4 or IPv6 address value.
@@ -432,7 +452,8 @@ spec:
                   type: object
                 type: array
               administrativeState:
-                description: AdministrativeState defines the desired administrative state of the host
+                description: AdministrativeState defines the desired administrative
+                  state of the host
                 enum:
                 - locked
                 - unlocked
@@ -448,12 +469,10 @@ spec:
                   This hierarchy can be defined in multiple layers; with lower layers
                   overriding attributes set in higher layers.
 
-
                   At configuration time, before a Host is configured, the hierarchy of
                   HostProfile resources is flattened to produce a single composite profile
                   that represents the final attributes as they are overridden down the
                   HostProfile hierarchy.
-
 
                   Once the HostProfile hierarchy is flattened to a composite profile.  The
                   Deployment Manager will further refine the profile to create a final
@@ -462,7 +481,6 @@ spec:
                   the composite profile with the initial default host attributes, and then
                   merges the individual host overrides into that result.  The process
                   can be illustrated as follows:
-
 
                           Host Defaults      +---------------------+
                              |                                      \
@@ -479,37 +497,28 @@ spec:
                              |                                    /
                           Host Overrides       +-----------------+
 
-
                   Merging two HostProfileSpec resources consists of merging the attributes
                   of a higher precedence profile into the attributes of a lower precedences
                   profile.  The rules for merging attributes are as follows.
 
-
                     1) A nil pointer is always overwritten by a non-nil pointer.
-
 
                     2) Two non-nil pointers are merged together according to the underlying
                        type.
 
-
                     2a) If the type pointed to is a primitive type (e.g., int, bool,
                         string, etc) then the higher precedence value is used).
-
 
                     2b) If the type pointed to is a structure then this same merge
                         procedure is repeated recursively on each field of the structure
                         with these same rules applying to each field.
 
-
                     2c) If the type pointed to is a slice/array then rule (3) is used.
-
 
                     2d) If the type pointed to is a map then higher precedence value is
                         used and the entire map is overwritten.
 
-
                     3) Two slices are merged together using the following sub-rules.
-
 
                     3a) If the elements of slices define the KeyEqual() method then an
                         attempt is made to try to merge equivalent element using this same
@@ -518,10 +527,8 @@ spec:
                         the list.  Elements appearing in the lower precedence list but not
                         in the higher precedence list are kept intact.
 
-
                     3b) If the elements of the slices do not define the KeyEqual() method
                         then they are simply concatenated together.
-
 
                     3c) An empty slice is handled as a special case that deletes the
                         contents of the lower precedence slice.  Do not confuse an empty
@@ -602,7 +609,8 @@ spec:
                 pattern: ^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$
                 type: string
               hwSettle:
-                description: HwSettle defines the wait time for SCSI devices to show up.
+                description: HwSettle defines the wait time for SCSI devices to show
+                  up.
                 pattern: ^[0-9]+$
                 type: string
               installOutput:
@@ -621,14 +629,16 @@ spec:
                   host.
                 properties:
                   bond:
-                    description: Bond defines the list of Bond interfaces to be configured on a host.
+                    description: Bond defines the list of Bond interfaces to be configured
+                      on a host.
                     items:
                       description: |-
                         BondInfo defines the attributes specific to a single Bond
                         interface.
                       properties:
                         class:
-                          description: Class defines the intended usage of this interface by the system.
+                          description: Class defines the intended usage of this interface
+                            by the system.
                           enum:
                           - platform
                           - data
@@ -669,19 +679,22 @@ spec:
                             type: string
                           type: array
                         mode:
-                          description: Mode defines the Bond interface aggregation mode.
+                          description: Mode defines the Bond interface aggregation
+                            mode.
                           enum:
                           - balanced
                           - active_standby
                           - 802.3ad
                           type: string
                         mtu:
-                          description: MTU defines the maximum transmit unit for this interface.
+                          description: MTU defines the maximum transmit unit for this
+                            interface.
                           maximum: 9216
                           minimum: 576
                           type: integer
                         name:
-                          description: Name defines the name of the interface to be configured.
+                          description: Name defines the name of the interface to be
+                            configured.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -711,7 +724,8 @@ spec:
                           nullable: true
                           type: array
                         ptpRole:
-                          description: PTPRole defines the ptp role as master, slave, or none
+                          description: PTPRole defines the ptp role as master, slave,
+                            or none
                           enum:
                           - master
                           - slave
@@ -726,7 +740,8 @@ spec:
                           - layer2+3
                           type: string
                         uuid:
-                          description: The system assigned unique UUID value for the interface
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                       required:
                       - class
@@ -745,7 +760,8 @@ spec:
                         Ethernet interface.
                       properties:
                         class:
-                          description: Class defines the intended usage of this interface by the system.
+                          description: Class defines the intended usage of this interface
+                            by the system.
                           enum:
                           - platform
                           - data
@@ -785,12 +801,14 @@ spec:
                             interface type is set to "vf".
                           type: integer
                         mtu:
-                          description: MTU defines the maximum transmit unit for this interface.
+                          description: MTU defines the maximum transmit unit for this
+                            interface.
                           maximum: 9216
                           minimum: 576
                           type: integer
                         name:
-                          description: Name defines the name of the interface to be configured.
+                          description: Name defines the name of the interface to be
+                            configured.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -810,7 +828,8 @@ spec:
                             this Ethernet interface.
                           properties:
                             name:
-                              description: SystemName defines the device name of the Ethernet port.
+                              description: SystemName defines the device name of the
+                                Ethernet port.
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_]+$
                               type: string
@@ -828,14 +847,16 @@ spec:
                           nullable: true
                           type: array
                         ptpRole:
-                          description: PTPRole defines the ptp role as master, slave, or none
+                          description: PTPRole defines the ptp role as master, slave,
+                            or none
                           enum:
                           - master
                           - slave
                           - none
                           type: string
                         uuid:
-                          description: The system assigned unique UUID value for the interface
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vfCount:
                           description: |-
@@ -857,14 +878,16 @@ spec:
                       type: object
                     type: array
                   vf:
-                    description: VF defines the list of SR-IOV VF interfaces to be configured on a host.
+                    description: VF defines the list of SR-IOV VF interfaces to be
+                      configured on a host.
                     items:
                       description: |-
                         VFInfo defines the attributes specific to a single SR-IOV
                         vf interface.
                       properties:
                         class:
-                          description: Class defines the intended usage of this interface by the system.
+                          description: Class defines the intended usage of this interface
+                            by the system.
                           enum:
                           - platform
                           - data
@@ -904,12 +927,14 @@ spec:
                             interface type is set to "vf".
                           type: integer
                         mtu:
-                          description: MTU defines the maximum transmit unit for this interface.
+                          description: MTU defines the maximum transmit unit for this
+                            interface.
                           maximum: 9216
                           minimum: 576
                           type: integer
                         name:
-                          description: Name defines the name of the interface to be configured.
+                          description: Name defines the name of the interface to be
+                            configured.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -934,17 +959,20 @@ spec:
                           nullable: true
                           type: array
                         ptpRole:
-                          description: PTPRole defines the ptp role as master, slave, or none
+                          description: PTPRole defines the ptp role as master, slave,
+                            or none
                           enum:
                           - master
                           - slave
                           - none
                           type: string
                         uuid:
-                          description: The system assigned unique UUID value for the interface
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vfCount:
-                          description: VFCount defines the number of SRIOV virtual functions for this VF interface.
+                          description: VFCount defines the number of SRIOV virtual
+                            functions for this VF interface.
                           maximum: 256
                           minimum: 1
                           type: integer
@@ -962,14 +990,16 @@ spec:
                       type: object
                     type: array
                   vlan:
-                    description: VLAN defines the list of VLAN interfaces to be configured on a host.
+                    description: VLAN defines the list of VLAN interfaces to be configured
+                      on a host.
                     items:
                       description: |-
                         VLANInfo defines the attributes specific to a single VLAN
                         interface.
                       properties:
                         class:
-                          description: Class defines the intended usage of this interface by the system.
+                          description: Class defines the intended usage of this interface
+                            by the system.
                           enum:
                           - platform
                           - data
@@ -1009,12 +1039,14 @@ spec:
                             interface type is set to "vf".
                           type: integer
                         mtu:
-                          description: MTU defines the maximum transmit unit for this interface.
+                          description: MTU defines the maximum transmit unit for this
+                            interface.
                           maximum: 9216
                           minimum: 576
                           type: integer
                         name:
-                          description: Name defines the name of the interface to be configured.
+                          description: Name defines the name of the interface to be
+                            configured.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
@@ -1039,17 +1071,20 @@ spec:
                           nullable: true
                           type: array
                         ptpRole:
-                          description: PTPRole defines the ptp role as master, slave, or none
+                          description: PTPRole defines the ptp role as master, slave,
+                            or none
                           enum:
                           - master
                           - slave
                           - none
                           type: string
                         uuid:
-                          description: The system assigned unique UUID value for the interface
+                          description: The system assigned unique UUID value for the
+                            interface
                           type: string
                         vid:
-                          description: VID defines the VLAN ID value to be assigned to this VLAN interface.
+                          description: VID defines the VLAN ID value to be assigned
+                            to this VLAN interface.
                           maximum: 4095
                           minimum: 1
                           type: integer
@@ -1075,10 +1110,12 @@ spec:
                   resources that is running on this host.
                 type: object
               location:
-                description: Location defines the physical location of the host in the data centre.
+                description: Location defines the physical location of the host in
+                  the data centre.
                 type: string
               maxCPUMhzConfigured:
-                description: MaxCPUMhzConfigured defines the maximum limit of the CPU mhz configured on the host.
+                description: MaxCPUMhzConfigured defines the maximum limit of the
+                  CPU mhz configured on the host.
                 pattern: ^[1-9][0-9]*$
                 type: string
               memory:
@@ -1100,14 +1137,16 @@ spec:
                           specific function.
                         properties:
                           function:
-                            description: Function defines the function for which to allocate a number of cores.
+                            description: Function defines the function for which to
+                              allocate a number of cores.
                             enum:
                             - platform
                             - vm
                             - vswitch
                             type: string
                           pageCount:
-                            description: PageCount defines the number of pages to allocate to a specific function.
+                            description: PageCount defines the number of pages to
+                              allocate to a specific function.
                             type: integer
                           pageSize:
                             description: |-
@@ -1169,12 +1208,14 @@ spec:
                           specific function.
                         properties:
                           count:
-                            description: Count defines the number of cores to allocate to a specific function.
+                            description: Count defines the number of cores to allocate
+                              to a specific function.
                             maximum: 64
                             minimum: 0
                             type: integer
                           function:
-                            description: Function defines the function for which to allocate a number of cores.
+                            description: Function defines the function for which to
+                              allocate a number of cores.
                             enum:
                             - platform
                             - shared
@@ -1235,7 +1276,8 @@ spec:
                   therefore the host must be configured with valid addresses or configured
                   to for automatic address assignment from a platform network.
                 items:
-                  description: RouteInfo defines the attributes specific to a single route.
+                  description: RouteInfo defines the attributes specific to a single
+                    route.
                   properties:
                     gateway:
                       description: Gateway defines the next hop gateway IP address.
@@ -1248,17 +1290,20 @@ spec:
                       pattern: ^[a-zA-Z0-9\-_\.]+$
                       type: string
                     metric:
-                      description: Metric defines the route preference metric for this route.
+                      description: Metric defines the route preference metric for
+                        this route.
                       maximum: 255
                       minimum: 1
                       type: integer
                     prefix:
-                      description: Prefix defines the destination network address prefix length.
+                      description: Prefix defines the destination network address
+                        prefix length.
                       maximum: 128
                       minimum: 0
                       type: integer
                     subnet:
-                      description: Subnet defines the destination network address subnet.
+                      description: Subnet defines the destination network address
+                        subnet.
                       type: string
                   required:
                   - gateway
@@ -1271,9 +1316,11 @@ spec:
                 description: Storage defines the storage attributes for the host
                 properties:
                   filesystems:
-                    description: FileSystems defines the list of file systems to be defined on the host.
+                    description: FileSystems defines the list of file systems to be
+                      defined on the host.
                     items:
-                      description: FileSystemInfo defines the attributes of a single host filesystem resource.
+                      description: FileSystemInfo defines the attributes of a single
+                        host filesystem resource.
                       properties:
                         name:
                           description: |-
@@ -1307,7 +1354,8 @@ spec:
                       node.
                     properties:
                       size:
-                        description: Size represents the storage allocated to the monitor in gibibytes
+                        description: Size represents the storage allocated to the
+                          monitor in gibibytes
                         maximum: 40
                         minimum: 20
                         type: integer
@@ -1317,7 +1365,8 @@ spec:
                       OSDs defines the list of OSD devices to be created on the host.  This is
                       only applicable to storage related nodes.
                     items:
-                      description: OSDInfo defines attributes specific to a single OSD device.
+                      description: OSDInfo defines attributes specific to a single
+                        OSD device.
                       properties:
                         cluster:
                           description: |-
@@ -1326,7 +1375,8 @@ spec:
                           maxLength: 255
                           type: string
                         function:
-                          description: Function defines the function to be assigned to the OSD device.
+                          description: Function defines the function to be assigned
+                            to the OSD device.
                           enum:
                           - osd
                           - journal
@@ -1343,7 +1393,8 @@ spec:
                               maxLength: 255
                               type: string
                             size:
-                              description: Size defines the size of the OSD journal in gibibytes.
+                              description: Size defines the size of the OSD journal
+                                in gibibytes.
                               minimum: 1
                               type: integer
                           required:
@@ -1351,7 +1402,8 @@ spec:
                           - size
                           type: object
                         path:
-                          description: Path defines the disk device path to use as backing for the OSD device.
+                          description: Path defines the disk device path to use as
+                            backing for the OSD device.
                           maxLength: 4095
                           pattern: ^/dev/.+$
                           type: string
@@ -1362,7 +1414,8 @@ spec:
                     nullable: true
                     type: array
                   volumeGroups:
-                    description: VolumeGroups defines the list of volume groups to be created on the host.
+                    description: VolumeGroups defines the list of volume groups to
+                      be created on the host.
                     items:
                       description: |-
                         VolumeGroupInfo defines the attributes specific to a single
@@ -1377,14 +1430,17 @@ spec:
                           - thick
                           type: string
                         name:
-                          description: SystemName defines the name of the logical volume group
+                          description: SystemName defines the name of the logical
+                            volume group
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_]+$
                           type: string
                         physicalVolumes:
-                          description: PhysicalVolumes defines the list of volumes to be created on the host.
+                          description: PhysicalVolumes defines the list of volumes
+                            to be created on the host.
                           items:
-                            description: PhysicalVolumeInfo defines attributes of a physical volume.
+                            description: PhysicalVolumeInfo defines attributes of
+                              a physical volume.
                             properties:
                               path:
                                 description: |-
@@ -1441,7 +1497,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: hosts.starlingx.windriver.com
 spec:
@@ -1557,11 +1613,13 @@ spec:
                       NOTE:  Not yet supported.
                     properties:
                       assetTag:
-                        description: AssetTag defines the board asset tag as stored in the DMI block.
+                        description: AssetTag defines the board asset tag as stored
+                          in the DMI block.
                         maxLength: 255
                         type: string
                       serialNumber:
-                        description: SerialNumber defines the board serial number as stored in the DMI block.
+                        description: SerialNumber defines the board serial number
+                          as stored in the DMI block.
                         maxLength: 255
                         type: string
                     type: object
@@ -1572,7 +1630,6 @@ spec:
                   from the base HostProfile before configuring the host.  The schema for
                   this field is intentionally a copy of the full HostProfileSpec schema
                   so that any HostProfile attribute can be overridden on a per-host basis.
-
 
                   For example, it may be necessary to define IP addresses that are unique
                   to each host, or to override storage device paths if the installed
@@ -1586,7 +1643,8 @@ spec:
                       be specified if this profile is only going to be used to configure a
                       single host.
                     items:
-                      description: AddressInfo defines the attributes specific to a single address.
+                      description: AddressInfo defines the attributes specific to
+                        a single address.
                       properties:
                         address:
                           description: Address defines the IPv4 or IPv6 address value.
@@ -1599,7 +1657,8 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         prefix:
-                          description: Prefix defines the IP address network prefix length.
+                          description: Prefix defines the IP address network prefix
+                            length.
                           maximum: 128
                           minimum: 1
                           type: integer
@@ -1610,7 +1669,8 @@ spec:
                       type: object
                     type: array
                   administrativeState:
-                    description: AdministrativeState defines the desired administrative state of the host
+                    description: AdministrativeState defines the desired administrative
+                      state of the host
                     enum:
                     - locked
                     - unlocked
@@ -1626,12 +1686,10 @@ spec:
                       This hierarchy can be defined in multiple layers; with lower layers
                       overriding attributes set in higher layers.
 
-
                       At configuration time, before a Host is configured, the hierarchy of
                       HostProfile resources is flattened to produce a single composite profile
                       that represents the final attributes as they are overridden down the
                       HostProfile hierarchy.
-
 
                       Once the HostProfile hierarchy is flattened to a composite profile.  The
                       Deployment Manager will further refine the profile to create a final
@@ -1640,7 +1698,6 @@ spec:
                       the composite profile with the initial default host attributes, and then
                       merges the individual host overrides into that result.  The process
                       can be illustrated as follows:
-
 
                               Host Defaults      +---------------------+
                                  |                                      \
@@ -1657,37 +1714,28 @@ spec:
                                  |                                    /
                               Host Overrides       +-----------------+
 
-
                       Merging two HostProfileSpec resources consists of merging the attributes
                       of a higher precedence profile into the attributes of a lower precedences
                       profile.  The rules for merging attributes are as follows.
 
-
                         1) A nil pointer is always overwritten by a non-nil pointer.
-
 
                         2) Two non-nil pointers are merged together according to the underlying
                            type.
 
-
                         2a) If the type pointed to is a primitive type (e.g., int, bool,
                             string, etc) then the higher precedence value is used).
-
 
                         2b) If the type pointed to is a structure then this same merge
                             procedure is repeated recursively on each field of the structure
                             with these same rules applying to each field.
 
-
                         2c) If the type pointed to is a slice/array then rule (3) is used.
-
 
                         2d) If the type pointed to is a map then higher precedence value is
                             used and the entire map is overwritten.
 
-
                         3) Two slices are merged together using the following sub-rules.
-
 
                         3a) If the elements of slices define the KeyEqual() method then an
                             attempt is made to try to merge equivalent element using this same
@@ -1696,10 +1744,8 @@ spec:
                             the list.  Elements appearing in the lower precedence list but not
                             in the higher precedence list are kept intact.
 
-
                         3b) If the elements of the slices do not define the KeyEqual() method
                             then they are simply concatenated together.
-
 
                         3c) An empty slice is handled as a special case that deletes the
                             contents of the lower precedence slice.  Do not confuse an empty
@@ -1780,7 +1826,8 @@ spec:
                     pattern: ^(|tty[0-9]+|ttyS[0-9]+(,\d+([a-zA-Z0-9]+)?)?|ttyUSB[0-9]+(,\d+([a-zA-Z0-9]+))?|lp[0-9]+)$
                     type: string
                   hwSettle:
-                    description: HwSettle defines the wait time for SCSI devices to show up.
+                    description: HwSettle defines the wait time for SCSI devices to
+                      show up.
                     pattern: ^[0-9]+$
                     type: string
                   installOutput:
@@ -1799,14 +1846,16 @@ spec:
                       host.
                     properties:
                       bond:
-                        description: Bond defines the list of Bond interfaces to be configured on a host.
+                        description: Bond defines the list of Bond interfaces to be
+                          configured on a host.
                         items:
                           description: |-
                             BondInfo defines the attributes specific to a single Bond
                             interface.
                           properties:
                             class:
-                              description: Class defines the intended usage of this interface by the system.
+                              description: Class defines the intended usage of this
+                                interface by the system.
                               enum:
                               - platform
                               - data
@@ -1847,19 +1896,22 @@ spec:
                                 type: string
                               type: array
                             mode:
-                              description: Mode defines the Bond interface aggregation mode.
+                              description: Mode defines the Bond interface aggregation
+                                mode.
                               enum:
                               - balanced
                               - active_standby
                               - 802.3ad
                               type: string
                             mtu:
-                              description: MTU defines the maximum transmit unit for this interface.
+                              description: MTU defines the maximum transmit unit for
+                                this interface.
                               maximum: 9216
                               minimum: 576
                               type: integer
                             name:
-                              description: Name defines the name of the interface to be configured.
+                              description: Name defines the name of the interface
+                                to be configured.
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
@@ -1889,7 +1941,8 @@ spec:
                               nullable: true
                               type: array
                             ptpRole:
-                              description: PTPRole defines the ptp role as master, slave, or none
+                              description: PTPRole defines the ptp role as master,
+                                slave, or none
                               enum:
                               - master
                               - slave
@@ -1904,7 +1957,8 @@ spec:
                               - layer2+3
                               type: string
                             uuid:
-                              description: The system assigned unique UUID value for the interface
+                              description: The system assigned unique UUID value for
+                                the interface
                               type: string
                           required:
                           - class
@@ -1923,7 +1977,8 @@ spec:
                             Ethernet interface.
                           properties:
                             class:
-                              description: Class defines the intended usage of this interface by the system.
+                              description: Class defines the intended usage of this
+                                interface by the system.
                               enum:
                               - platform
                               - data
@@ -1963,12 +2018,14 @@ spec:
                                 interface type is set to "vf".
                               type: integer
                             mtu:
-                              description: MTU defines the maximum transmit unit for this interface.
+                              description: MTU defines the maximum transmit unit for
+                                this interface.
                               maximum: 9216
                               minimum: 576
                               type: integer
                             name:
-                              description: Name defines the name of the interface to be configured.
+                              description: Name defines the name of the interface
+                                to be configured.
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
@@ -1988,7 +2045,8 @@ spec:
                                 this Ethernet interface.
                               properties:
                                 name:
-                                  description: SystemName defines the device name of the Ethernet port.
+                                  description: SystemName defines the device name
+                                    of the Ethernet port.
                                   maxLength: 255
                                   pattern: ^[a-zA-Z0-9\-_]+$
                                   type: string
@@ -2006,14 +2064,16 @@ spec:
                               nullable: true
                               type: array
                             ptpRole:
-                              description: PTPRole defines the ptp role as master, slave, or none
+                              description: PTPRole defines the ptp role as master,
+                                slave, or none
                               enum:
                               - master
                               - slave
                               - none
                               type: string
                             uuid:
-                              description: The system assigned unique UUID value for the interface
+                              description: The system assigned unique UUID value for
+                                the interface
                               type: string
                             vfCount:
                               description: |-
@@ -2035,14 +2095,16 @@ spec:
                           type: object
                         type: array
                       vf:
-                        description: VF defines the list of SR-IOV VF interfaces to be configured on a host.
+                        description: VF defines the list of SR-IOV VF interfaces to
+                          be configured on a host.
                         items:
                           description: |-
                             VFInfo defines the attributes specific to a single SR-IOV
                             vf interface.
                           properties:
                             class:
-                              description: Class defines the intended usage of this interface by the system.
+                              description: Class defines the intended usage of this
+                                interface by the system.
                               enum:
                               - platform
                               - data
@@ -2082,12 +2144,14 @@ spec:
                                 interface type is set to "vf".
                               type: integer
                             mtu:
-                              description: MTU defines the maximum transmit unit for this interface.
+                              description: MTU defines the maximum transmit unit for
+                                this interface.
                               maximum: 9216
                               minimum: 576
                               type: integer
                             name:
-                              description: Name defines the name of the interface to be configured.
+                              description: Name defines the name of the interface
+                                to be configured.
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
@@ -2112,17 +2176,20 @@ spec:
                               nullable: true
                               type: array
                             ptpRole:
-                              description: PTPRole defines the ptp role as master, slave, or none
+                              description: PTPRole defines the ptp role as master,
+                                slave, or none
                               enum:
                               - master
                               - slave
                               - none
                               type: string
                             uuid:
-                              description: The system assigned unique UUID value for the interface
+                              description: The system assigned unique UUID value for
+                                the interface
                               type: string
                             vfCount:
-                              description: VFCount defines the number of SRIOV virtual functions for this VF interface.
+                              description: VFCount defines the number of SRIOV virtual
+                                functions for this VF interface.
                               maximum: 256
                               minimum: 1
                               type: integer
@@ -2140,14 +2207,16 @@ spec:
                           type: object
                         type: array
                       vlan:
-                        description: VLAN defines the list of VLAN interfaces to be configured on a host.
+                        description: VLAN defines the list of VLAN interfaces to be
+                          configured on a host.
                         items:
                           description: |-
                             VLANInfo defines the attributes specific to a single VLAN
                             interface.
                           properties:
                             class:
-                              description: Class defines the intended usage of this interface by the system.
+                              description: Class defines the intended usage of this
+                                interface by the system.
                               enum:
                               - platform
                               - data
@@ -2187,12 +2256,14 @@ spec:
                                 interface type is set to "vf".
                               type: integer
                             mtu:
-                              description: MTU defines the maximum transmit unit for this interface.
+                              description: MTU defines the maximum transmit unit for
+                                this interface.
                               maximum: 9216
                               minimum: 576
                               type: integer
                             name:
-                              description: Name defines the name of the interface to be configured.
+                              description: Name defines the name of the interface
+                                to be configured.
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
@@ -2217,17 +2288,20 @@ spec:
                               nullable: true
                               type: array
                             ptpRole:
-                              description: PTPRole defines the ptp role as master, slave, or none
+                              description: PTPRole defines the ptp role as master,
+                                slave, or none
                               enum:
                               - master
                               - slave
                               - none
                               type: string
                             uuid:
-                              description: The system assigned unique UUID value for the interface
+                              description: The system assigned unique UUID value for
+                                the interface
                               type: string
                             vid:
-                              description: VID defines the VLAN ID value to be assigned to this VLAN interface.
+                              description: VID defines the VLAN ID value to be assigned
+                                to this VLAN interface.
                               maximum: 4095
                               minimum: 1
                               type: integer
@@ -2253,10 +2327,12 @@ spec:
                       resources that is running on this host.
                     type: object
                   location:
-                    description: Location defines the physical location of the host in the data centre.
+                    description: Location defines the physical location of the host
+                      in the data centre.
                     type: string
                   maxCPUMhzConfigured:
-                    description: MaxCPUMhzConfigured defines the maximum limit of the CPU mhz configured on the host.
+                    description: MaxCPUMhzConfigured defines the maximum limit of
+                      the CPU mhz configured on the host.
                     pattern: ^[1-9][0-9]*$
                     type: string
                   memory:
@@ -2278,14 +2354,16 @@ spec:
                               specific function.
                             properties:
                               function:
-                                description: Function defines the function for which to allocate a number of cores.
+                                description: Function defines the function for which
+                                  to allocate a number of cores.
                                 enum:
                                 - platform
                                 - vm
                                 - vswitch
                                 type: string
                               pageCount:
-                                description: PageCount defines the number of pages to allocate to a specific function.
+                                description: PageCount defines the number of pages
+                                  to allocate to a specific function.
                                 type: integer
                               pageSize:
                                 description: |-
@@ -2316,7 +2394,8 @@ spec:
                       type: object
                     type: array
                   personality:
-                    description: Personality defines the role to be assigned to the host
+                    description: Personality defines the role to be assigned to the
+                      host
                     enum:
                     - controller
                     - worker
@@ -2347,12 +2426,14 @@ spec:
                               specific function.
                             properties:
                               count:
-                                description: Count defines the number of cores to allocate to a specific function.
+                                description: Count defines the number of cores to
+                                  allocate to a specific function.
                                 maximum: 64
                                 minimum: 0
                                 type: integer
                               function:
-                                description: Function defines the function for which to allocate a number of cores.
+                                description: Function defines the function for which
+                                  to allocate a number of cores.
                                 enum:
                                 - platform
                                 - shared
@@ -2413,7 +2494,8 @@ spec:
                       therefore the host must be configured with valid addresses or configured
                       to for automatic address assignment from a platform network.
                     items:
-                      description: RouteInfo defines the attributes specific to a single route.
+                      description: RouteInfo defines the attributes specific to a
+                        single route.
                       properties:
                         gateway:
                           description: Gateway defines the next hop gateway IP address.
@@ -2426,17 +2508,20 @@ spec:
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
                         metric:
-                          description: Metric defines the route preference metric for this route.
+                          description: Metric defines the route preference metric
+                            for this route.
                           maximum: 255
                           minimum: 1
                           type: integer
                         prefix:
-                          description: Prefix defines the destination network address prefix length.
+                          description: Prefix defines the destination network address
+                            prefix length.
                           maximum: 128
                           minimum: 0
                           type: integer
                         subnet:
-                          description: Subnet defines the destination network address subnet.
+                          description: Subnet defines the destination network address
+                            subnet.
                           type: string
                       required:
                       - gateway
@@ -2449,9 +2534,11 @@ spec:
                     description: Storage defines the storage attributes for the host
                     properties:
                       filesystems:
-                        description: FileSystems defines the list of file systems to be defined on the host.
+                        description: FileSystems defines the list of file systems
+                          to be defined on the host.
                         items:
-                          description: FileSystemInfo defines the attributes of a single host filesystem resource.
+                          description: FileSystemInfo defines the attributes of a
+                            single host filesystem resource.
                           properties:
                             name:
                               description: |-
@@ -2485,7 +2572,8 @@ spec:
                           node.
                         properties:
                           size:
-                            description: Size represents the storage allocated to the monitor in gibibytes
+                            description: Size represents the storage allocated to
+                              the monitor in gibibytes
                             maximum: 40
                             minimum: 20
                             type: integer
@@ -2495,7 +2583,8 @@ spec:
                           OSDs defines the list of OSD devices to be created on the host.  This is
                           only applicable to storage related nodes.
                         items:
-                          description: OSDInfo defines attributes specific to a single OSD device.
+                          description: OSDInfo defines attributes specific to a single
+                            OSD device.
                           properties:
                             cluster:
                               description: |-
@@ -2504,7 +2593,8 @@ spec:
                               maxLength: 255
                               type: string
                             function:
-                              description: Function defines the function to be assigned to the OSD device.
+                              description: Function defines the function to be assigned
+                                to the OSD device.
                               enum:
                               - osd
                               - journal
@@ -2521,7 +2611,8 @@ spec:
                                   maxLength: 255
                                   type: string
                                 size:
-                                  description: Size defines the size of the OSD journal in gibibytes.
+                                  description: Size defines the size of the OSD journal
+                                    in gibibytes.
                                   minimum: 1
                                   type: integer
                               required:
@@ -2529,7 +2620,8 @@ spec:
                               - size
                               type: object
                             path:
-                              description: Path defines the disk device path to use as backing for the OSD device.
+                              description: Path defines the disk device path to use
+                                as backing for the OSD device.
                               maxLength: 4095
                               pattern: ^/dev/.+$
                               type: string
@@ -2540,7 +2632,8 @@ spec:
                         nullable: true
                         type: array
                       volumeGroups:
-                        description: VolumeGroups defines the list of volume groups to be created on the host.
+                        description: VolumeGroups defines the list of volume groups
+                          to be created on the host.
                         items:
                           description: |-
                             VolumeGroupInfo defines the attributes specific to a single
@@ -2555,14 +2648,17 @@ spec:
                               - thick
                               type: string
                             name:
-                              description: SystemName defines the name of the logical volume group
+                              description: SystemName defines the name of the logical
+                                volume group
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_]+$
                               type: string
                             physicalVolumes:
-                              description: PhysicalVolumes defines the list of volumes to be created on the host.
+                              description: PhysicalVolumes defines the list of volumes
+                                to be created on the host.
                               items:
-                                description: PhysicalVolumeInfo defines attributes of a physical volume.
+                                description: PhysicalVolumeInfo defines attributes
+                                  of a physical volume.
                                 properties:
                                   path:
                                     description: |-
@@ -2579,7 +2675,8 @@ spec:
                                     minimum: 1
                                     type: integer
                                   type:
-                                    description: Type defines the type of physical volume.
+                                    description: Type defines the type of physical
+                                      volume.
                                     enum:
                                     - disk
                                     - partition
@@ -2628,10 +2725,12 @@ spec:
             description: HostStatus defines the observed state of Host
             properties:
               administrativeState:
-                description: AdministrativeState is the last known administrative state of the host.
+                description: AdministrativeState is the last known administrative
+                  state of the host.
                 type: string
               availabilityStatus:
-                description: AvailabilityStatus is the last known availability status of the host.
+                description: AvailabilityStatus is the last known availability status
+                  of the host.
                 type: string
               configurationUpdated:
                 description: Value for configuration is updated or not
@@ -2666,7 +2765,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: InSync defines whether the desired state matches the operational state.
+                description: InSync defines whether the desired state matches the
+                  operational state.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -2681,7 +2781,8 @@ spec:
                 format: int64
                 type: integer
               operationalStatus:
-                description: OperationalStatus is the last known operational status of the host.
+                description: OperationalStatus is the last known operational status
+                  of the host.
                 type: string
               reconciled:
                 description: |-
@@ -2709,7 +2810,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: platformnetworks.starlingx.windriver.com
 spec:
@@ -2756,7 +2857,9 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "PlatformNetwork defines the attributes that represent the network level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX API endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
+        description: "PlatformNetwork defines the attributes that represent the network
+          level\nattributes of a StarlingX system.  This is a composition of the following\nStarlingX
+          API endpoints.\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#networks\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#address-pools"
         properties:
           apiVersion:
             description: |-
@@ -2838,7 +2941,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -2864,7 +2968,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: ptpinstances.starlingx.windriver.com
 spec:
@@ -2930,7 +3034,8 @@ spec:
                   items:
                     type: string
                   type: array
-                description: Parameters contains a list of parameters grouped by section assigned to the ptp instance
+                description: Parameters contains a list of parameters grouped by section
+                  assigned to the ptp instance
                 type: object
               service:
                 description: Serivce defines the service type of the ptp instance
@@ -2972,7 +3077,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -3006,7 +3112,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: ptpinterfaces.starlingx.windriver.com
 spec:
@@ -3067,12 +3173,14 @@ spec:
             description: PtpInterfaceSpec defines the desired state of PtpInterface
             properties:
               parameters:
-                description: InterfaceParameters contains a list of parameters assigned to the ptp interface
+                description: InterfaceParameters contains a list of parameters assigned
+                  to the ptp interface
                 items:
                   type: string
                 type: array
               ptpinstance:
-                description: ptpinstance defines the ptp instance assigned to the ptp interface
+                description: ptpinstance defines the ptp instance assigned to the
+                  ptp interface
                 maxLength: 255
                 pattern: ^[a-zA-Z0-9\-_]+$
                 type: string
@@ -3107,7 +3215,8 @@ spec:
                   once this resource has been provisioned into the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -3141,7 +3250,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.namespace }}-serving-cert
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
     helm.sh/resource-policy: keep
   name: systems.starlingx.windriver.com
 spec:
@@ -3192,7 +3301,9 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: "System defines the attributes that represent the system level attributes\nof a StarlingX system.  This is a composition of the following StarlingX\nAPI endpoints.\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
+        description: "System defines the attributes that represent the system level
+          attributes\nof a StarlingX system.  This is a composition of the following
+          StarlingX\nAPI endpoints.\n\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#dns\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#ntp\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#system-certificate-configuration\n\thttps://docs.starlingx.io/api-ref/stx-config/api-ref-sysinv-v1-config.html#storage-backends"
         properties:
           apiVersion:
             description: |-
@@ -3281,7 +3392,8 @@ spec:
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
               license:
-                description: License is a reference to a license file that must be installed.
+                description: License is a reference to a license file that must be
+                  installed.
                 properties:
                   secret:
                     description: |-
@@ -3292,7 +3404,8 @@ spec:
                 - secret
                 type: object
               location:
-                description: Location is a short description of the system's physical location.
+                description: Location is a short description of the system's physical
+                  location.
                 maxLength: 255
                 pattern: ^[a-zA-Z0-9\-_\. ]+$
                 type: string
@@ -3313,7 +3426,8 @@ spec:
                 nullable: true
                 type: array
               ptp:
-                description: PTP defines the Precision Time Protocol configuration for the system.
+                description: PTP defines the Precision Time Protocol configuration
+                  for the system.
                 properties:
                   mechanism:
                     description: |-
@@ -3324,7 +3438,8 @@ spec:
                     - e2e
                     type: string
                   mode:
-                    description: Mode defines the precision time protocol mode of the system.
+                    description: Mode defines the precision time protocol mode of
+                      the system.
                     enum:
                     - hardware
                     - software
@@ -3347,28 +3462,34 @@ spec:
                     service parameter to be installed via the system API.
                   properties:
                     paramname:
-                      description: ParamName identifies the name for this service parameter
+                      description: ParamName identifies the name for this service
+                        parameter
                       maxLength: 255
                       type: string
                     paramvalue:
-                      description: ParamValue identifies the value for this service parameter
+                      description: ParamValue identifies the value for this service
+                        parameter
                       maxLength: 4096
                       type: string
                     personality:
-                      description: Personality identifies the personality for this service parameter
+                      description: Personality identifies the personality for this
+                        service parameter
                       maxLength: 255
                       type: string
                     resource:
-                      description: Resource identifies the resource for this service parameter
+                      description: Resource identifies the resource for this service
+                        parameter
                       maxLength: 255
                       type: string
                     section:
-                      description: Section identifies the section for this service parameter
+                      description: Section identifies the section for this service
+                        parameter
                       maxLength: 128
                       pattern: ^[a-zA-Z0-9\-_]+$
                       type: string
                     service:
-                      description: Service identifies the service for this service parameter
+                      description: Service identifies the service for this service
+                        parameter
                       maxLength: 16
                       pattern: ^[a-zA-Z0-9\-_]+$
                       type: string
@@ -3386,7 +3507,8 @@ spec:
                   system.
                 properties:
                   backends:
-                    description: Backends is a set of backend storage methods to be configured.  Only
+                    description: Backends is a set of backend storage methods to be
+                      configured.  Only
                     items:
                       properties:
                         deployment:
@@ -3400,7 +3522,8 @@ spec:
                           - open
                           type: string
                         name:
-                          description: SystemName uniquely identifies the storage backend instance.
+                          description: SystemName uniquely identifies the storage
+                            backend instance.
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_]+$
                           type: string
@@ -3449,7 +3572,8 @@ spec:
                     nullable: true
                     type: array
                   drbd:
-                    description: DRBD defines the set of DRBD configuration attributes for the system.
+                    description: DRBD defines the set of DRBD configuration attributes
+                      for the system.
                     properties:
                       linkUtilization:
                         description: |-
@@ -3462,14 +3586,16 @@ spec:
                     - linkUtilization
                     type: object
                   filesystems:
-                    description: Filesystems defines the set of controller file system definitions.
+                    description: Filesystems defines the set of controller file system
+                      definitions.
                     items:
                       description: |-
                         ControllerFileSystemInfo defines the attributes of a single controller
                         filesystem resource.
                       properties:
                         name:
-                          description: Name defines the system defined name of the filesystem resource.
+                          description: Name defines the system defined name of the
+                            filesystem resource.
                           type: string
                         size:
                           minimum: 1
@@ -3519,7 +3645,8 @@ spec:
                 description: ID defines the unique identifier assigned by the system.
                 type: string
               inSync:
-                description: Defines whether the resource has been provisioned on the target system.
+                description: Defines whether the resource has been provisioned on
+                  the target system.
                 type: boolean
               observedGeneration:
                 description: |-
@@ -3554,10 +3681,12 @@ spec:
                 description: Strategy monitor retry count for Day 2 operation
                 type: integer
               systemMode:
-                description: SystemMode defines the current system mode reported by the system API.
+                description: SystemMode defines the current system mode reported by
+                  the system API.
                 type: string
               systemType:
-                description: SystemType defines the current system type reported by the system API.
+                description: SystemType defines the current system type reported by
+                  the system API.
                 type: string
             type: object
         type: object

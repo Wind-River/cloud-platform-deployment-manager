@@ -1,6 +1,6 @@
-bases:
+resources:
   - ../default
 
 patches:
-  - geo-location.yaml
+  - path: geo-location.yaml
 

@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: hostprofiles.starlingx.windriver.com
 spec:
   group: starlingx.windriver.com
@@ -25,7 +25,7 @@ spec:
         description: "HostProfile defines the attributes that represent the host level\nattributes
           of a StarlingX system.  This is represents the bulk of the\nsystem API attributes
           and is the most complex part of the schema definition.\nRefer the full list
-          of API documentation here:\n\n\n\thttps://docs.starlingx.io/api-ref/stx-config/index.html"
+          of API documentation here:\n\n\thttps://docs.starlingx.io/api-ref/stx-config/index.html"
         properties:
           apiVersion:
             description: |-
@@ -96,12 +96,10 @@ spec:
                   This hierarchy can be defined in multiple layers; with lower layers
                   overriding attributes set in higher layers.
 
-
                   At configuration time, before a Host is configured, the hierarchy of
                   HostProfile resources is flattened to produce a single composite profile
                   that represents the final attributes as they are overridden down the
                   HostProfile hierarchy.
-
 
                   Once the HostProfile hierarchy is flattened to a composite profile.  The
                   Deployment Manager will further refine the profile to create a final
@@ -110,7 +108,6 @@ spec:
                   the composite profile with the initial default host attributes, and then
                   merges the individual host overrides into that result.  The process
                   can be illustrated as follows:
-
 
                           Host Defaults      +---------------------+
                              |                                      \
@@ -127,37 +124,28 @@ spec:
                              |                                    /
                           Host Overrides       +-----------------+
 
-
                   Merging two HostProfileSpec resources consists of merging the attributes
                   of a higher precedence profile into the attributes of a lower precedences
                   profile.  The rules for merging attributes are as follows.
 
-
                     1) A nil pointer is always overwritten by a non-nil pointer.
-
 
                     2) Two non-nil pointers are merged together according to the underlying
                        type.
 
-
                     2a) If the type pointed to is a primitive type (e.g., int, bool,
                         string, etc) then the higher precedence value is used).
-
 
                     2b) If the type pointed to is a structure then this same merge
                         procedure is repeated recursively on each field of the structure
                         with these same rules applying to each field.
 
-
                     2c) If the type pointed to is a slice/array then rule (3) is used.
-
 
                     2d) If the type pointed to is a map then higher precedence value is
                         used and the entire map is overwritten.
 
-
                     3) Two slices are merged together using the following sub-rules.
-
 
                     3a) If the elements of slices define the KeyEqual() method then an
                         attempt is made to try to merge equivalent element using this same
@@ -166,10 +154,8 @@ spec:
                         the list.  Elements appearing in the lower precedence list but not
                         in the higher precedence list are kept intact.
 
-
                     3b) If the elements of the slices do not define the KeyEqual() method
                         then they are simply concatenated together.
-
 
                     3c) An empty slice is handled as a special case that deletes the
                         contents of the lower precedence slice.  Do not confuse an empty

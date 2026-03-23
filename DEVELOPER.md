@@ -72,6 +72,8 @@ base. There is no need to install kubebuilder to compile existing code of deploy
 manager. But kubebuilder is needed to add new type or new webhook.
 To install the latest kubebuilder,
 
+After 26.03, code were migrated to Kubebuilder v4.
+
 ```bash
 cd ${GOPATH}/downloads
 curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)

@@ -1,5 +1,5 @@
-bases:
+resources:
   - ../../default
 
 patches:
-  - ethernet_interfaces_with_rate_limit.yaml
+  - path: ethernet_interfaces_with_rate_limit.yaml
