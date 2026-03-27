@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -22,12 +22,12 @@ var _ = Describe("PtpInstance controller", func() {
 	)
 
 	Describe("PtpInstanceSpec", func() {
-		Context("UnmarshalJSON", func() {
+		Context("when calling UnmarshalJSON", func() {
 			It("Should unmarshall if parameters are omit", func() {
 				var spec starlingxv1.PtpInstanceSpec
 				err := json.Unmarshal([]byte(`{"service": "ptp4l"}`), &spec)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.InstanceParameters).To(BeNil())
 
 				Expect(spec.Service).To(Equal("ptp4l"))
@@ -39,7 +39,7 @@ var _ = Describe("PtpInstance controller", func() {
 
 				err := json.Unmarshal([]byte(`{"service": "ptp4l", "parameters": []}`), &spec)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.InstanceParameters).To(Equal(expected))
 
 				Expect(spec.Service).To(Equal("ptp4l"))
@@ -54,7 +54,7 @@ var _ = Describe("PtpInstance controller", func() {
 				var spec starlingxv1.PtpInstanceSpec
 				err := json.Unmarshal([]byte(jsonSpec), &spec)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.InstanceParameters).To(Equal(expected))
 
 				Expect(spec.Service).To(Equal("ptp4l"))
@@ -72,7 +72,7 @@ var _ = Describe("PtpInstance controller", func() {
 				var spec starlingxv1.PtpInstanceSpec
 				err := json.Unmarshal([]byte(jsonSpec), &spec)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.InstanceParameters).To(Equal(expected))
 
 				Expect(spec.Service).To(Equal("ptp4l"))
@@ -94,7 +94,7 @@ var _ = Describe("PtpInstance controller", func() {
 				var spec starlingxv1.PtpInstanceSpec
 				err := json.Unmarshal([]byte(jsonSpec), &spec)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.InstanceParameters).To(Equal(expected))
 
 				Expect(spec.Service).To(Equal("ptp4l"))
@@ -104,7 +104,7 @@ var _ = Describe("PtpInstance controller", func() {
 
 	Describe("PtpInstance", func() {
 		Context("with single section data", func() {
-			It("Should created successfully", func() {
+			It("Should be created successfully", func() {
 				ctx := context.Background()
 				key := types.NamespacedName{
 					Name:      "foo",
@@ -150,7 +150,7 @@ var _ = Describe("PtpInstance controller", func() {
 
 	Describe("PtpInstance", func() {
 		Context("with multiple section data and repetitive UDPv4, UDPv6, L2", func() {
-			It("Should created successfully", func() {
+			It("Should be created successfully", func() {
 				ctx := context.Background()
 				key := types.NamespacedName{
 					Name:      "bar",
@@ -228,7 +228,7 @@ var _ = Describe("PtpInstance controller", func() {
 						},
 					}}
 				err := (k8sClient.Create(ctx, created))
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("duplicate parameter keys are not allowed for table_id=2."))
 			})
 		})

@@ -1,0 +1,9 @@
+output:
+  verbose: true
+
+run:
+  timeout: 15m
+
+linters:
+  enable:
+    - ginkgolinter

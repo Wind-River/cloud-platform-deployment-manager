@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -43,162 +43,162 @@ func GetAddrPool(ip_family string) *starlingxv1.AddressPool {
 	}
 }
 
-var _ = Describe("addresspool_webhook functions", func() {
+var _ = Describe("AddressPoolWebhook", func() {
 
-	Describe("validateAddressPool function is tested", func() {
-		Context("IPv4 Data is correct", func() {
-			It("validates succesfully without error", func() {
+	Describe("ValidateAddressPool", func() {
+		Context("when IPv4 data is correct", func() {
+			It("should validate successfully without error", func() {
 				r := GetAddrPool("ipv4")
 				err := validateAddressPool(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
-		Context("IPv6 Data is correct", func() {
-			It("validates succesfully without error", func() {
+		Context("when IPv6 data is correct", func() {
+			It("should validate successfully without error", func() {
 				r := GetAddrPool("ipv6")
 				err := validateAddressPool(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
-		Context("Subnet is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when subnet is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Subnet = invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Gateway is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when gateway is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Gateway = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("FloatingAddress is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when FloatingAddress is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.FloatingAddress = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Controller0Address is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when Controller0Address is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Controller0Address = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Controller1Address is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when Controller1Address is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Controller1Address = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Allocation Range Start is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when Allocation Range Start is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Allocation.Ranges[0].Start = invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Allocation Range End is not valid IPv4 / IPv6", func() {
-			It("validation fails with error", func() {
+		Context("when Allocation Range End is not valid IPv4 or IPv6", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "not-valid-ipv4-ipv6"
 				r.Spec.Allocation.Ranges[0].End = invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Gateway is not same IP family as subnet", func() {
-			It("validation fails with error", func() {
+		Context("when gateway is not same IP family as subnet", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.Gateway = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("FloatingAddress is not same IP family as subnet", func() {
-			It("validation fails with error", func() {
+		Context("when FloatingAddress is not same IP family as subnet", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.FloatingAddress = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Controller0Address is not same IP family as subnet", func() {
-			It("validation fails with error", func() {
+		Context("when Controller0Address is not same IP family as subnet", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.Controller0Address = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Controller1Address is not same IP family as subnet", func() {
-			It("validation fails with error", func() {
+		Context("when Controller1Address is not same IP family as subnet", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.Controller1Address = &invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Allocation Range Start & End is not from same IP family", func() {
-			It("validation fails with error", func() {
+		Context("when Allocation Range Start and End is not from same IP family", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.Allocation.Ranges[0].End = invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Allocation Range Start & End is not from same IP family as subnet", func() {
-			It("validation fails with error", func() {
+		Context("when Allocation Range Start and End is not from same IP family as subnet", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				invalid_ip := "fcff:1:2::3"
 				r.Spec.Allocation.Ranges[0].Start = invalid_ip
 				r.Spec.Allocation.Ranges[0].End = invalid_ip
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("Invalid Prefix For IP Family", func() {
-			It("validation fails with error", func() {
+		Context("when prefix is invalid for IP family", func() {
+			It("should fail validation with error", func() {
 				r := GetAddrPool("ipv4")
 				r.Spec.Prefix = 33
 				err := validateAddressPool(r)
-				Expect(err).ShouldNot(BeNil())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 	})

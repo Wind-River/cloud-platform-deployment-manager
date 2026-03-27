@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -12,11 +12,11 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 )
 
-var _ = Describe("hostProfile_webhook functions", func() {
+var _ = Describe("HostProfileWebhook", func() {
 
-	Describe("validateMemoryFunction function is tested", func() {
+	Describe("ValidateMemoryFunction", func() {
 		Context("When memory function is platform and size is not 4kb", func() {
-			It("Gives the platform memory must be allocated from 4K pages error", func() {
+			It("should return platform memory must be allocated from 4K pages error", func() {
 				node := starlingxv1.MemoryNodeInfo{}
 				function := starlingxv1.MemoryFunctionInfo{
 					Function: memory.MemoryFunctionPlatform,
@@ -28,7 +28,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 		Context("When memory function is not platform and size is 4kb", func() {
-			It("4K pages can only be reserved for platform memory error is thrown", func() {
+			It("should return 4K pages can only be reserved for platform memory error", func() {
 				node := starlingxv1.MemoryNodeInfo{}
 				function := starlingxv1.MemoryFunctionInfo{
 					Function: "random func",
@@ -40,21 +40,21 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 		Context("When memory function is  platform and size is 4kb", func() {
-			It("Validation of memory function is succesfull without error", func() {
+			It("should validate memory function successfully without error", func() {
 				node := starlingxv1.MemoryNodeInfo{}
 				function := starlingxv1.MemoryFunctionInfo{
 					Function: memory.MemoryFunctionPlatform,
 					PageSize: string(starlingxv1.PageSize4K),
 				}
 				err := validateMemoryFunction(node, function)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
 
-	Describe("validateProcessorInfo function is tested", func() {
+	Describe("ValidateProcessorInfo", func() {
 		Context("When no duplicate processor entries are present", func() {
-			It("validates without throwing error", func() {
+			It("should validate without error", func() {
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
 						Processors: starlingxv1.ProcessorNodeList{
@@ -70,12 +70,12 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					},
 				}
 				err := validateProcessorInfo(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
 		Context("When there are duplicate processor entries", func() {
-			It("Throws the duplicate processor entries are not allowed error", func() {
+			It("should return duplicate processor entries are not allowed error", func() {
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
 						Processors: starlingxv1.ProcessorNodeList{
@@ -102,9 +102,9 @@ var _ = Describe("hostProfile_webhook functions", func() {
 		})
 	})
 
-	Describe("validatePhysicalVolumeInfo function is tested", func() {
+	Describe("ValidatePhysicalVolumeInfo", func() {
 		Context("When partition size is nil ", func() {
-			It("Throws partition specifications must include a 'size' attribute error", func() {
+			It("should return partition specifications must include a size attribute error", func() {
 				obj := &starlingxv1.PhysicalVolumeInfo{
 					Type: physicalvolumes.PVTypePartition,
 				}
@@ -114,20 +114,20 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 		Context("When the volume type is not partition", func() {
-			It("Successful with no error", func() {
+			It("should succeed without error", func() {
 				obj := &starlingxv1.PhysicalVolumeInfo{
 					Type: "randomType",
 				}
 				err := validatePhysicalVolumeInfo(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
 
-	Describe("validateMemoryInfo function is tested", func() {
+	Describe("ValidateMemoryInfo", func() {
 		//TBD: when duplicate memory entries are present.
 		Context("When no duplicate memory entries are present", func() {
-			It("Validates the memory info without throwing any error", func() {
+			It("should validate memory info without error", func() {
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
 						Memory: starlingxv1.MemoryNodeList{
@@ -145,11 +145,11 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					},
 				}
 				err := validateMemoryInfo(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When duplicate memory entries are present", func() {
-			It("Validates the memory info and throws error", func() {
+			It("should return error when validating memory info", func() {
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
 						Memory: starlingxv1.MemoryNodeList{
@@ -177,9 +177,9 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateVolumeGroupInfo function is tested", func() {
+	Describe("ValidateVolumeGroupInfo", func() {
 		Context("When the vloumeGroup info has partition with size attr", func() {
-			It("Successfully validates the VolumeGroupInfo without errors", func() {
+			It("should validate VolumeGroupInfo successfully without errors", func() {
 				size := 1
 				obj := &starlingxv1.VolumeGroupInfo{
 					PhysicalVolumes: starlingxv1.PhysicalVolumeList{
@@ -196,11 +196,11 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					},
 				}
 				err := validateVolumeGroupInfo(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When the vloumeGroup info has partition without size attr", func() {
-			It("Throws the partition specifications must include a 'size' attribute error", func() {
+			It("should return partition specifications must include a size attribute error", func() {
 				size := 1
 				obj := &starlingxv1.VolumeGroupInfo{
 					PhysicalVolumes: starlingxv1.PhysicalVolumeList{
@@ -221,9 +221,9 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateStorageInfo function is tested", func() {
+	Describe("ValidateStorageInfo", func() {
 		Context("When there is size attr present with partition type physcial vol", func() {
-			It("Succesfully validates Storage Info without error", func() {
+			It("should validate Storage Info successfully without error", func() {
 				size := 1
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
@@ -249,13 +249,13 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					},
 				}
 				err := validateStorageInfo(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
-	Describe("validateHostProfile function is tested", func() {
+	Describe("ValidateHostProfile", func() {
 		Context("When the spec base is empty", func() {
-			It("Throws profile base name must not be empty error", func() {
+			It("should return profile base name must not be empty error", func() {
 				size := 1
 				baseEmpty := ""
 				obj := &starlingxv1.HostProfile{
@@ -288,7 +288,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 		Context("When the spec base is empty", func() {
-			It("Throws profile base name must not be empty error", func() {
+			It("should return profile base name must not be empty error", func() {
 				baseEmpty := ""
 				obj := &starlingxv1.HostProfile{
 					Spec: starlingxv1.HostProfileSpec{
@@ -301,7 +301,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 			})
 		})
 		Context("When the spec base is non-empty", func() {
-			It("Successfully validates Host Profile without any error", func() {
+			It("should validate Host Profile successfully without any error", func() {
 				size := 1
 				base := "base"
 				obj := &starlingxv1.HostProfile{
@@ -361,7 +361,7 @@ var _ = Describe("hostProfile_webhook functions", func() {
 					},
 				}
 				err := validateHostProfile(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

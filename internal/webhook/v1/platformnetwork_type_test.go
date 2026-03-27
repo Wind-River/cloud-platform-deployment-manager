@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -20,7 +20,7 @@ var _ = Describe("Platformnetwork controller", func() {
 		interval = time.Millisecond * 500
 	)
 
-	Context("PlatformNetwork with all data", func() {
+	Context("with PlatformNetwork data", func() {
 		It("Should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
@@ -66,7 +66,7 @@ var _ = Describe("Platformnetwork controller", func() {
 		})
 	})
 
-	Context("Create PlatformNetwork Without NetworkType", func() {
+	Context("when creating PlatformNetwork without NetworkType", func() {
 		It("Should fail", func() {
 			ctx := context.Background()
 			created := &starlingxv1.PlatformNetwork{
@@ -83,8 +83,8 @@ var _ = Describe("Platformnetwork controller", func() {
 		})
 	})
 
-	Context("Create PlatformNetwork Without Dynamic", func() {
-		It("PlatformNetwork.Spec.Dynamic should be false", func() {
+	Context("when creating PlatformNetwork without Dynamic", func() {
+		It("should set PlatformNetwork.Spec.Dynamic to false", func() {
 			ctx := context.Background()
 			created := &starlingxv1.PlatformNetwork{
 				ObjectMeta: metav1.ObjectMeta{
@@ -112,7 +112,7 @@ var _ = Describe("Platformnetwork controller", func() {
 		})
 	})
 
-	Context("Create PlatformNetwork Without AssociatedAddressPools", func() {
+	Context("when creating PlatformNetwork without AssociatedAddressPools", func() {
 		It("Should fail", func() {
 			ctx := context.Background()
 			created := &starlingxv1.PlatformNetwork{
@@ -129,7 +129,7 @@ var _ = Describe("Platformnetwork controller", func() {
 		})
 	})
 
-	Context("Create PlatformNetwork With Random NetworkType", func() {
+	Context("when creating PlatformNetwork with random NetworkType", func() {
 		It("Should fail", func() {
 			ctx := context.Background()
 			created := &starlingxv1.PlatformNetwork{

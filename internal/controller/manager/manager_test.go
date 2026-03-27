@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2025-2026 Wind River Systems, Inc. */
 
 package manager
 
@@ -9,7 +9,7 @@ import (
 )
 
 var _ = Describe("Manager utils", func() {
-	Describe("getNextCount utility", func() {
+	Describe("Function getNextCount", func() {
 		Context("with a count value", func() {
 			It("should return the next value", func() {
 				type args struct {

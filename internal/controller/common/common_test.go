@@ -33,7 +33,7 @@ var _ = Describe("Common utils", func() {
 			request = reconcile.Request{}
 		})
 		Context("when error is ErrResourceStatusDependency", func() {
-			It("should log info and return RetryValidationError", func() {
+			It("should log info and return RetryTransientError", func() {
 				testError := ErrResourceStatusDependency{BaseError{"Test for status dependency"}}
 				result, _ := testHandler.HandleReconcilerError(request, testError)
 
@@ -44,7 +44,7 @@ var _ = Describe("Common utils", func() {
 			})
 		})
 		Context("when error is ErrResourceConfigurationDependency", func() {
-			It("should log error and return RetryValidationError", func() {
+			It("should log error and return RetryTransientError", func() {
 				testError := ErrResourceConfigurationDependency{BaseError{"Test for config dependency"}}
 				result, _ := testHandler.HandleReconcilerError(request, testError)
 
@@ -54,8 +54,8 @@ var _ = Describe("Common utils", func() {
 				Expect(sink.message).To(Equal("resource configuration error"))
 			})
 		})
-		Context("when error is ErrResourceConfigurationDependency", func() {
-			It("should log error and return RetryValidationError", func() {
+		Context("when error is NewWaitForMonitor", func() {
+			It("should log info and return RetryNever", func() {
 				testError := manager.NewWaitForMonitor("Test for waiting monitor")
 				result, _ := testHandler.HandleReconcilerError(request, testError)
 
@@ -111,8 +111,8 @@ var _ = Describe("Common utils", func() {
 	})
 
 	Describe("Test removeDataTypes function", func() {
-		Context("When the constant of dataType float64 is given", func() {
-			It("It returns the constant without dataType", func() {
+		Context("when the constant of dataType float64 is given", func() {
+			It("should return the constant without dataType", func() {
 				input1 := "float64(1500)"
 				expected1 := "1500"
 				out1 := removeDataTypes(input1)
@@ -122,8 +122,8 @@ var _ = Describe("Common utils", func() {
 	})
 
 	Describe("Test searchParameters", func() {
-		Context("When the non empty lines are given", func() {
-			It("Should expect result as follows", func() {
+		Context("when the non empty lines are given", func() {
+			It("should expect result as follows", func() {
 
 				// Define test input data
 				lines := []string{
@@ -170,8 +170,8 @@ var _ = Describe("Common utils", func() {
 	})
 
 	Describe("Test processLines", func() {
-		Context("When there given non empty lines", func() {
-			It("Should gather delta config", func() {
+		Context("when there are non empty lines given", func() {
+			It("should gather delta config", func() {
 				lines := []string{"line1", "line2", "line3"}
 				parameters := map[string]interface{}{}
 				expectedResult := ""

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022-2026 Wind River Systems, Inc. */
 package controller
 
 import (
@@ -20,8 +20,8 @@ var _ = Describe("Platformnetwork controller", func() {
 		interval = time.Millisecond * 500
 	)
 
-	Context("PlatformNetwork with data", func() {
-		It("Should created successfully", func() {
+	Context("with PlatformNetwork data", func() {
+		It("should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",

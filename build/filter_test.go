@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2026 Wind River Systems, Inc. */
 
 package build
 
@@ -22,7 +22,7 @@ var _ = Describe("Test filters utilities:", func() {
 	Describe("Test ServiceParameterFilter", func() {
 		system := v1.System{}
 		deployment := Deployment{}
-		Context("If default service parameter fileter", func() {
+		Context("when filtering default service parameters", func() {
 			It("Should filter defaults", func() {
 				parameters := v1.ServiceParameterList{}
 				for _, param := range utils.DefaultParameters {
@@ -44,7 +44,7 @@ var _ = Describe("Test filters utilities:", func() {
 				system.Spec.ServiceParameters = append(parameters, sp)
 				spFilter := ServiceParameterFilter{}
 				err := spFilter.Filter(&system, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				got := system.Spec.ServiceParameters
 				expected := v1.ServiceParameterList{sp}
@@ -52,8 +52,8 @@ var _ = Describe("Test filters utilities:", func() {
 			})
 		})
 
-		Context("If no service parameter filter", func() {
-			It("all should be filtered", func() {
+		Context("when there is no service parameter filter", func() {
+			It("should filter all", func() {
 				list := make(v1.ServiceParameterList, 0)
 				for _, param := range utils.DefaultParameters {
 					sp := v1.ServiceParameterInfo{
@@ -73,10 +73,10 @@ var _ = Describe("Test filters utilities:", func() {
 				//the default service parameter filter should be always applied
 				spFilter := ServiceParameterFilter{}
 				err := spFilter.Filter(&system, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				noSpFilter := NoServiceParameterFilter{}
 				err = noSpFilter.Filter(&system, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				got := system.Spec.ServiceParameters
 				Expect(got).To(BeNil())
 			})
@@ -151,7 +151,7 @@ var _ = Describe("Test filters utilities:", func() {
 			populatespec(hostinfo, profile, host)
 			It("should not remove the kernel parameter from the spec", func() {
 				err := kernelfilter.Filter(profile, host, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Spec.Kernel).NotTo(BeNil(),
 					"Kernel parameter should not be Nil")
 			})
@@ -173,7 +173,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 			It("should remove the kernel parameter from the spec", func() {
 				err := kernelfilter.Filter(profile, host, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Spec.Kernel).To(BeNil(),
 					"Kernel parameter should be Nil")
 			})
@@ -195,7 +195,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 			It("should not remove the kernel parameter from the spec", func() {
 				err := kernelfilter.Filter(profile, host, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Spec.Kernel).NotTo(BeNil(),
 					"Kernel parameter should not be Nil")
 			})
@@ -217,7 +217,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 			It("should remove the kernel parameter from the spec", func() {
 				err := kernelfilter.Filter(profile, host, &deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Spec.Kernel).To(BeNil(),
 					"Kernel parameter should be Nil")
 			})
@@ -266,11 +266,11 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 
 		Context("When core network filter is applied", func() {
-			It("deletes only oam/mgmt/admin platform networks", func() {
+			It("should delete only oam/mgmt/admin platform networks", func() {
 				err := coreNetworkFilter.Filter(deployment.PlatformNetworks[0], &deployment)
-				Expect(err).To(BeNil())
-				Expect(len(deployment.PlatformNetworks)).To(Equal(1), "CoreNetworkFilter should not delete any platform networks other than oam/mgmt/admin")
-				Expect(len(deployment.AddressPools)).To(Equal(2))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(deployment.PlatformNetworks).To(HaveLen(1), "CoreNetworkFilter should not delete any platform networks other than oam/mgmt/admin")
+				Expect(deployment.AddressPools).To(HaveLen(2))
 			})
 		})
 
@@ -278,7 +278,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test  fileSystemFilter", func() {
 		Context("When there is extra tye fs present", func() {
-			It("filters out the extra fs", func() {
+			It("should filter out the extra fs", func() {
 				filter := &FileSystemFilter{}
 
 				// Create a test case with sample input
@@ -315,7 +315,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(system, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if file systems have been filtered as expected
 				expectedFilteredFileSystems := v1.ControllerFileSystemList{
@@ -344,7 +344,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test  CACertificateFilter", func() {
 		Context("When there is ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates are also present", func() {
-			It("filters out the ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates", func() {
+			It("should filter out the ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates", func() {
 				filter := &CACertificateFilter{}
 
 				// Create a test case with sample input
@@ -378,7 +378,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(system, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if file systems have been filtered as expected
 				expectedFilteredCertificates := v1.CertificateList{
@@ -394,7 +394,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test ServiceParameterFilter", func() {
 		Context("When spec has default service parameters", func() {
-			It("It excludes default service parameters", func() {
+			It("should exclude default service parameters", func() {
 				filter := &ServiceParameterFilter{}
 
 				// Create a test case with sample input
@@ -425,7 +425,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(system, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if file systems have been filtered as expected
 				expectedFilteredServiceParams := v1.ServiceParameterList{
@@ -442,7 +442,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test InterfaceRemoveUuidFilter", func() {
 		Context("When there exists Uuids in interface", func() {
-			It("Removes Uuid from interfaces", func() {
+			It("should remove Uuid from interfaces", func() {
 				filter := &InterfaceRemoveUuidFilter{}
 
 				ethIn := v1.CommonInterfaceInfo{
@@ -538,7 +538,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if UUIDs  have been filtered as expected
 				for _, in := range hp.Spec.Interfaces.Ethernet {
@@ -589,7 +589,7 @@ var _ = Describe("Test filters utilities:", func() {
 				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				// Check if kernel is as expected
 				Expect(hp.Spec.Kernel).To(Equal(&kernel))
 			})
@@ -614,7 +614,7 @@ var _ = Describe("Test filters utilities:", func() {
 				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				// Check if kernel have been filtered as expected
 				var nilKernel *string = nil
 				Expect(hp.Spec.Kernel).To(Equal(nilKernel))
@@ -623,7 +623,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 	Describe("Test Filter of Controller0", func() {
 		Context("When its controller-0", func() {
-			It("Filter from overrides", func() {
+			It("should filter from overrides", func() {
 				filter := &Controller0Filter{}
 
 				// Create a test case with sample input
@@ -647,7 +647,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				var nilAddr *string = nil
 				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
 				Expect(h.Spec.Overrides.ProvisioningMode).To(Equal(&dynamic))
@@ -659,7 +659,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test Location Filter", func() {
 		Context("WHen the location is not nil", func() {
-			It("filters out location from host spec to overrrides", func() {
+			It("should filter out location from host spec to overrides", func() {
 				filter := &LocationFilter{}
 
 				// Create a test case with sample input
@@ -685,7 +685,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				var nilAddr *string = nil
 				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
 				Expect(h.Spec.Overrides.Location).To(Equal(&location))
@@ -695,7 +695,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 	Describe("Test AddressFilter", func() {
 		Context("When the profile address exists", func() {
-			It("FIlters address from host spec to host overrides", func() {
+			It("should filter address from host spec to host overrides", func() {
 				filter := &AddressFilter{}
 
 				// Create a test case with sample input
@@ -718,7 +718,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if host BootMAC have been filtered as expected from overrides and added to the matchInfo
 				var nilAddr v1.AddressList = nil
@@ -730,7 +730,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test BMAddressFilter", func() {
 		Context("When  BoardManagement and Adress is not nil", func() {
-			It("filters BMAddress", func() {
+			It("should filter BMAddress", func() {
 				filter := &BMAddressFilter{}
 				// Create a test case with sample input
 				profileAddr := "profile address"
@@ -751,7 +751,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
 				var nilAddr *string = nil
@@ -763,7 +763,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test StorageMonitorFilter", func() {
 		Context("When volumeGrps,OSDS,Fs are  nil", func() {
-			It("filters profile spec storage", func() {
+			It("should filter profile spec storage", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
 				size := 1
@@ -791,7 +791,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
 				var nilProfInfo *v1.ProfileStorageInfo = nil
@@ -806,7 +806,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test StorageMonitorFilter", func() {
 		Context("When volumeGrps,OSDS,Fs are not nil", func() {
-			It("Doesnt filter profile spec storage ", func() {
+			It("should not filter profile spec storage", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
 				size := 1
@@ -835,7 +835,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if host BroadManagement have been filtered as expected from overrides and added to the profile
 				var nilMonInfo *v1.MonitorInfo = nil
@@ -851,7 +851,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	Describe("Test LoopbackInterfaceFilter", func() {
 		Context("Whenthere is a loopback iterface also present", func() {
-			It("Filters the loopback interface", func() {
+			It("should filter the loopback interface", func() {
 				filter := &LoopbackInterfaceFilter{}
 				// Create a test case with sample input
 
@@ -880,7 +880,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, h, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				lbList := make([]v1.EthernetInfo, 0)
 				lbList = append(lbList, ethLb)
@@ -894,7 +894,7 @@ var _ = Describe("Test filters utilities:", func() {
 	//TBD: should try other cases for this func InterfaceUnusedFilter
 	Describe("Test InterfaceUnusedFilter", func() {
 		Context("When profile interfaces is used", func() {
-			It("returns the same interface because of the absence of unused interfaces", func() {
+			It("should return the same interface because of the absence of unused interfaces", func() {
 				filter := &InterfaceUnusedFilter{}
 				// Create a test case with sample input
 
@@ -918,7 +918,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				ethList := make([]v1.EthernetInfo, 0)
 				ethList = append(ethList, ethInf)
@@ -974,7 +974,7 @@ var _ = Describe("Test filters utilities:", func() {
 				}
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(hp.Spec.Memory).To(Equal(nodes))
 			})
 		})
@@ -1022,7 +1022,7 @@ var _ = Describe("Test filters utilities:", func() {
 				}
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(hp.Spec.Processors).To(Equal(expNodes))
 			})
 		})
@@ -1069,14 +1069,14 @@ var _ = Describe("Test filters utilities:", func() {
 				}
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(hp.Spec.Processors).To(Equal(expNodes))
 			})
 		})
 	})
 	Describe("Test ProcessorClearAllFilter", func() {
 		Context("When processors is not nil", func() {
-			It("Removes all processor configurations", func() {
+			It("should remove all processor configurations", func() {
 				filter := &ProcessorClearAllFilter{}
 				hp := &v1.HostProfile{
 					Spec: v1.HostProfileSpec{
@@ -1086,14 +1086,14 @@ var _ = Describe("Test filters utilities:", func() {
 				deployment := &Deployment{} // Dummy deployment for testing, assuming you have a Deployment type
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(hp.Spec.Processors).To(BeNil())
 			})
 		})
 	})
 	Describe("Test VolumeGroupFilter", func() {
-		Context("When there is volume group that is in blacklist", func() {
-			It("Removes volume group i.e present in blacklist", func() {
+		Context("when there is a volume group in the blacklist", func() {
+			It("should remove volume group present in blacklist", func() {
 				filter := &VolumeGroupFilter{
 					Blacklist: []string{"vg1", "vg2"},
 				}
@@ -1139,14 +1139,14 @@ var _ = Describe("Test filters utilities:", func() {
 				}
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(hp.Spec.Storage.VolumeGroups).To(Equal(expVgs))
 			})
 		})
 	})
 	Describe("Test InterfaceDefaultsFilter", func() {
-		Context("When Interface has defaults", func() {
-			It("Defaults to be filtereout to nil", func() {
+		Context("when interface has defaults", func() {
+			It("should filter defaults to nil", func() {
 				filter := &InterfaceDefaultsFilter{}
 				defMTU := interfaces.DefaultMTU
 				mtu := 1400
@@ -1199,14 +1199,14 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*hp.Spec.Interfaces).To(Equal(expInterfaces))
 			})
 		})
 	})
 	Describe("Test InterfaceMTUFilter checkMTU func", func() {
-		Context("When highwatermarks is not defaultMTU", func() {
-			It("InterfaceInfo mtu should equals to highwatermarks", func() {
+		Context("when highwatermarks is not defaultMTU", func() {
+			It("should set InterfaceInfo mtu equal to highwatermarks", func() {
 				filter := &InterfaceMTUFilter{
 					highwatermarks: map[string]int{"admin": 1600},
 				}
@@ -1221,8 +1221,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(*info.MTU).To(Equal(filter.highwatermarks["admin"]))
 			})
 		})
-		Context("When highwatermarks equals defaultMTU", func() {
-			It("Highwatermarks should equals to InterfaceInfo mtu", func() {
+		Context("when highwatermarks equals defaultMTU", func() {
+			It("should set highwatermarks equal to InterfaceInfo mtu", func() {
 				filter := &InterfaceMTUFilter{
 					highwatermarks: map[string]int{"admin": 1600},
 				}
@@ -1237,8 +1237,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(filter.highwatermarks["admin"]).To(Equal(*info.MTU))
 			})
 		})
-		Context("When interfaceInfo mtu is higher than  highwatermarks", func() {
-			It("InterfaceInfo mtu should equals to highwatermarks", func() {
+		Context("when interfaceInfo mtu is higher than highwatermarks", func() {
+			It("should set InterfaceInfo mtu equal to highwatermarks", func() {
 				filter := &InterfaceMTUFilter{
 					highwatermarks: map[string]int{"admin": 1600},
 				}
@@ -1254,8 +1254,8 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test InterfaceMTUFilter CheckMemberMTU func", func() {
-		Context("When ethernet name is in BondInfo's members", func() {
-			It("Ethernet's MTU equals to bondInfo's MTU", func() {
+		Context("when ethernet name is in BondInfo's members", func() {
+			It("should set Ethernet's MTU equal to bondInfo's MTU", func() {
 				filter := &InterfaceMTUFilter{
 					highwatermarks: map[string]int{"admin": 1600},
 				}
@@ -1281,8 +1281,8 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test InterfaceMTUFilter filter func", func() {
-		Context("When hostprofile interfaces is not nil", func() {
-			It("Filter and update the MTU", func() {
+		Context("when hostprofile interfaces is not nil", func() {
+			It("should filter and update the MTU", func() {
 				filter := &InterfaceMTUFilter{
 					highwatermarks: map[string]int{"admin": 1600},
 				}
@@ -1364,15 +1364,15 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*hp.Spec.Interfaces).To(Equal(*expInterfaces))
 			})
 		})
 	})
 
 	Describe("Test InterfaceNamingFilter filter func", func() {
-		Context("When hostprofile interfaces is not nil", func() {
-			It("Filter and update the interface name", func() {
+		Context("when hostprofile interfaces is not nil", func() {
+			It("should filter and update the interface name", func() {
 				filter := &InterfaceNamingFilter{
 					updates: map[string]string{},
 				}
@@ -1464,15 +1464,15 @@ var _ = Describe("Test filters utilities:", func() {
 
 				// Call the Filter method
 				err := filter.Filter(hp, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*hp.Spec.Interfaces).To(Equal(*expInterfaces))
 			})
 		})
 	})
 
 	Describe("Test InterfaceNamingFilter checkInterface func", func() {
-		Context("When platform network is admin", func() {
-			It("Interface info name should not change", func() {
+		Context("when platform network is admin", func() {
+			It("should not change interface info name", func() {
 				filter := &InterfaceNamingFilter{
 					updates: map[string]string{},
 				}
@@ -1486,8 +1486,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(info.Name).To(Equal(infoName))
 			})
 		})
-		Context("When platform network is pxeboot", func() {
-			It("Interface info name should be pxeboot", func() {
+		Context("when platform network is pxeboot", func() {
+			It("should set interface info name to pxeboot", func() {
 				updates := make(map[string]string, 1)
 				filter := &InterfaceNamingFilter{
 					updates: updates,
@@ -1503,8 +1503,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(info.Name).To(Equal(pxebootIface))
 			})
 		})
-		Context("When platform network is mgmt", func() {
-			It("Interface info name should be mgmt", func() {
+		Context("when platform network is mgmt", func() {
+			It("should set interface info name to mgmt", func() {
 				filter := &InterfaceNamingFilter{
 					updates: map[string]string{},
 				}
@@ -1519,8 +1519,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(info.Name).To(Equal(mgmtIface))
 			})
 		})
-		Context("When platform network is cluster-host", func() {
-			It("Interface info name should be cluster-host", func() {
+		Context("when platform network is cluster-host", func() {
+			It("should set interface info name to cluster-host", func() {
 				filter := &InterfaceNamingFilter{
 					updates: map[string]string{},
 				}
@@ -1535,8 +1535,8 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(info.Name).To(Equal(clusterIface))
 			})
 		})
-		Context("When platform network is oam", func() {
-			It("Interface info name should be oam", func() {
+		Context("when platform network is oam", func() {
+			It("should set interface info name to oam", func() {
 				filter := &InterfaceNamingFilter{
 					updates: map[string]string{},
 				}
@@ -1553,8 +1553,8 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test AddressPoolFilter filter func", func() {
-		Context("When addresspool has controllerAddress as empty", func() {
-			It("Updated the controllerAddresses to nil", func() {
+		Context("when addresspool has controllerAddress as empty", func() {
+			It("should update the controllerAddresses to nil", func() {
 				emptyString := ""
 				addr0 := "192.168.192.01"
 				addr1 := "192.168.192.02"
@@ -1589,7 +1589,7 @@ var _ = Describe("Test filters utilities:", func() {
 				}
 				// Call the filter method
 				err := in.Filter(platform_network, deployment)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(deployment.AddressPools).To(Equal(expAddrPools))
 			})
 		})

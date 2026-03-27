@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2025-2026 Wind River Systems, Inc. */
 package host
 
 import (
@@ -18,7 +18,7 @@ import (
 )
 
 var _ = Describe("Networking utils", func() {
-	Describe("findConfiguredInterface utility", func() {
+	Describe("FindConfiguredInterface utility", func() {
 		Context("with interface data", func() {
 			It("should find in the list", func() {
 
@@ -452,7 +452,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Describe("findConfiguredRoute utility", func() {
+	Describe("FindConfiguredRoute utility", func() {
 		Context("with route data", func() {
 			It("should find in the list", func() {
 
@@ -706,7 +706,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Describe("findConfiguredAddress utility", func() {
+	Describe("FindConfiguredAddress utility", func() {
 		Context("with address data", func() {
 			It("should find in the list", func() {
 				sample := starlingxv1.HostProfileSpec{

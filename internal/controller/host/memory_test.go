@@ -1,5 +1,5 @@
 // /* SPDX-License-Identifier: Apache-2.0 */
-// /* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package host
 
 import (
@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Memory utils", func() {
-	Context("swtich count memory", func() {
+	Context("when processor does not match node", func() {
 		var pagesize starlingxv1.PageSize = "PageSize1G"
 		node := 2
 
@@ -22,10 +22,10 @@ var _ = Describe("Memory utils", func() {
 		got, err := vswitchCountMemoryByFunction(memories, node, pagesize)
 
 		Expect(got).To(Equal(want))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 	})
-	Context("swtich count memory", func() {
+	Context("when hugepages size is zero and required is nil", func() {
 		var pagesize starlingxv1.PageSize = "PageSize2M"
 		node := 2
 
@@ -39,11 +39,11 @@ var _ = Describe("Memory utils", func() {
 		want := 1
 		got, err := vswitchCountMemoryByFunction(memories, node, pagesize)
 		Expect(got).To(Equal(want))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 	})
 
-	Context("swtich count memory", func() {
+	Context("when hugepages required is set", func() {
 		var pagesize starlingxv1.PageSize = "PageSize2M"
 		node := 2
 		required := 2
@@ -58,7 +58,7 @@ var _ = Describe("Memory utils", func() {
 		want := 2
 		got, err := vswitchCountMemoryByFunction(memories, node, pagesize)
 		Expect(got).To(Equal(want))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 	})
 })

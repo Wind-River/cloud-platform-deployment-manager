@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022-2026 Wind River Systems, Inc. */
 
 package v1
 
@@ -49,7 +49,7 @@ import (
 
 var _ = Describe("Constructor utils for kind", func() {
 
-	Describe("stripPartitionNumber utility", func() {
+	Describe("StripPartitionNumber utility", func() {
 		Context("with partition and disk data", func() {
 			It("should removes the \"-partNNN\" successfully", func() {
 				type args struct {
@@ -144,7 +144,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test IsDefaultServiceParameter", func() {
-		Context("When filtering default service parameters", func() {
+		Context("when filtering default service parameters", func() {
 			It("should return true", func() {
 				tests := common.DefaultParameters
 				for _, test := range tests {
@@ -158,7 +158,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 			})
 		})
-		Context("When filtering not default service parameters", func() {
+		Context("when filtering non-default service parameters", func() {
 			It("should return false", func() {
 				singleServiceParameter := ServiceParameterInfo{
 					Service:   "foo",
@@ -172,7 +172,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test Megabytes", func() {
-		Context("When the pagesize is PageSize1G", func() {
+		Context("when the pagesize is PageSize1G", func() {
 			var test PageSize = PageSize1G
 			It("should return 1024", func() {
 				want := 1024
@@ -181,7 +181,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 			})
 		})
-		Context("When the pagesize is PageSize2M", func() {
+		Context("when the pagesize is PageSize2M", func() {
 			It("should return 2", func() {
 				test := PageSize(PageSize2M)
 				want := 2
@@ -190,7 +190,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 			})
 		})
-		Context("When the pagesize is other than PageSize2M and PageSize1G", func() {
+		Context("when the pagesize is other than PageSize2M and PageSize1G", func() {
 			It("should return 0", func() {
 				test := PageSize("5MB")
 				want := 0
@@ -202,7 +202,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test Bytes", func() {
-		Context("When the pagesize is PageSize1G", func() {
+		Context("when the pagesize is PageSize1G", func() {
 			var test PageSize = PageSize1G
 			It("should return int(units.Gibibyte)", func() {
 				want := int(units.Gibibyte)
@@ -211,7 +211,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 			})
 		})
-		Context("When the pagesize is PageSize2M", func() {
+		Context("when the pagesize is PageSize2M", func() {
 			It("should return 2 * int(units.Mebibyte)", func() {
 				test := PageSize(PageSize2M)
 				want := 2 * int(units.Mebibyte)
@@ -220,7 +220,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 			})
 		})
-		Context("When the pagesize is PageSize4K", func() {
+		Context("when the pagesize is PageSize4K", func() {
 			It("should return 4 * int(units.KiB)", func() {
 				test := PageSize(PageSize4K)
 				want := 4 * int(units.KiB)
@@ -229,7 +229,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 			})
 		})
-		Context("When the pagesize is other than PageSize2M,PageSize1G and PageSize4K", func() {
+		Context("when the pagesize is other than PageSize2M, PageSize1G and PageSize4K", func() {
 			It("should return 0", func() {
 				test := PageSize("5MB")
 				want := 0
@@ -241,7 +241,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test parseLabelInfo", func() {
-		Context("When host labels are present", func() {
+		Context("when host labels are present", func() {
 			It("should check if profile labels are same as host lables", func() {
 				profile := &HostProfileSpec{}
 				host := platform.HostInfo{}
@@ -252,8 +252,8 @@ var _ = Describe("Constructor utils for kind", func() {
 				hostLabels[1].Value = "label2"
 				host.Labels = hostLabels
 				err := parseLabelInfo(profile, host)
-				Expect(err).To(BeNil())
-				Expect(len(profile.Labels)).To(Equal(len(hostLabels)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(profile.Labels).To(HaveLen(len(hostLabels)))
 
 				profileLabels1 := make([]labels.Label, len(profile.Labels))
 				profileLabels2 := make([]labels.Label, len(profile.Labels))
@@ -286,7 +286,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test parseAddressInfo", func() {
-		Context("When host address is not a systemAddress", func() {
+		Context("when host address is not a systemAddress", func() {
 			It("should check if profile address is same as host address", func() {
 				profile := &HostProfileSpec{}
 				host := platform.HostInfo{}
@@ -307,11 +307,11 @@ var _ = Describe("Constructor utils for kind", func() {
 					profileAddresses[itr].Prefix = v.Prefix
 					itr++
 				}
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profileAddresses).To(Equal(host.Addresses))
 			})
 		})
-		Context("When host address is  a systemAddress", func() {
+		Context("when host address is a systemAddress", func() {
 			It("should check if profile address is nil", func() {
 				profile := &HostProfileSpec{}
 				host := platform.HostInfo{}
@@ -325,14 +325,14 @@ var _ = Describe("Constructor utils for kind", func() {
 				host.Addresses = make([]addresses.Address, 1)
 				host.Addresses[0] = address
 				err := parseAddressInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Addresses).To(BeNil())
 			})
 		})
 	})
 
 	Describe("Test parseRouteInfo", func() {
-		Context("When host route data is present in the host", func() {
+		Context("when host route data is present", func() {
 			It("should check if profile routes are same as host routes", func() {
 				profile := &HostProfileSpec{}
 				host := platform.HostInfo{}
@@ -357,7 +357,7 @@ var _ = Describe("Constructor utils for kind", func() {
 					profileRoutes[itr].Metric = *v.Metric
 					itr++
 				}
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profileRoutes).To(Equal(host.Routes))
 			})
 		})
@@ -365,7 +365,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 	Describe("Test parseProcessorInfo", func() {
 		//TBD: When cpu function is application
-		Context("When the cpu function not application", func() {
+		Context("when the cpu function is not application", func() {
 			It("should check if profile processors are same as host cpu data", func() {
 				profile := &HostProfileSpec{}
 
@@ -386,14 +386,14 @@ var _ = Describe("Constructor utils for kind", func() {
 				want[0].Functions = append(want[0].Functions, data)
 				list := ProcessorNodeList(want)
 				err := parseProcessorInfo(profile, h)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Processors).To(Equal(list))
 			})
 		})
 	})
 
 	Describe("Test NewPlatformNetworkSpec", func() {
-		Context("When network dynamic is false", func() {
+		Context("when network dynamic is false", func() {
 			It("should give allocation type as AllocationOrderStatic", func() {
 				associatedAddressPool := []string{
 					"192.168.1.0/24",
@@ -411,14 +411,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					AssociatedAddressPools: associatedAddressPool,
 				}
 				pnSpec, err := NewPlatformNetworkSpec(associatedAddressPool, network)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*pnSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewPlatformNetwork", func() {
-		Context("When network dynamic is false", func() {
+		Context("when network dynamic is false", func() {
 			It("should give allocation type as AllocationOrderStatic", func() {
 				namespace := "NameSpace"
 				associatedAddressPool := []string{
@@ -452,14 +452,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: expSpec,
 				}
 				pn, err := NewPlatformNetwork(namespace, associatedAddressPool, network)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*pn).To(Equal(expPn))
 			})
 		})
 	})
 
 	Describe("Test NewAddressPool", func() {
-		Context("When gophercloud's addresspools.AddressPool is input", func() {
+		Context("when gophercloud's addresspools.AddressPool is input", func() {
 			It("should return starlingxv1.AddressPool spec", func() {
 				namespace := "NameSpace"
 				subnet := "192.168.204.0"
@@ -515,7 +515,7 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				ap, err := NewAddressPool(namespace, pool)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ap).To(Equal(expAddrPool))
 
 			})
@@ -523,7 +523,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test NewPtpInterfaceSpec", func() {
-		Context("When params are not nil", func() {
+		Context("when params are not nil", func() {
 			It("should give spec InterfaceParams as PTPInterface params", func() {
 				params := []string{"param1", "param2"}
 				PTPint := ptpinterfaces.PTPInterface{
@@ -537,14 +537,14 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				ptpSpec, err := NewPtpInterfaceSpec(PTPint)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewPTPInstance", func() {
-		Context("When params are not nil", func() {
+		Context("when params are not nil", func() {
 			It("should give spec InterfaceParams as PTPInterface params", func() {
 				name := "PTPInterfacename"
 				namespace := "PTPInterfaceNameSpace"
@@ -574,14 +574,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: expSpec,
 				}
 				ptpInterface, err := NewPTPInterface(name, namespace, PTPint)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpInterface).To(Equal(expPtpInterface))
 			})
 		})
 	})
 
 	Describe("Test NewPtpInstanceSpec", func() {
-		Context("When params are not nil", func() {
+		Context("when params are not nil", func() {
 			It("should give spec InterfaceParams as PTPInstance params", func() {
 				params := map[string][]string{"global": []string{"param1", "param2"}}
 				inst := ptpinstances.PTPInstance{
@@ -594,14 +594,14 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				ptpInSpec, err := NewPtpInstanceSpec(inst)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpInSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewPTPInstance", func() {
-		Context("When params are not nil", func() {
+		Context("when params are not nil", func() {
 			It("should give spec InstanceParams as PTPInstance params", func() {
 				name := "NewPTPInstancename"
 				namespace := "NewPTPInstanceNameSpace"
@@ -630,14 +630,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: expSpec,
 				}
 				ptpInstance, err := NewPTPInstance(name, namespace, inst)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpInstance).To(Equal(expPtpInstance))
 			})
 		})
 	})
 
 	Describe("Test NewPtpInstanceSpec", func() {
-		Context("When params are not nil and with multiple sections", func() {
+		Context("when params are not nil and with multiple sections", func() {
 			It("should give spec InstanceParams as PTPInstance params", func() {
 				params := map[string][]string{
 					"global": []string{"param1", "param2"},
@@ -658,14 +658,14 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				ptpInSpec, err := NewPtpInstanceSpec(inst)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpInSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewPTPInstance", func() {
-		Context("When params are not nil and with multiple sections", func() {
+		Context("when params are not nil and with multiple sections", func() {
 			It("should give spec InstanceParams as PTPInstance params", func() {
 				name := "NewPTPInstancename"
 				namespace := "NewPTPInstanceNameSpace"
@@ -702,15 +702,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: expSpec,
 				}
 				ptpInstance, err := NewPTPInstance(name, namespace, inst)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*ptpInstance).To(Equal(expPtpInstance))
 			})
 		})
 	})
 
 	Describe("Test NewDataNetworkSpec", func() {
-		Context("When needs to get instance of DataNetworkSpec", func() {
-			It("Returns instance of DataNetworkSpec without an error", func() {
+		Context("when getting instance of DataNetworkSpec", func() {
+			It("should return instance of DataNetworkSpec without an error", func() {
 				mode := datanetworks.EndpointModeDynamic
 				uDPPortNo := 1234
 				ttl := 11
@@ -738,15 +738,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				dnSpec, err := NewDataNetworkSpec(net)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*dnSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewDataNetwork", func() {
-		Context("When needs to get instance of DataNetwork", func() {
-			It("Returns instance of DataNetwork without an error", func() {
+		Context("when getting instance of DataNetwork", func() {
+			It("should return instance of DataNetwork without an error", func() {
 				name := "NewDataNetworkName"
 				namespace := "NewDataNetworkNameSpace"
 
@@ -791,15 +791,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: expSpec,
 				}
 				dn, err := NewDataNetwork(name, namespace, net)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*dn).To(Equal(expDN))
 			})
 		})
 	})
 
 	Describe("Test NewHostSpec", func() {
-		Context("When needs to get instance of HostSpec", func() {
-			It("Returns instance of HostSpec without an error", func() {
+		Context("when getting instance of HostSpec", func() {
+			It("should return instance of HostSpec without an error", func() {
 				hostname := "kernelName"
 				bootMAC := "01:02:03:04"
 				hostInfo := platform.HostInfo{
@@ -820,15 +820,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				hSpec, err := NewHostSpec(hostInfo)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*hSpec).To(Equal(expSpec))
 			})
 		})
 	})
 
 	Describe("Test NewHost", func() {
-		Context("When needs to get instance of Host", func() {
-			It("Returns instance of Host without an error", func() {
+		Context("when getting instance of Host", func() {
+			It("should return instance of Host without an error", func() {
 				name := "NewHostName"
 				namespace := "NewHostNameSpace"
 
@@ -866,15 +866,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				hostGot, err := NewHost(name, namespace, hostInfo)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*hostGot).To(Equal(expHost))
 			})
 		})
 	})
 
 	Describe("Test NewSystemStatus", func() {
-		Context("When needs to get instance of SystemStatus", func() {
-			It("Returns instance of SystemStatus without an error", func() {
+		Context("when getting instance of SystemStatus", func() {
+			It("should return instance of SystemStatus without an error", func() {
 				systemInfo := platform.SystemInfo{}
 				sysType := "singleNode"
 				sysMode := "aio-sx"
@@ -885,15 +885,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					SystemMode: sysMode,
 				}
 				sysStatus, err := NewSystemStatus(systemInfo)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*sysStatus).To(Equal(expStatus))
 			})
 		})
 	})
 
 	Describe("Test NewBMSecret", func() {
-		Context("When needs to get instance of BMSecret", func() {
-			It("Returns instance of BMSecret without an error", func() {
+		Context("when getting instance of BMSecret", func() {
+			It("should return instance of BMSecret without an error", func() {
 				var name, namespace, username string = "BMSecretName", "BMSecretNameSpace", "BMSecretUserName"
 				fakePassword := []byte("")
 				expSecret := v1.Secret{
@@ -912,15 +912,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				secretGot, err := NewBMSecret(name, namespace, username)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*secretGot).To(Equal(expSecret))
 			})
 		})
 	})
 
 	Describe("Test NewLicenseSecret", func() {
-		Context("When needs to get instance of LicenseSecret", func() {
-			It("Returns instance of License Secret without an error", func() {
+		Context("when getting instance of LicenseSecret", func() {
+			It("should return instance of License Secret without an error", func() {
 				var name, namespace, content string = "LicenseSecretName", "LicenseSecretNameSpace", "Content"
 				expLicSecret := v1.Secret{
 					TypeMeta: metav1.TypeMeta{
@@ -937,15 +937,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				secretGot, err := NewLicenseSecret(name, namespace, content)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*secretGot).To(Equal(expLicSecret))
 			})
 		})
 	})
 
 	Describe("Test NewCertificateSecret", func() {
-		Context("When needs to get instance of Certificate secret", func() {
-			It("Returns instance of Certificate Secret without an error", func() {
+		Context("when getting instance of Certificate secret", func() {
+			It("should return instance of Certificate Secret without an error", func() {
 				var name, namespace string = "CertificateSecretName", "CertificateSecretNameSpace"
 				fakeInput := []byte("")
 
@@ -966,30 +966,30 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				secretGot, err := NewCertificateSecret(name, namespace)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*secretGot).To(Equal(expCertSecret))
 			})
 		})
 	})
 
 	Describe("Test parseLicenseInfo", func() {
-		Context("When license is given populate spec with it", func() {
-			It("Adds license to the spec", func() {
+		Context("when license is given", func() {
+			It("should add license to the spec", func() {
 				spec := &SystemSpec{}
 				license := &licenses.License{
 					Content: "content",
 				}
 				want := LicenseInfo{Secret: SystemDefaultLicenseName}
 				err := parseLicenseInfo(spec, license)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*spec.License).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseStorageBackendInfo", func() {
-		Context("When storageBackends is given populate spec with them", func() {
-			It("Add storageBackends to the spec", func() {
+		Context("when storageBackends are given", func() {
+			It("should add storageBackends to the spec", func() {
 				spec := &SystemSpec{}
 				network, rep1, rep2 := "mgmt", 1, 2
 				storageBackendsIn := []storagebackends.StorageBackend{
@@ -1027,15 +1027,15 @@ var _ = Describe("Constructor utils for kind", func() {
 
 				want := StorageBackendList(storageBackends)
 				err := parseStorageBackendInfo(spec, storageBackendsIn)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.Storage.Backends).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseFileSystemInfo", func() {
-		Context("When Filesystems is given populate spec with them", func() {
-			It("Adds filesystems to the spec", func() {
+		Context("when Filesystems are given", func() {
+			It("should add filesystems to the spec", func() {
 				spec := &SystemSpec{}
 				fileSystems := []controllerFilesystems.FileSystem{
 					{
@@ -1061,15 +1061,15 @@ var _ = Describe("Constructor utils for kind", func() {
 
 				want := ControllerFileSystemList(fsInfo)
 				err := parseFileSystemInfo(spec, fileSystems)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.Storage.FileSystems).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseServiceParameterInfo", func() {
-		Context("When non empty ServiceParameterInfo is given", func() {
-			It("populates the spec with Serviceparamters", func() {
+		Context("when non-empty ServiceParameterInfo is given", func() {
+			It("should populate the spec with ServiceParameters", func() {
 				spec := &SystemSpec{}
 				resource1, resource2, personality1, personality2 := "resource1", "resource2", "personality1", "personality2"
 				serviceParams := []serviceparameters.ServiceParameter{
@@ -1109,15 +1109,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseServiceParameterInfo(spec, serviceParams)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.ServiceParameters).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseCertificateInfo", func() {
-		Context("When non empty CertificateInfo is given", func() {
-			It("Populates the spec with CertificateInfo", func() {
+		Context("when non-empty CertificateInfo is given", func() {
+			It("should populate the spec with CertificateInfo", func() {
 				spec := &SystemSpec{}
 				certificates := []certificates.Certificate{
 					{
@@ -1142,15 +1142,15 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseCertificateInfo(spec, certificates)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.Certificates).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseCertificateInfo filtering certificates", func() {
-		Context("When non empty CertificateInfo is given with openstack_CA/openldap/docker_registry/ssl cert included", func() {
-			It("Populates the spec with CertificateInfo without the openstack_CA/openldap/docker_registry/ssl cert", func() {
+		Context("when non-empty CertificateInfo is given with openstack_CA/openldap/docker_registry/ssl cert included", func() {
+			It("should populate the spec with CertificateInfo without the openstack_CA/openldap/docker_registry/ssl cert", func() {
 				spec := &SystemSpec{}
 				certificates := []certificates.Certificate{
 					{
@@ -1183,15 +1183,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				err := parseCertificateInfo(spec, certificates)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.Certificates).To(Equal(want))
 			})
 		})
 	})
 
 	Describe("Test parseMonitorInfo", func() {
-		Context("When one of the monitor hostname is same as host name", func() {
-			It("Sucessfully adds the monitor info to the profile spec", func() {
+		Context("when one of the monitor hostnames matches the host name", func() {
+			It("should add the monitor info to the profile spec", func() {
 				size := 1
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{},
@@ -1215,14 +1215,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Size: &size,
 				}
 				err := parseMonitorInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*profile.Storage.Monitor).To(Equal(want))
 			})
 		})
 	})
 	Describe("Test parseHostFileSystemInfo", func() {
-		Context("When filesystems is not nil", func() {
-			It("Sucessfully parses hostFileSystem Info without any error", func() {
+		Context("when filesystems is not nil", func() {
+			It("should parse hostFileSystem Info without any error", func() {
 				spec := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{},
 				}
@@ -1247,14 +1247,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseHostFileSystemInfo(spec, fileSystems)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(spec.Storage.FileSystems).To(Equal(want))
 			})
 		})
 	})
 	Describe("Test NewNamespace", func() {
-		Context("When the new namespace is to be created with name", func() {
-			It("Sucessfully create the namespace instance without error", func() {
+		Context("when creating a new namespace with name", func() {
+			It("should create the namespace instance without error", func() {
 				name := "newns"
 				expNS := &v1.Namespace{
 					TypeMeta: metav1.TypeMeta{
@@ -1266,14 +1266,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				gotNS, err := NewNamespace(name)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(gotNS).To(Equal(expNS))
 			})
 		})
 	})
 	Describe("Test parseBoardManagementInfo", func() {
-		Context("When BMType is not nil", func() {
-			It("Host BM info is added to the Profile boardmanagement without any error", func() {
+		Context("when BMType is not nil", func() {
+			It("should add Host BM info to the Profile boardmanagement without any error", func() {
 				profile := &HostProfileSpec{
 					BoardManagement: &BMInfo{},
 				}
@@ -1298,12 +1298,12 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				err := parseBoardManagementInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*profile.BoardManagement).To(Equal(exp))
 			})
 		})
-		Context("When BMType is nil", func() {
-			It("Profile boardmanagement is assigned to nil values without any error", func() {
+		Context("when BMType is nil", func() {
+			It("should assign Profile boardmanagement to nil values without any error", func() {
 				profile := &HostProfileSpec{
 					BoardManagement: &BMInfo{},
 				}
@@ -1317,14 +1317,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Credentials: nil,
 				}
 				err := parseBoardManagementInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*profile.BoardManagement).To(Equal(exp))
 			})
 		})
 	})
 	Describe("Test autoGenerateBMSecretName", func() {
-		Context("When autoGenerateBMSecretName is called", func() {
-			It("Returns bmc-secret string", func() {
+		Context("when autoGenerateBMSecretName is called", func() {
+			It("should return bmc-secret string", func() {
 				exp := "bmc-secret"
 				got := autoGenerateBMSecretName()
 				Expect(got).To(Equal(exp))
@@ -1332,8 +1332,8 @@ var _ = Describe("Constructor utils for kind", func() {
 		})
 	})
 	Describe("Test parseOSDInfo", func() {
-		Context("When OSDInfo is not nil", func() {
-			It("profile osds are populated with host data", func() {
+		Context("when OSDInfo is not nil", func() {
+			It("should populate profile osds with host data", func() {
 				clusterName := "clusterName"
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{},
@@ -1377,14 +1377,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseOSDInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Storage.OSDs).To(Equal(exp))
 			})
 		})
 	})
 	Describe("Test parseMemoryInfo", func() {
-		Context("When Memory Info is not nil", func() {
-			It("Stores memoryInfo to profile memory", func() {
+		Context("when Memory Info is not nil", func() {
+			It("should store memoryInfo to profile memory", func() {
 				personality := hosts.PersonalityWorker
 				profile := &HostProfileSpec{
 					ProfileBaseAttributes: ProfileBaseAttributes{
@@ -1434,14 +1434,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseMemoryInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Memory).To(Equal(exp))
 			})
 		})
 	})
 	Describe("Test parsePhysicalVolumeInfo", func() {
-		Context("When physcial volumes deviceUUID is same as partitions ID", func() {
-			It("Stores physical volume data into group physcial volumes without error", func() {
+		Context("when physical volumes deviceUUID matches partitions ID", func() {
+			It("should store physical volume data into group physical volumes without error", func() {
 
 				group := &VolumeGroupInfo{
 					PhysicalVolumes: PhysicalVolumeList{},
@@ -1476,12 +1476,12 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parsePhysicalVolumeInfo(group, vg, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(group.PhysicalVolumes).To(Equal(exp))
 			})
 		})
-		Context("When there is no match with deviceUUID of physcial volumes andf partitions ID", func() {
-			It("Throws failed to lookup partition DeviceUUID error", func() {
+		Context("when there is no match with deviceUUID of physical volumes and partitions ID", func() {
+			It("should return failed to lookup partition DeviceUUID error", func() {
 
 				group := &VolumeGroupInfo{
 					PhysicalVolumes: PhysicalVolumeList{},
@@ -1516,8 +1516,8 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test NewMissingSystemResource func", func() {
-		Context("When a non-empty message string is given", func() {
-			It("Returns ErrMissingSystemResource with message value as input message string", func() {
+		Context("when a non-empty message string is given", func() {
+			It("should return ErrMissingSystemResource with message value as input message string", func() {
 				msg := "error msg"
 				exp := ErrMissingSystemResource{
 					message: "error msg",
@@ -1529,8 +1529,8 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test Error func", func() {
-		Context("When Error func is tested", func() {
-			It("returns the message associated with an error of this type.", func() {
+		Context("when Error func is called", func() {
+			It("should return the message associated with an error of this type", func() {
 				in := ErrMissingSystemResource{
 					message: "error msg",
 				}
@@ -1542,8 +1542,8 @@ var _ = Describe("Constructor utils for kind", func() {
 	})
 
 	Describe("Test parseVolumeGroupInfo", func() {
-		Context("When volumeGroupInfo of host is not nil", func() {
-			It("Stored volumegroup data into the profile storage volume gropus without error", func() {
+		Context("when volumeGroupInfo of host is not nil", func() {
+			It("should store volumegroup data into the profile storage volume groups without error", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
 						VolumeGroups: VolumeGroupList{},
@@ -1595,15 +1595,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				err := parseVolumeGroupInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(profile.Storage.VolumeGroups).To(Equal(exp))
 			})
 		})
 	})
 
 	Describe("Test parseStorageInfo", func() {
-		Context("When Storage Info os host is not nil", func() {
-			It("Stores storageInfo to profile spec", func() {
+		Context("when Storage Info of host is not nil", func() {
+			It("should store storageInfo to profile spec", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
 						VolumeGroups: VolumeGroupList{},
@@ -1643,14 +1643,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseStorageInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
 
 	Describe("Test parseInterfaceInfo", func() {
-		Context("When host interface data is not nil", func() {
-			It("Stores interface data into profile spec", func() {
+		Context("when host interface data is not nil", func() {
+			It("should store interface data into profile spec", func() {
 				profile := &HostProfileSpec{
 					Storage: &ProfileStorageInfo{
 						VolumeGroups: VolumeGroupList{},
@@ -1763,13 +1763,13 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				err := parseInterfaceInfo(profile, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
 	Describe("Test NewSystemSpec", func() {
-		Context("When the system info is used to create systemspec", func() {
-			It("Returns the systemSpec with systemInfo data without any error", func() {
+		Context("when the system info is used to create SystemSpec", func() {
+			It("should return the systemSpec with systemInfo data without any error", func() {
 				network := "mgmt"
 				vSwitchType := "vswitch_type"
 				description := "systemInfo description"
@@ -1889,15 +1889,15 @@ var _ = Describe("Constructor utils for kind", func() {
 				}
 
 				outSpec, err := NewSystemSpec(sysInfo)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*outSpec).To(Equal(expSpec))
 
 			})
 		})
 	})
 	Describe("Test NewSystem", func() {
-		Context("When the new system instance needs to be obtained from the system info", func() {
-			It("Returns the system instance without any error", func() {
+		Context("when obtaining a new system instance from the system info", func() {
+			It("should return the system instance without any error", func() {
 				namespace := "ns"
 				name := "systemName"
 				network := "mgmt"
@@ -2032,14 +2032,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				outSys, err := NewSystem(namespace, name, sysInfo)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*outSys).To(Equal(expSys))
 			})
 		})
 	})
 	Describe("Test NewHostProfileSpec", func() {
-		Context("When the host info is used to create HostProfileSpec", func() {
-			It("Returns the HostProfileSpec with host info data without any error", func() {
+		Context("when the host info is used to create HostProfileSpec", func() {
+			It("should return the HostProfileSpec with host info data without any error", func() {
 				administrativeState := "Admin"
 				personality := "worker"
 				bootMAC := "00:11:22:33"
@@ -2122,14 +2122,14 @@ var _ = Describe("Constructor utils for kind", func() {
 					Routes:     nil,
 				}
 				outSpec, err := NewHostProfileSpec(host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*outSpec).To(Equal(expSpec))
 			})
 		})
 	})
 	Describe("Test NewHostProfile", func() {
-		Context("When the new hostprofile instance needs to be obtained from the host info", func() {
-			It("Returns the hostProfile instance without any error", func() {
+		Context("when obtaining a new hostprofile instance from the host info", func() {
+			It("should return the hostProfile instance without any error", func() {
 				name, namespace := "hostName", "hostNS"
 				administrativeState := "Admin"
 				personality := "worker"
@@ -2227,7 +2227,7 @@ var _ = Describe("Constructor utils for kind", func() {
 					Spec: hostProfileSpec,
 				}
 				out, err := NewHostProfile(name, namespace, host)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(*out).To(Equal(exp))
 			})
 		})

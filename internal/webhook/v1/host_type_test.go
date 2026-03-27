@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -20,8 +20,8 @@ var _ = Describe("Datanetwork controller", func() {
 		interval = time.Millisecond * 500
 	)
 
-	Context("Host with data", func() {
-		It("Should created successfully", func() {
+	Context("with Host data", func() {
+		It("Should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",

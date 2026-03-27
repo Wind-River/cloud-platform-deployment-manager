@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2026 Wind River Systems, Inc. */
 package host
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -29,8 +28,8 @@ var _ = Describe("Host controller", func() {
 		interval = time.Millisecond * 500
 	)
 
-	Context("Host with data", func() {
-		It("Should created successfully", func() {
+	Context("with Host data", func() {
+		It("should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",
@@ -75,9 +74,9 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("Admin network multi-netting creation - day2", func() {
-		Describe("hasAdminNetworkChange", func() {
-			It("Should detect admin network change", func() {
+	Context("when handling admin network multi-netting creation in day2", func() {
+		Describe("HasAdminNetworkChange", func() {
+			It("should detect admin network change", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
@@ -126,7 +125,7 @@ var _ = Describe("Host controller", func() {
 				Expect(interfaceName).To(Equal("eth0"))
 			})
 
-			It("Should detect VLAN admin network change", func() {
+			It("should detect VLAN admin network change", func() {
 				vlan0Profile := starlingxv1.VLANInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "vlan0",
@@ -170,7 +169,7 @@ var _ = Describe("Host controller", func() {
 				Expect(interfaceName).To(Equal("vlan0"))
 			})
 
-			It("Should detect Bond admin network change", func() {
+			It("should detect Bond admin network change", func() {
 				mgmt0Profile := starlingxv1.BondInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "mgmt0",
@@ -214,7 +213,7 @@ var _ = Describe("Host controller", func() {
 				Expect(interfaceName).To(Equal("mgmt0"))
 			})
 
-			It("Should not detect admin network change different interface", func() {
+			It("should not detect admin network change for different interface", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
@@ -243,7 +242,7 @@ var _ = Describe("Host controller", func() {
 				Expect(interfaceName).To(Equal(""))
 			})
 
-			It("Should not detect admin network change w/o interface changes", func() {
+			It("should not detect admin network change without interface changes", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
@@ -265,7 +264,7 @@ var _ = Describe("Host controller", func() {
 				Expect(interfaceName).To(Equal(""))
 			})
 
-			It("Should not detect admin network change with interface changes", func() {
+			It("should not detect admin network change with interface changes", func() {
 				eth0Current := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name:             "eth0",
@@ -295,8 +294,8 @@ var _ = Describe("Host controller", func() {
 			})
 		})
 
-		Describe("findEthernetInfoByName", func() {
-			It("Should find EthernetInfo by name", func() {
+		Describe("FindEthernetInfoByName", func() {
+			It("should find EthernetInfo by name", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name: "eth0",
@@ -319,7 +318,7 @@ var _ = Describe("Host controller", func() {
 				Expect(result.Name).To(Equal(name))
 			})
 
-			It("Should not find EthernetInfo by name", func() {
+			It("should not find EthernetInfo by name", func() {
 				eth0Profile := starlingxv1.EthernetInfo{
 					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
 						Name: "eth0",
@@ -342,15 +341,15 @@ var _ = Describe("Host controller", func() {
 			})
 		})
 
-		Describe("containsAdminPlatformNetwork", func() {
-			It("Should contain admin platform network", func() {
+		Describe("ContainsAdminPlatformNetwork", func() {
+			It("should contain admin platform network", func() {
 				platformNetworks := starlingxv1.PlatformNetworkItemList{"admin"}
 				containsAdmin := containsAdminPlatformNetwork(platformNetworks)
 
 				Expect(containsAdmin).To(BeTrue())
 			})
 
-			It("Should not contain admin platform network", func() {
+			It("should not contain admin platform network", func() {
 				platformNetworks := starlingxv1.PlatformNetworkItemList{"management", "data"}
 				containsAdmin := containsAdminPlatformNetwork(platformNetworks)
 
@@ -359,8 +358,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("hostMatchesCriteria func", func() {
-		It("Should return true if host matches the criteria specified by the operated", func() {
+	Context("when calling hostMatchesCriteria", func() {
+		It("should return true if host matches the criteria specified by the operator", func() {
 			bootMAC := "01:02:03:04"
 			bmIP := "193.168.214.12"
 			bmType := "dynamic"
@@ -390,8 +389,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("provisioningAllowed func", func() {
-		It("Should return true when host name is controller-0 and is unlocked enabled", func() {
+	Context("when calling provisioningAllowed", func() {
+		It("should return true when host name is controller-0 and is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
 					Hostname:            hosts.Controller0,
@@ -402,7 +401,7 @@ var _ = Describe("Host controller", func() {
 			got := provisioningAllowed(objects)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return true when host name is controller-1 and is unlocked enabled", func() {
+		It("should return true when host name is controller-1 and is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
 					Hostname:            "controller-1",
@@ -413,7 +412,7 @@ var _ = Describe("Host controller", func() {
 			got := provisioningAllowed(objects)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return true when host name is not controller-0,controller-1 and is unlocked enabled", func() {
+		It("should return true when host name is not controller-0 or controller-1 and is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
 					Hostname:            "controller-2",
@@ -426,8 +425,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("MonitorsEnabled func", func() {
-		It("Should return true if function is monitor and if the host is unlock enabled", func() {
+	Context("when calling MonitorsEnabled", func() {
+		It("should return true if function is monitor and the host is unlocked enabled", func() {
 			required := 1
 			function := "monitor"
 			objects := []hosts.Host{
@@ -445,8 +444,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("AllControllerNodesEnabled func", func() {
-		It("Should return true if all the controller nodes are enabled", func() {
+	Context("when calling AllControllerNodesEnabled", func() {
+		It("should return true if all the controller nodes are enabled", func() {
 			required := 1
 			objects := []hosts.Host{
 				{
@@ -460,8 +459,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("findPTPInstanceByName func", func() {
-		It("Should return ptpinstance with found name", func() {
+	Context("when calling findPTPInstanceByName", func() {
+		It("should return ptpinstance with found name", func() {
 			client := gcClient.ServiceClient()
 			name := "ptp1"
 
@@ -477,21 +476,20 @@ var _ = Describe("Host controller", func() {
 					break
 				}
 				if i < 2 {
-					fmt.Println("Retrying due to 404 error...")
+					GinkgoWriter.Println("Retrying due to 404 error...")
 					time.Sleep(1 * time.Second) // Optional: Add a small delay between retries
 				}
 			}
 
 			// If still a 404 error, skip the final expectations and pass the test
 			if _, ok := err.(gophercloud.ErrDefault404); ok {
-				fmt.Println("404 error encountered after retries, skipping final expectations.")
-				return
+				Skip("404 error encountered after retries, skipping final expectations")
 			}
 
 			Expect(gotPTPInst).NotTo(BeNil())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
-		It("Should return nil if no name matches", func() {
+		It("should return nil if no name matches", func() {
 			client := gcClient.ServiceClient()
 			name := "ptp0"
 
@@ -507,25 +505,24 @@ var _ = Describe("Host controller", func() {
 					break
 				}
 				if i < 2 {
-					fmt.Println("Retrying due to 404 error...")
+					GinkgoWriter.Println("Retrying due to 404 error...")
 					time.Sleep(1 * time.Second) // Optional: Add a small delay between retries
 				}
 			}
 
 			// If still a 404 error, skip the final expectations and pass the test
 			if _, ok := err.(gophercloud.ErrDefault404); ok {
-				fmt.Println("404 error encountered after retries, skipping final expectations.")
-				return
+				Skip("404 error encountered after retries, skipping final expectations")
 			}
 
 			Expect(gotPTPInst).To(BeNil())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	Context("getBMPasswordCredentials func", func() {
+	Context("when calling getBMPasswordCredentials", func() {
 
-		It("Should return error When no such namespace exists ", func() {
+		It("should return error when no such namespace exists", func() {
 			name := "user1"
 			namespace := "ns1"
 
@@ -540,12 +537,12 @@ var _ = Describe("Host controller", func() {
 			userName, password, err := r.getBMPasswordCredentials(namespace, name)
 			Expect(userName).To(Equal(""))
 			Expect(password).To(Equal(""))
-			Expect(err).NotTo(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
-	Context("CompareFileSystemTypes func", func() {
-		It("SHould return false when other hostProfileSpec is nil", func() {
+	Context("when calling CompareFileSystemTypes", func() {
+		It("should return false when other hostProfileSpec is nil", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
 				Scheme: scheme.Scheme,
@@ -558,7 +555,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareFileSystemTypes(in, nil)
 			Expect(got).To(BeFalse())
 		})
-		It("Should return true when both in and other storage is nil", func() {
+		It("should return true when both in and other storage is nil", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			other := &starlingxv1.HostProfileSpec{}
 			var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
@@ -572,7 +569,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareFileSystemTypes(in, other)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return true when in and other storage is equal", func() {
+		It("should return true when in and other storage is equal", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor:      nil,
@@ -611,7 +608,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareFileSystemTypes(in, other)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return true when in and other storage is not equal and have unallowed filesystem types", func() {
+		It("should return true when in and other storage is not equal and have unallowed filesystem types", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor:      nil,
@@ -658,7 +655,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareFileSystemTypes(in, other)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return false when in and other storage is not equal and have allowed filesystem types", func() {
+		It("should return false when in and other storage is not equal and have allowed filesystem types", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor:      nil,
@@ -701,7 +698,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareFileSystemTypes(in, other)
 			Expect(got).To(BeFalse())
 		})
-		It("Should return true when in and other storage are not equal, since ceph fs does not support removal", func() {
+		It("should return true when in and other storage are not equal since ceph fs does not support removal", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor:      nil,
@@ -746,15 +743,15 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("CompareOSDs func", func() {
-		It("SHould return false when other hostProfileSpec is nil", func() {
+	Context("when calling CompareOSDs", func() {
+		It("should return false when other hostProfileSpec is nil", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			r := &HostReconciler{}
 
 			got := r.CompareOSDs(in, nil)
 			Expect(got).To(BeFalse())
 		})
-		It("Should return true when both in and other storage is nil", func() {
+		It("should return true when both in and other storage is nil", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			other := &starlingxv1.HostProfileSpec{}
 			r := &HostReconciler{}
@@ -762,7 +759,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareOSDs(in, other)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return true when in and other storage is equal", func() {
+		It("should return true when in and other storage is equal", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor:      nil,
@@ -784,7 +781,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareOSDs(in, other)
 			Expect(got).To(BeTrue())
 		})
-		It("Should return false when in and other storage osds are not equal", func() {
+		It("should return false when in and other storage osds are not equal", func() {
 			in := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
 					Monitor: nil,
@@ -814,7 +811,7 @@ var _ = Describe("Host controller", func() {
 			got := r.CompareOSDs(in, other)
 			Expect(got).To(BeFalse())
 		})
-		It("Should return false when in storage is nil and other storage osds are not nil and len of other osds is greater than 0", func() {
+		It("should return false when in storage is nil and other storage osds are not nil and len of other osds is greater than 0", func() {
 			in := &starlingxv1.HostProfileSpec{}
 			other := &starlingxv1.HostProfileSpec{
 				Storage: &starlingxv1.ProfileStorageInfo{
@@ -835,8 +832,8 @@ var _ = Describe("Host controller", func() {
 		})
 	})
 
-	Context("CephReplicationFactor func", func() {
-		It("Should return positive factor when testhelper client is provided", func() {
+	Context("when calling CephReplicationFactor", func() {
+		It("should return positive factor when testhelper client is provided", func() {
 			client := gcClient.ServiceClient()
 			gotRep, err := CephReplicationFactor(client)
 
@@ -851,52 +848,51 @@ var _ = Describe("Host controller", func() {
 					break
 				}
 				if i < 2 {
-					fmt.Println("Retrying due to 404 error...")
+					GinkgoWriter.Println("Retrying due to 404 error...")
 					time.Sleep(1 * time.Second) // Optional: Add a small delay between retries
 				}
 			}
 
 			// If still a 404 error, skip the final expectations and pass the test
 			if _, ok := err.(gophercloud.ErrDefault404); ok {
-				fmt.Println("404 error encountered after retries, skipping final expectations.")
-				return
+				Skip("404 error encountered after retries, skipping final expectations")
 			}
 
-			Expect(gotRep).NotTo(Equal(0))
-			Expect(err).To(BeNil())
+			Expect(gotRep).ToNot(Equal(0))
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	Context("IsCephPrimaryGroup func", func() {
-		It("Should return true if host_uid is in primary group", func() {
+	Context("when calling IsCephPrimaryGroup", func() {
+		It("should return true if host_uid is in primary group", func() {
 			host_uid := "cebe7a5e-7b57-497b-a335-6e7cf93e98ee"
 			rep := 2
 			CephPrimaryGroup = []string{"id1", "cebe7a5e-7b57-497b-a335-6e7cf93e98ee"}
 			pg, err := IsCephPrimaryGroup(host_uid, rep)
 
 			Expect(pg).To(BeTrue())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
-		It("Should return true if len of primary grp is < rep", func() {
+		It("should return true if len of primary grp is less than rep", func() {
 			host_uid := "cebe7a5e-7b57-497b-a335-6e7cf93e98ee"
 			rep := 3
 			CephPrimaryGroup = []string{"id1", "id2"}
 			pg, err := IsCephPrimaryGroup(host_uid, rep)
 			Expect(pg).To(BeTrue())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
-		It("Should return false if len of host_uid is 0", func() {
+		It("should return false if len of host_uid is 0", func() {
 			host_uid := ""
 			rep := 1
 			CephPrimaryGroup = []string{"id1", "id2"}
 			pg, err := IsCephPrimaryGroup(host_uid, rep)
 			Expect(pg).To(BeFalse())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	Context("GetCephPrimaryGroupReady func", func() {
-		It("Should return false when ceph primary group hosts are unlocked available are less than replication factor", func() {
+	Context("when calling GetCephPrimaryGroupReady", func() {
+		It("should return false when ceph primary group hosts unlocked available are less than replication factor", func() {
 			client := gcClient.ServiceClient()
 			r := &HostReconciler{
 				hosts: []hosts.Host{
@@ -919,24 +915,23 @@ var _ = Describe("Host controller", func() {
 					break
 				}
 				if i < 2 {
-					fmt.Println("Retrying due to 404 error...")
+					GinkgoWriter.Println("Retrying due to 404 error...")
 					time.Sleep(1 * time.Second) // Optional: Add a small delay between retries
 				}
 			}
 
 			// If still a 404 error, skip the final expectations and pass the test
 			if _, ok := err.(gophercloud.ErrDefault404); ok {
-				fmt.Println("404 error encountered after retries, skipping final expectations.")
-				return
+				Skip("404 error encountered after retries, skipping final expectations")
 			}
 
 			Expect(ready).To(BeFalse())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	Context("FindExistingHost func", func() {
-		It("Returns nil if objects len is 0", func() {
+	Context("when calling FindExistingHost", func() {
+		It("should return nil if objects len is 0", func() {
 			hostname := "host1"
 			match := &starlingxv1.MatchInfo{}
 			bootMAC := "11:22:33:44"
@@ -945,7 +940,7 @@ var _ = Describe("Host controller", func() {
 			gotHost := FindExistingHost(objects, hostname, match, &bootMAC)
 			Expect(gotHost).To(BeNil())
 		})
-		It("Returns host where the hostname matches with thehostname input", func() {
+		It("should return host where the hostname matches with the hostname input", func() {
 			hostname := "host1"
 			match := &starlingxv1.MatchInfo{}
 			bootMAC := "11:22:33:44"
@@ -958,7 +953,7 @@ var _ = Describe("Host controller", func() {
 			gotHost := FindExistingHost(objects, hostname, match, &bootMAC)
 			Expect(gotHost).NotTo(BeNil())
 		})
-		It("Returns host where the hostname matches with the match criteria and hostname is empty", func() {
+		It("should return host where the hostname matches with the match criteria and hostname is empty", func() {
 			hostname := "host1"
 			bootMAC := "11:22:33:44"
 			bootMacIn := "00:11:22:33"
@@ -990,7 +985,7 @@ var _ = Describe("Host controller", func() {
 			gotHost := FindExistingHost(objects, hostname, match, &bootMacIn)
 			Expect(gotHost).NotTo(BeNil())
 		})
-		It("Returns host where the bootMAC of objects matches with the BootMAC input ", func() {
+		It("should return host where the bootMAC of objects matches with the BootMAC input", func() {
 			hostname := "host1"
 
 			bootMAC2 := "01:22:31:44"
@@ -1023,16 +1018,16 @@ var _ = Describe("Host controller", func() {
 			Expect(gotHost).NotTo(BeNil())
 		})
 	})
-	Context("HTTPSRequired func", func() {
-		It("Should return false when reconcile option is there", func() {
+	Context("when calling HTTPSRequired", func() {
+		It("should return false when reconcile option is there", func() {
 			r := &HostReconciler{}
 
 			got := r.HTTPSRequired()
 			Expect(got).NotTo(BeNil())
 		})
 	})
-	Context("UpdateRequired func", func() {
-		It("Should return result as true since updated is required", func() {
+	Context("when calling UpdateRequired", func() {
+		It("should return result as true since update is required", func() {
 			r := &HostReconciler{}
 			name1 := "host1"
 			name2 := "host2"
@@ -1112,7 +1107,7 @@ var _ = Describe("Host controller", func() {
 			}
 			opts, result, err := r.UpdateRequired(instance, profile, h)
 			Expect(opts).NotTo(BeNil())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(BeTrue())
 		})
 	})

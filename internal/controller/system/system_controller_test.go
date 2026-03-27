@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022,2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022, 2024-2026 Wind River Systems, Inc. */
 package system
 
 import (
@@ -15,9 +15,9 @@ import (
 )
 
 var _ = Describe("System controller", func() {
-	Describe("dnsUpdateRequired function", func() {
-		Context("When dns servers are configured", func() {
-			It("Should return true if DNS arrays have different sizes", func() {
+	Describe("DnsUpdateRequired", func() {
+		Context("when dns servers are configured", func() {
+			It("should return true if DNS arrays have different sizes", func() {
 				spec := starlingxv1.SystemSpec{
 					DNSServers: []string{},
 				}
@@ -28,7 +28,7 @@ var _ = Describe("System controller", func() {
 			})
 		})
 
-		It("Should return false when current and desired DNS servers are identical", func() {
+		It("should return false when current and desired DNS servers are identical", func() {
 			spec := starlingxv1.SystemSpec{
 				DNSServers: []string{"1.1.1.1", "8.8.8.8", "8.8.4.4"},
 			}
@@ -38,7 +38,7 @@ var _ = Describe("System controller", func() {
 			Expect(required).To(BeFalse())
 		})
 
-		It("Should return true when current DNS is empty and desired has DNS servers", func() {
+		It("should return true when current DNS is empty and desired has DNS servers", func() {
 			spec := starlingxv1.SystemSpec{
 				DNSServers: []string{"1.1.1.1", "8.8.8.8", "8.8.4.4"},
 			}
@@ -48,7 +48,7 @@ var _ = Describe("System controller", func() {
 			Expect(*opts.Nameservers).To(Equal("1.1.1.1,8.8.8.8,8.8.4.4"))
 		})
 
-		It("Should return true when current has DNS servers but desired has none", func() {
+		It("should return true when current has DNS servers but desired has none", func() {
 			spec := starlingxv1.SystemSpec{DNSServers: []string{}}
 			info := dns.DNS{Nameservers: "1.1.1.1,8.8.8.8,8.8.4.4"}
 			opts, required := dnsUpdateRequired(&spec, &info)
@@ -57,9 +57,9 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
-	Describe("ntpUpdateRequired function", func() {
-		Context("When dns servers are configured", func() {
-			It("Should return true if NTP arrays have different sizes", func() {
+	Describe("NtpUpdateRequired", func() {
+		Context("when NTP servers are configured", func() {
+			It("should return true if NTP arrays have different sizes", func() {
 				spec := starlingxv1.SystemSpec{NTPServers: []string{}}
 				info := ntp.NTP{NTPServers: "0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"}
 				opts, required := ntpUpdateRequired(&spec, &info)
@@ -67,7 +67,7 @@ var _ = Describe("System controller", func() {
 				Expect(*opts.NTPServers).To(Equal("NC"))
 			})
 
-			It("Should return false when current and desired NTP servers are identical", func() {
+			It("should return false when current and desired NTP servers are identical", func() {
 				spec := starlingxv1.SystemSpec{
 					NTPServers: []string{"0.ubuntu.pool.ntp.org", "1.ubuntu.pool.ntp.org"},
 				}
@@ -77,7 +77,7 @@ var _ = Describe("System controller", func() {
 				Expect(required).To(BeFalse())
 			})
 
-			It("Should return true when current NTP is empty and desired has DNS servers", func() {
+			It("should return true when current NTP is empty and desired has NTP servers", func() {
 				spec := starlingxv1.SystemSpec{
 					NTPServers: []string{"0.ubuntu.pool.ntp.org", "1.ubuntu.pool.ntp.org"},
 				}
@@ -87,7 +87,7 @@ var _ = Describe("System controller", func() {
 				Expect(*opts.NTPServers).To(Equal("0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"))
 			})
 
-			It("Should return true when current has NTP servers but desired has none", func() {
+			It("should return true when current has NTP servers but desired has none", func() {
 				spec := starlingxv1.SystemSpec{NTPServers: []string{}}
 				info := ntp.NTP{NTPServers: "0.ubuntu.pool.ntp.org,1.ubuntu.pool.ntp.org"}
 				opts, required := ntpUpdateRequired(&spec, &info)
@@ -98,8 +98,8 @@ var _ = Describe("System controller", func() {
 
 	})
 
-	Context("System with data", func() {
-		It("Should created successfully", func() {
+	Context("with System data", func() {
+		It("should be created successfully", func() {
 			ctx := context.Background()
 			description := string("A sample description")
 			location := string("A sample location")
@@ -135,8 +135,8 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
-	Context("Test clean_deprecated_certificates func", func() {
-		It("Should filter all deprecated certficate types successfully", func() {
+	Context("when cleaning deprecated certificates", func() {
+		It("should filter all deprecated certificate types successfully", func() {
 			certs := []starlingxv1.CertificateInfo{
 				{
 					Type:      starlingxv1.PlatformCertificate,
@@ -162,8 +162,8 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
-	Context("Test valid deployment for Ceph Rook backend", func() {
-		It("Should return successfully", func() {
+	Context("when validating a valid deployment for Ceph Rook backend", func() {
+		It("should return successfully", func() {
 			nameBackend := string("ceph-rook-foobar")
 			typeBackend := string("ceph-rook")
 			deploymentModel := string("controller")
@@ -188,8 +188,8 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
-	Context("Test invalid deployment for Ceph Rook backend", func() {
-		It("Should return error", func() {
+	Context("when validating an invalid deployment for Ceph Rook backend", func() {
+		It("should return error", func() {
 			nameBackend := string("ceph-rook-foobarfoo")
 			typeBackend := string("ceph-rook")
 			deploymentModel := string("incorrect-deployment-model")
@@ -210,12 +210,13 @@ var _ = Describe("System controller", func() {
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, created)).Error()
+			err := k8sClient.Create(ctx, created)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
-	Context("Test creating ceph-float Controller Filesystem", func() {
-		It("Should return successfully", func() {
+	Context("when creating ceph-float Controller Filesystem", func() {
+		It("should return successfully", func() {
 			nameBackend := string("ceph-rook-storage")
 			typeBackend := string("ceph-rook")
 			deploymentModel := string("controller")
@@ -247,8 +248,8 @@ var _ = Describe("System controller", func() {
 			Expect(k8sClient.Create(ctx, created)).To(Succeed())
 		})
 	})
-	Context("For the FixCertsToManage func when current has runtimeCerts", func() {
-		It("Should remove the rutime certs and return the remaining", func() {
+	Context("when current has runtimeCerts", func() {
+		It("should remove the runtime certs and return the remaining", func() {
 			specCerts := []starlingxv1.CertificateInfo{
 				{
 					Type:      "ssl_ca",

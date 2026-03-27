@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022, 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -20,7 +20,7 @@ var _ = Describe("Addresspool controller", func() {
 		interval = time.Millisecond * 500
 	)
 
-	Context("Addresspool with all data", func() {
+	Context("with Addresspool data", func() {
 		It("Should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
