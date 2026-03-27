@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -11,18 +11,18 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 )
 
-var _ = Describe("datanetwork_webhook functions", func() {
+var _ = Describe("DataNetworkWebhook", func() {
 
-	Describe("validateDataNetwork function is tested", func() {
+	Describe("ValidateDataNetwork", func() {
 		Context("When the type of dataNetwork is vxlan", func() {
-			It("Sucessfully validates the Data Network", func() {
+			It("should successfully validate the Data Network", func() {
 				r := &starlingxv1.DataNetwork{
 					Spec: starlingxv1.DataNetworkSpec{
 						Type: datanetworks.TypeVxLAN,
 					},
 				}
 				err := validateDataNetwork(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When the dataNetwork type is not vxlan but has vxlan info", func() {

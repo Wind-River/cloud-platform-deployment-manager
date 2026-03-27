@@ -242,8 +242,8 @@ func StartAPIHandlers() {
 	th.Mux.HandleFunc("/network_addresspools", HandleResourceRequests)
 }
 
-var _ = Describe("Test Build utilities:", func() {
-	Describe("Test New NewDeploymentBuilder", func() {
+var _ = Describe("Build utilities", func() {
+	Describe("NewDeploymentBuilder", func() {
 
 		client := gophercloud.ServiceClient{}
 		got := NewDeploymentBuilder(&client, "foo", "bar", os.Stdout)
@@ -273,7 +273,7 @@ var _ = Describe("Test Build utilities:", func() {
 			got.platformNetworkFilters, expectPlatformNetworkFilters)).To(BeTrue())
 	})
 
-	Describe("Test parse incomplete secrets", func() {
+	Describe("ParseIncompleteSecrets", func() {
 		warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 		Context("when there are incomplete TLS secrets", func() {
 			It("should return secret with warning message", func() {
@@ -402,9 +402,9 @@ var _ = Describe("Test Build utilities:", func() {
 		})
 	})
 
-	Describe("Test NewEndpointSecretFromEnv", func() {
-		Context("When NewEndpointSecretFromEnv is tested", func() {
-			It("Tests NewEndpointSecretFromEnv", func() {
+	Describe("NewEndpointSecretFromEnv", func() {
+		Context("when calling NewEndpointSecretFromEnv", func() {
+			It("should create NewEndpointSecretFromEnv", func() {
 				name := "name"
 				namespace := "namespace"
 				username := os.Getenv(manager.UsernameKey)
@@ -437,15 +437,15 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 
 				secret, err := NewEndpointSecretFromEnv(name, namespace)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(secret).To(Equal(want))
 			})
 		})
 	})
 
-	Describe("Test buildEndpointSecret", func() {
-		Context("When buildEndpointSecret is tested", func() {
-			It("Tests buildEndpointSecret", func() {
+	Describe("BuildEndpointSecret", func() {
+		Context("when calling buildEndpointSecret", func() {
+			It("should build endpoint secret", func() {
 				gClient := &gophercloud.ServiceClient{}
 				db := &DeploymentBuilder{
 					client:    gClient,
@@ -503,14 +503,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				want := append(dSecrets, &secret2)
 				err := db.buildEndpointSecret(d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.Secrets).To(Equal(want))
 			})
 		})
 	})
-	Describe("Test isInterfaceInUse", func() {
+	Describe("IsInterfaceInUse", func() {
 		Context("when bonds Members has the ifname interface", func() {
-			It("It returns true indicating that interface is in use", func() {
+			It("should return true indicating that interface is in use", func() {
 				ifname := "ifname"
 				info := &starlingxv1.InterfaceInfo{}
 				bonds := make(starlingxv1.BondList, 1)
@@ -519,14 +519,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				info.Bond = bonds
 				out := isInterfaceInUse(ifname, info)
-				Expect(out).To(Equal(true))
+				Expect(out).To(BeTrue())
 			})
 		})
 	})
 
-	Describe("Test isInterfaceInUse", func() {
+	Describe("IsInterfaceInUse", func() {
 		Context("when VLAN lower defines the ifname interface", func() {
-			It("It returns true indicating that interface is in use", func() {
+			It("should return true indicating that interface is in use", func() {
 				ifname := "ifname"
 				info := &starlingxv1.InterfaceInfo{}
 				info.VF = make(starlingxv1.VFList, 1)
@@ -539,14 +539,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				info.Bond = bonds
 				out := isInterfaceInUse(ifname, info)
-				Expect(out).To(Equal(true))
+				Expect(out).To(BeTrue())
 			})
 		})
 	})
 
-	Describe("Test isInterfaceInUse", func() {
+	Describe("IsInterfaceInUse", func() {
 		Context("when VF lower defines the ifname interface", func() {
-			It("It returns true indicating that interface is in use", func() {
+			It("should return true indicating that interface is in use", func() {
 				ifname := "ifname"
 				info := &starlingxv1.InterfaceInfo{}
 				info.VF = make(starlingxv1.VFList, 1)
@@ -559,14 +559,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				info.Bond = bonds
 				out := isInterfaceInUse(ifname, info)
-				Expect(out).To(Equal(true))
+				Expect(out).To(BeTrue())
 			})
 		})
 	})
 
-	Describe("Test isInterfaceInUse", func() {
+	Describe("IsInterfaceInUse", func() {
 		Context("when interface is not in use", func() {
-			It("It returns false indicating that interface is not in use", func() {
+			It("should return false indicating that interface is not in use", func() {
 				ifname := "ifname"
 				info := &starlingxv1.InterfaceInfo{}
 				info.VF = make(starlingxv1.VFList, 1)
@@ -579,13 +579,13 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				info.Bond = bonds
 				out := isInterfaceInUse(ifname, info)
-				Expect(out).To(Equal(false))
+				Expect(out).To(BeFalse())
 			})
 		})
 	})
-	Describe("Test buildNamespace", func() {
-		Context("When deployment builder is with non-empty namespace", func() {
-			It("Fills the deployment namespace with the deploymentbuilder namespace", func() {
+	Describe("BuildNamespace", func() {
+		Context("when deployment builder has non-empty namespace", func() {
+			It("should fill the deployment namespace with the deploymentbuilder namespace", func() {
 				name := "fakens"
 				db := &DeploymentBuilder{
 					namespace: name,
@@ -601,15 +601,15 @@ var _ = Describe("Test Build utilities:", func() {
 					},
 				}
 				err := db.buildNamespace(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.Namespace).To(Equal(ns))
 			})
 		})
 	})
 
-	Describe("Test buildLicenseSecret", func() {
-		Context("When deployment builder is with non-empty secrets", func() {
-			It("Fills the deployment secrets with the deploymentbuilder secrets", func() {
+	Describe("BuildLicenseSecret", func() {
+		Context("when deployment builder has non-empty secrets", func() {
+			It("should fill the deployment secrets with the deploymentbuilder secrets", func() {
 				secrets := make([]*v1.Secret, 0)
 				secName := "fakeSecret"
 				content := "LicenseContent"
@@ -647,15 +647,15 @@ var _ = Describe("Test Build utilities:", func() {
 				expSecrets := make([]*v1.Secret, 0)
 				expSecrets = append(expSecrets, expSec)
 				err := db.buildLicenseSecret(&d, license)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.Secrets).To(Equal(expSecrets))
 			})
 		})
 	})
 
-	Describe("Test buildCertificateSecrets", func() {
-		Context("When deployment spec has non empty certificates", func() {
-			It("Adds them to the incomplete secrets in the deployment", func() {
+	Describe("BuildCertificateSecrets", func() {
+		Context("when deployment spec has non-empty certificates", func() {
+			It("should add them to the incomplete secrets in the deployment", func() {
 				secrets := make([]*v1.Secret, 0)
 				secName := "fakeSecret"
 
@@ -707,15 +707,15 @@ var _ = Describe("Test Build utilities:", func() {
 				expInCompleteSecrets := make([]*IncompleteSecret, 0)
 				expInCompleteSecrets = append(expInCompleteSecrets, &expInCompleteSec)
 				err := db.buildCertificateSecrets(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.IncompleteSecrets).To(Equal(expInCompleteSecrets))
 			})
 		})
 	})
 
-	Describe("Test parseIncompleteSecret", func() {
-		Context("When type of secret is SecretTypeTLS", func() {
-			It("Adds warning msg for keys tls.crt,tls.key and ca.crt in data", func() {
+	Describe("ParseIncompleteSecret", func() {
+		Context("when type of secret is SecretTypeTLS", func() {
+			It("should add warning msg for keys tls.crt, tls.key and ca.crt in data", func() {
 				warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 				secret := &v1.Secret{
 					Type: v1.SecretTypeTLS,
@@ -734,8 +734,8 @@ var _ = Describe("Test Build utilities:", func() {
 				Expect(*out).To(Equal(expInComSecret))
 			})
 		})
-		Context("When type of secret is SecretTypeBasicAuth", func() {
-			It("Adds warning msg to username and password keys of data", func() {
+		Context("when type of secret is SecretTypeBasicAuth", func() {
+			It("should add warning msg to username and password keys of data", func() {
 				warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 				secret := &v1.Secret{
 					Type: v1.SecretTypeBasicAuth,
@@ -753,8 +753,8 @@ var _ = Describe("Test Build utilities:", func() {
 				Expect(*out).To(Equal(expInComSecret))
 			})
 		})
-		Context("When type of secret is other than SecretTypeBasicAuth and SecretTypeTLS", func() {
-			It("Returns empty Data", func() {
+		Context("when type of secret is other than SecretTypeBasicAuth and SecretTypeTLS", func() {
+			It("should return empty Data", func() {
 				warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 				secret := &v1.Secret{
 					Type: v1.SecretTypeDockercfg,
@@ -773,9 +773,9 @@ var _ = Describe("Test Build utilities:", func() {
 		})
 	})
 
-	Describe("Test buildDataNetworks", func() {
-		Context("When non-empty datanetworks is present is returned by fake client", func() {
-			It("Fills the deployment with fake client returned datanetworks", func() {
+	Describe("BuildDataNetworks", func() {
+		Context("when non-empty datanetworks are returned by fake client", func() {
+			It("should fill the deployment with fake client returned datanetworks", func() {
 				ns := "fakens"
 				db := &DeploymentBuilder{
 					client:    gcClient.ServiceClient(),
@@ -802,15 +802,15 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				expDNs = append(expDNs, &expDN)
 				err := db.buildDataNetworks(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.DataNetworks).To(Equal(expDNs))
 			})
 		})
 	})
 
-	Describe("Test buildPlatformNetworks", func() {
-		Context("When non-empty platformnetworks is present is returned by fake client", func() {
-			It("Fills the deployment with fake client returned platformnetworks", func() {
+	Describe("BuildPlatformNetworks", func() {
+		Context("when non-empty platformnetworks are returned by fake client", func() {
+			It("should fill the deployment with fake client returned platformnetworks", func() {
 				ns := "fakens"
 				name := "mgmt"
 				network_type := "mgmt"
@@ -840,15 +840,15 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				expPNs = append(expPNs, &expPN)
 				err := db.buildPlatformNetworks(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.PlatformNetworks).To(Equal(expPNs))
 			})
 		})
 	})
 
-	Describe("Test buildPTPInstances", func() {
-		Context("When non-empty PTPInstances is present is returned by fake client", func() {
-			It("Fills the deployment with fake client returned PTPInstances", func() {
+	Describe("BuildPTPInstances", func() {
+		Context("when non-empty PTPInstances are returned by fake client", func() {
+			It("should fill the deployment with fake client returned PTPInstances", func() {
 				ns := "fakens"
 				name := "phc2sys1"
 				service := "phc2sys"
@@ -876,14 +876,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				expPtpInsts = append(expPtpInsts, &expPtpInst)
 				err := db.buildPTPInstances(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.PtpInstances).To(Equal(expPtpInsts))
 			})
 		})
 	})
-	Describe("Test buildPTPInterfaces", func() {
-		Context("When non-empty PTPInterfaces is present is returned by fake client", func() {
-			It("Fills the deployment with fake client returned PTPInterfaces", func() {
+	Describe("BuildPTPInterfaces", func() {
+		Context("when non-empty PTPInterfaces are returned by fake client", func() {
+			It("should fill the deployment with fake client returned PTPInterfaces", func() {
 				ns := "fakens"
 				name := "ptpint1"
 				ptpInstanceName := "phc2sys1"
@@ -911,14 +911,14 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 				expPtpInfs = append(expPtpInfs, &expPtpInf)
 				err := db.buildPTPInterfaces(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.PtpInterfaces).To(Equal(expPtpInfs))
 			})
 		})
 	})
-	Describe("Test simplifyHostProfiles", func() {
-		Context("When deployment has non-empty profiles", func() {
-			It("Simplifies the host profiles", func() {
+	Describe("SimplifyHostProfiles", func() {
+		Context("when deployment has non-empty profiles", func() {
+			It("should simplify the host profiles", func() {
 				ns := "fakens"
 				profName := "hostProfile1"
 				db := &DeploymentBuilder{
@@ -958,15 +958,15 @@ var _ = Describe("Test Build utilities:", func() {
 				}
 
 				err := db.simplifyHostProfiles(&d)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(d.Profiles).To(Equal(expProfiles))
 			})
 		})
 	})
 
-	Describe("Test ToYAML", func() {
-		Context("When non empty resource instances are given", func() {
-			It("Modifies all the instances to the yaml format", func() {
+	Describe("ToYAML", func() {
+		Context("when non-empty resource instances are given", func() {
+			It("should modify all the instances to the yaml format", func() {
 				warningMsg := "Warning: Incomplete secret, please replace it with the secret content"
 				namespace := "fakens"
 				fakePassword := []byte("")
@@ -1099,7 +1099,7 @@ var _ = Describe("Test Build utilities:", func() {
 					},
 				}
 				out, err := d.ToYAML()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(out).To(Equal(expYaml))
 			})
 		})

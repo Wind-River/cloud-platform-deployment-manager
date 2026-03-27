@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022,2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022, 2024-2026 Wind River Systems, Inc. */
 package controller
 
 import (
@@ -24,7 +24,7 @@ var _ = Describe("PtpInstance controller", func() {
 
 	Describe("Create PtpInstance", func() {
 		Context("with single section data", func() {
-			It("Should created successfully", func() {
+			It("should be created successfully", func() {
 				ctx := context.Background()
 				key := types.NamespacedName{
 					Name:      "foo",
@@ -56,7 +56,7 @@ var _ = Describe("PtpInstance controller", func() {
 	})
 	Describe("Create PtpInstance", func() {
 		Context("with multiple section data", func() {
-			It("Should create successfully", func() {
+			It("should create successfully", func() {
 				ctx := context.Background()
 				key := types.NamespacedName{
 					Name:      "bar",

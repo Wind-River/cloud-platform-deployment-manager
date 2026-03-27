@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -10,11 +10,11 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 )
 
-var _ = Describe("system_webhook functions", func() {
+var _ = Describe("HostWebhook", func() {
 
-	Describe("validateMatchBMInfo function is tested", func() {
+	Describe("ValidateMatchBMInfo", func() {
 		Context("When board management address is not nil", func() {
-			It("validates succesfully without error", func() {
+			It("should validate successfully without error", func() {
 				bmAddr := "192.13.24.39"
 				r := &starlingxv1.Host{
 					Spec: starlingxv1.HostSpec{
@@ -26,11 +26,11 @@ var _ = Describe("system_webhook functions", func() {
 					},
 				}
 				err := validateMatchBMInfo(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When the board management address is nil", func() {
-			It("Throws the error board management address must be supplied in match criteria", func() {
+			It("should return error that board management address must be supplied in match criteria", func() {
 				r := &starlingxv1.Host{
 					Spec: starlingxv1.HostSpec{
 						Match: &starlingxv1.MatchInfo{
@@ -44,9 +44,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateMatchDMIInfo function is tested", func() {
+	Describe("ValidateMatchDMIInfo", func() {
 		Context("When serial no and assetTag are not nil", func() {
-			It("successfull without any error", func() {
+			It("should succeed without any error", func() {
 				serialNo := "12345"
 				astTag := "90"
 				r := &starlingxv1.Host{
@@ -60,11 +60,11 @@ var _ = Describe("system_webhook functions", func() {
 					},
 				}
 				err := validateMatchDMIInfo(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When both serial no and assetTag are nil", func() {
-			It("Throws the error DMI Serial Number or Asset Tag must be supplied in match criteria", func() {
+			It("should return error that DMI Serial Number or Asset Tag must be supplied in match criteria", func() {
 				astTag := "90"
 				r := &starlingxv1.Host{
 					Spec: starlingxv1.HostSpec{
@@ -81,9 +81,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateMatchInfo function is tested", func() {
+	Describe("ValidateMatchInfo", func() {
 		Context("When board management,DMI and bootMac info is not nil ", func() {
-			It("Successfully validates match info without any error", func() {
+			It("should validate match info successfully without any error", func() {
 				bmAddr := "192.13.24.39"
 				serialNo := "12345"
 				astTag := "90"
@@ -104,11 +104,11 @@ var _ = Describe("system_webhook functions", func() {
 					},
 				}
 				err := validateMatchInfo(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When all board management,DMI and bootMac info are nil", func() {
-			It("Returns the error host must be configured with at least 1 match criteria", func() {
+			It("should return error that host must be configured with at least 1 match criteria", func() {
 				r := &starlingxv1.Host{
 					Spec: starlingxv1.HostSpec{
 						Match: &starlingxv1.MatchInfo{},
@@ -120,9 +120,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateHost function is tested", func() {
+	Describe("ValidateHost", func() {
 		Context("When match info is not nil", func() {
-			It("It validates the host match info succesfully without any error", func() {
+			It("should validate the host match info successfully without any error", func() {
 				bmAddr := "192.13.24.39"
 				serialNo := "12345"
 				astTag := "90"
@@ -143,7 +143,7 @@ var _ = Describe("system_webhook functions", func() {
 					},
 				}
 				err := validateHost(r)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

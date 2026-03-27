@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2022,2025 Wind River Systems, Inc. */
+/* Copyright(c) 2022, 2025-2026 Wind River Systems, Inc. */
 package controller
 
 import (
@@ -14,8 +14,8 @@ import (
 
 var _ = Describe("HostProfile controller", func() {
 
-	Context("HostProfile with data", func() {
-		It("Should created successfully", func() {
+	Context("with HostProfile data", func() {
+		It("should be created successfully", func() {
 			ctx := context.Background()
 			created := &starlingxv1.HostProfile{
 				ObjectMeta: metav1.ObjectMeta{

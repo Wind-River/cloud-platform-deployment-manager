@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -21,7 +21,7 @@ var _ = Describe("HostProfile controller", func() {
 		timeout  = time.Second * 30
 		interval = time.Millisecond * 500
 	)
-	Context("Test IsKeyEqual func for AddressInfo", func() {
+	Context("when testing IsKeyEqual for AddressInfo", func() {
 		It("Should return true", func() {
 			in := starlingxv1.AddressInfo{
 				Address: "193.34.56.87",
@@ -35,7 +35,7 @@ var _ = Describe("HostProfile controller", func() {
 			Expect(got).To(BeTrue())
 		})
 	})
-	Context("Test IsKeyEqual func for AddressInfo", func() {
+	Context("when testing IsKeyEqual for AddressInfo", func() {
 		It("Should return false", func() {
 			in := starlingxv1.AddressInfo{
 				Address: "193.34.56.87",
@@ -50,7 +50,7 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test IsKeyEqual func for RouteInfo", func() {
+	Context("when testing IsKeyEqual for RouteInfo", func() {
 		It("Should return true", func() {
 			in := starlingxv1.RouteInfo{
 				Interface: "Interface",
@@ -68,7 +68,7 @@ var _ = Describe("HostProfile controller", func() {
 			Expect(got).To(BeTrue())
 		})
 	})
-	Context("Test IsKeyEqual func for RouteInfo", func() {
+	Context("when testing IsKeyEqual for RouteInfo", func() {
 		It("Should return false", func() {
 			in := starlingxv1.RouteInfo{
 				Interface: "Interface",
@@ -84,7 +84,7 @@ var _ = Describe("HostProfile controller", func() {
 			Expect(got).To(BeFalse())
 		})
 	})
-	Context("Test HasWorkerSubFunction func", func() {
+	Context("when testing HasWorkerSubFunction", func() {
 		It("Should return true", func() {
 			personality := hosts.PersonalityWorker
 			in := &starlingxv1.HostProfileSpec{
@@ -98,7 +98,7 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test HasWorkerSubFunction func when spec has no worker subfunction", func() {
+	Context("when spec has no worker subfunction", func() {
 		It("Should return false", func() {
 
 			in := &starlingxv1.HostProfileSpec{
@@ -111,7 +111,7 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test HasWorkerSubFunction func", func() {
+	Context("when testing HasWorkerSubFunction", func() {
 		It("Should return true", func() {
 			personality := hosts.PersonalityWorker
 			in := &starlingxv1.HostProfileSpec{
@@ -124,8 +124,8 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test GetClusterName with clusterName not nil", func() {
-		It("gives cluserName of OSDInfo", func() {
+	Context("when clusterName is not nil", func() {
+		It("should return clusterName of OSDInfo", func() {
 			name := "ClusterName"
 			in := &starlingxv1.OSDInfo{
 				ClusterName: &name,
@@ -136,8 +136,8 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test GetClusterName with clusterName  nil", func() {
-		It("gives cluserName as CephClusterName", func() {
+	Context("when clusterName is nil", func() {
+		It("should return clusterName as CephClusterName", func() {
 
 			in := &starlingxv1.OSDInfo{
 				ClusterName: nil,
@@ -148,8 +148,8 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("Test starlingxv1.SubFunctionFromString", func() {
-		It("Gives subfunction from string", func() {
+	Context("when testing SubFunctionFromString", func() {
+		It("should return subfunction from string", func() {
 			str := "randomString"
 			want := starlingxv1.SubFunction(str)
 			got := starlingxv1.SubFunctionFromString(str)
@@ -157,8 +157,8 @@ var _ = Describe("HostProfile controller", func() {
 		})
 	})
 
-	Context("HostProfile with data", func() {
-		It("Should created successfully", func() {
+	Context("with HostProfile data", func() {
+		It("Should be created successfully", func() {
 			ctx := context.Background()
 			key := types.NamespacedName{
 				Name:      "foo",
@@ -195,7 +195,7 @@ var _ = Describe("HostProfile controller", func() {
 				return err == nil
 			}, timeout, interval).Should(BeFalse())
 		})
-		It("Should created successfully", func() {
+		It("Should be created successfully", func() {
 			ctx := context.Background()
 			type args struct {
 				console string
@@ -220,7 +220,7 @@ var _ = Describe("HostProfile controller", func() {
 					args:    args{console: "ttyS0"},
 					wantErr: false},
 				{name: "serial-missing-baud",
-					args:    args{console: "ttyS0"},
+					args:    args{console: "ttyS0,"},
 					wantErr: true},
 				{name: "serial-with-baud",
 					args:    args{console: "ttyS0,115200"},
@@ -290,7 +290,7 @@ var _ = Describe("HostProfile controller", func() {
 					}}
 				fetched := &starlingxv1.HostProfile{}
 				if tt.wantErr {
-					Expect(k8sClient.Create(ctx, created)).Error()
+					Expect(k8sClient.Create(ctx, created)).To(Not(Succeed()))
 				} else {
 					Expect(k8sClient.Create(ctx, created)).To(Succeed())
 					key.Name = tt.name

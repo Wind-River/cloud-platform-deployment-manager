@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022, 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2024-2026 Wind River Systems, Inc. */
 
 package host
 
@@ -447,7 +447,7 @@ var _ = Describe("Profile utils", func() {
 				}
 				for _, tt := range tests {
 					got, err := MergeProfiles(tt.args.a, tt.args.b)
-					Expect(err).To(BeNil())
+					Expect(err).ToNot(HaveOccurred())
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 					Expect(got).NotTo(BeNil())
 					Expect(got.DeepEqual(tt.want)).To(BeTrue())
@@ -703,7 +703,7 @@ var _ = Describe("Profile utils", func() {
 
 			})
 		})
-		Context("if uuid is not same", func() {
+		Context("when uuid is not the same", func() {
 			It("Should not copy interface name from current to profile", func() {
 				profPortName := "profPortName"
 				profEthName := "profEthName"
@@ -838,7 +838,7 @@ var _ = Describe("Profile utils", func() {
 				).To(Equal("bar1"))
 			})
 		})
-		Context("if name is not same", func() {
+		Context("when name is not the same", func() {
 			It("Should not copy interface uuid from current to profile", func() {
 				profile := &starlingxv1.HostProfileSpec{
 					Interfaces: &starlingxv1.InterfaceInfo{
@@ -923,8 +923,8 @@ var _ = Describe("Profile utils", func() {
 					To(Equal(""))
 			})
 		})
-		Context("if uuid is not empty, that is the normal case", func() {
-			It("the profile's uuid should not be updated", func() {
+		Context("when uuid is not empty", func() {
+			It("should not update the profile's uuid", func() {
 				profile := &starlingxv1.HostProfileSpec{
 					Interfaces: &starlingxv1.InterfaceInfo{
 						Ethernet: starlingxv1.EthernetList{

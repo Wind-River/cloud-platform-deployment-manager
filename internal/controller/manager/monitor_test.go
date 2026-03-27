@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2023-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2023-2026 Wind River Systems, Inc. */
 
 package manager
 
@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("Monitor", func() {
 	Describe("Check return for monitorStrategyState", func() {
-		Context("Fail to obtain vim client", func() {
+		Context("when failing to obtain vim client", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{vimClientAvailable: false, gcShow: ""}
 				got := monitorStrategyState(dm)
@@ -18,7 +18,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Fail to obtain strategy status", func() {
+		Context("when failing to obtain strategy status", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: ""}
 				got := monitorStrategyState(dm)
@@ -26,7 +26,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Status is strategy applied", func() {
+		Context("when status is strategy ready to apply", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyReadyToApply}
 				got := monitorStrategyState(dm)
@@ -35,7 +35,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Strategy apply error but before retry exceeds", func() {
+		Context("when strategy apply error occurs before retry exceeds", func() {
 			It("should return false and strategy action not sent", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyReadyToApply, strategyActionError: true, retryCount: 10}
 				got := monitorStrategyState(dm)
@@ -44,7 +44,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Strategy apply error but retry exceeds", func() {
+		Context("when strategy apply error occurs and retry exceeds", func() {
 			It("should return true, strategy action not sent and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyReadyToApply, strategyActionError: true, retryCount: DefaultMaxStrategyRetryCount + 1}
 				got := monitorStrategyState(dm)
@@ -53,7 +53,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is build failed", func() {
+		Context("when status is build failed", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyBuildFailed}
 				got := monitorStrategyState(dm)
@@ -61,7 +61,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy apply failed", func() {
+		Context("when status is strategy apply failed", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyApplyFailed}
 				got := monitorStrategyState(dm)
@@ -69,7 +69,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy applying", func() {
+		Context("when status is strategy applying", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyApplying}
 				got := monitorStrategyState(dm)
@@ -77,7 +77,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Status is strategy apply failed", func() {
+		Context("when status is strategy build timeout", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyBuildTimeout}
 				got := monitorStrategyState(dm)
@@ -85,7 +85,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy apply timeout", func() {
+		Context("when status is strategy apply timeout", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyApplyTimeout}
 				got := monitorStrategyState(dm)
@@ -93,7 +93,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy abort failed", func() {
+		Context("when status is strategy abort failed", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyAbortFailed}
 				got := monitorStrategyState(dm)
@@ -101,7 +101,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy aborting", func() {
+		Context("when status is strategy aborting", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyAborting}
 				got := monitorStrategyState(dm)
@@ -109,7 +109,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeFalse())
 			})
 		})
-		Context("Status is strategy abort timeout", func() {
+		Context("when status is strategy abort timeout", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyAbortTimeout}
 				got := monitorStrategyState(dm)
@@ -117,7 +117,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyDeleted).To(BeTrue())
 			})
 		})
-		Context("Status is strategy applied", func() {
+		Context("when status is strategy applied", func() {
 			It("should return true and strategy deleted", func() {
 				dm := &Dummymanager{vimClientAvailable: true, gcShow: StrategyApplied}
 				got := monitorStrategyState(dm)
@@ -128,14 +128,14 @@ var _ = Describe("Monitor", func() {
 	})
 
 	Describe("Check return for ManageStrategy", func() {
-		Context("Monitor version is not match to config version", func() {
+		Context("when monitor version does not match config version", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{config_version: 0, monitor_version: 1}
 				got := ManageStrategy(dm)
 				Expect(got).To(BeFalse())
 			})
 		})
-		Context("Reconcile is not finished", func() {
+		Context("when reconcile is not finished", func() {
 			It("should return false and strategy not created", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -149,7 +149,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreated).To(BeFalse())
 			})
 		})
-		Context("Reconcile is finished but no strategy required", func() {
+		Context("when reconcile is finished but no strategy required", func() {
 			It("should return false and strategy not created", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -163,7 +163,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreated).To(BeFalse())
 			})
 		})
-		Context("Lock required for system", func() {
+		Context("when lock is required for system", func() {
 			It("should return false and strategy created and sent", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -182,7 +182,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreateRequest.StorageApplyType).To(Equal("ignore"))
 			})
 		})
-		Context("Lock required for controller", func() {
+		Context("when lock is required for controller", func() {
 			It("should return false and strategy created and sent", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -202,7 +202,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreateRequest.StorageApplyType).To(Equal("ignore"))
 			})
 		})
-		Context("Lock required for worker", func() {
+		Context("when lock is required for worker", func() {
 			It("should return false and strategy created and sent", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -222,7 +222,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreateRequest.StorageApplyType).To(Equal("ignore"))
 			})
 		})
-		Context("Lock required for storage", func() {
+		Context("when lock is required for storage", func() {
 			It("should return false and strategy created and sent", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -242,7 +242,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreateRequest.StorageApplyType).To(Equal("serial"))
 			})
 		})
-		Context("Strategy create error but before retry exceeds", func() {
+		Context("when strategy create error occurs before retry exceeds", func() {
 			It("should return false and strategy not created", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -258,7 +258,7 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreated).To(BeFalse())
 			})
 		})
-		Context("Strategy create error but retry exceeds", func() {
+		Context("when strategy create error occurs and retry exceeds", func() {
 			It("should return false and strategy not created", func() {
 				rsc := map[string]*ResourceInfo{
 					"controller-0": {
@@ -274,14 +274,14 @@ var _ = Describe("Monitor", func() {
 				Expect(dm.strategyCreated).To(BeFalse())
 			})
 		})
-		Context("Strategy applying after strategy sent", func() {
+		Context("when strategy is applying after strategy sent", func() {
 			It("should return false", func() {
 				dm := &Dummymanager{strategySent: true, vimClientAvailable: true, gcShow: StrategyApplying}
 				got := ManageStrategy(dm)
 				Expect(got).To(BeFalse())
 			})
 		})
-		Context("Strategy applied after strategy sent", func() {
+		Context("when strategy is applied after strategy sent", func() {
 			It("should return true", func() {
 				dm := &Dummymanager{strategySent: true, vimClientAvailable: true, gcShow: StrategyApplied}
 				got := ManageStrategy(dm)

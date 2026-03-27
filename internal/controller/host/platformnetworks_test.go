@@ -16,17 +16,7 @@ import (
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
-
-var k8sManager, _ = ctrl.NewManager(cfg, ctrl.Options{
-	Scheme:  scheme.Scheme,
-	Metrics: metricsserver.Options{BindAddress: "0"},
-})
-
-const PlatformNetworkFinalizerName = "platformnetwork.finalizers.windriver.com"
 
 const TestNamespace = "default"
 const (
@@ -226,7 +216,7 @@ func SimulateVIMStrategyAction(hostname string, expect_strategy string) {
 
 	Eventually(func() bool {
 		err := k8sClient.Get(ctx, host_key, host_instance)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		return (host_instance.Status.StrategyRequired == expect_strategy)
 	}, timeout, interval).Should(BeTrue())
 
@@ -246,9 +236,9 @@ func ResetResponses() {
 
 var _ = Describe("Networking utils", func() {
 
-	Context(" Verify reconfiguration is blocked for all networks in Day-1", func() {
+	Context("when verifying reconfiguration is blocked for all networks in Day-1", func() {
 		It("Should be created successfully and Reconciled should be true & InSync should be 'false'", func() {
-			tMgr := cloudManager.GetInstance(k8sManager)
+			tMgr := cloudManager.GetInstance(nil)
 			HostControllerAPIHandlers()
 			AddrPoolListBody = AddrPoolListBodyFull
 			NetworkListBody = NetworkListBodyFull
@@ -316,7 +306,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify fresh configuration is successful for cluster-host in Day-1", func() {
+	Context("when verifying fresh configuration is successful for cluster-host in Day-1", func() {
 		It("Should be created successfully and Reconciled should be 'true' and Insync should be 'true'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
@@ -388,7 +378,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context(" Verify fresh configuration is blocked for networks such as oam / admin / mgmt", func() {
+	Context("when verifying fresh configuration is blocked for networks such as oam, admin, and mgmt", func() {
 		It("Should be created successfully and Reconciled should be true & InSync should be 'false'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
@@ -455,7 +445,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context(" Verify IPv6 addresspool associated with pxeboot fails to reconcile without requeuing the request with fresh configuration in Day1", func() {
+	Context("when verifying IPv6 addresspool associated with pxeboot fails to reconcile without requeuing in Day1", func() {
 		It("Should be created successfully and Reconciled should be false & InSync should be 'false'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
@@ -518,7 +508,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify oam fails to reconcile if either 'floatingAddress' or 'gateway' is missing from the addresspool spec on AIO-SX.", func() {
+	Context("when oam fails to reconcile if either 'floatingAddress' or 'gateway' is missing from the addresspool spec on AIO-SX", func() {
 		It("Should be created successfully and Reconciled should be false & InSync should be 'false'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
@@ -591,7 +581,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify pxeboot fails to reconcile if any of 'floatingAddress', controller0Address' or 'controller1Address' are missing from the addresspool spec", func() {
+	Context("when pxeboot fails to reconcile if any of 'floatingAddress', 'controller0Address' or 'controller1Address' are missing from the addresspool spec", func() {
 		It("Should be created successfully and Reconciled should be false & InSync should be 'false'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
@@ -654,8 +644,8 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify cluster-host fresh network reconciliation succeeds", func() {
-		It("Fails without PoolUUID. Reconciled should be true & InSync should be 'true'", func() {
+	Context("when cluster-host fresh network reconciliation succeeds", func() {
+		It("should fail without PoolUUID and reconciled and InSync should be true", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
 			defer ResetResponses()
@@ -700,8 +690,8 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify network is not created for 'other' network type", func() {
-		It("Reconciled should be true & InSync should be 'true'", func() {
+	Context("when network is not created for 'other' network type", func() {
+		It("should have reconciled and InSync as true", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")
 			defer ResetResponses()
@@ -747,7 +737,7 @@ var _ = Describe("Networking utils", func() {
 		})
 	})
 
-	Context("Verify cluster host secondary stack is not reconciled if oam is not dual-stack", func() {
+	Context("when cluster host secondary stack is not reconciled if oam is not dual-stack", func() {
 		It("Should be created successfully and Reconciled should be 'false' and Insync should be 'false'", func() {
 			CreateDummyHost("controller-0")
 			defer DeleteDummyHost("controller-0")

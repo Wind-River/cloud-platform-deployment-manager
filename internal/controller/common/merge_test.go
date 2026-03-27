@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022,2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2025-2026 Wind River Systems, Inc. */
 
 package common
 
@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("MergeTransformer utils", func() {
-	Describe("merge", func() {
+	Describe("Merge", func() {
 		Context("with profile spec data", func() {
 			It("should merge successfully", func() {
 				type args struct {
@@ -476,7 +476,7 @@ var _ = Describe("MergeTransformer utils", func() {
 					Expect(err != nil).To(Equal(tt.wantErr))
 					if !reflect.DeepEqual(*tt.args.dst, tt.wantStruct) {
 						dstBuf, err := json.Marshal(*tt.args.dst)
-						Expect(err != nil).To(BeNil())
+						Expect(err).ToNot(HaveOccurred())
 						wantBuf, _ := json.Marshal(tt.wantStruct)
 						Expect(dstBuf).To(Equal(wantBuf))
 					}

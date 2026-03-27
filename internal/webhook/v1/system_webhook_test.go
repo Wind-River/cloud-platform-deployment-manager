@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package v1
 
 import (
@@ -10,20 +10,20 @@ import (
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 )
 
-var _ = Describe("system_webhook functions", func() {
+var _ = Describe("SystemWebhook", func() {
 
-	Describe("validateBackendServices function is tested", func() {
+	Describe("ValidateBackendServices", func() {
 		Context("When services belong to the backendType ", func() {
-			It("returns true", func() {
+			It("should return true", func() {
 				backendType := "ceph"
 				services := []string{"cinder", "nova"}
 				err := validateBackendServices(backendType, services)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When services doesnt belong to the backendType ", func() {
-			It("Returns the error that <service> service not allowed with the <backendType> backend", func() {
+			It("should return the error that service is not allowed with the backendType backend", func() {
 				backendType := "lvm"
 				services := []string{"cinder", "nova"}
 				err := validateBackendServices(backendType, services)
@@ -34,9 +34,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateBackendAttributes function is tested", func() {
+	Describe("ValidateBackendAttributes", func() {
 		Context("When the type is ceph and partitionSize and replicationFactor is specified", func() {
-			It("Validtes backend attributes sucessfully without any error", func() {
+			It("should validate backend attributes successfully without any error", func() {
 				prtSize := 20
 				repFac := 2
 				backend := starlingxv1.StorageBackend{
@@ -46,7 +46,7 @@ var _ = Describe("system_webhook functions", func() {
 				}
 
 				err := validateBackendAttributes(backend)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When partitionSize is present when the Type is file", func() {
@@ -101,9 +101,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateStorageBackends function is tested", func() {
+	Describe("ValidateStorageBackends", func() {
 		Context("When backend type is unique", func() {
-			It("Returns nil", func() {
+			It("should return nil", func() {
 				prtSize := 20
 				repFac := 2
 
@@ -122,11 +122,11 @@ var _ = Describe("system_webhook functions", func() {
 					},
 				}
 				err := validateStorageBackends(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When backend type is duplicated", func() {
-			It("Returns error that backend services may only be specified once.", func() {
+			It("should return error that backend services may only be specified once", func() {
 				prtSize := 20
 				repFac := 2
 
@@ -156,7 +156,7 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 		Context("When ceph and ceph-rook backends are added", func() {
-			It("Returns error that they are not supported at the same time.", func() {
+			It("should return error that they are not supported at the same time", func() {
 				repFac := 10
 				deployment := "open"
 
@@ -184,7 +184,7 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 		Context("When ceph and file backends are added", func() {
-			It("Returns success.", func() {
+			It("should return success", func() {
 				obj := &starlingxv1.System{
 					Spec: starlingxv1.SystemSpec{
 						Storage: &starlingxv1.SystemStorageInfo{
@@ -205,9 +205,9 @@ var _ = Describe("system_webhook functions", func() {
 			})
 		})
 	})
-	Describe("validateStorage function is tested", func() {
+	Describe("ValidateStorage", func() {
 		Context("When Backends is not nil and services are belonging to the backend type", func() {
-			It("Returns nil error", func() {
+			It("should return nil error", func() {
 				prtSize := 20
 				repFac := 2
 				obj := &starlingxv1.System{
@@ -226,7 +226,7 @@ var _ = Describe("system_webhook functions", func() {
 				}
 
 				err := validateStorage(obj)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

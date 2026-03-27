@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package manager
 
 import (
@@ -169,7 +171,7 @@ func TestSetFactoryResourceDataUpdated(t *testing.T) {
 	err = manager.SetFactoryResourceDataUpdated(
 		"deployment",
 		"system-abcd",
-		"reconclied",
+		"reconciled",
 		true,
 	)
 	if err != nil {
@@ -182,8 +184,8 @@ func TestSetFactoryResourceDataUpdated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if updatedConfigMap.Data["system-abcd-reconclied-updated"] != "true" {
-		t.Fatalf("expected 'true', got %v", updatedConfigMap.Data["system-abcd-reconclied-updated"])
+	if updatedConfigMap.Data["system-abcd-reconciled-updated"] != "true" {
+		t.Fatalf("expected 'true', got %v", updatedConfigMap.Data["system-abcd-reconciled-updated"])
 	}
 }
 
@@ -230,7 +232,7 @@ func TestGetFactoryResourceDataUpdated(t *testing.T) {
 	result, err = manager.GetFactoryResourceDataUpdated(
 		"deployment",
 		"controller-0",
-		"reconclied",
+		"reconciled",
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
