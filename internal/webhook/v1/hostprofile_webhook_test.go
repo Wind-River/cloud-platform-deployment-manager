@@ -4,12 +4,15 @@ package v1
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/memory"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/physicalvolumes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("HostProfileWebhook", func() {
@@ -363,6 +366,65 @@ var _ = Describe("HostProfileWebhook", func() {
 				err := validateHostProfile(obj)
 				Expect(err).ToNot(HaveOccurred())
 			})
+		})
+	})
+})
+
+var _ = Describe("HostProfileWebhook integration", func() {
+
+	const (
+		timeout  = time.Second * 30
+		interval = time.Millisecond * 500
+	)
+
+	Context("with valid console formats", func() {
+		It("should accept or reject based on console validation", func() {
+			key := types.NamespacedName{Namespace: "default"}
+
+			tests := []struct {
+				name    string
+				console string
+				wantErr bool
+			}{
+				{name: "empty", console: "", wantErr: false},
+				{name: "serial-simple", console: "ttyS0", wantErr: false},
+				{name: "serial-missing-baud", console: "ttyS0,", wantErr: true},
+				{name: "serial-with-baud", console: "ttyS0,115200", wantErr: false},
+				{name: "serial-with-baud-and-parity", console: "ttyS0,115200n8", wantErr: false},
+				{name: "serial-double-digit-with-baud", console: "ttyS01,115200", wantErr: false},
+				{name: "serial-invalid", console: "tty", wantErr: true},
+				{name: "serial-invalid-numbers", console: "1111", wantErr: true},
+				{name: "graphical-simple", console: "tty0", wantErr: false},
+				{name: "graphical-double-digit", console: "tty01", wantErr: false},
+				{name: "parallel-simple", console: "lp0", wantErr: false},
+				{name: "parallel-double-digit", console: "lp01", wantErr: false},
+				{name: "usb-simple", console: "ttyUSB0", wantErr: false},
+				{name: "usb-missing-baud", console: "ttyUSB0,", wantErr: true},
+				{name: "usb-with-baud", console: "ttyUSB0,115200", wantErr: false},
+				{name: "usb-with-baud-and-parity", console: "ttyUSB0,115200n8", wantErr: false},
+				{name: "usb-invalid", console: "usb0", wantErr: true},
+			}
+			for _, tt := range tests {
+				created := &starlingxv1.HostProfile{
+					ObjectMeta: metav1.ObjectMeta{Name: tt.name, Namespace: "default"},
+					Spec: starlingxv1.HostProfileSpec{
+						ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+							Console: &tt.console,
+						},
+					},
+				}
+				if tt.wantErr {
+					Expect(k8sClient.Create(ctx, created)).To(Not(Succeed()))
+				} else {
+					Expect(k8sClient.Create(ctx, created)).To(Succeed())
+					key.Name = tt.name
+					fetched := &starlingxv1.HostProfile{}
+					Eventually(func() bool {
+						return k8sClient.Get(ctx, key, fetched) == nil
+					}, timeout, interval).Should(BeTrue())
+					Expect(fetched.Spec.Console).To(Equal(created.Spec.Console))
+				}
+			}
 		})
 	})
 })

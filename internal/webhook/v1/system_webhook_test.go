@@ -4,10 +4,13 @@ package v1
 
 import (
 	"errors"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("SystemWebhook", func() {
@@ -228,6 +231,50 @@ var _ = Describe("SystemWebhook", func() {
 				err := validateStorage(obj)
 				Expect(err).ToNot(HaveOccurred())
 			})
+		})
+	})
+})
+
+var _ = Describe("SystemWebhook integration", func() {
+
+	const (
+		timeout  = time.Second * 30
+		interval = time.Millisecond * 500
+	)
+
+	Context("with valid System data", func() {
+		It("should accept create through webhook", func() {
+			key := types.NamespacedName{Name: "foo", Namespace: "default"}
+
+			description := "A sample description"
+			location := "A sample location"
+			contact := "A sample contact"
+			latitude := "45.35189954974955"
+			longitude := "-75.91866628453701"
+			ptpMode := "hardware"
+
+			created := &starlingxv1.System{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				Spec: starlingxv1.SystemSpec{
+					Description: &description,
+					Location:    &location,
+					Latitude:    &latitude,
+					Longitude:   &longitude,
+					Contact:     &contact,
+					DNSServers:  starlingxv1.DNSServerList{"8.8.8.8", "4.4.4.4"},
+					NTPServers:  []string{"time.ntp.org", "1.2.3.4"},
+					PTP:         &starlingxv1.PTPInfo{Mode: &ptpMode},
+				},
+			}
+			Expect(k8sClient.Create(ctx, created)).To(Succeed())
+
+			fetched := &starlingxv1.System{}
+			Eventually(func() bool {
+				return k8sClient.Get(ctx, key, fetched) == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(fetched).To(Equal(created))
+
+			Expect(k8sClient.Delete(ctx, fetched)).To(Succeed())
 		})
 	})
 })
