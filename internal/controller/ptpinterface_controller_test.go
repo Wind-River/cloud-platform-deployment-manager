@@ -40,16 +40,15 @@ var _ = Describe("PtpInterface controller", func() {
 				}}
 			Expect(k8sClient.Create(ctx, created)).To(Succeed())
 
-			expected := created.DeepCopy()
-
 			fetched := &starlingxv1.PtpInterface{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion
+				if err != nil {
+					return false
+				}
+				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PtpInterfaceFinalizerName})
+				return found
 			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{PtpInterfaceFinalizerName})
-			Expect(found).To(BeTrue())
 		})
 	})
 })

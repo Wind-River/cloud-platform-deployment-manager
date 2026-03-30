@@ -61,16 +61,15 @@ var _ = Describe("Host controller", func() {
 				}}
 			Expect(k8sClient.Create(ctx, created)).To(Succeed())
 
-			expected := created.DeepCopy()
-
 			fetched := &starlingxv1.Host{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, fetched)
-				return err == nil &&
-					fetched.ObjectMeta.ResourceVersion != expected.ObjectMeta.ResourceVersion
+				if err != nil {
+					return false
+				}
+				_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{HostFinalizerName})
+				return found
 			}, timeout, interval).Should(BeTrue())
-			_, found := comm.ListIntersect(fetched.ObjectMeta.Finalizers, []string{HostFinalizerName})
-			Expect(found).To(BeTrue())
 		})
 	})
 
