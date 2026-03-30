@@ -1,8 +1,4 @@
-output:
-  verbose: true
-
-run:
-  timeout: 15m
+version: "2"
 
 linters:
   enable:
