@@ -6,7 +6,12 @@ import (
 	"context"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/dns"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/drbd"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/hosts"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ntp"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/ptp"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/serviceparameters"
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -299,6 +304,399 @@ var _ = Describe("System controller", func() {
 			}
 			res := FixCertsToManage(specCerts, currentCerts)
 			Expect(res).To(Equal(expRes))
+		})
+	})
+
+	Describe("systemUpdateRequired", func() {
+		var (
+			instance *starlingxv1.System
+			spec     *starlingxv1.SystemSpec
+			current  *system.System
+		)
+
+		BeforeEach(func() {
+			instance = &starlingxv1.System{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-system"},
+			}
+			spec = &starlingxv1.SystemSpec{}
+			current = &system.System{Name: "test-system"}
+		})
+
+		Context("when no fields differ", func() {
+			It("should return false", func() {
+				_, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when the instance name differs", func() {
+			It("should return true with Name set", func() {
+				instance.Name = "new-name"
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Name).To(Equal("new-name"))
+			})
+		})
+
+		Context("when spec fields differ", func() {
+			It("should detect description change", func() {
+				desc := "new-desc"
+				spec.Description = &desc
+				current.Description = "old-desc"
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Description).To(Equal("new-desc"))
+			})
+
+			It("should detect contact change", func() {
+				contact := "new-contact"
+				spec.Contact = &contact
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Contact).To(Equal("new-contact"))
+			})
+
+			It("should detect location change", func() {
+				loc := "new-loc"
+				spec.Location = &loc
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Location).To(Equal("new-loc"))
+			})
+
+			It("should detect latitude change", func() {
+				lat := "45.0"
+				spec.Latitude = &lat
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Latitude).To(Equal("45.0"))
+			})
+
+			It("should detect longitude change", func() {
+				lon := "-75.0"
+				spec.Longitude = &lon
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Longitude).To(Equal("-75.0"))
+			})
+
+			It("should detect vswitch type change", func() {
+				vswitch := "ovs-dpdk"
+				spec.VSwitchType = &vswitch
+				current.Capabilities.VSwitchType = "none"
+				opts, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.VSwitchType).To(Equal("ovs-dpdk"))
+			})
+		})
+
+		Context("when spec field matches current", func() {
+			It("should return false", func() {
+				desc := "same"
+				spec.Description = &desc
+				current.Description = "same"
+				_, result := systemUpdateRequired(instance, spec, current)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("ptpUpdateRequired", func() {
+		Context("when spec is nil", func() {
+			It("should return false", func() {
+				_, result := ptpUpdateRequired(nil, &ptp.PTP{})
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when mode differs", func() {
+			It("should return true with Mode set", func() {
+				mode := "hardware"
+				spec := &starlingxv1.PTPInfo{Mode: &mode}
+				opts, result := ptpUpdateRequired(spec, &ptp.PTP{Mode: "software"})
+				Expect(result).To(BeTrue())
+				Expect(*opts.Mode).To(Equal("hardware"))
+			})
+		})
+
+		Context("when mechanism differs", func() {
+			It("should return true with Mechanism set", func() {
+				mech := "p2p"
+				spec := &starlingxv1.PTPInfo{Mechanism: &mech}
+				opts, result := ptpUpdateRequired(spec, &ptp.PTP{Mechanism: "e2e"})
+				Expect(result).To(BeTrue())
+				Expect(*opts.Mechanism).To(Equal("p2p"))
+			})
+		})
+
+		Context("when transport differs", func() {
+			It("should return true with Transport set", func() {
+				transport := "l2"
+				spec := &starlingxv1.PTPInfo{Transport: &transport}
+				opts, result := ptpUpdateRequired(spec, &ptp.PTP{Transport: "udp"})
+				Expect(result).To(BeTrue())
+				Expect(*opts.Transport).To(Equal("l2"))
+			})
+		})
+
+		Context("when all fields match", func() {
+			It("should return false", func() {
+				mode := "hardware"
+				spec := &starlingxv1.PTPInfo{Mode: &mode}
+				_, result := ptpUpdateRequired(spec, &ptp.PTP{Mode: "hardware"})
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("drbdUpdateRequired", func() {
+		Context("when storage is nil", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{}
+				_, result := drbdUpdateRequired(spec, &drbd.DRBD{})
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when DRBD is nil", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{},
+				}
+				_, result := drbdUpdateRequired(spec, &drbd.DRBD{})
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when link utilization differs", func() {
+			It("should return true", func() {
+				spec := &starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						DRBD: &starlingxv1.DRBDConfiguration{LinkUtilization: 80},
+					},
+				}
+				opts, result := drbdUpdateRequired(spec, &drbd.DRBD{LinkUtilization: 60})
+				Expect(result).To(BeTrue())
+				Expect(opts.LinkUtilization).To(Equal(80))
+			})
+		})
+
+		Context("when link utilization matches", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						DRBD: &starlingxv1.DRBDConfiguration{LinkUtilization: 60},
+					},
+				}
+				_, result := drbdUpdateRequired(spec, &drbd.DRBD{LinkUtilization: 60})
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("serviceparametersUpdateRequired", func() {
+		Context("when spec is nil", func() {
+			It("should return false", func() {
+				_, result := serviceparametersUpdateRequired(nil, &serviceparameters.ServiceParameter{})
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when param value differs", func() {
+			It("should return true", func() {
+				spec := &starlingxv1.ServiceParameterInfo{ParamValue: "new-val"}
+				current := &serviceparameters.ServiceParameter{ParamValue: "old-val"}
+				opts, result := serviceparametersUpdateRequired(spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.ParamValue).To(Equal("new-val"))
+			})
+		})
+
+		Context("when resource differs", func() {
+			It("should return true", func() {
+				res := "new-resource"
+				oldRes := "old-resource"
+				spec := &starlingxv1.ServiceParameterInfo{
+					ParamValue: "same",
+					Resource:   &res,
+				}
+				current := &serviceparameters.ServiceParameter{
+					ParamValue: "same",
+					Resource:   &oldRes,
+				}
+				opts, result := serviceparametersUpdateRequired(spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Resource).To(Equal("new-resource"))
+			})
+		})
+
+		Context("when personality differs", func() {
+			It("should return true", func() {
+				pers := "controller"
+				oldPers := "storage"
+				spec := &starlingxv1.ServiceParameterInfo{
+					ParamValue:  "same",
+					Personality: &pers,
+				}
+				current := &serviceparameters.ServiceParameter{
+					ParamValue:  "same",
+					Personality: &oldPers,
+				}
+				opts, result := serviceparametersUpdateRequired(spec, current)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Personality).To(Equal("controller"))
+			})
+		})
+
+		Context("when all fields match", func() {
+			It("should return false", func() {
+				res := "same-res"
+				spec := &starlingxv1.ServiceParameterInfo{
+					ParamValue: "same",
+					Resource:   &res,
+				}
+				current := &serviceparameters.ServiceParameter{
+					ParamValue: "same",
+					Resource:   &res,
+				}
+				_, result := serviceparametersUpdateRequired(spec, current)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("ControllerNodesAvailable", func() {
+		Context("when enough controllers are unlocked/enabled/available", func() {
+			It("should return true", func() {
+				hostList := []hosts.Host{
+					{
+						Hostname:            "controller-0",
+						Personality:         hosts.PersonalityController,
+						AdministrativeState: hosts.AdminUnlocked,
+						OperationalStatus:   hosts.OperEnabled,
+						AvailabilityStatus:  hosts.AvailAvailable,
+					},
+					{
+						Hostname:            "controller-1",
+						Personality:         hosts.PersonalityController,
+						AdministrativeState: hosts.AdminUnlocked,
+						OperationalStatus:   hosts.OperEnabled,
+						AvailabilityStatus:  hosts.AvailAvailable,
+					},
+				}
+				Expect(ControllerNodesAvailable(hostList, 2)).To(BeTrue())
+			})
+		})
+
+		Context("when not enough controllers are available", func() {
+			It("should return false", func() {
+				hostList := []hosts.Host{
+					{
+						Hostname:            "controller-0",
+						Personality:         hosts.PersonalityController,
+						AdministrativeState: hosts.AdminUnlocked,
+						OperationalStatus:   hosts.OperEnabled,
+						AvailabilityStatus:  hosts.AvailAvailable,
+					},
+					{
+						Hostname:            "controller-1",
+						Personality:         hosts.PersonalityController,
+						AdministrativeState: hosts.AdminUnlocked,
+						OperationalStatus:   hosts.OperEnabled,
+						AvailabilityStatus:  "degraded",
+					},
+				}
+				Expect(ControllerNodesAvailable(hostList, 2)).To(BeFalse())
+			})
+		})
+
+		Context("when worker nodes are present but not controllers", func() {
+			It("should return false", func() {
+				hostList := []hosts.Host{
+					{
+						Hostname:            "compute-0",
+						Personality:         "worker",
+						AdministrativeState: hosts.AdminUnlocked,
+						OperationalStatus:   hosts.OperEnabled,
+						AvailabilityStatus:  hosts.AvailAvailable,
+					},
+				}
+				Expect(ControllerNodesAvailable(hostList, 1)).To(BeFalse())
+			})
+		})
+
+		Context("when the host list is empty", func() {
+			It("should return false for required > 0", func() {
+				Expect(ControllerNodesAvailable([]hosts.Host{}, 1)).To(BeFalse())
+			})
+
+			It("should return true for required = 0", func() {
+				Expect(ControllerNodesAvailable([]hosts.Host{}, 0)).To(BeTrue())
+			})
+		})
+	})
+
+	Describe("MergeSystemSpecs", func() {
+		Context("when merging two specs", func() {
+			It("should override fields from b into a", func() {
+				desc := "from-a"
+				descB := "from-b"
+				a := &starlingxv1.SystemSpec{Description: &desc}
+				b := &starlingxv1.SystemSpec{Description: &descB}
+				result, err := MergeSystemSpecs(a, b)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(*result.Description).To(Equal("from-b"))
+			})
+
+			It("should keep fields from a when b is empty", func() {
+				desc := "from-a"
+				a := &starlingxv1.SystemSpec{Description: &desc}
+				b := &starlingxv1.SystemSpec{}
+				result, err := MergeSystemSpecs(a, b)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(*result.Description).To(Equal("from-a"))
+			})
+		})
+	})
+
+	Describe("FillOptionalMergedSystemSpec", func() {
+		Context("when a ceph backend has no network", func() {
+			It("should fill the default mgmt network", func() {
+				spec := &starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						Backends: starlingxv1.StorageBackendList{
+							{Name: "ceph-store", Type: "ceph"},
+						},
+					},
+				}
+				result, err := FillOptionalMergedSystemSpec(spec)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(*result.Storage.Backends[0].Network).To(Equal("mgmt"))
+			})
+		})
+
+		Context("when a non-ceph backend has no network", func() {
+			It("should not fill the network", func() {
+				spec := &starlingxv1.SystemSpec{
+					Storage: &starlingxv1.SystemStorageInfo{
+						Backends: starlingxv1.StorageBackendList{
+							{Name: "lvm-store", Type: "lvm"},
+						},
+					},
+				}
+				result, err := FillOptionalMergedSystemSpec(spec)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.Storage.Backends[0].Network).To(BeNil())
+			})
+		})
+
+		Context("when storage is nil", func() {
+			It("should return the spec unchanged", func() {
+				spec := &starlingxv1.SystemSpec{}
+				result, err := FillOptionalMergedSystemSpec(spec)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.Storage).To(BeNil())
+			})
 		})
 	})
 })
