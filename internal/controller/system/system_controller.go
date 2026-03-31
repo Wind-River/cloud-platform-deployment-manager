@@ -97,7 +97,7 @@ func InstallCertificate(filename string, data []byte) error {
 func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System) error {
 	secret := v1.Secret{}
 	secretName := types.NamespacedName{Namespace: DefaultRestCertSecretNamespace, Name: RestAPICertName}
-	err := r.Client.Get(context.TODO(), secretName, &secret)
+	err := r.Get(context.TODO(), secretName, &secret)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (r *SystemReconciler) installRootCertificates(instance *starlingxv1.System)
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+		r.NormalEvent(instance, common.ResourceCreated,
 			"root certificate saved as file: %s", filename)
 	}
 
@@ -175,7 +175,7 @@ func (r *SystemReconciler) ReconcileNTP(client *gophercloud.ServiceClient, insta
 
 		info.NTP = result
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "NTP servers have been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "NTP servers have been updated")
 	}
 
 	return nil
@@ -254,7 +254,7 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 			return err
 		}
 		updated = true
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "%s storage backend created", result.Name)
+		r.NormalEvent(instance, common.ResourceCreated, "%s storage backend created", result.Name)
 	}
 
 	if updated {
@@ -263,7 +263,7 @@ func (r *SystemReconciler) ReconcileStorageBackends(client *gophercloud.ServiceC
 			err = perrors.Wrap(err, "failed to refresh storage backends")
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "StorageBackend info has been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "StorageBackend info has been updated")
 		info.StorageBackends = result
 	}
 
@@ -311,7 +311,7 @@ func (r *SystemReconciler) ReconcileDNS(client *gophercloud.ServiceClient, insta
 
 		info.DNS = result
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "DNS servers have been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "DNS servers have been updated")
 	}
 
 	return nil
@@ -348,7 +348,7 @@ func (r *SystemReconciler) ReconcileDRBD(client *gophercloud.ServiceClient, inst
 
 		info.DRBD = result
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "DRBD configuration has been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "DRBD configuration has been updated")
 	}
 
 	return nil
@@ -394,7 +394,7 @@ func (r *SystemReconciler) ReconcilePTP(client *gophercloud.ServiceClient, insta
 
 		info.PTP = result
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "PTP info has been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "PTP info has been updated")
 	}
 
 	return nil
@@ -434,7 +434,7 @@ func (r *SystemReconciler) RefreshServiceParameterList(client *gophercloud.Servi
 		err = perrors.Wrap(err, "failed to refresh service parameters list")
 		return err
 	}
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
+	r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter list info has been updated")
 	info.ServiceParameters = result
 	return nil
 }
@@ -460,7 +460,7 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 					}
 					// success
 					updated = true
-					r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter %q %q %q has been modified", result.Service, result.Section, result.ParamName)
+					r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter %q %q %q has been modified", result.Service, result.Section, result.ParamName)
 				}
 				break
 			}
@@ -482,7 +482,7 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 			}
 			// success
 			updated = true
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
+			r.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
 		}
 	}
 
@@ -528,7 +528,7 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 			}
 			// success
 			updated = true
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "ServiceParameter %q %q %q has been created", info_sp.Service, info_sp.Section, info_sp.ParamName)
+			r.NormalEvent(instance, common.ResourceDeleted, "ServiceParameter %q %q %q has been created", info_sp.Service, info_sp.Section, info_sp.ParamName)
 		}
 
 	}
@@ -575,7 +575,7 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 	if !r.ControllerNodesAvailable(required) {
 		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 			instance.Status.StrategyRequired = cloudManager.StrategyUnlockRequired
-			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
+			r.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, instance.Status.StrategyRequired)
 			err := r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
 				err = perrors.Wrapf(err, "failed to update status: %s",
@@ -585,13 +585,13 @@ func (r *SystemReconciler) FileSystemResizeAllowed(instance *starlingxv1.System,
 		}
 		msg := fmt.Sprintf("waiting for %d controller(s) in available state before resizing filesystems", required)
 		m := NewAvailableControllerNodeMonitor(instance, required)
-		return false, r.CloudManager.StartMonitor(m, msg)
+		return false, r.StartMonitor(m, msg)
 	}
 
 	if fs.State == controllerFilesystems.ResizeInProgress {
 		msg := fmt.Sprintf("filesystem resize operation already in progress on %q", fs.Name)
 		m := NewFileSystemResizeMonitor(instance)
-		return false, r.CloudManager.StartMonitor(m, msg)
+		return false, r.StartMonitor(m, msg)
 	}
 
 	ready = true
@@ -606,7 +606,7 @@ func (r *SystemReconciler) RefreshFilesystemsList(client *gophercloud.ServiceCli
 		err = perrors.Wrap(err, "failed to refresh controller filesystems list")
 		return err
 	}
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "FileSystems list info has been updated")
+	r.NormalEvent(instance, common.ResourceUpdated, "FileSystems list info has been updated")
 	info.FileSystems = result
 	return nil
 }
@@ -671,7 +671,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 			}
 			// success
 			updated = true
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated, "Controller Filesystem %q has been created", result.Name)
+			r.NormalEvent(instance, common.ResourceCreated, "Controller Filesystem %q has been created", result.Name)
 		}
 	}
 
@@ -685,7 +685,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 		}
 		// success
 		updated = true
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "filesystem sizes have been updated")
 	}
 
 	// update the system object with the list of controller filesystems
@@ -713,7 +713,7 @@ func (r *SystemReconciler) ReconcileFileSystems(client *gophercloud.ServiceClien
 			}
 			// success
 			updated = true
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "Controller Filesystem %q has been deleted", fsInfo.Name)
+			r.NormalEvent(instance, common.ResourceDeleted, "Controller Filesystem %q has been deleted", fsInfo.Name)
 		}
 	}
 
@@ -780,7 +780,7 @@ func (r *SystemReconciler) ReconcileSystemAttributes(client *gophercloud.Service
 
 			info.System = *result
 
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "system has been updated")
+			r.NormalEvent(instance, common.ResourceUpdated, "system has been updated")
 		}
 	}
 
@@ -841,7 +841,7 @@ func (r *SystemReconciler) ReconcileCertificates(client *gophercloud.ServiceClie
 		secret := v1.Secret{}
 
 		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
-		err := r.Client.Get(context.TODO(), secretName, &secret)
+		err := r.Get(context.TODO(), secretName, &secret)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				err = perrors.Wrap(err, "failed to get certificate secret")
@@ -853,7 +853,7 @@ func (r *SystemReconciler) ReconcileCertificates(client *gophercloud.ServiceClie
 			// and will be ignored here.
 
 			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
-			r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency, msg)
+			r.WarningEvent(instance, common.ResourceDependency, msg)
 			continue
 		}
 
@@ -921,7 +921,7 @@ func (r *SystemReconciler) ReconcileCertificates(client *gophercloud.ServiceClie
 				return err
 			}
 			for _, certificate := range certificateList {
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+				r.NormalEvent(instance, common.ResourceCreated,
 					"certificate %q has been installed", certificate.Signature)
 			}
 			updated = true
@@ -957,7 +957,7 @@ func (r *SystemReconciler) ReconcileLicense(client *gophercloud.ServiceClient, i
 	// and replace it if it does not match; otherwise take no action.
 	secret := v1.Secret{}
 	secretName := types.NamespacedName{Namespace: instance.Namespace, Name: spec.License.Secret}
-	err := r.Client.Get(context.TODO(), secretName, &secret)
+	err := r.Get(context.TODO(), secretName, &secret)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			err = perrors.Wrap(err, "failed to get certificate secret")
@@ -965,7 +965,7 @@ func (r *SystemReconciler) ReconcileLicense(client *gophercloud.ServiceClient, i
 		}
 
 		msg := fmt.Sprintf("waiting for license %q to be created", spec.License.Secret)
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency, msg)
+		r.WarningEvent(instance, common.ResourceDependency, msg)
 		return common.NewMissingKubernetesResource(msg)
 	}
 
@@ -990,7 +990,7 @@ func (r *SystemReconciler) ReconcileLicense(client *gophercloud.ServiceClient, i
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+		r.NormalEvent(instance, common.ResourceCreated,
 			"license has been installed")
 
 		result, err := licenses.Get(client).Extract()
@@ -1125,7 +1125,7 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 	logSystem.Info("current is:", "values", current)
 
 	instance.Status.InSync = spec.DeepEqual(current)
-	common.SetInstanceDelta(instance, current, spec, common.SystemProperties, r.Client.Status(), logSystem)
+	common.SetInstanceDelta(instance, current, spec, common.SystemProperties, r.Status(), logSystem)
 
 	if instance.Status.Reconciled && r.StopAfterInSync() {
 		// Do not process any further changes once we have reached a
@@ -1135,7 +1135,7 @@ func (r *SystemReconciler) ReconcileRequired(instance *starlingxv1.System, spec 
 			return true, nil
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, common.NoChangesAfterReconciled)
+		r.NormalEvent(instance, common.ResourceUpdated, common.NoChangesAfterReconciled)
 		return false, nil
 	}
 
@@ -1164,7 +1164,7 @@ func (r *SystemReconciler) ReconcileSystem(client *gophercloud.ServiceClient, in
 		return true, err
 	}
 
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+	r.NormalEvent(instance, common.ResourceUpdated,
 		"system has been provisioned")
 
 	return true, nil
@@ -1191,7 +1191,7 @@ func (r *SystemReconciler) statusUpdateRequired(instance *starlingxv1.System, in
 		status.ConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
 		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-			r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, status.Reconciled, status.StrategyRequired)
+			r.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, status.Reconciled, status.StrategyRequired)
 		}
 		result = true
 	}
@@ -1306,7 +1306,7 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 		secret := v1.Secret{}
 
 		secretName := types.NamespacedName{Namespace: instance.Namespace, Name: c.Secret}
-		err := r.Client.Get(context.TODO(), secretName, &secret)
+		err := r.Get(context.TODO(), secretName, &secret)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				err = perrors.Wrap(err, "failed to get certificate secret")
@@ -1317,7 +1317,7 @@ func (r *SystemReconciler) GetCertificateSignatures(instance *starlingxv1.System
 			// a certificate installed outside the scope of deployment-manager
 			// and will be ignored here.
 			msg := fmt.Sprintf("skipping %q certificate %q from system", c.Type, c.Secret)
-			r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency, msg)
+			r.WarningEvent(instance, common.ResourceDependency, msg)
 		}
 
 		pemBlock, ok := secret.Data[starlingxv1.SecretCertKey]
@@ -1371,7 +1371,7 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	}
 
 	// Check facotry install config map
-	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
 		return err
 	}
@@ -1393,13 +1393,13 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+		r.NormalEvent(instance, common.ResourceCreated,
 			"system defaults collected and stored")
 
 		if factory {
 			// Update the resource default updated to prevent the next update,
 			// it will be checked in UpdateDefaultsRequired.
-			err := r.CloudManager.SetFactoryResourceDataUpdated(
+			err := r.SetFactoryResourceDataUpdated(
 				instance.Namespace,
 				instance.Name,
 				"default",
@@ -1440,25 +1440,25 @@ func (r *SystemReconciler) ReconcileResource(client *gophercloud.ServiceClient, 
 	// reconcilers can make progress than we need to mark the system as
 	// being ready. The error wil be returned in the end of this method.
 	if ready {
-		if !r.CloudManager.GetSystemReady(instance.Namespace) {
+		if !r.GetSystemReady(instance.Namespace) {
 			// Set the system type which may be used by other reconcilers to make
 			// decisions about when to reconcile certain resources.
-			value := strings.ToLower(systemInfo.System.SystemType)
-			r.CloudManager.SetSystemType(instance.Namespace, cloudManager.SystemType(value))
+			value := strings.ToLower(systemInfo.SystemType)
+			r.SetSystemType(instance.Namespace, cloudManager.SystemType(value))
 
 			// Unblock all other controllers that are waiting to reconcile
 			// resources.
-			r.CloudManager.SetSystemReady(instance.Namespace, true)
+			r.SetSystemReady(instance.Namespace, true)
 
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+			r.NormalEvent(instance, common.ResourceUpdated,
 				"system is now ready for other reconcilers")
 
-			err2 := r.CloudManager.NotifySystemDependencies(instance.Namespace)
+			err2 := r.NotifySystemDependencies(instance.Namespace)
 			if err2 != nil {
 				// Revert to not-ready so that when we reconcile the system
 				// resource again we will push the change out to all other
 				// reconcilers again.
-				r.CloudManager.SetSystemReady(instance.Namespace, false)
+				r.SetSystemReady(instance.Namespace, false)
 				return err2
 			}
 		}
@@ -1497,7 +1497,7 @@ func (r *SystemReconciler) StopAfterInSync() bool {
 func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns string) (err error) {
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -1517,7 +1517,7 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns s
 				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
 			}
 		}
-		return r.Client.Update(context.TODO(), instance)
+		return r.Update(context.TODO(), instance)
 	})
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
@@ -1525,7 +1525,7 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns s
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -1538,7 +1538,7 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns s
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
 
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration != instance.Generation {
 			// The configuration is updated
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
@@ -1551,11 +1551,11 @@ func (r *SystemReconciler) UpdateConfigStatus(instance *starlingxv1.System, ns s
 				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
-					r.CloudManager.UpdateConfigVersion()
-					r.CloudManager.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+					r.UpdateConfigVersion()
+					r.SetResourceInfo(cloudManager.ResourceSystem, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.ObservedGeneration = instance.Generation
 			// Reset strategy when new configuration is applied
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
@@ -1591,7 +1591,7 @@ func (r *SystemReconciler) UpdateStatusForFactoryInstall(
 	ns string,
 	instance *starlingxv1.System,
 ) error {
-	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+	reconciledUpdated, err := r.GetFactoryResourceDataUpdated(
 		ns,
 		instance.Name,
 		"reconciled",
@@ -1606,7 +1606,7 @@ func (r *SystemReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		err = r.CloudManager.SetFactoryResourceDataUpdated(
+		err = r.SetFactoryResourceDataUpdated(
 			ns,
 			instance.Name,
 			"reconciled",
@@ -1615,7 +1615,7 @@ func (r *SystemReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(
+		r.NormalEvent(
 			instance,
 			common.ResourceUpdated,
 			"Set Reconciled false for factory install",
@@ -1632,14 +1632,14 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	_ = log.FromContext(ctx)
 
 	savedLog := logSystem
-	logSystem = logSystem.WithName(request.NamespacedName.String())
+	logSystem = logSystem.WithName(request.String())
 	defer func() { logSystem = savedLog }()
 
 	logSystem.V(2).Info("reconcile called")
 
 	// Fetch the SystemNamespace instance
 	instance := &starlingxv1.System{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -1652,14 +1652,14 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	// Cancel any existing monitors
-	r.CloudManager.CancelMonitor(instance)
+	r.CancelMonitor(instance)
 
-	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
+	platformClient := r.GetPlatformClient(request.Namespace)
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -1680,7 +1680,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		if len(filteredCerts) != originalLength {
 			logSystem.Info("Removed certificates with all other deprecated types except ssl_ca", "system", instance.Name)
 			instance.Spec.Certificates = filteredCerts
-			err = r.Client.Update(ctx, instance)
+			err = r.Update(ctx, instance)
 			if err != nil {
 				logSystem.Error(err, "Failed to update System instance after removing certificates")
 				return reconcile.Result{}, err
@@ -1699,24 +1699,24 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	err = r.installRootCertificates(instance)
 	if err != nil {
 		logSystem.Error(err, "failed to install root certificates")
-		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		return r.HandleReconcilerError(request, err)
 	}
 
 	if platformClient == nil {
 		// Create the platform client
-		platformClient, err = r.CloudManager.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
+		platformClient, err = r.BuildPlatformClient(request.Namespace, cloudManager.SystemEndpointName, cloudManager.SystemEndpointType)
 		if err != nil {
-			return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+			return r.HandleReconcilerError(request, err)
 		}
 
-		if r.CloudManager.GetSystemReady(instance.Namespace) {
+		if r.GetSystemReady(instance.Namespace) {
 			// The system is already ready from a previous reconciliation so
 			// we were simply refreshing the client from a past error state
 			// therefore unblock other reconcilers now rather than wait for
 			// the sync state to be reconfirmed.
-			err = r.CloudManager.NotifySystemDependencies(instance.Namespace)
+			err = r.NotifySystemDependencies(instance.Namespace)
 			if err != nil {
-				return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+				return r.HandleReconcilerError(request, err)
 			}
 		}
 	}
@@ -1724,15 +1724,15 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// If strategy is applied, start strategy monitor
 	if instance.Status.StrategyApplied {
 		logSystem.Info("Strategy applied, start strategy monitor")
-		r.CloudManager.StrategySent()
-		r.CloudManager.StartStrategyMonitor()
+		r.StrategySent()
+		r.StartStrategyMonitor()
 	} else {
 		logSystem.V(2).Info("Strategy not applied")
 	}
 
 	err = r.ReconcileResource(platformClient, instance, request)
 	if err != nil {
-		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		return r.HandleReconcilerError(request, err)
 	}
 
 	return ctrl.Result{}, nil

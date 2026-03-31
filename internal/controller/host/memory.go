@@ -48,14 +48,15 @@ func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starli
 			continue
 		}
 
-		if pagesize == starlingxv1.PageSize2M {
+		switch pagesize {
+		case starlingxv1.PageSize2M:
 			if mem.VM2MHugepagesPending == nil {
 				count += mem.VM2MHugepagesCount
 			} else {
 				count += *mem.VM2MHugepagesPending
 			}
 
-		} else if pagesize == starlingxv1.PageSize1G {
+		case starlingxv1.PageSize1G:
 			if mem.VM1GHugepagesPending == nil {
 				count += mem.VM1GHugepagesCount
 			} else {
@@ -113,7 +114,8 @@ func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts mem
 
 		opts.Function = f.Function
 
-		if f.Function == memory.MemoryFunctionVM {
+		switch f.Function {
+		case memory.MemoryFunctionVM:
 			if f.PageSize == string(starlingxv1.PageSize1G) {
 				opts.VMHugepages1G = &f.PageCount
 
@@ -121,7 +123,7 @@ func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts mem
 				opts.VMHugepages2M = &f.PageCount
 			}
 
-		} else if f.Function == memory.MemoryFunctionVSwitch {
+		case memory.MemoryFunctionVSwitch:
 			if f.PageSize == string(starlingxv1.PageSize1G) {
 				opts.VSwitchHugepages = &f.PageCount
 				hpSize := 1024
@@ -133,7 +135,7 @@ func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts mem
 				opts.VSwitchHugepageSize = &hpSize
 			}
 
-		} else if f.Function == memory.MemoryFunctionPlatform {
+		case memory.MemoryFunctionPlatform:
 			size := f.PageCount * pageSize.Bytes() / int(units.Mebibyte)
 			opts.Platform = &size
 		}

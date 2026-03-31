@@ -20,7 +20,6 @@ import (
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/common"
-	controller_common "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	ctrlcommon "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
@@ -356,14 +355,14 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 
 func osdUpdateRequired(osdInfo *starlingxv1.OSDInfo, osd *osds.OSD) (opts osds.OSDOpts, result bool) {
 	if osdInfo.Journal != nil {
-		if osd.JournalInfo.Location == nil {
+		if osd.Location == nil {
 			// No journal existed previously, so add it now.
 			size := osdInfo.Journal.Size
 			opts.JournalLocation = &osdInfo.Journal.Location
 			opts.JournalSize = &size
 			result = true
 
-		} else if osd.JournalInfo.Gibibytes() != osdInfo.Journal.Size {
+		} else if osd.Gibibytes() != osdInfo.Journal.Size {
 			// The sizes do not match so update it.
 			size := osdInfo.Journal.Size
 			opts.JournalSize = &size
@@ -397,8 +396,8 @@ func (r *HostReconciler) ReconcileStaleOSDs(client *gophercloud.ServiceClient, i
 				// The system API does not support changing the function on
 				// an OSD so delete it so that it can be re-added.
 				updated[osd.ID] = true
-			} else if osdInfo.Journal == nil && osd.JournalInfo.Location != nil {
-				if *osd.JournalInfo.Location != osd.ID {
+			} else if osdInfo.Journal == nil && osd.Location != nil {
+				if *osd.Location != osd.ID {
 					// The system API does not support removing the journal so
 					// delete this OSD so that it can be re-added.
 					updated[osd.ID] = true
@@ -473,14 +472,14 @@ func (r *HostReconciler) OSDProvisioningAllowed(instance *starlingxv1.Host, osdI
 		return r.StartMonitor(m, msg)
 	}
 
-	if cluster.DeploymentModel == clusters.DeploymentModelUndefined {
+	switch cluster.DeploymentModel {
+	case clusters.DeploymentModelUndefined:
 		// The cluster does not yet support OSD provisioning
 		msg := "waiting for storage deployment model to be defined before allowing OSDs"
 		m := NewClusterDeploymentModelMonitor(instance, cluster.ID)
 		return r.StartMonitor(m, msg)
 
-	} else if cluster.DeploymentModel == clusters.DeploymentModelStorage ||
-		cluster.DeploymentModel == clusters.DeploymentModelController {
+	case clusters.DeploymentModelStorage, clusters.DeploymentModelController:
 		if r.GetSystemType(instance.Namespace) == cloudManager.SystemTypeStandard {
 			if !r.MonitorsEnabled(hosts.OSDMinimumMonitorCount) {
 				msg := fmt.Sprintf("waiting for %d monitor(s) to be enabled before allowing OSDs",
@@ -771,7 +770,7 @@ func (r *HostReconciler) ReconcileFileSystemSizes(client *gophercloud.ServiceCli
 
 	if !host.IsUnlockedAvailable() {
 		msg := "waiting for host to reach available state: unlocked/enabled/available"
-		r.ReconcilerEventLogger.NormalEvent(instance, controller_common.ResourceDependency, msg)
+		r.NormalEvent(instance, ctrlcommon.ResourceDependency, msg)
 		m := NewUnlockedAvailableHostMonitor(instance, host.ID)
 		return r.StartMonitor(m, msg)
 	}

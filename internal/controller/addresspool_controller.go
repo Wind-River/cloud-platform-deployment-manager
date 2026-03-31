@@ -47,7 +47,7 @@ func (r *AddressPoolReconciler) statusUpdateRequired(instance *starlingxv1.Addre
 
 func (r *AddressPoolReconciler) UpdateInsyncStatus(client *gophercloud.ServiceClient, instance *starlingxv1.AddressPool, oldStatus *starlingxv1.AddressPoolStatus) error {
 	if r.statusUpdateRequired(instance, oldStatus) {
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", instance.Status.InSync)
+		r.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", instance.Status.InSync)
 		err2 := r.Client.Status().Update(context.TODO(), instance)
 		if err2 != nil {
 			logAddressPool.Error(err2, "failed to update platform network status")
@@ -64,7 +64,7 @@ func (r *AddressPoolReconciler) UpdateInsyncStatus(client *gophercloud.ServiceCl
 // are not specifically deleting addresspool object on the system.
 func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceClient, instance *starlingxv1.AddressPool, request_namespace string) (err error) {
 	if instance.DeletionTimestamp.IsZero() {
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration != instance.Generation {
 			if instance.Status.Reconciled {
 				instance.Status.Reconciled = false
 				err = r.Client.Status().Update(context.TODO(), instance)
@@ -75,27 +75,27 @@ func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceCli
 				}
 			}
 
-			host_instance, _, err := r.CloudManager.GetHostByPersonality(request_namespace, client, cloudManager.ActiveController)
+			host_instance, _, err := r.GetHostByPersonality(request_namespace, client, cloudManager.ActiveController)
 			if err != nil {
 				msg := "failed to get active host"
 				return common.NewUserDataError(msg)
 			}
 
-			err = r.CloudManager.NotifyResource(host_instance)
+			err = r.NotifyResource(host_instance)
 			if err != nil {
 				msg := fmt.Sprintf("Failed to notify '%s' active host instance", host_instance.Name)
 				logAddressPool.Error(err, msg)
 				return common.NewResourceConfigurationDependency(msg)
 			}
 
-			r.ReconcilerEventLogger.NormalEvent(host_instance,
+			r.NormalEvent(host_instance,
 				common.ResourceNotified,
 				"Host has been notified due to '%s' addresspool update.",
 				instance.Name)
 
 			// Set Generation = ObservedGeneration only when active
 			// host controller is successfully notified.
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.ObservedGeneration = instance.Generation
 			err = r.Client.Status().Update(context.TODO(), instance)
 			if err != nil {
 				msg := fmt.Sprintf(
@@ -108,8 +108,8 @@ func (r *AddressPoolReconciler) ReconcileResource(client *gophercloud.ServiceCli
 	} else {
 		// Remove the finalizer so the kubernetes delete operation can
 		// continue.
-		instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, AddressPoolFinalizerName)
-		if err := r.Client.Update(context.Background(), instance); err != nil {
+		instance.Finalizers = utils.RemoveString(instance.Finalizers, AddressPoolFinalizerName)
+		if err := r.Update(context.Background(), instance); err != nil {
 			return err
 		}
 	}
@@ -129,12 +129,12 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	// restore it at the end of the reconcile function.
 
 	savedLog := logAddressPool
-	logAddressPool = logAddressPool.WithName(request.NamespacedName.String())
+	logAddressPool = logAddressPool.WithName(request.String())
 	defer func() { logAddressPool = savedLog }()
 
 	// Fetch the DataNetwork instance
 	instance := &starlingxv1.AddressPool{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically
@@ -150,9 +150,9 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.
-		if !utils.ContainsString(instance.ObjectMeta.Finalizers, AddressPoolFinalizerName) {
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, AddressPoolFinalizerName)
-			if err := r.Client.Update(context.Background(), instance); err != nil {
+		if !utils.ContainsString(instance.Finalizers, AddressPoolFinalizerName) {
+			instance.Finalizers = append(instance.Finalizers, AddressPoolFinalizerName)
+			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -167,31 +167,31 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return reconcile.Result{}, nil
 	}
 
-	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
+	platformClient := r.GetPlatformClient(request.Namespace)
 	if platformClient == nil {
 		// The client has not been authenticated by the system controller so
 		// wait.
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for platform client creation")
 		return common.RetryMissingClient, nil
 	}
 
-	if !r.CloudManager.GetSystemReady(request.Namespace) {
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+	if !r.GetSystemReady(request.Namespace) {
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
 	}
 
-	if !r.CloudManager.IsNotifyingActiveHost() {
-		r.CloudManager.SetNotifyingActiveHost(true)
-		err = r.ReconcileResource(platformClient, instance, request.NamespacedName.Namespace)
-		r.CloudManager.SetNotifyingActiveHost(false)
+	if !r.IsNotifyingActiveHost() {
+		r.SetNotifyingActiveHost(true)
+		err = r.ReconcileResource(platformClient, instance, request.Namespace)
+		r.SetNotifyingActiveHost(false)
 	} else {
 		err = common.NewHostNotifyError("waiting to notify active host")
 	}
 
 	if err != nil {
-		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		return r.HandleReconcilerError(request, err)
 	}
 
 	return ctrl.Result{}, nil

@@ -121,11 +121,11 @@ func (d *DataNetwork) SetDeploymentScope(scope string) {
 }
 
 func (d *DataNetwork) GetAnnotations() map[string]string {
-	return d.ObjectMeta.Annotations
+	return d.Annotations
 }
 
 func (d *DataNetwork) SetAnnotations(annotations map[string]string) {
-	d.ObjectMeta.Annotations = annotations
+	d.Annotations = annotations
 }
 
 // +kubebuilder:object:root=true

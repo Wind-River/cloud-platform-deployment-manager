@@ -50,7 +50,7 @@ func (d *DataNetworkCustomDefaulter) Default(ctx context.Context, obj runtime.Ob
 func validateDataNetwork(r *starlingxv1.DataNetwork) error {
 	if r.Spec.Type != datanetworks.TypeVxLAN {
 		if r.Spec.VxLAN != nil {
-			return errors.New("VxLAN attributes are only allowed for VxLAN type data networks.")
+			return errors.New("VxLAN attributes are only allowed for VxLAN type data networks")
 		}
 	}
 	datanetworklog.Info(AllowedReason)

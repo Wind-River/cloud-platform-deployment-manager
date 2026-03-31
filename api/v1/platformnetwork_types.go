@@ -77,11 +77,11 @@ func (p *PlatformNetwork) SetDeploymentScope(scope string) {
 }
 
 func (p *PlatformNetwork) GetAnnotations() map[string]string {
-	return p.ObjectMeta.Annotations
+	return p.Annotations
 }
 
 func (p *PlatformNetwork) SetAnnotations(annotations map[string]string) {
-	p.ObjectMeta.Annotations = annotations
+	p.Annotations = annotations
 }
 
 // +kubebuilder:object:root=true

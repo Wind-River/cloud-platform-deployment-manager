@@ -87,7 +87,7 @@ func validateAddressPool(r *starlingxv1.AddressPool) error {
 			return errors.New("expecting a valid IPv4 or IPv6 floatingAddress")
 		}
 		if common.IsIPv4(*r.Spec.FloatingAddress) != common.IsIPv4(r.Spec.Subnet) {
-			return errors.New("floatingAddress must be of the same family as the network subnet.")
+			return errors.New("floatingAddress must be of the same family as the network subnet")
 		}
 	}
 
@@ -96,7 +96,7 @@ func validateAddressPool(r *starlingxv1.AddressPool) error {
 			return errors.New("expecting a valid IPv4 or IPv6 controller0Address")
 		}
 		if common.IsIPv4(*r.Spec.Controller0Address) != common.IsIPv4(r.Spec.Subnet) {
-			return errors.New("controller0Address must be of the same family as the network subnet.")
+			return errors.New("controller0Address must be of the same family as the network subnet")
 		}
 	}
 
@@ -105,7 +105,7 @@ func validateAddressPool(r *starlingxv1.AddressPool) error {
 			return errors.New("expecting a valid IPv4 or IPv6 controller1Address")
 		}
 		if common.IsIPv4(*r.Spec.Controller1Address) != common.IsIPv4(r.Spec.Subnet) {
-			return errors.New("controller1Address must be of the same family as the network subnet.")
+			return errors.New("controller1Address must be of the same family as the network subnet")
 		}
 	}
 
@@ -114,7 +114,7 @@ func validateAddressPool(r *starlingxv1.AddressPool) error {
 			return errors.New("expecting a valid IPv4 or IPv6 gateway")
 		}
 		if common.IsIPv4(*r.Spec.Gateway) != common.IsIPv4(r.Spec.Subnet) {
-			return errors.New("controller1Address must be of the same family as the network subnet.")
+			return errors.New("controller1Address must be of the same family as the network subnet")
 		}
 	}
 
@@ -132,7 +132,7 @@ func validateAddressPool(r *starlingxv1.AddressPool) error {
 		}
 
 		if common.IsIPv4(ra.Start) != common.IsIPv4(r.Spec.Subnet) {
-			return errors.New("allocation range address must be of the same family as the network subnet.")
+			return errors.New("allocation range address must be of the same family as the network subnet")
 		}
 	}
 

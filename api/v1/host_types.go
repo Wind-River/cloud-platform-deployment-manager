@@ -184,11 +184,11 @@ func (h *Host) SetDeploymentScope(scope string) {
 }
 
 func (h *Host) GetAnnotations() map[string]string {
-	return h.ObjectMeta.Annotations
+	return h.Annotations
 }
 
 func (h *Host) SetAnnotations(annotations map[string]string) {
-	h.ObjectMeta.Annotations = annotations
+	h.Annotations = annotations
 }
 
 // +kubebuilder:object:root=true

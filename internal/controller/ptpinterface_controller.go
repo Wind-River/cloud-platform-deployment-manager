@@ -162,7 +162,7 @@ func (r *PtpInterfaceReconciler) ReconcileNew(client *gophercloud.ServiceClient,
 		// synchronized state unless there is an annotation on the resource.
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoProvisioningAfterReconciled
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return nil, common.NewChangeAfterInSync(msg)
 		} else {
 			logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
@@ -200,7 +200,7 @@ func (r *PtpInterfaceReconciler) ReconcileNew(client *gophercloud.ServiceClient,
 		return nil, err
 	}
 
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+	r.NormalEvent(instance, common.ResourceCreated,
 		"ptp interface has been created")
 
 	return new, nil
@@ -209,8 +209,8 @@ func (r *PtpInterfaceReconciler) ReconcileNew(client *gophercloud.ServiceClient,
 // Remove PtpInterface Finalizer
 func (r *PtpInterfaceReconciler) removePtpInterfaceFinalizer(instance *starlingxv1.PtpInterface) {
 	// Remove the finalizer so the kubernetes delete operation can continue.
-	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
-	if err := r.Client.Update(context.Background(), instance); err != nil {
+	instance.Finalizers = utils.RemoveString(instance.Finalizers, PtpInterfaceFinalizerName)
+	if err := r.Update(context.Background(), instance); err != nil {
 		logDataNetwork.Error(err, "failed to remove the finalizer in the PtpInterface because of the error:%v")
 	}
 }
@@ -218,7 +218,7 @@ func (r *PtpInterfaceReconciler) removePtpInterfaceFinalizer(instance *starlingx
 // ReconciledDeleted is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *PtpInterfaceReconciler) ReconciledDeleted(client *gophercloud.ServiceClient, instance *starlingxv1.PtpInterface, i *ptpinterfaces.PTPInterface) error {
-	if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
+	if utils.ContainsString(instance.Finalizers, PtpInterfaceFinalizerName) {
 		defer r.removePtpInterfaceFinalizer(instance)
 		if i != nil {
 			// Unless it was already deleted go ahead and attempt to delete it.
@@ -239,7 +239,7 @@ func (r *PtpInterfaceReconciler) ReconciledDeleted(client *gophercloud.ServiceCl
 				}
 			}
 
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "PTP interface has been deleted")
+			r.NormalEvent(instance, common.ResourceDeleted, "PTP interface has been deleted")
 		}
 	}
 
@@ -272,7 +272,7 @@ func (r *PtpInterfaceReconciler) statusUpdateRequired(instance *starlingxv1.PtpI
 		status.ConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
 		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-			r.CloudManager.SetResourceInfo(cloudManager.ResourcePtpinterface, "", instance.Name, status.Reconciled, status.StrategyRequired)
+			r.SetResourceInfo(cloudManager.ResourcePtpinterface, "", instance.Name, status.Reconciled, status.StrategyRequired)
 		}
 		result = true
 	}
@@ -332,7 +332,7 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 			// synchronized state unless there is an annotation on the resource.
 			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoProvisioningAfterReconciled
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
 				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
@@ -355,7 +355,7 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 
 		*existing = *new
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+		r.NormalEvent(instance, common.ResourceUpdated,
 			"ptp interface has been updated")
 
 	} else if added, removed, required := intefaceParameterUpdateRequired(instance, existing, r); required {
@@ -364,7 +364,7 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 			// synchronized state unless there is an annotation on the resource.
 			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoProvisioningAfterReconciled
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
 				logPtpInterface.Info(common.ProvisioningAllowedAfterReconciled)
@@ -390,7 +390,7 @@ func (r *PtpInterfaceReconciler) ReconcileUpdated(client *gophercloud.ServiceCli
 			*existing = *new2
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+		r.NormalEvent(instance, common.ResourceUpdated,
 			"ptp interface has been updated")
 	}
 
@@ -404,7 +404,7 @@ func (r *PtpInterfaceReconciler) ReconcileResource(client *gophercloud.ServiceCl
 	found, err := r.FindExistingPTPInterface(client, instance)
 	if err != nil {
 		if !instance.DeletionTimestamp.IsZero() {
-			if utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
+			if utils.ContainsString(instance.Finalizers, PtpInterfaceFinalizerName) {
 				// Remove the finalizer
 				r.removePtpInterfaceFinalizer(instance)
 			}
@@ -425,7 +425,7 @@ func (r *PtpInterfaceReconciler) ReconcileResource(client *gophercloud.ServiceCl
 		inSync := err == nil
 
 		if instance.Status.InSync != inSync {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
+			r.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
 		}
 
 		if r.statusUpdateRequired(instance, found, inSync) {
@@ -462,7 +462,7 @@ func (r *PtpInterfaceReconciler) StopAfterInSync() bool {
 func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInterface, ns string) (err error) {
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -483,7 +483,7 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
 			}
 		}
-		return r.Client.Update(context.TODO(), instance)
+		return r.Update(context.TODO(), instance)
 	})
 	if err != nil {
 		err = perrors.Wrapf(err, "failed to update profile annotation ReconcileAfterInSync")
@@ -491,7 +491,7 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -504,7 +504,7 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
 
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration != instance.Generation {
 			// Configuration is updated
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
@@ -516,11 +516,11 @@ func (r *PtpInterfaceReconciler) UpdateConfigStatus(instance *starlingxv1.PtpInt
 				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
-					r.CloudManager.UpdateConfigVersion()
-					r.CloudManager.SetResourceInfo(cloudManager.ResourcePtpinterface, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+					r.UpdateConfigVersion()
+					r.SetResourceInfo(cloudManager.ResourcePtpinterface, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.ObservedGeneration = instance.Generation
 			// Reset strategy when new configuration is applied
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
@@ -545,7 +545,7 @@ func (r *PtpInterfaceReconciler) UpdateStatusForFactoryInstall(
 	ns string,
 	instance *starlingxv1.PtpInterface,
 ) error {
-	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+	reconciledUpdated, err := r.GetFactoryResourceDataUpdated(
 		ns,
 		instance.Name,
 		"reconciled",
@@ -560,7 +560,7 @@ func (r *PtpInterfaceReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		err = r.CloudManager.SetFactoryResourceDataUpdated(
+		err = r.SetFactoryResourceDataUpdated(
 			ns,
 			instance.Name,
 			"reconciled",
@@ -569,7 +569,7 @@ func (r *PtpInterfaceReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(
+		r.NormalEvent(
 			instance,
 			common.ResourceUpdated,
 			"Set Reconciled false for factory install",
@@ -587,14 +587,14 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	_ = log.FromContext(ctx)
 
 	savedLog := logPtpInterface
-	logPtpInterface = logPtpInterface.WithName(request.NamespacedName.String())
+	logPtpInterface = logPtpInterface.WithName(request.String())
 	defer func() { logPtpInterface = savedLog }()
 
 	logPtpInterface.Info("PTP interface reconcile called")
 
 	// Fetch the PTPInterface instance
 	instance := &starlingxv1.PtpInterface{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically
@@ -611,7 +611,7 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return r.HandleReconcilerError(request, err)
 	}
 
-	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -633,9 +633,9 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.
-		if !utils.ContainsString(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName) {
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, PtpInterfaceFinalizerName)
-			if err := r.Client.Update(context.Background(), instance); err != nil {
+		if !utils.ContainsString(instance.Finalizers, PtpInterfaceFinalizerName) {
+			instance.Finalizers = append(instance.Finalizers, PtpInterfaceFinalizerName)
+			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -650,24 +650,24 @@ func (r *PtpInterfaceReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, nil
 	}
 
-	platformClient := r.CloudManager.GetPlatformClient(request.Namespace)
+	platformClient := r.GetPlatformClient(request.Namespace)
 	if platformClient == nil {
 		// The client has not been authenticated by the system controller so
 		// wait.
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for platform client creation")
 		return common.RetryMissingClient, nil
 	}
 
-	if !r.CloudManager.GetSystemReady(request.Namespace) {
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+	if !r.GetSystemReady(request.Namespace) {
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
 	}
 
 	err = r.ReconcileResource(platformClient, instance)
 	if err != nil {
-		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		return r.HandleReconcilerError(request, err)
 	}
 
 	return ctrl.Result{}, nil

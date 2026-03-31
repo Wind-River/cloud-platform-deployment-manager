@@ -851,7 +851,7 @@ func sriovUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Int
 		result = true
 	}
 
-	if ethInfo.CommonInterfaceInfo.Class == interfaces.IFClassPCISRIOV {
+	if ethInfo.Class == interfaces.IFClassPCISRIOV {
 		// Ensure that SRIOV VF count is up to date.
 		if ethInfo.VFCount != nil {
 			if iface.VFCount == nil {
@@ -1122,7 +1122,7 @@ func (r *HostReconciler) ReconcileEthernetInterfaces(client *gophercloud.Service
 	for _, ethInfo := range profile.Interfaces.Ethernet {
 		// SRIOV interfaces are deferred until later to avoid interfering with
 		// platform interface configuration.
-		if ethInfo.CommonInterfaceInfo.Class == interfaces.IFClassPCISRIOV {
+		if ethInfo.Class == interfaces.IFClassPCISRIOV {
 			continue
 		}
 
@@ -1614,7 +1614,7 @@ func (r *HostReconciler) ReconcileSRIOVInterfaces(client *gophercloud.ServiceCli
 
 	for _, ethInfo := range profile.Interfaces.Ethernet {
 		// Only processing SRIOV Ethernet interfaces
-		if ethInfo.CommonInterfaceInfo.Class != interfaces.IFClassPCISRIOV {
+		if ethInfo.Class != interfaces.IFClassPCISRIOV {
 			continue
 		}
 

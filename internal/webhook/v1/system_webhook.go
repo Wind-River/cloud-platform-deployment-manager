@@ -142,7 +142,7 @@ func validateStorageBackends(obj *starlingxv1.System) error {
 
 	for _, b := range obj.Spec.Storage.Backends {
 		if present[b.Type] {
-			return errors.New("backend services may only be specified once.")
+			return errors.New("backend services may only be specified once")
 		}
 
 		if b.Services != nil {
@@ -188,7 +188,7 @@ func validateCertificates(obj *starlingxv1.System) error {
 		}
 
 		secret := &corev1.Secret{}
-		secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.ObjectMeta.Namespace}
+		secretName := apitypes.NamespacedName{Name: c.Secret, Namespace: obj.Namespace}
 		found := false
 
 		for count := 0; count < SecretRetrieveTryCount; count++ {

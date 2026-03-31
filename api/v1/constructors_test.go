@@ -173,7 +173,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 	Describe("Test Megabytes", func() {
 		Context("when the pagesize is PageSize1G", func() {
-			var test PageSize = PageSize1G
+			var test = PageSize1G
 			It("should return 1024", func() {
 				want := 1024
 				got := test.Megabytes()
@@ -203,7 +203,7 @@ var _ = Describe("Constructor utils for kind", func() {
 
 	Describe("Test Bytes", func() {
 		Context("when the pagesize is PageSize1G", func() {
-			var test PageSize = PageSize1G
+			var test = PageSize1G
 			It("should return int(units.Gibibyte)", func() {
 				want := int(units.Gibibyte)
 				got := test.Bytes()
@@ -276,10 +276,8 @@ var _ = Describe("Constructor utils for kind", func() {
 					profileLabels[itr].Value = v
 					itr++
 				}
-				flag := false
-				if reflect.DeepEqual(profileLabels, profileLabels1) || reflect.DeepEqual(profileLabels, profileLabels2) {
-					flag = true
-				}
+				flag := reflect.DeepEqual(profileLabels, profileLabels1) || reflect.DeepEqual(profileLabels, profileLabels2)
+
 				Expect(flag).To(BeTrue())
 			})
 		})
@@ -894,7 +892,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	Describe("Test NewBMSecret", func() {
 		Context("when getting instance of BMSecret", func() {
 			It("should return instance of BMSecret without an error", func() {
-				var name, namespace, username string = "BMSecretName", "BMSecretNameSpace", "BMSecretUserName"
+				var name, namespace, username = "BMSecretName", "BMSecretNameSpace", "BMSecretUserName"
 				fakePassword := []byte("")
 				expSecret := v1.Secret{
 					TypeMeta: metav1.TypeMeta{
@@ -921,7 +919,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	Describe("Test NewLicenseSecret", func() {
 		Context("when getting instance of LicenseSecret", func() {
 			It("should return instance of License Secret without an error", func() {
-				var name, namespace, content string = "LicenseSecretName", "LicenseSecretNameSpace", "Content"
+				var name, namespace, content = "LicenseSecretName", "LicenseSecretNameSpace", "Content"
 				expLicSecret := v1.Secret{
 					TypeMeta: metav1.TypeMeta{
 						APIVersion: "v1",
@@ -946,7 +944,7 @@ var _ = Describe("Constructor utils for kind", func() {
 	Describe("Test NewCertificateSecret", func() {
 		Context("when getting instance of Certificate secret", func() {
 			It("should return instance of Certificate Secret without an error", func() {
-				var name, namespace string = "CertificateSecretName", "CertificateSecretNameSpace"
+				var name, namespace = "CertificateSecretName", "CertificateSecretNameSpace"
 				fakeInput := []byte("")
 
 				expCertSecret := v1.Secret{

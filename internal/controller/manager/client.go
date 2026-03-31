@@ -353,7 +353,8 @@ func (m *PlatformManager) BuildPlatformClient(namespace string, endpointName str
 		c.HTTPClient.Transport = &clients.LogRoundTripper{Rt: t}
 	}
 
-	if endpointName == SystemEndpointName {
+	switch endpointName {
+	case SystemEndpointName:
 
 		// Test the client because the authentication endpoint is different from
 		// the resource endpoint therefore there is no guarantee that it works.
@@ -372,7 +373,7 @@ func (m *PlatformManager) BuildPlatformClient(namespace string, endpointName str
 		} else {
 			obj.client = c
 		}
-	} else if endpointName == VimEndpointName {
+	case VimEndpointName:
 		// Test the client because the authentication endpoint is different from
 		// the resource endpoint therefore there is no guarantee that it works.
 		res, err := systemconfigupdate.Show(c)

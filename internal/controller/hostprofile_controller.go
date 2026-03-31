@@ -43,7 +43,7 @@ func (r *HostProfileReconciler) ProfileUses(namespace, base, target string) (boo
 	for {
 		// Retrieve the current level profile
 		name := types.NamespacedName{Namespace: namespace, Name: base}
-		err := r.Client.Get(context.TODO(), name, profile)
+		err := r.Get(context.TODO(), name, profile)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return false, err
@@ -103,7 +103,7 @@ func (r *HostProfileReconciler) UpdateHosts(instance *starlingxv1.HostProfile) e
 		if updateRequired {
 			logHostProfile.Info("updating host to trigger reconciliation via profile update", "host", h.Name)
 
-			err = r.Client.Update(context.TODO(), &h)
+			err = r.Update(context.TODO(), &h)
 			if err != nil {
 				return err
 			}
@@ -122,14 +122,14 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	_ = log.FromContext(ctx)
 
 	savedLog := logHostProfile
-	logHostProfile = logHostProfile.WithName(request.NamespacedName.String())
+	logHostProfile = logHostProfile.WithName(request.String())
 	defer func() { logHostProfile = savedLog }()
 
 	logHostProfile.V(2).Info("reconcile called")
 
 	// Fetch the HostProfile instance
 	instance := &starlingxv1.HostProfile{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -147,7 +147,7 @@ func (r *HostProfileReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return r.HandleReconcilerError(request, err)
 	}
 
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
+	r.NormalEvent(instance, common.ResourceUpdated,
 		"host profile has been updated")
 
 	return ctrl.Result{}, nil

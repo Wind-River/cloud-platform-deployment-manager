@@ -740,10 +740,10 @@ func (in *CoreNetworkFilter) Filter(platform_network *v1.PlatformNetwork, deploy
 	filtered_platform_networks := []*v1.PlatformNetwork{}
 	filtered_address_pools := []*v1.AddressPool{}
 	for _, pn := range deployment.PlatformNetworks {
-		if !(pn.Spec.Type == oamNetwork ||
-			pn.Spec.Type == mgmtNetwork ||
-			pn.Spec.Type == adminNetwork ||
-			pn.Spec.Type == clusterNetwork) {
+		if pn.Spec.Type != oamNetwork &&
+			pn.Spec.Type != mgmtNetwork &&
+			pn.Spec.Type != adminNetwork &&
+			pn.Spec.Type != clusterNetwork {
 			filtered_platform_networks = append(filtered_platform_networks, pn)
 			for _, name := range pn.Spec.AssociatedAddressPools {
 				for _, pool := range deployment.AddressPools {

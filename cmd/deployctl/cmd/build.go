@@ -77,7 +77,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		}
 
 		// Kubernetes does not allow underscores in resource names.
-		namespace = strings.Replace(namespace, "_", "-", -1)
+		namespace = strings.ReplaceAll(namespace, "_", "-")
 
 	} else {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
@@ -95,7 +95,7 @@ func CollectCmdRun(cmd *cobra.Command, args []string) {
 		}
 
 		// Kubernetes does not allow underscores in resource names.
-		name = strings.Replace(name, "_", "-", -1)
+		name = strings.ReplaceAll(name, "_", "-")
 
 	} else {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to get %q argument\n",
