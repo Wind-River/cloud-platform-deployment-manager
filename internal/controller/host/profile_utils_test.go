@@ -664,7 +664,7 @@ var _ = Describe("Profile utils", func() {
 	})
 
 	Describe("Test SyncIFNameByUuid", func() {
-		Context("When uuid is the same", func() {
+		Context("when uuid is the same", func() {
 			It("Should copy interface name from current to profile", func() {
 				profile := &starlingxv1.HostProfileSpec{
 					Interfaces: &starlingxv1.InterfaceInfo{
@@ -749,7 +749,7 @@ var _ = Describe("Profile utils", func() {
 	})
 
 	Describe("Test FillEmptyUuidbyName", func() {
-		Context("When name is the same", func() {
+		Context("when name is the same", func() {
 			It("Should copy interface uuid from current to profile", func() {
 				profile := &starlingxv1.HostProfileSpec{
 					Interfaces: &starlingxv1.InterfaceInfo{

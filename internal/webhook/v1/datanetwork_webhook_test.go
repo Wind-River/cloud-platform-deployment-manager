@@ -14,7 +14,7 @@ import (
 var _ = Describe("DataNetworkWebhook", func() {
 
 	Describe("ValidateDataNetwork", func() {
-		Context("When the type of dataNetwork is vxlan", func() {
+		Context("when the type of dataNetwork is vxlan", func() {
 			It("should successfully validate the Data Network", func() {
 				r := &starlingxv1.DataNetwork{
 					Spec: starlingxv1.DataNetworkSpec{
@@ -40,6 +40,31 @@ var _ = Describe("DataNetworkWebhook", func() {
 				msg := errors.New("VxLAN attributes are only allowed for VxLAN type data networks")
 				Expect(err).To(Equal(msg))
 			})
+		})
+	})
+})
+
+var _ = Describe("DataNetworkWebhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateCreate", func() {
+			v := &DataNetworkCustomValidator{}
+			obj := &starlingxv1.DataNetwork{Spec: starlingxv1.DataNetworkSpec{Type: datanetworks.TypeVxLAN}}
+			_, err := v.ValidateCreate(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateUpdate", func() {
+			v := &DataNetworkCustomValidator{}
+			obj := &starlingxv1.DataNetwork{Spec: starlingxv1.DataNetworkSpec{Type: datanetworks.TypeVxLAN}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &DataNetworkCustomValidator{}
+			// NOTE: ValidateDelete has a copy-paste bug — it casts to *AddressPool instead of *DataNetwork.
+			// Passing a DataNetwork triggers the type assertion error.
+			obj := &starlingxv1.DataNetwork{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

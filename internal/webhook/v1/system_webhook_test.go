@@ -16,7 +16,7 @@ import (
 var _ = Describe("SystemWebhook", func() {
 
 	Describe("ValidateBackendServices", func() {
-		Context("When services belong to the backendType ", func() {
+		Context("when services belong to the backendType ", func() {
 			It("should return true", func() {
 				backendType := "ceph"
 				services := []string{"cinder", "nova"}
@@ -38,7 +38,7 @@ var _ = Describe("SystemWebhook", func() {
 		})
 	})
 	Describe("ValidateBackendAttributes", func() {
-		Context("When the type is ceph and partitionSize and replicationFactor is specified", func() {
+		Context("when the type is ceph and partitionSize and replicationFactor is specified", func() {
 			It("should validate backend attributes successfully without any error", func() {
 				prtSize := 20
 				repFac := 2
@@ -52,7 +52,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
-		Context("When partitionSize is present when the Type is file", func() {
+		Context("when partitionSize is present when the Type is file", func() {
 			It("Should return the error partitionSize only permitted with ceph backend", func() {
 				prtSize := 20
 				backend := starlingxv1.StorageBackend{
@@ -65,7 +65,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
-		Context("When replicationFactor is present when the Type is file", func() {
+		Context("when replicationFactor is present when the Type is file", func() {
 			It("Should return the error ReplicationFactor only permitted with ceph and ceph-rook backends", func() {
 				repFac := 2
 				backend := starlingxv1.StorageBackend{
@@ -78,7 +78,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
-		Context("When replicationFactor is present when the Type is ceph-rook", func() {
+		Context("when replicationFactor is present when the Type is ceph-rook", func() {
 			It("Should returns success", func() {
 				repFac := 2
 				backend := starlingxv1.StorageBackend{
@@ -90,7 +90,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).To(Succeed())
 			})
 		})
-		Context("When deployment is present when the Type is file", func() {
+		Context("when deployment is present when the Type is file", func() {
 			It("Should return the error Deployment only permitted with ceph-rook backend", func() {
 				deploymentModel := "open"
 				backend := starlingxv1.StorageBackend{
@@ -105,7 +105,7 @@ var _ = Describe("SystemWebhook", func() {
 		})
 	})
 	Describe("ValidateStorageBackends", func() {
-		Context("When backend type is unique", func() {
+		Context("when backend type is unique", func() {
 			It("should return nil", func() {
 				prtSize := 20
 				repFac := 2
@@ -128,7 +128,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
-		Context("When backend type is duplicated", func() {
+		Context("when backend type is duplicated", func() {
 			It("should return error that backend services may only be specified once", func() {
 				prtSize := 20
 				repFac := 2
@@ -158,7 +158,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
-		Context("When ceph and ceph-rook backends are added", func() {
+		Context("when ceph and ceph-rook backends are added", func() {
 			It("should return error that they are not supported at the same time", func() {
 				repFac := 10
 				deployment := "open"
@@ -186,7 +186,7 @@ var _ = Describe("SystemWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
-		Context("When ceph and file backends are added", func() {
+		Context("when ceph and file backends are added", func() {
 			It("should return success", func() {
 				obj := &starlingxv1.System{
 					Spec: starlingxv1.SystemSpec{
@@ -208,8 +208,35 @@ var _ = Describe("SystemWebhook", func() {
 			})
 		})
 	})
+	Describe("ValidateCertificates", func() {
+		Context("when only deprecated/skipped certificate types are present", func() {
+			It("should succeed without error", func() {
+				obj := &starlingxv1.System{
+					Spec: starlingxv1.SystemSpec{
+						Certificates: starlingxv1.CertificateList{
+							{Type: starlingxv1.PlatformCertificate, Secret: "ssl-secret"},
+							{Type: starlingxv1.OpenstackCACertificate, Secret: "os-ca-secret"},
+							{Type: starlingxv1.DockerCertificate, Secret: "docker-secret"},
+							{Type: starlingxv1.OpenLDAPCertificate, Secret: "ldap-secret"},
+						},
+					},
+				}
+				err := validateCertificates(obj)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+		Context("when no certificates are present", func() {
+			It("should succeed without error", func() {
+				obj := &starlingxv1.System{
+					Spec: starlingxv1.SystemSpec{},
+				}
+				err := validateCertificates(obj)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+	})
 	Describe("ValidateStorage", func() {
-		Context("When Backends is not nil and services are belonging to the backend type", func() {
+		Context("when Backends is not nil and services are belonging to the backend type", func() {
 			It("should return nil error", func() {
 				prtSize := 20
 				repFac := 2
@@ -275,6 +302,23 @@ var _ = Describe("SystemWebhook integration", func() {
 			Expect(fetched).To(Equal(created))
 
 			Expect(k8sClient.Delete(ctx, fetched)).To(Succeed())
+		})
+	})
+})
+
+var _ = Describe("SystemWebhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateUpdate", func() {
+			v := &SystemCustomValidator{}
+			obj := &starlingxv1.System{Spec: starlingxv1.SystemSpec{}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &SystemCustomValidator{}
+			obj := &starlingxv1.System{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

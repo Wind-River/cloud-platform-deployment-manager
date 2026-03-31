@@ -98,3 +98,20 @@ var _ = Describe("PtpInstance webhook", func() {
 		})
 	})
 })
+
+var _ = Describe("PtpInstance webhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateUpdate", func() {
+			v := &PtpInstanceCustomValidator{}
+			obj := &starlingxv1.PtpInstance{Spec: starlingxv1.PtpInstanceSpec{Service: "ptp4l"}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &PtpInstanceCustomValidator{}
+			obj := &starlingxv1.PtpInstance{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+})

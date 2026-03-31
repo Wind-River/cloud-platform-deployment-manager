@@ -203,3 +203,23 @@ var _ = Describe("AddressPoolWebhook", func() {
 		})
 	})
 })
+
+var _ = Describe("AddressPoolWebhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateCreate", func() {
+			v := &AddressPoolCustomValidator{}
+			_, err := v.ValidateCreate(ctx, GetAddrPool("ipv4"))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateUpdate", func() {
+			v := &AddressPoolCustomValidator{}
+			_, err := v.ValidateUpdate(ctx, GetAddrPool("ipv4"), GetAddrPool("ipv4"))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &AddressPoolCustomValidator{}
+			_, err := v.ValidateDelete(ctx, GetAddrPool("ipv4"))
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+})
