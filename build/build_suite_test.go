@@ -204,27 +204,27 @@ func HandleResourceRequests(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		path := r.URL.Path
 		if strings.HasSuffix(path, "/"+"datanetworks") {
-			fmt.Fprint(w, DataNetworkListBody)
+			_, _ = fmt.Fprint(w, DataNetworkListBody)
 			break
 		}
 		if strings.HasSuffix(path, "/"+"networks") {
-			fmt.Fprint(w, PlatformNetworkListBody)
+			_, _ = fmt.Fprint(w, PlatformNetworkListBody)
 			break
 		}
 		if strings.HasSuffix(path, "/"+"addrpools") {
-			fmt.Fprint(w, AddrPoolListBody)
+			_, _ = fmt.Fprint(w, AddrPoolListBody)
 			break
 		}
 		if strings.HasSuffix(path, "/"+"ptp_instances") {
-			fmt.Fprint(w, PTPInstanceListBody)
+			_, _ = fmt.Fprint(w, PTPInstanceListBody)
 			break
 		}
 		if strings.HasSuffix(path, "/"+"ptp_interfaces") {
-			fmt.Fprint(w, PTPInterfaceListBody)
+			_, _ = fmt.Fprint(w, PTPInterfaceListBody)
 			break
 		}
 		if strings.HasSuffix(path, "/"+"network_addresspools") {
-			fmt.Fprint(w, NetworkAddressPoolListBody)
+			_, _ = fmt.Fprint(w, NetworkAddressPoolListBody)
 			break
 		}
 	default:

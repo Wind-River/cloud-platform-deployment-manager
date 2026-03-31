@@ -923,13 +923,13 @@ func HandleAddressPoolRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, AddrPoolListBody)
+		_, _ = fmt.Fprint(w, AddrPoolListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyAddressPoolUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyAddressPoolUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyAddressPoolUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -945,7 +945,7 @@ func HandleNetworkRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, NetworkListBody)
+		_, _ = fmt.Fprint(w, NetworkListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
 		// Read the body of the request
@@ -953,7 +953,7 @@ func HandleNetworkRequests(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "Unable to read body", http.StatusBadRequest)
 		} else {
-			defer r.Body.Close()
+			defer func() { _ = r.Body.Close() }()
 			request_opts := &networks.NetworkOpts{}
 			err := json.Unmarshal(body, request_opts)
 			if err != nil {
@@ -964,13 +964,13 @@ func HandleNetworkRequests(w http.ResponseWriter, r *http.Request) {
 				} else if *request_opts.Type == "other" {
 					http.Error(w, "Sorry, cannot create network of type other", http.StatusInternalServerError)
 				} else {
-					fmt.Fprint(w, DummyNetworkUpdateResponse)
+					_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 				}
 			}
 		}
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -981,13 +981,13 @@ func HandleDataNetworkRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DataNetworkListBody)
+		_, _ = fmt.Fprint(w, DataNetworkListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -998,13 +998,13 @@ func HandleInterfaceNetworkRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, InterfaceNetworkListBody)
+		_, _ = fmt.Fprint(w, InterfaceNetworkListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1015,13 +1015,13 @@ func HandleInterfaceDataNetworkRequests(w http.ResponseWriter, r *http.Request) 
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, InterfaceDataNetworkListBody)
+		_, _ = fmt.Fprint(w, InterfaceDataNetworkListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1041,10 +1041,10 @@ func HandleOAMNetworkRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, OAMNetworkListBody)
+		_, _ = fmt.Fprint(w, OAMNetworkListBody)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyOAMUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyOAMUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1060,7 +1060,7 @@ func HandleSystemRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, SingleSystemBodyResponse)
+		_, _ = fmt.Fprint(w, SingleSystemBodyResponse)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1074,7 +1074,7 @@ func HandleHostRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, HostBody)
+		_, _ = fmt.Fprint(w, HostBody)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1083,7 +1083,7 @@ func HandleListHostRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, HostsListBodyResponse)
+		_, _ = fmt.Fprint(w, HostsListBodyResponse)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1092,7 +1092,7 @@ func HandleListFSRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, filesystem)
+		_, _ = fmt.Fprint(w, filesystem)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1101,7 +1101,7 @@ func HandleKernelRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, KernelBodyResponse)
+		_, _ = fmt.Fprint(w, KernelBodyResponse)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1110,7 +1110,7 @@ func HandleCpuRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, CPU)
+		_, _ = fmt.Fprint(w, CPU)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1119,7 +1119,7 @@ func HandleLabelRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, ILabel)
+		_, _ = fmt.Fprint(w, ILabel)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1128,7 +1128,7 @@ func HandleMemoryRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, Memory)
+		_, _ = fmt.Fprint(w, Memory)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1138,7 +1138,7 @@ func HandleCephMonitorsRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, CephMonitor)
+		_, _ = fmt.Fprint(w, CephMonitor)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1147,7 +1147,7 @@ func HandlePortRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, port)
+		_, _ = fmt.Fprint(w, port)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1156,13 +1156,13 @@ func HandleInterfaceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, interfaceresponse)
+		_, _ = fmt.Fprint(w, interfaceresponse)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1173,13 +1173,13 @@ func HandleAddressRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, address)
+		_, _ = fmt.Fprint(w, address)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1190,13 +1190,13 @@ func HandleRouteRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, route)
+		_, _ = fmt.Fprint(w, route)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1207,7 +1207,7 @@ func HandleDiskRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, disks)
+		_, _ = fmt.Fprint(w, disks)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1216,13 +1216,13 @@ func HandlePartitionRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, partition)
+		_, _ = fmt.Fprint(w, partition)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1233,13 +1233,13 @@ func HandleVGRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, volumegroup)
+		_, _ = fmt.Fprint(w, volumegroup)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1250,13 +1250,13 @@ func HandlePVRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, physicalvolume)
+		_, _ = fmt.Fprint(w, physicalvolume)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1267,13 +1267,13 @@ func HandleOSDRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, osd)
+		_, _ = fmt.Fprint(w, osd)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1284,7 +1284,7 @@ func HandleClusterRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Fprint(w, cluster)
+		_, _ = fmt.Fprint(w, cluster)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1294,7 +1294,7 @@ func HandleStorageBackendRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, StorageBackendListBody)
+		_, _ = fmt.Fprint(w, StorageBackendListBody)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1304,7 +1304,7 @@ func HandlePTPInstanceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, PTPInstanceListBody)
+		_, _ = fmt.Fprint(w, PTPInstanceListBody)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1314,13 +1314,13 @@ func HandleHostPTPInstanceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, PTPInstance)
+		_, _ = fmt.Fprint(w, PTPInstance)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1331,13 +1331,13 @@ func HandleHostPTPInterfaceRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, PTPInterface)
+		_, _ = fmt.Fprint(w, PTPInterface)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1348,13 +1348,13 @@ func HandleStorageTierRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, storage_tiers)
+		_, _ = fmt.Fprint(w, storage_tiers)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	default:
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -1363,13 +1363,13 @@ func HandleNetworkAddressPoolRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, NetworkAddressPoolListBody)
+		_, _ = fmt.Fprint(w, NetworkAddressPoolListBody)
 	case http.MethodPost:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkAddressPoolUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkAddressPoolUpdateResponse)
 	case http.MethodPatch:
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprint(w, DummyNetworkUpdateResponse)
+		_, _ = fmt.Fprint(w, DummyNetworkUpdateResponse)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
 	default:
