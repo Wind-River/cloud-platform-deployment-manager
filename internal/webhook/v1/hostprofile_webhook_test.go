@@ -290,7 +290,7 @@ var _ = Describe("HostProfileWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
-		Context("When the spec base is empty", func() {
+		Context("when the spec base is empty with no other fields", func() {
 			It("should return profile base name must not be empty error", func() {
 				baseEmpty := ""
 				obj := &starlingxv1.HostProfile{
@@ -301,6 +301,15 @@ var _ = Describe("HostProfileWebhook", func() {
 				err := validateHostProfile(obj)
 				msg := errors.New("profile base name must not be empty")
 				Expect(err).To(Equal(msg))
+			})
+		})
+		Context("when the spec base is nil with no other fields", func() {
+			It("should succeed without error", func() {
+				obj := &starlingxv1.HostProfile{
+					Spec: starlingxv1.HostProfileSpec{},
+				}
+				err := validateHostProfile(obj)
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("When the spec base is non-empty", func() {
@@ -425,6 +434,23 @@ var _ = Describe("HostProfileWebhook integration", func() {
 					Expect(fetched.Spec.Console).To(Equal(created.Spec.Console))
 				}
 			}
+		})
+	})
+})
+
+var _ = Describe("HostProfileWebhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateUpdate", func() {
+			v := &HostProfileCustomValidator{}
+			obj := &starlingxv1.HostProfile{Spec: starlingxv1.HostProfileSpec{}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &HostProfileCustomValidator{}
+			obj := &starlingxv1.HostProfile{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

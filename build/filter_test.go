@@ -265,7 +265,7 @@ var _ = Describe("Test filters utilities:", func() {
 			})
 		})
 
-		Context("When core network filter is applied", func() {
+		Context("when core network filter is applied", func() {
 			It("should delete only oam/mgmt/admin platform networks", func() {
 				err := coreNetworkFilter.Filter(deployment.PlatformNetworks[0], &deployment)
 				Expect(err).ToNot(HaveOccurred())
@@ -277,7 +277,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test  fileSystemFilter", func() {
-		Context("When there is extra tye fs present", func() {
+		Context("when there is extra tye fs present", func() {
 			It("should filter out the extra fs", func() {
 				filter := &FileSystemFilter{}
 
@@ -343,7 +343,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test  CACertificateFilter", func() {
-		Context("When there is ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates are also present", func() {
+		Context("when there is ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates are also present", func() {
 			It("should filter out the ssl_ca/openstack_ca/docker_registry/ssl/openldap type certificates", func() {
 				filter := &CACertificateFilter{}
 
@@ -393,7 +393,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test ServiceParameterFilter", func() {
-		Context("When spec has default service parameters", func() {
+		Context("when spec has default service parameters", func() {
 			It("should exclude default service parameters", func() {
 				filter := &ServiceParameterFilter{}
 
@@ -441,7 +441,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test InterfaceRemoveUuidFilter", func() {
-		Context("When there exists Uuids in interface", func() {
+		Context("when there exists Uuids in interface", func() {
 			It("should remove Uuid from interfaces", func() {
 				filter := &InterfaceRemoveUuidFilter{}
 
@@ -570,7 +570,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test HostKernelFilter", func() {
-		Context("When the host has worker node", func() {
+		Context("when the host has worker node", func() {
 			It("Should not filter kernel parameter", func() {
 				filter := &HostKernelFilter{}
 				kernel := "kernel"
@@ -595,7 +595,7 @@ var _ = Describe("Test filters utilities:", func() {
 			})
 		})
 
-		Context("When the host has storage node", func() {
+		Context("when the host has storage node", func() {
 			It("Should not filter kernel parameter", func() {
 				filter := &HostKernelFilter{}
 				kernel := "kernel"
@@ -622,7 +622,7 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test Filter of Controller0", func() {
-		Context("When its controller-0", func() {
+		Context("when its controller-0", func() {
 			It("should filter from overrides", func() {
 				filter := &Controller0Filter{}
 
@@ -694,7 +694,7 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test AddressFilter", func() {
-		Context("When the profile address exists", func() {
+		Context("when the profile address exists", func() {
 			It("should filter address from host spec to host overrides", func() {
 				filter := &AddressFilter{}
 
@@ -729,7 +729,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test BMAddressFilter", func() {
-		Context("When  BoardManagement and Adress is not nil", func() {
+		Context("when  BoardManagement and Adress is not nil", func() {
 			It("should filter BMAddress", func() {
 				filter := &BMAddressFilter{}
 				// Create a test case with sample input
@@ -762,7 +762,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test StorageMonitorFilter", func() {
-		Context("When volumeGrps,OSDS,Fs are  nil", func() {
+		Context("when volumeGrps,OSDS,Fs are  nil", func() {
 			It("should filter profile spec storage", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
@@ -805,7 +805,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test StorageMonitorFilter", func() {
-		Context("When volumeGrps,OSDS,Fs are not nil", func() {
+		Context("when volumeGrps,OSDS,Fs are not nil", func() {
 			It("should not filter profile spec storage", func() {
 				filter := &StorageMonitorFilter{}
 				// Create a test case with sample input
@@ -850,7 +850,7 @@ var _ = Describe("Test filters utilities:", func() {
 	})
 
 	Describe("Test LoopbackInterfaceFilter", func() {
-		Context("Whenthere is a loopback iterface also present", func() {
+		Context("whenthere is a loopback iterface also present", func() {
 			It("should filter the loopback interface", func() {
 				filter := &LoopbackInterfaceFilter{}
 				// Create a test case with sample input
@@ -893,7 +893,7 @@ var _ = Describe("Test filters utilities:", func() {
 
 	//TBD: should try other cases for this func InterfaceUnusedFilter
 	Describe("Test InterfaceUnusedFilter", func() {
-		Context("When profile interfaces is used", func() {
+		Context("when profile interfaces is used", func() {
 			It("should return the same interface because of the absence of unused interfaces", func() {
 				filter := &InterfaceUnusedFilter{}
 				// Create a test case with sample input
@@ -928,7 +928,7 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test MemoryDefaultsFilter", func() {
-		Context("When Func is platform,pagecount is 0 and other func is vswitch,pagecount is 1", func() {
+		Context("when Func is platform,pagecount is 0 and other func is vswitch,pagecount is 1", func() {
 			It("Should omit func platform and vswitch in profile memory", func() {
 				filter := &MemoryDefaultsFilter{}
 				// Create a test case with sample input
@@ -980,7 +980,7 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test ProcessorDefaultsFilter", func() {
-		Context("When personality is controller", func() {
+		Context("when personality is controller", func() {
 			It("Should ignore platform func in processors", func() {
 				filter := &ProcessorDefaultsFilter{}
 				personality := hosts.PersonalityController
@@ -1026,7 +1026,7 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(hp.Spec.Processors).To(Equal(expNodes))
 			})
 		})
-		Context("When personality is worker", func() {
+		Context("when personality is worker", func() {
 			It("Should ignore platform func in processors", func() {
 				filter := &ProcessorDefaultsFilter{}
 				personality := hosts.PersonalityWorker
@@ -1075,7 +1075,7 @@ var _ = Describe("Test filters utilities:", func() {
 		})
 	})
 	Describe("Test ProcessorClearAllFilter", func() {
-		Context("When processors is not nil", func() {
+		Context("when processors is not nil", func() {
 			It("should remove all processor configurations", func() {
 				filter := &ProcessorClearAllFilter{}
 				hp := &v1.HostProfile{

@@ -107,6 +107,20 @@ var _ = Describe("HostWebhook", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
+		Context("when only bootMAC is provided", func() {
+			It("should validate successfully without error", func() {
+				bootMac := "01:02:03:04:05:06"
+				r := &starlingxv1.Host{
+					Spec: starlingxv1.HostSpec{
+						Match: &starlingxv1.MatchInfo{
+							BootMAC: &bootMac,
+						},
+					},
+				}
+				err := validateMatchInfo(r)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
 		Context("When all board management,DMI and bootMac info are nil", func() {
 			It("should return error that host must be configured with at least 1 match criteria", func() {
 				r := &starlingxv1.Host{
@@ -119,9 +133,35 @@ var _ = Describe("HostWebhook", func() {
 				Expect(err).To(Equal(msg))
 			})
 		})
+		Context("when board management address is nil", func() {
+			It("should propagate the error", func() {
+				r := &starlingxv1.Host{
+					Spec: starlingxv1.HostSpec{
+						Match: &starlingxv1.MatchInfo{
+							BoardManagement: &starlingxv1.MatchBMInfo{},
+						},
+					},
+				}
+				err := validateMatchInfo(r)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		Context("when DMI fields are incomplete", func() {
+			It("should propagate the error", func() {
+				r := &starlingxv1.Host{
+					Spec: starlingxv1.HostSpec{
+						Match: &starlingxv1.MatchInfo{
+							DMI: &starlingxv1.MatchDMIInfo{},
+						},
+					},
+				}
+				err := validateMatchInfo(r)
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 	Describe("ValidateHost", func() {
-		Context("When match info is not nil", func() {
+		Context("when match info is not nil", func() {
 			It("should validate the host match info successfully without any error", func() {
 				bmAddr := "192.13.24.39"
 				serialNo := "12345"
@@ -145,6 +185,49 @@ var _ = Describe("HostWebhook", func() {
 				err := validateHost(r)
 				Expect(err).ToNot(HaveOccurred())
 			})
+		})
+		Context("when match info is nil", func() {
+			It("should succeed without error", func() {
+				r := &starlingxv1.Host{
+					Spec: starlingxv1.HostSpec{},
+				}
+				err := validateHost(r)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+		Context("when match info has invalid data", func() {
+			It("should propagate the error", func() {
+				r := &starlingxv1.Host{
+					Spec: starlingxv1.HostSpec{
+						Match: &starlingxv1.MatchInfo{},
+					},
+				}
+				err := validateHost(r)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+})
+
+var _ = Describe("HostWebhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateCreate", func() {
+			v := &HostCustomValidator{}
+			obj := &starlingxv1.Host{Spec: starlingxv1.HostSpec{}}
+			_, err := v.ValidateCreate(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateUpdate", func() {
+			v := &HostCustomValidator{}
+			obj := &starlingxv1.Host{Spec: starlingxv1.HostSpec{}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &HostCustomValidator{}
+			obj := &starlingxv1.Host{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

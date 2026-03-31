@@ -100,3 +100,22 @@ var _ = Describe("PlatformNetwork webhook", func() {
 		})
 	})
 })
+
+var _ = Describe("PlatformNetwork webhook wrappers", func() {
+	Context("when calling validators directly", func() {
+		It("should accept ValidateUpdate", func() {
+			v := &PlatformNetworkCustomValidator{}
+			obj := &starlingxv1.PlatformNetwork{Spec: starlingxv1.PlatformNetworkSpec{
+				Type: "mgmt", AssociatedAddressPools: []string{"pool"},
+			}}
+			_, err := v.ValidateUpdate(ctx, obj, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should accept ValidateDelete", func() {
+			v := &PlatformNetworkCustomValidator{}
+			obj := &starlingxv1.PlatformNetwork{}
+			_, err := v.ValidateDelete(ctx, obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+})
