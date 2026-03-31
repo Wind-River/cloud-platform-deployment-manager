@@ -399,9 +399,9 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	}
 
 	if resetClient {
-		if h.CloudManager.GetPlatformClient(request.Namespace) != nil {
+		if h.GetPlatformClient(request.Namespace) != nil {
 			h.Info("resetting platform client")
-			err2 := h.CloudManager.ResetPlatformClient(request.Namespace)
+			err2 := h.ResetPlatformClient(request.Namespace)
 			if err2 != nil {
 				h.Error(err2, "failed to reset platform client")
 			}
@@ -436,7 +436,7 @@ func (in *EventLogger) event(object runtime.Object, eventtype string, logLevel i
 	}
 	msg := fmt.Sprintf("%s: %s", name, fmt.Sprintf(messageFmt, args...))
 	in.Logger.V(logLevel).Info(msg)
-	in.EventRecorder.Eventf(object, eventtype, reason, msg)
+	in.Eventf(object, eventtype, reason, msg)
 }
 
 // NormalEvent generates a log and event for a "normal" event.

@@ -26,7 +26,7 @@ var _ = Describe("HostProfileWebhook", func() {
 					PageSize: string(starlingxv1.PageSize2M),
 				}
 				err := validateMemoryFunction(node, function)
-				msg := errors.New("platform memory must be allocated from 4K pages.")
+				msg := errors.New("platform memory must be allocated from 4K pages")
 				Expect(err).To(Equal(msg))
 			})
 		})
@@ -38,7 +38,7 @@ var _ = Describe("HostProfileWebhook", func() {
 					PageSize: string(starlingxv1.PageSize4K),
 				}
 				err := validateMemoryFunction(node, function)
-				msg := errors.New("4K pages can only be reserved for platform memory.")
+				msg := errors.New("4K pages can only be reserved for platform memory")
 				Expect(err).To(Equal(msg))
 			})
 		})

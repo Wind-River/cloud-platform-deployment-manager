@@ -51,26 +51,26 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 	var delta strings.Builder
 	if instance.Name != n.Name {
 		opts.Name = &instance.Name
-		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
+		fmt.Fprintf(&delta, "\t+Name: %s\n", *opts.Name)
 		result = true
 	}
 
 	spec := instance.Spec
 	if spec.Type != n.Type {
 		opts.Type = &spec.Type
-		delta.WriteString(fmt.Sprintf("\t+Type: %s\n", *opts.Type))
+		fmt.Fprintf(&delta, "\t+Type: %s\n", *opts.Type)
 		result = true
 	}
 
 	if spec.MTU != nil && *spec.MTU != n.MTU {
 		opts.MTU = spec.MTU
-		delta.WriteString(fmt.Sprintf("\t+MTU: %d\n", *opts.MTU))
+		fmt.Fprintf(&delta, "\t+MTU: %d\n", *opts.MTU)
 		result = true
 	}
 
 	if spec.Description != nil && *spec.Description != n.Description {
 		opts.Description = spec.Description
-		delta.WriteString(fmt.Sprintf("\t+Description: %s\n", *opts.Description))
+		fmt.Fprintf(&delta, "\t+Description: %s\n", *opts.Description)
 		result = true
 	}
 
@@ -79,7 +79,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.EndpointMode != nil && n.Mode != nil {
 			if *vxlan.EndpointMode != *n.Mode {
 				opts.Mode = vxlan.EndpointMode
-				delta.WriteString(fmt.Sprintf("\t+Mode: %s\n", *opts.Mode))
+				fmt.Fprintf(&delta, "\t+Mode: %s\n", *opts.Mode)
 				result = true
 			}
 		}
@@ -87,7 +87,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.UDPPortNumber != nil && n.UDPPortNumber != nil {
 			if *vxlan.UDPPortNumber != *n.UDPPortNumber {
 				opts.PortNumber = vxlan.UDPPortNumber
-				delta.WriteString(fmt.Sprintf("\t+PortNumber: %d\n", *opts.PortNumber))
+				fmt.Fprintf(&delta, "\t+PortNumber: %d\n", *opts.PortNumber)
 				result = true
 			}
 		}
@@ -95,7 +95,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.TTL != nil && n.TTL != nil {
 			if *vxlan.TTL != *n.TTL {
 				opts.TTL = vxlan.TTL
-				delta.WriteString(fmt.Sprintf("\t+TTL: %d\n", *opts.TTL))
+				fmt.Fprintf(&delta, "\t+TTL: %d\n", *opts.TTL)
 				result = true
 			}
 		}
@@ -103,7 +103,7 @@ func dataNetworkUpdateRequired(instance *starlingxv1.DataNetwork, n *datanetwork
 		if vxlan.MulticastGroup != nil && n.MulticastGroup != nil {
 			if *vxlan.MulticastGroup != *n.MulticastGroup {
 				opts.MulticastGroup = vxlan.MulticastGroup
-				delta.WriteString(fmt.Sprintf("\t+MulticastGroup: %s\n", *opts.MulticastGroup))
+				fmt.Fprintf(&delta, "\t+MulticastGroup: %s\n", *opts.MulticastGroup)
 				result = true
 			}
 		}
@@ -130,7 +130,7 @@ func (r *DataNetworkReconciler) ReconcileNew(client *gophercloud.ServiceClient, 
 		// synchronized state unless there is an annotation on the resource.
 		if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 			msg := common.NoProvisioningAfterReconciled
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+			r.NormalEvent(instance, common.ResourceUpdated, msg)
 			return nil, common.NewChangeAfterInSync(msg)
 		} else {
 			logDataNetwork.Info(common.ProvisioningAllowedAfterReconciled)
@@ -161,7 +161,7 @@ func (r *DataNetworkReconciler) ReconcileNew(client *gophercloud.ServiceClient, 
 		return nil, err
 	}
 
-	r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceCreated,
+	r.NormalEvent(instance, common.ResourceCreated,
 		"data network has been created")
 
 	return network, nil
@@ -178,7 +178,7 @@ func (r *DataNetworkReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 			// synchronized state unless there is an annotation on the resource.
 			if _, present := instance.Annotations[cloudManager.ReconcileAfterInSync]; !present {
 				msg := common.NoChangesAfterReconciled
-				r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, msg)
+				r.NormalEvent(instance, common.ResourceUpdated, msg)
 				return common.NewChangeAfterInSync(msg)
 			} else {
 				logDataNetwork.Info(common.ChangedAllowedAfterReconciled)
@@ -195,8 +195,7 @@ func (r *DataNetworkReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 
 		*network = *result
 
-		r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated,
-			"data network has been updated")
+		r.NormalEvent(instance, common.ResourceUpdated, "data network has been updated")
 	}
 
 	return nil
@@ -205,8 +204,8 @@ func (r *DataNetworkReconciler) ReconcileUpdated(client *gophercloud.ServiceClie
 // Removes the datanetwork finalizer
 func (r *DataNetworkReconciler) removeDataNetworkFinalizer(instance *starlingxv1.DataNetwork) {
 	// Remove the finalizer so the kubernetes delete operation can continue.
-	instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName)
-	if err := r.Client.Update(context.Background(), instance); err != nil {
+	instance.Finalizers = utils.RemoveString(instance.Finalizers, DataNetworkFinalizerName)
+	if err := r.Update(context.Background(), instance); err != nil {
 		logDataNetwork.Error(err, "failed to remove the finalizer in the data network because of the error:%v")
 	}
 }
@@ -214,7 +213,7 @@ func (r *DataNetworkReconciler) removeDataNetworkFinalizer(instance *starlingxv1
 // ReconcileNew is a method which handles reconciling a new data resource and
 // creates the corresponding system resource thru the system API.
 func (r *DataNetworkReconciler) ReconciledDeleted(client *gophercloud.ServiceClient, instance *starlingxv1.DataNetwork, network *datanetworks.DataNetwork) error {
-	if utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
+	if utils.ContainsString(instance.Finalizers, DataNetworkFinalizerName) {
 		defer r.removeDataNetworkFinalizer(instance)
 		if network != nil {
 			// Unless it was already deleted go ahead and attempt to delete it.
@@ -235,7 +234,7 @@ func (r *DataNetworkReconciler) ReconciledDeleted(client *gophercloud.ServiceCli
 				}
 			}
 
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceDeleted, "data network has been deleted")
+			r.NormalEvent(instance, common.ResourceDeleted, "data network has been deleted")
 		}
 	}
 	return nil
@@ -267,7 +266,7 @@ func (r *DataNetworkReconciler) statusUpdateRequired(instance *starlingxv1.DataN
 		status.ConfigurationUpdated = false
 		status.StrategyRequired = cloudManager.StrategyNotRequired
 		if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
-			r.CloudManager.SetResourceInfo(cloudManager.ResourceDatanetwork, "", instance.Name, status.Reconciled, status.StrategyRequired)
+			r.SetResourceInfo(cloudManager.ResourceDatanetwork, "", instance.Name, status.Reconciled, status.StrategyRequired)
 		}
 		result = true
 	}
@@ -323,7 +322,7 @@ func (r *DataNetworkReconciler) ReconcileResource(client *gophercloud.ServiceCli
 	network, err := r.FindExistingResource(client, instance)
 	if err != nil {
 		if !instance.DeletionTimestamp.IsZero() {
-			if utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
+			if utils.ContainsString(instance.Finalizers, DataNetworkFinalizerName) {
 				// Remove the finalizer
 				r.removeDataNetworkFinalizer(instance)
 			}
@@ -344,7 +343,7 @@ func (r *DataNetworkReconciler) ReconcileResource(client *gophercloud.ServiceCli
 		inSync := err == nil
 
 		if instance.Status.InSync != inSync {
-			r.ReconcilerEventLogger.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
+			r.NormalEvent(instance, common.ResourceUpdated, "synchronization has changed to: %t", inSync)
 		}
 
 		if r.statusUpdateRequired(instance, network, inSync) {
@@ -380,7 +379,7 @@ func (r *DataNetworkReconciler) StopAfterInSync() bool {
 // UpdateDeploymentScope at this point.
 func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNetwork, ns string) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -401,7 +400,7 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 				delete(instance.Annotations, cloudManager.ReconcileAfterInSync)
 			}
 		}
-		return r.Client.Update(context.TODO(), instance)
+		return r.Update(context.TODO(), instance)
 	})
 
 	if err != nil {
@@ -409,7 +408,7 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		}, instance)
@@ -422,7 +421,7 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
 
-		if instance.Status.ObservedGeneration != instance.ObjectMeta.Generation {
+		if instance.Status.ObservedGeneration != instance.Generation {
 			// The configuration is updated
 			if instance.Status.ObservedGeneration == 0 &&
 				instance.Status.Reconciled {
@@ -434,11 +433,11 @@ func (r *DataNetworkReconciler) UpdateConfigStatus(instance *starlingxv1.DataNet
 				if instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
 					instance.Status.Reconciled = false
 					// Update strategy required status for strategy monitor
-					r.CloudManager.UpdateConfigVersion()
-					r.CloudManager.SetResourceInfo(cloudManager.ResourceDatanetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
+					r.UpdateConfigVersion()
+					r.SetResourceInfo(cloudManager.ResourceDatanetwork, "", instance.Name, instance.Status.Reconciled, cloudManager.StrategyNotRequired)
 				}
 			}
-			instance.Status.ObservedGeneration = instance.ObjectMeta.Generation
+			instance.Status.ObservedGeneration = instance.Generation
 			// Reset strategy when new configuration is applied
 			instance.Status.StrategyRequired = cloudManager.StrategyNotRequired
 		}
@@ -457,7 +456,7 @@ func (r *DataNetworkReconciler) UpdateStatusForFactoryInstall(
 	ns string,
 	instance *starlingxv1.DataNetwork,
 ) error {
-	reconciledUpdated, err := r.CloudManager.GetFactoryResourceDataUpdated(
+	reconciledUpdated, err := r.GetFactoryResourceDataUpdated(
 		ns,
 		instance.Name,
 		"reconciled",
@@ -472,7 +471,7 @@ func (r *DataNetworkReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		err = r.CloudManager.SetFactoryResourceDataUpdated(
+		err = r.SetFactoryResourceDataUpdated(
 			ns,
 			instance.Name,
 			"reconciled",
@@ -481,7 +480,7 @@ func (r *DataNetworkReconciler) UpdateStatusForFactoryInstall(
 		if err != nil {
 			return err
 		}
-		r.ReconcilerEventLogger.NormalEvent(
+		r.NormalEvent(
 			instance,
 			common.ResourceUpdated,
 			"Set Reconciled false for factory install",
@@ -498,12 +497,12 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	_ = log.FromContext(ctx)
 
 	savedLog := logDataNetwork
-	logDataNetwork = logDataNetwork.WithName(request.NamespacedName.String())
+	logDataNetwork = logDataNetwork.WithName(request.String())
 	defer func() { logDataNetwork = savedLog }()
 
 	// Fetch the DataNetwork instance
 	instance := &starlingxv1.DataNetwork{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically
@@ -520,7 +519,7 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		return r.HandleReconcilerError(request, err)
 	}
 
-	factory, err := r.CloudManager.GetFactoryInstall(request.Namespace)
+	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -542,9 +541,9 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	if instance.DeletionTimestamp.IsZero() {
 		// Ensure that the object has a finalizer setup as a pre-delete hook so
 		// that we can delete any system resources that we previously added.
-		if !utils.ContainsString(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName) {
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, DataNetworkFinalizerName)
-			if err := r.Client.Update(context.Background(), instance); err != nil {
+		if !utils.ContainsString(instance.Finalizers, DataNetworkFinalizerName) {
+			instance.Finalizers = append(instance.Finalizers, DataNetworkFinalizerName)
+			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -563,20 +562,20 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 	if platformClient == nil {
 		// The client has not been authenticated by the system controller so
 		// wait.
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for platform client creation")
 		return common.RetryMissingClient, nil
 	}
 
-	if !r.CloudManager.GetSystemReady(request.Namespace) {
-		r.ReconcilerEventLogger.WarningEvent(instance, common.ResourceDependency,
+	if !r.GetSystemReady(request.Namespace) {
+		r.WarningEvent(instance, common.ResourceDependency,
 			"waiting for system reconciliation")
 		return common.RetrySystemNotReady, nil
 	}
 
 	err = r.ReconcileResource(platformClient, instance)
 	if err != nil {
-		return r.ReconcilerErrorHandler.HandleReconcilerError(request, err)
+		return r.HandleReconcilerError(request, err)
 	}
 
 	return ctrl.Result{}, nil

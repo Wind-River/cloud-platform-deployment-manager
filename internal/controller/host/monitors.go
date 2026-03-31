@@ -55,19 +55,19 @@ func NewPartitionStateMonitor(instance *starlingxv1.Host, id string) *manager.Mo
 func (m *partitionStateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := partitions.ListPartitions(client, m.id)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get disk partitions: %s", err.Error())
+		m.SetState("failed to get disk partitions: %s", err.Error())
 		return false, err
 	}
 
 	for _, p := range objects {
 		switch p.Status {
 		case partitions.StatusDeleting, partitions.StatusModifying, partitions.StatusCreating:
-			m.CommonMonitorBody.SetState("waiting for partition %q to be available", p.ID)
+			m.SetState("waiting for partition %q to be available", p.ID)
 			return false, nil
 		}
 	}
 
-	m.CommonMonitorBody.SetState("all partitions are available")
+	m.SetState("all partitions are available")
 
 	return true, nil
 }
@@ -106,18 +106,18 @@ func NewClusterPresenceMonitor(instance *starlingxv1.Host, cluster string) *mana
 func (m *clusterPresenceMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := clusters.ListClusters(client)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get cluster list: %s", err.Error())
+		m.SetState("failed to get cluster list: %s", err.Error())
 		return false, err
 	}
 
 	for _, c := range objects {
 		if c.Name == m.clusterName {
-			m.CommonMonitorBody.SetState("cluster %q found", m.clusterName)
+			m.SetState("cluster %q found", m.clusterName)
 			return true, nil
 		}
 	}
 
-	m.CommonMonitorBody.SetState("waiting for cluster %q", m.clusterName)
+	m.SetState("waiting for cluster %q", m.clusterName)
 
 	return false, nil
 }
@@ -158,16 +158,16 @@ func NewClusterDeploymentModelMonitor(instance *starlingxv1.Host, clusterId stri
 func (m *clusterDeploymentModelMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	cluster, err := clusters.Get(client, m.clusterId).Extract()
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get cluster list: %s", err.Error())
+		m.SetState("failed to get cluster list: %s", err.Error())
 		return false, err
 	}
 
 	if cluster.DeploymentModel != clusters.DeploymentModelUndefined {
-		m.CommonMonitorBody.SetState("deployment model is set on cluster %q", m.clusterId)
+		m.SetState("deployment model is set on cluster %q", m.clusterId)
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for deployment model to be set on cluster %q", m.clusterId)
+	m.SetState("waiting for deployment model to be set on cluster %q", m.clusterId)
 
 	return false, nil
 }
@@ -205,16 +205,16 @@ func NewStorageMonitorCountMonitor(instance *starlingxv1.Host, required int) *ma
 func (m *storageMonitorCountMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := hosts.ListHosts(client)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to query host list: %q", err.Error())
+		m.SetState("failed to query host list: %q", err.Error())
 		return false, err
 	}
 
 	if MonitorsEnabled(objects, m.required) {
-		m.CommonMonitorBody.SetState("required number of monitors now enabled: %d", m.required)
+		m.SetState("required number of monitors now enabled: %d", m.required)
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for %d monitor(s) to be enabled", m.required)
+	m.SetState("waiting for %d monitor(s) to be enabled", m.required)
 
 	return false, nil
 }
@@ -254,18 +254,18 @@ func NewStorageTierMonitor(instance *starlingxv1.Host, clusterID, tierName strin
 func (m *storageTierMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	tiers, err := storagetiers.ListTiers(client, m.clusterID)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get storage tier list: %s", err.Error())
+		m.SetState("failed to get storage tier list: %s", err.Error())
 		return false, err
 	}
 
 	for _, t := range tiers {
 		if t.Name == storagetiers.StorageTierName {
-			m.CommonMonitorBody.SetState("storage tier for cluster %q has been found", m.clusterID)
+			m.SetState("storage tier for cluster %q has been found", m.clusterID)
 			return true, nil
 		}
 	}
 
-	m.CommonMonitorBody.SetState("waiting for storage tier for cluster %q", m.clusterID)
+	m.SetState("waiting for storage tier for cluster %q", m.clusterID)
 
 	return false, nil
 }
@@ -361,7 +361,7 @@ func NewLockedDisabledHostMonitor(instance *starlingxv1.Host, id string) *manage
 func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	host, err := hosts.Get(client, m.hostID).Extract()
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get host %q: %s", m.hostID, err.Error())
+		m.SetState("failed to get host %q: %s", m.hostID, err.Error())
 		return false, err
 	}
 
@@ -373,7 +373,7 @@ func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err er
 	state := fmt.Sprintf("%s/%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus, task)
 
 	if !host.Idle() {
-		m.CommonMonitorBody.SetState("waiting for host to reach stable state: %s", state)
+		m.SetState("waiting for host to reach stable state: %s", state)
 		goto done
 	}
 
@@ -393,11 +393,11 @@ func (m *stateMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err er
 
 done:
 	if stop {
-		m.CommonMonitorBody.SetState("desired state has been reached: %s", m.desiredState())
+		m.SetState("desired state has been reached: %s", m.desiredState())
 	} else if m.idleOnly() {
-		m.CommonMonitorBody.SetState("waiting for stable state; current: %s", state)
+		m.SetState("waiting for stable state; current: %s", state)
 	} else {
-		m.CommonMonitorBody.SetState("waiting for state: %s; current: %s", m.desiredState(), state)
+		m.SetState("waiting for state: %s; current: %s", m.desiredState(), state)
 	}
 
 	return stop, nil
@@ -435,7 +435,7 @@ func NewStableHostMonitor(instance *starlingxv1.Host, id string) *manager.Monito
 func (m *stableHostMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	host, err := hosts.Get(client, m.hostID).Extract()
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get host %q: %s", m.hostID, err.Error())
+		m.SetState("failed to get host %q: %s", m.hostID, err.Error())
 		return false, err
 	}
 
@@ -447,11 +447,11 @@ func (m *stableHostMonitor) Run(client *gophercloud.ServiceClient) (stop bool, e
 	state := fmt.Sprintf("%s/%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus, task)
 
 	if !host.Stable() {
-		m.CommonMonitorBody.SetState("waiting for host to reach stable state: %s", state)
+		m.SetState("waiting for host to reach stable state: %s", state)
 		return false, nil
 	}
 
-	m.CommonMonitorBody.SetState("stable state has been reached: %s", state)
+	m.SetState("stable state has been reached: %s", state)
 
 	return true, nil
 }
@@ -492,21 +492,21 @@ func NewInventoryCollectedMonitor(instance *starlingxv1.Host, id string) *manage
 func (m *inventoryCollectedMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	host, err := hosts.Get(client, m.id).Extract()
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get host %q: %s", m.id, err.Error())
+		m.SetState("failed to get host %q: %s", m.id, err.Error())
 		return false, err
 	}
 
 	if !host.Stable() || host.AvailabilityStatus == hosts.AvailOffline {
-		m.CommonMonitorBody.SetState("waiting for stable state before collecting defaults")
+		m.SetState("waiting for stable state before collecting defaults")
 		return false, nil
 	}
 
 	if host.IsInventoryCollected() {
-		m.CommonMonitorBody.SetState("inventory has completed host %q", m.id)
+		m.SetState("inventory has completed host %q", m.id)
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for inventory to complete before collecting defaults")
+	m.SetState("waiting for inventory to complete before collecting defaults")
 
 	return false, nil
 }
@@ -545,16 +545,16 @@ func NewEnabledControllerNodeMonitor(instance *starlingxv1.Host, required int) *
 func (m *enabledControllerNodeMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := hosts.ListHosts(client)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to query host list: %s", err.Error())
+		m.SetState("failed to query host list: %s", err.Error())
 		return false, err
 	}
 
 	if AllControllerNodesEnabled(objects, m.required) {
-		m.CommonMonitorBody.SetState("required number of controllers are enabled: %d", m.required)
+		m.SetState("required number of controllers are enabled: %d", m.required)
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for %d controller(s) to be enabled", m.required)
+	m.SetState("waiting for %d controller(s) to be enabled", m.required)
 
 	return false, nil
 }
@@ -590,16 +590,16 @@ func NewProvisioningAllowedMonitor(instance *starlingxv1.Host) *manager.Monitor 
 func (m *provisioningAllowedMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := hosts.ListHosts(client)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to query host list: %s", err.Error())
+		m.SetState("failed to query host list: %s", err.Error())
 		return false, err
 	}
 
 	if provisioningAllowed(objects) {
-		m.CommonMonitorBody.SetState("host provisioning is now allowed")
+		m.SetState("host provisioning is now allowed")
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for host provisioning to be allowed")
+	m.SetState("waiting for host provisioning to be allowed")
 
 	return false, nil
 }
@@ -642,17 +642,17 @@ func NewDynamicHostMonitor(instance *starlingxv1.Host, hostname string, match *s
 func (m *dynamicHostMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	objects, err := hosts.ListHosts(client)
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to query host list: %s", err.Error())
+		m.SetState("failed to query host list: %s", err.Error())
 		return false, err
 	}
 
 	host := FindExistingHost(objects, m.hostname, m.match, m.bootMAC)
 	if host != nil {
-		m.CommonMonitorBody.SetState("host inventory record has been found for %q", m.hostname)
+		m.SetState("host inventory record has been found for %q", m.hostname)
 		return true, nil
 	}
 
-	m.CommonMonitorBody.SetState("waiting for %q to appear in system inventory", m.hostname)
+	m.SetState("waiting for %q to appear in system inventory", m.hostname)
 
 	return false, nil
 }
@@ -708,12 +708,12 @@ func (m *kubernetesResourceMonitor) Run(client *gophercloud.ServiceClient) (stop
 	result := unstructured.Unstructured{}
 	err = m.manager.GetKubernetesClient().Get(context.Background(), m.name, &result)
 	if err == nil {
-		m.CommonMonitorBody.SetState("kubernetes %q resource %q is now available", m.object.GetObjectKind(), m.name)
+		m.SetState("kubernetes %q resource %q is now available", m.object.GetObjectKind(), m.name)
 		return true, nil
 	} else if errors.IsNotFound(err) {
-		m.CommonMonitorBody.SetState("waiting for kubernetes %q resource %q", m.object.GetObjectKind(), m.name)
+		m.SetState("waiting for kubernetes %q resource %q", m.object.GetObjectKind(), m.name)
 	} else {
-		m.CommonMonitorBody.SetState("failed to query kubernetes %q resources", m.object.GetObjectKind())
+		m.SetState("failed to query kubernetes %q resources", m.object.GetObjectKind())
 	}
 
 	// The error is intentionally not returned because we do not attempt
@@ -756,19 +756,19 @@ func NewStateChangeMonitor(instance *starlingxv1.Host, id string) *manager.Monit
 func (m *stateChangeMonitor) Run(client *gophercloud.ServiceClient) (stop bool, err error) {
 	host, err := hosts.Get(client, m.hostID).Extract()
 	if err != nil {
-		m.CommonMonitorBody.SetState("failed to get host %q: %s", m.hostID, err.Error())
+		m.SetState("failed to get host %q: %s", m.hostID, err.Error())
 		return false, err
 	}
 
 	state := fmt.Sprintf("%s/%s/%s", host.AdministrativeState, host.OperationalStatus, host.AvailabilityStatus)
 
 	if m.lastLoggedState == "" || state == m.lastLoggedState {
-		m.CommonMonitorBody.SetState("monitoring for state changes")
+		m.SetState("monitoring for state changes")
 		m.lastLoggedState = state
 		return false, nil
 
 	} else {
-		m.CommonMonitorBody.SetState("state changed from %s to %s", m.lastLoggedState, state)
+		m.SetState("state changed from %s to %s", m.lastLoggedState, state)
 		m.lastLoggedState = state
 
 		// Force the reconciler to run to pick up this change and reflect it

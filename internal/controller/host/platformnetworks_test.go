@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
-	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +32,7 @@ func IntroducePlatformNetworkChange(platform_network *starlingxv1.PlatformNetwor
 }
 
 func IntroduceAddrPoolChange(addrpool *starlingxv1.AddressPool) {
-	if utils.IsIPv4(addrpool.Spec.Subnet) {
+	if comm.IsIPv4(addrpool.Spec.Subnet) {
 		addrpool.Spec.Subnet = "44.44.44.44"
 	} else {
 		addrpool.Spec.Subnet = "44::44"
@@ -276,7 +275,7 @@ var _ = Describe("Networking utils", func() {
 						fetched_net.Status.Reconciled == true &&
 						fetched_net.Status.InSync == true
 				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched_net.ObjectMeta.Finalizers, []string{controller.PlatformNetworkFinalizerName})
+				_, found := comm.ListIntersect(fetched_net.Finalizers, []string{controller.PlatformNetworkFinalizerName})
 				Expect(found).To(BeTrue())
 
 				for _, pool := range address_pools[nwk_name] {
@@ -295,7 +294,7 @@ var _ = Describe("Networking utils", func() {
 							fetched_pool.Status.Reconciled == true &&
 							fetched_pool.Status.InSync == false
 					}, timeout, interval).Should(BeTrue())
-					_, found = comm.ListIntersect(fetched_pool.ObjectMeta.Finalizers, []string{controller.AddressPoolFinalizerName})
+					_, found = comm.ListIntersect(fetched_pool.Finalizers, []string{controller.AddressPoolFinalizerName})
 					Expect(found).To(BeTrue())
 
 					DeleteAddressPool(pool.Name)
@@ -348,7 +347,7 @@ var _ = Describe("Networking utils", func() {
 						fetched_net.Status.Reconciled == true &&
 						fetched_net.Status.InSync == true
 				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched_net.ObjectMeta.Finalizers, []string{controller.PlatformNetworkFinalizerName})
+				_, found := comm.ListIntersect(fetched_net.Finalizers, []string{controller.PlatformNetworkFinalizerName})
 				Expect(found).To(BeTrue())
 
 				for _, pool := range address_pools[nwk_name] {
@@ -367,7 +366,7 @@ var _ = Describe("Networking utils", func() {
 							fetched_pool.Status.Reconciled == true &&
 							fetched_pool.Status.InSync == true
 					}, timeout, interval).Should(BeTrue())
-					_, found = comm.ListIntersect(fetched_pool.ObjectMeta.Finalizers, []string{controller.AddressPoolFinalizerName})
+					_, found = comm.ListIntersect(fetched_pool.Finalizers, []string{controller.AddressPoolFinalizerName})
 					Expect(found).To(BeTrue())
 
 					DeleteAddressPool(pool.Name)
@@ -415,7 +414,7 @@ var _ = Describe("Networking utils", func() {
 						fetched_net.Status.Reconciled == true &&
 						fetched_net.Status.InSync == true
 				}, timeout, interval).Should(BeTrue())
-				_, found := comm.ListIntersect(fetched_net.ObjectMeta.Finalizers, []string{controller.PlatformNetworkFinalizerName})
+				_, found := comm.ListIntersect(fetched_net.Finalizers, []string{controller.PlatformNetworkFinalizerName})
 				Expect(found).To(BeTrue())
 				for _, pool := range address_pools[nwk_name] {
 					expected_addrpool := pool.DeepCopy()
@@ -433,7 +432,7 @@ var _ = Describe("Networking utils", func() {
 							fetched_pool.Status.Reconciled == true &&
 							fetched_pool.Status.InSync == false
 					}, timeout, interval).Should(BeTrue())
-					_, found = comm.ListIntersect(fetched_pool.ObjectMeta.Finalizers, []string{controller.AddressPoolFinalizerName})
+					_, found = comm.ListIntersect(fetched_pool.Finalizers, []string{controller.AddressPoolFinalizerName})
 					Expect(found).To(BeTrue())
 
 					DeleteAddressPool(pool.Name)
@@ -530,7 +529,7 @@ var _ = Describe("Networking utils", func() {
 				annotations := make(map[string]string)
 				annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"status":{"deploymentScope":"principal"}}`
 
-				platform_networks[nwk_name].ObjectMeta.Annotations = annotations
+				platform_networks[nwk_name].Annotations = annotations
 
 				Expect(k8sClient.Create(ctx, platform_networks[nwk_name])).To(Succeed())
 

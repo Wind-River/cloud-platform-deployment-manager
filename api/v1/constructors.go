@@ -580,16 +580,16 @@ func parseOSDInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 
 		osd.Path = disk.DevicePath
 
-		if o.JournalInfo.Location != nil && *o.JournalInfo.Location != o.ID {
+		if o.Location != nil && *o.Location != o.ID {
 			// If the journal points to a separate OSD then use that information
 			// to populate the profile info; otherwise if the journal is
 			// pointing to itself then there is no need to save that in the
 			// profile because that is system generated.
-			if o.JournalInfo.Path != nil {
-				path := stripPartitionNumber(*o.JournalInfo.Path)
+			if o.Path != nil {
+				path := stripPartitionNumber(*o.Path)
 				journal := JournalInfo{
 					Location: path,
-					Size:     o.JournalInfo.Gibibytes(),
+					Size:     o.Gibibytes(),
 				}
 				osd.Journal = &journal
 			} else {
@@ -925,7 +925,7 @@ func NewHostProfile(name string, namespace string, hostInfo v1info.HostInfo) (*H
 
 func autoGenerateCertName(certType string, certIndex int) string {
 	// Kubernetes does not accept underscores in resource names.
-	certType = strings.Replace(certType, "_", "-", -1)
+	certType = strings.ReplaceAll(certType, "_", "-")
 	return fmt.Sprintf("%s-cert-secret-%d", certType, certIndex)
 }
 

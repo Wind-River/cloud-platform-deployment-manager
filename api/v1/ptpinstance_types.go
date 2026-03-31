@@ -133,11 +133,11 @@ func (p *PtpInstance) SetDeploymentScope(scope string) {
 }
 
 func (p *PtpInstance) GetAnnotations() map[string]string {
-	return p.ObjectMeta.Annotations
+	return p.Annotations
 }
 
 func (p *PtpInstance) SetAnnotations(annotations map[string]string) {
-	p.ObjectMeta.Annotations = annotations
+	p.Annotations = annotations
 }
 
 // +kubebuilder:object:root=true

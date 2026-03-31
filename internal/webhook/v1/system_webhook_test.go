@@ -154,7 +154,7 @@ var _ = Describe("SystemWebhook", func() {
 					},
 				}
 				err := validateStorageBackends(obj)
-				msg := errors.New("backend services may only be specified once.")
+				msg := errors.New("backend services may only be specified once")
 				Expect(err).To(Equal(msg))
 			})
 		})

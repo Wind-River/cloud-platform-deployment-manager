@@ -48,13 +48,13 @@ func (d *HostProfileCustomDefaulter) Default(ctx context.Context, obj runtime.Ob
 func validateMemoryFunction(node starlingxv1.MemoryNodeInfo, function starlingxv1.MemoryFunctionInfo) error {
 	if function.Function == memory.MemoryFunctionPlatform {
 		if starlingxv1.PageSize(function.PageSize) != starlingxv1.PageSize4K {
-			return errors.New("platform memory must be allocated from 4K pages.")
+			return errors.New("platform memory must be allocated from 4K pages")
 		}
 	}
 
 	if starlingxv1.PageSize(function.PageSize) == starlingxv1.PageSize4K {
 		if function.Function != memory.MemoryFunctionPlatform {
-			return errors.New("4K pages can only be reserved for platform memory.")
+			return errors.New("4K pages can only be reserved for platform memory")
 		}
 	}
 

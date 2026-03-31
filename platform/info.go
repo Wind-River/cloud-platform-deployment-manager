@@ -811,7 +811,7 @@ func (in *HostInfo) FindPTPInterfaceNameByInterface(iface interfaces.Interface) 
 
 	// Interface name is formatted as "hostname/ifname" in PTPinterfaces,
 	// eg. "controller-0/data0"
-	interfaceStr := in.Host.Hostname + "/" + iface.Name
+	interfaceStr := in.Hostname + "/" + iface.Name
 
 	if len(in.PTPInterfaces) > 0 {
 		for _, singlePTPInterface := range in.PTPInterfaces {

@@ -78,7 +78,7 @@ func validatePtpInstance(r *starlingxv1.PtpInstance) error {
 				return errors.New(msg)
 			}
 			_, exists := allowedMultipleUMTSet[key]
-			if !(strings.HasPrefix(section, "unicast_master_table") && exists) {
+			if !strings.HasPrefix(section, "unicast_master_table") || !exists {
 				present[key] = true
 			}
 		}

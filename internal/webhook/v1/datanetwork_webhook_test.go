@@ -37,7 +37,7 @@ var _ = Describe("DataNetworkWebhook", func() {
 					},
 				}
 				err := validateDataNetwork(r)
-				msg := errors.New("VxLAN attributes are only allowed for VxLAN type data networks.")
+				msg := errors.New("VxLAN attributes are only allowed for VxLAN type data networks")
 				Expect(err).To(Equal(msg))
 			})
 		})

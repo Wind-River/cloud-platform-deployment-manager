@@ -107,7 +107,8 @@ func (r *HostReconciler) ValidateAddressPool(
 	system_info *cloudManager.SystemInfo) bool {
 
 	spec := addrpool_instance.Spec
-	if network_instance.Spec.Type == cloudManager.OAMNetworkType {
+	switch network_instance.Spec.Type {
+	case cloudManager.OAMNetworkType:
 		if system_info.SystemType == cloudManager.SystemTypeAllInOne &&
 			system_info.SystemMode == cloudManager.SystemModeSimplex {
 
@@ -132,9 +133,7 @@ func (r *HostReconciler) ValidateAddressPool(
 				return false
 			}
 		}
-	} else if network_instance.Spec.Type == cloudManager.MgmtNetworkType ||
-		network_instance.Spec.Type == cloudManager.ClusterHostNetworkType ||
-		network_instance.Spec.Type == cloudManager.PXEBootNetworkType {
+	case cloudManager.MgmtNetworkType, cloudManager.ClusterHostNetworkType, cloudManager.PXEBootNetworkType:
 
 		if spec.FloatingAddress == nil ||
 			spec.Controller0Address == nil ||
@@ -220,19 +219,19 @@ func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.P
 
 	if current_network == nil || (network_instance.Name != current_network.Name) {
 		opts.Name = &network_instance.Name
-		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
+		fmt.Fprintf(&delta, "\t+Name: %s\n", *opts.Name)
 		result = true
 	}
 
 	if current_network == nil || (spec.Type != current_network.Type) {
 		opts.Type = &spec.Type
-		delta.WriteString(fmt.Sprintf("\t+Type: %s\n", *opts.Type))
+		fmt.Fprintf(&delta, "\t+Type: %s\n", *opts.Type)
 		result = true
 	}
 
 	if current_network == nil || (spec.Dynamic != current_network.Dynamic) {
 		opts.Dynamic = &spec.Dynamic
-		delta.WriteString(fmt.Sprintf("\t+Dynamic: %v\n", *opts.Dynamic))
+		fmt.Fprintf(&delta, "\t+Dynamic: %v\n", *opts.Dynamic)
 		result = true
 	}
 
@@ -240,7 +239,7 @@ func (r *HostReconciler) IsNetworkUpdateRequired(network_instance *starlingxv1.P
 		// This is required while creating the network only and
 		// internally managed by the system during reconfiguration.
 		opts.PoolUUID = &primary_address_pool.ID
-		delta.WriteString(fmt.Sprintf("\t+PoolUUID: %v\n", *opts.PoolUUID))
+		fmt.Fprintf(&delta, "\t+PoolUUID: %v\n", *opts.PoolUUID)
 	} else {
 		uuid = current_network.UUID
 	}
@@ -267,7 +266,7 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 
 	if current_addrpool == nil || (addrpool_instance.Name != current_addrpool.Name) {
 		opts.Name = &addrpool_instance.Name
-		delta.WriteString(fmt.Sprintf("\t+Name: %s\n", *opts.Name))
+		fmt.Fprintf(&delta, "\t+Name: %s\n", *opts.Name)
 		result = true
 	}
 
@@ -275,46 +274,46 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 
 	if current_addrpool == nil || !utils.IsIPAddressSame(spec.Subnet, current_addrpool.Network) {
 		opts.Network = &spec.Subnet
-		delta.WriteString(fmt.Sprintf("\t+Network: %s\n", *opts.Network))
+		fmt.Fprintf(&delta, "\t+Network: %s\n", *opts.Network)
 		result = true
 	}
 
 	if current_addrpool == nil || spec.Prefix != current_addrpool.Prefix {
 		opts.Prefix = &spec.Prefix
-		delta.WriteString(fmt.Sprintf("\t+Prefix: %d\n", *opts.Prefix))
+		fmt.Fprintf(&delta, "\t+Prefix: %d\n", *opts.Prefix)
 		result = true
 	}
 
 	if (current_addrpool == nil && spec.FloatingAddress != nil) ||
 		(spec.FloatingAddress != nil && !utils.IsIPAddressSame(*spec.FloatingAddress, current_addrpool.FloatingAddress)) {
 		opts.FloatingAddress = spec.FloatingAddress
-		delta.WriteString(fmt.Sprintf("\t+Floating Address: %s\n", *opts.FloatingAddress))
+		fmt.Fprintf(&delta, "\t+Floating Address: %s\n", *opts.FloatingAddress)
 		result = true
 	} else if spec.FloatingAddress == nil && current_addrpool != nil && current_addrpool.FloatingAddress != "" {
 		opts.FloatingAddress = spec.FloatingAddress
-		delta.WriteString(fmt.Sprintf("\t-Floating Address: %s\n", current_addrpool.FloatingAddress))
+		fmt.Fprintf(&delta, "\t-Floating Address: %s\n", current_addrpool.FloatingAddress)
 		result = true
 	}
 
 	if (current_addrpool == nil && spec.Controller0Address != nil) ||
 		(spec.Controller0Address != nil && !utils.IsIPAddressSame(*spec.Controller0Address, current_addrpool.Controller0Address)) {
 		opts.Controller0Address = spec.Controller0Address
-		delta.WriteString(fmt.Sprintf("\t+Controller0 Address: %s\n", *opts.Controller0Address))
+		fmt.Fprintf(&delta, "\t+Controller0 Address: %s\n", *opts.Controller0Address)
 		result = true
 	} else if spec.Controller0Address == nil && current_addrpool != nil && current_addrpool.Controller0Address != "" {
 		opts.Controller0Address = spec.Controller0Address
-		delta.WriteString(fmt.Sprintf("\t-Controller0 Address: %s\n", current_addrpool.Controller0Address))
+		fmt.Fprintf(&delta, "\t-Controller0 Address: %s\n", current_addrpool.Controller0Address)
 		result = true
 	}
 
 	if (current_addrpool == nil && spec.Controller1Address != nil) ||
 		(spec.Controller1Address != nil && !utils.IsIPAddressSame(*spec.Controller1Address, current_addrpool.Controller1Address)) {
 		opts.Controller1Address = spec.Controller1Address
-		delta.WriteString(fmt.Sprintf("\t+Controller1 Address: %s\n", *opts.Controller1Address))
+		fmt.Fprintf(&delta, "\t+Controller1 Address: %s\n", *opts.Controller1Address)
 		result = true
 	} else if spec.Controller1Address == nil && current_addrpool != nil && current_addrpool.Controller1Address != "" {
 		opts.Controller1Address = spec.Controller1Address
-		delta.WriteString(fmt.Sprintf("\t-Controller1 Address: %s\n", current_addrpool.Controller1Address))
+		fmt.Fprintf(&delta, "\t-Controller1 Address: %s\n", current_addrpool.Controller1Address)
 		result = true
 	}
 
@@ -326,11 +325,11 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 			(spec.Gateway != nil && current_addrpool.Gateway == nil) ||
 			(spec.Gateway != nil && !utils.IsIPAddressSame(*spec.Gateway, *current_addrpool.Gateway)) {
 			opts.Gateway = spec.Gateway
-			delta.WriteString(fmt.Sprintf("\t+Gateway: %s\n", *opts.Gateway))
+			fmt.Fprintf(&delta, "\t+Gateway: %s\n", *opts.Gateway)
 			result = true
 		} else if spec.Gateway == nil && current_addrpool != nil && current_addrpool.Gateway != nil {
 			opts.Gateway = spec.Gateway
-			delta.WriteString(fmt.Sprintf("\t-Gateway Address: %s\n", *current_addrpool.Gateway))
+			fmt.Fprintf(&delta, "\t-Gateway Address: %s\n", *current_addrpool.Gateway)
 			result = true
 		}
 	}
@@ -338,7 +337,7 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 	if (current_addrpool == nil && spec.Allocation.Order != nil) ||
 		(current_addrpool != nil && spec.Allocation.Order != nil && *spec.Allocation.Order != current_addrpool.Order) {
 		opts.Order = spec.Allocation.Order
-		delta.WriteString(fmt.Sprintf("\t+Order: %s\n", *opts.Order))
+		fmt.Fprintf(&delta, "\t+Order: %s\n", *opts.Order)
 		result = true
 	}
 
@@ -346,7 +345,7 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 		ranges := makeRangeArray(spec.Allocation.Ranges)
 		if current_addrpool == nil || !compareRangeArrays(ranges, current_addrpool.Ranges) {
 			opts.Ranges = &ranges
-			delta.WriteString(fmt.Sprintf("\t+Ranges: %s\n", *opts.Ranges))
+			fmt.Fprintf(&delta, "\t+Ranges: %s\n", *opts.Ranges)
 			result = true
 		}
 	}
@@ -372,11 +371,11 @@ func (r *HostReconciler) IsAddrPoolUpdateRequired(network_instance *starlingxv1.
 
 // ReconcileAddrPoolResource function reconciles address pool as per applied
 // AddressPool spec.
-func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, system_info *cloudManager.SystemInfo) (error, *bool, *bool) {
+func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, system_info *cloudManager.SystemInfo) (*bool, *bool, error) {
 
 	system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
 	if err != nil {
-		return err, nil, nil
+		return nil, nil, err
 	}
 
 	r.UpdateAddrPoolUUID(addrpool_instance, system_addrpool)
@@ -385,7 +384,7 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 
 	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, addrpool_instance, update_required, uuid, system_info)
 	if err != nil {
-		return err, nil, nil
+		return nil, nil, err
 	}
 
 	validation_result := r.ValidateAddressPool(network_instance, addrpool_instance, system_info)
@@ -402,7 +401,7 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 
 		err, is_oam_spec_dual_stack := r.IsOAMNetworkSpecDualStack(client, network_instance.Namespace)
 		if err != nil {
-			return err, nil, nil
+			return nil, nil, err
 		}
 
 		if len(network_instance.Spec.AssociatedAddressPools) == cloudManager.NumDualStack &&
@@ -418,7 +417,7 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 
 			logHost.Info(msg)
 
-			return common.NewPlatformNetworkReconciliationError(msg), nil, nil
+			return nil, nil, common.NewPlatformNetworkReconciliationError(msg)
 		}
 	}
 
@@ -428,11 +427,11 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 			// Make sure network UUID is synchronized
 			system_addrpool, err = GetSystemAddrPool(client, addrpool_instance)
 			if err != nil {
-				return err, nil, nil
+				return nil, nil, err
 			}
 			r.UpdateAddrPoolUUID(addrpool_instance, system_addrpool)
 		}
-		return err, &reconcile_expected, &validation_result
+		return &reconcile_expected, &validation_result, err
 	} else if !validation_result {
 		// These errors are to be corrected by the user.
 		// No use requeuing the request until user corrects it.
@@ -441,17 +440,17 @@ func (r *HostReconciler) ReconcileAddrPoolResource(client *gophercloud.ServiceCl
 		// context of network but not for addresspool that already exists
 		// as per spec.
 		validation_result = validation_result || !update_required
-		return nil, &reconcile_expected, &validation_result
+		return &reconcile_expected, &validation_result, nil
 	} else if update_required {
 		msg := fmt.Sprintf(
 			"There is delta between applied spec and system for addresspool '%s'",
 			addrpool_instance.Name)
 		logHost.Info(msg)
 		err := perrors.New(msg)
-		return err, &reconcile_expected, &validation_result
+		return &reconcile_expected, &validation_result, err
 	}
 
-	return nil, &reconcile_expected, &validation_result
+	return &reconcile_expected, &validation_result, nil
 
 }
 
@@ -516,7 +515,7 @@ func (r *HostReconciler) UpdateNetworkUUID(network_instance *starlingxv1.Platfor
 // IsReconfiguration function helps determine if the spec the user is trying to apply
 // will really end up reconfiguring the network or not (ie. modifying current address pools).
 func (r *HostReconciler) IsReconfiguration(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool) (error, bool) {
-	err, system_network, system_network_addrpools, addrpool_list := r.GetAllNetworkAddressPoolData(
+	system_network, system_network_addrpools, addrpool_list, err := r.GetAllNetworkAddressPoolData(
 		client, network_instance)
 	if err != nil {
 		return err, false
@@ -577,7 +576,8 @@ func (r *HostReconciler) ReconcileOtherPlatformNetworksExpected(client *gophercl
 // and 'uuid' refers to address pool update_required and address pool uuid when called from
 // ReconcileAddrPoolResource function.
 func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool, update_required bool, uuid string, system_info *cloudManager.SystemInfo) (error, bool) {
-	if network_instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
+	switch network_instance.Status.DeploymentScope {
+	case cloudManager.ScopeBootstrap:
 		switch network_instance.Spec.Type {
 		case cloudManager.OAMNetworkType,
 			cloudManager.MgmtNetworkType,
@@ -592,7 +592,7 @@ func (r *HostReconciler) ReconcilePlatformNetworkExpected(client *gophercloud.Se
 			// always allowed.
 			return r.ReconcileOtherPlatformNetworksExpected(client, network_instance, addrpool_instance, uuid)
 		}
-	} else if network_instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+	case cloudManager.ScopePrincipal:
 		switch network_instance.Spec.Type {
 		case cloudManager.OAMNetworkType,
 			cloudManager.MgmtNetworkType,
@@ -644,7 +644,7 @@ func (r *HostReconciler) CreateOrUpdateNetworks(client *gophercloud.ServiceClien
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(network_instance, common.ResourceCreated,
+		r.NormalEvent(network_instance, common.ResourceCreated,
 			fmt.Sprintf("platform network '%s' has been created", network_instance.Name))
 	} else {
 		_, err := networks.Update(client, uuid, opts).Extract()
@@ -653,7 +653,7 @@ func (r *HostReconciler) CreateOrUpdateNetworks(client *gophercloud.ServiceClien
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(network_instance, common.ResourceUpdated,
+		r.NormalEvent(network_instance, common.ResourceUpdated,
 			fmt.Sprintf("platform network '%s' has been updated", network_instance.Name))
 	}
 
@@ -669,7 +669,7 @@ func (r *HostReconciler) CreateOrUpdateAddrPools(client *gophercloud.ServiceClie
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(addrpool_instance, common.ResourceCreated,
+		r.NormalEvent(addrpool_instance, common.ResourceCreated,
 			fmt.Sprintf("addresspool '%s' has been created", addrpool_instance.Name))
 	} else {
 		_, err := addresspools.Update(client, uuid, opts).Extract()
@@ -678,7 +678,7 @@ func (r *HostReconciler) CreateOrUpdateAddrPools(client *gophercloud.ServiceClie
 			return err
 		}
 
-		r.ReconcilerEventLogger.NormalEvent(addrpool_instance, common.ResourceUpdated,
+		r.NormalEvent(addrpool_instance, common.ResourceUpdated,
 			fmt.Sprintf("addresspool '%s' has been updated", addrpool_instance.Name))
 	}
 
@@ -716,29 +716,29 @@ func GetAssociatedNetworkAddrPool(
 func (r *HostReconciler) GetAllNetworkAddressPoolData(
 	client *gophercloud.ServiceClient,
 	network_instance *starlingxv1.PlatformNetwork) (
-	error,
 	*networks.Network,
 	[]networkAddressPools.NetworkAddressPool,
-	[]addresspools.AddressPool) {
+	[]addresspools.AddressPool,
+	error) {
 
 	system_network, err := GetSystemNetwork(client, network_instance)
 	if err != nil {
-		return err, nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	system_network_addrpools, err := networkAddressPools.ListNetworkAddressPools(client)
 	if err != nil {
 		logHost.Error(err, "failed to fetch network-addresspools from system")
-		return err, nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	addrpool_list, err := addresspools.ListAddressPools(client)
 	if err != nil {
 		logHost.Error(err, "failed to fetch addresspools from system")
-		return err, nil, nil, nil
+		return nil, nil, nil, err
 	}
 
-	return nil, system_network, system_network_addrpools, addrpool_list
+	return system_network, system_network_addrpools, addrpool_list, nil
 
 }
 
@@ -747,7 +747,7 @@ func (r *HostReconciler) GetAllNetworkAddressPoolData(
 // PlatformNetwork spec.
 func (r *HostReconciler) UpdateNetworkAddrPools(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, addrpool_instance *starlingxv1.AddressPool) error {
 
-	err, system_network, system_network_addrpools, addrpool_list := r.GetAllNetworkAddressPoolData(
+	system_network, system_network_addrpools, addrpool_list, err := r.GetAllNetworkAddressPoolData(
 		client, network_instance)
 	if err != nil {
 		return err
@@ -786,7 +786,7 @@ func (r *HostReconciler) UpdateNetworkAddrPools(client *gophercloud.ServiceClien
 					network_addrpool.NetworkName,
 					network_addrpool.AddressPoolName)
 
-				r.ReconcilerEventLogger.NormalEvent(network_instance, common.ResourceDeleted,
+				r.NormalEvent(network_instance, common.ResourceDeleted,
 					log_msg)
 			}
 		} else {
@@ -812,7 +812,7 @@ func (r *HostReconciler) UpdateNetworkAddrPools(client *gophercloud.ServiceClien
 	if err == nil {
 		msg := fmt.Sprintf("Created new network-addrpool association %s - %s", system_network.Name, system_addrpool.Name)
 
-		r.ReconcilerEventLogger.NormalEvent(network_instance, common.ResourceCreated,
+		r.NormalEvent(network_instance, common.ResourceCreated,
 			msg)
 	} else {
 		logHost.Error(err, "there was an error creating new network-addresspool.")
@@ -857,7 +857,7 @@ func (r *HostReconciler) UpdateNetworkReconciliationStatus(
 	}
 
 	if oldInSync != network_instance.Status.InSync {
-		r.ReconcilerEventLogger.NormalEvent(network_instance, common.ResourceUpdated,
+		r.NormalEvent(network_instance, common.ResourceUpdated,
 			"%s network's synchronization has changed to: %t", network_instance.Name, network_instance.Status.InSync)
 	}
 
@@ -876,7 +876,8 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 
 	// AddressPool doesn't have deploymentScope by design.
 	// It inherits deploymentScope of associated network.
-	if network_instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
+	switch network_instance.Status.DeploymentScope {
+	case cloudManager.ScopeBootstrap:
 		if !reconcile_expected {
 			// Prevents raising alarm if configuration of given network type
 			// is unsupported in day-1 and system is out-of-sync.
@@ -886,7 +887,7 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 			addrpool_instance.Status.Reconciled = is_reconciled
 		}
 		addrpool_instance.Status.InSync = is_reconciled
-	} else if network_instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+	case cloudManager.ScopePrincipal:
 		addrpool_instance.Status.InSync = is_reconciled
 		addrpool_instance.Status.Reconciled = is_reconciled
 	}
@@ -902,7 +903,7 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 	}
 
 	if oldInSync != addrpool_instance.Status.InSync {
-		r.ReconcilerEventLogger.NormalEvent(addrpool_instance, common.ResourceUpdated,
+		r.NormalEvent(addrpool_instance, common.ResourceUpdated,
 			"%s addresspool's synchronization has changed to: %t", addrpool_instance.Name, addrpool_instance.Status.InSync)
 	}
 
@@ -910,11 +911,11 @@ func (r *HostReconciler) UpdateAddrPoolReconciliationStatus(
 }
 
 // ReconcileNetworkResource reconciles a PlatformNetwork resource as per spec.
-func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, system_info *cloudManager.SystemInfo) (error, *bool) {
+func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceClient, network_instance *starlingxv1.PlatformNetwork, system_info *cloudManager.SystemInfo) (*bool, error) {
 
 	system_network, err := GetSystemNetwork(client, network_instance)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	addrpool_instances, fetch_errs := r.GetAddressPoolsFromPlatformNetwork(network_instance.Spec.AssociatedAddressPools,
@@ -922,14 +923,14 @@ func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceCli
 	if len(fetch_errs) > 0 {
 		// There were errors while fetching associated addresspool instances.
 		// Reconciliation request will be requeued.
-		return fetch_errs[0], nil
+		return nil, fetch_errs[0]
 	}
 
 	primary_address_pool, err := GetSystemAddrPool(client, addrpool_instances[0])
 	if err != nil {
-		return err, nil
+		return nil, err
 	} else if system_network == nil && primary_address_pool == nil {
-		return common.NewPlatformNetworkReconciliationError("Cannot create a network without primary address pool."), nil
+		return nil, common.NewPlatformNetworkReconciliationError("Cannot create a network without primary address pool.")
 	}
 
 	r.UpdateNetworkUUID(network_instance, system_network)
@@ -938,7 +939,7 @@ func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceCli
 
 	err, reconcile_expected := r.ReconcilePlatformNetworkExpected(client, network_instance, nil, update_required, uuid, system_info)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	if reconcile_expected && update_required {
@@ -947,20 +948,20 @@ func (r *HostReconciler) ReconcileNetworkResource(client *gophercloud.ServiceCli
 			// Make sure network UUID is synchronized
 			system_network, err = GetSystemNetwork(client, network_instance)
 			if err != nil {
-				return err, nil
+				return nil, err
 			}
 			r.UpdateNetworkUUID(network_instance, system_network)
 		}
-		return err, &reconcile_expected
+		return &reconcile_expected, err
 	} else if update_required {
 		err_msg := fmt.Sprintf(
 			"There is delta between applied spec and system for platform network '%s'",
 			network_instance.Name)
 		err := perrors.New(err_msg)
-		return err, &reconcile_expected
+		return &reconcile_expected, err
 	}
 
-	return nil, &reconcile_expected
+	return &reconcile_expected, nil
 
 }
 
@@ -972,7 +973,7 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 	addrpool_instance *starlingxv1.AddressPool,
 	system_info *cloudManager.SystemInfo) error {
 
-	err, addrpool_reconcile_expected, validation_result := r.ReconcileAddrPoolResource(client, network_instance, addrpool_instance, system_info)
+	addrpool_reconcile_expected, validation_result, err := r.ReconcileAddrPoolResource(client, network_instance, addrpool_instance, system_info)
 	if err != nil && addrpool_reconcile_expected == nil {
 		// Some other error occured not related to reconciliation.
 		// Eg. error listing networks by querying the system.
@@ -1023,7 +1024,7 @@ func (r *HostReconciler) ReconcileNetworkAndAddressPools(
 
 	// It's important to note that UUID of first addresspool in the list of "AssociatedAddressPools"
 	// will be used during creation of network and this will become the primary IP pool of the network.
-	err, network_reconcile_expected := r.ReconcileNetworkResource(client, network_instance, system_info)
+	network_reconcile_expected, err := r.ReconcileNetworkResource(client, network_instance, system_info)
 	if err != nil && network_reconcile_expected == nil {
 		// Some other error occured not related to reconciliation.
 		// Eg. error listing networks by querying the system.
@@ -1174,13 +1175,13 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesOAM(
 		// so that VIM takes that into account during strategy build phase.
 		// During OAM reconfiguration lock and unlock is required only on both the controllers.
 
-		active_controller_instance, active_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
+		active_controller_instance, active_controller_obj, err := r.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
 		if err != nil {
 			msg := "failed to get active host"
 			return common.NewUserDataError(msg)
 		}
 
-		standby_controller_instance, standby_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.StandbyController)
+		standby_controller_instance, standby_controller_obj, err := r.GetHostByPersonality(host_instance.Namespace, client, cloudManager.StandbyController)
 		if err != nil {
 			msg := "failed to get standby host"
 			return common.NewUserDataError(msg)
@@ -1243,7 +1244,7 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesMgmt(
 		// so that VIM takes that into account during strategy build phase.
 		// During mgmt reconfiguration lock and unlock is required on all nodes in the system.
 
-		active_controller_instance, active_controller_obj, err := r.CloudManager.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
+		active_controller_instance, active_controller_obj, err := r.GetHostByPersonality(host_instance.Namespace, client, cloudManager.ActiveController)
 		if err != nil {
 			msg := "failed to get active host"
 			return common.NewUserDataError(msg)
@@ -1260,7 +1261,7 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesMgmt(
 
 			host_namespace := types.NamespacedName{Namespace: host_instance.Namespace, Name: host.Hostname}
 			lock_host_obj := &host
-			err = r.Client.Get(context.TODO(), host_namespace, lock_instance)
+			err = r.Get(context.TODO(), host_namespace, lock_instance)
 			if err != nil {
 				logHost.Error(err, fmt.Sprintf("failed to fetch host instance: %s", host.Hostname))
 				return err
@@ -1298,9 +1299,10 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodes(
 	system_info *cloudManager.SystemInfo) error {
 
 	// OAM reconfiguration requires host swact and lock / unlock between both controllers.
-	if network_instance.Spec.Type == cloudManager.OAMNetworkType {
+	switch network_instance.Spec.Type {
+	case cloudManager.OAMNetworkType:
 		return r.ReconcilePlatformNetworkPrincipalMultinodesOAM(client, host_instance, host, network_instance, addrpool_instance, system_info)
-	} else if network_instance.Spec.Type == cloudManager.MgmtNetworkType {
+	case cloudManager.MgmtNetworkType:
 		return r.ReconcilePlatformNetworkPrincipalMultinodesMgmt(client, host_instance, host, network_instance, addrpool_instance, system_info)
 	}
 
@@ -1339,11 +1341,12 @@ func (r *HostReconciler) ReconcilePlatformNetworkAndAddrPoolResource(
 	addrpool_instance *starlingxv1.AddressPool,
 	system_info *cloudManager.SystemInfo) error {
 
-	if network_instance.Status.DeploymentScope == cloudManager.ScopeBootstrap {
+	switch network_instance.Status.DeploymentScope {
+	case cloudManager.ScopeBootstrap:
 
 		return r.ReconcilePlatformNetworkBootstrap(client, host_instance, network_instance, addrpool_instance, system_info)
 
-	} else if network_instance.Status.DeploymentScope == cloudManager.ScopePrincipal {
+	case cloudManager.ScopePrincipal:
 
 		return r.ReconcilePlatformNetworkPrincipal(client, host_instance, host, network_instance, addrpool_instance, system_info)
 

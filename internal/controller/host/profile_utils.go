@@ -174,12 +174,12 @@ func FixPhysicalVolumesPath(a *starlingxv1.PhysicalVolumeList, hostInfo *v1info.
 
 func FixKernelSubfunction(spec *starlingxv1.HostProfileSpec) {
 
-	if spec.ProfileBaseAttributes.Kernel == nil {
+	if spec.Kernel == nil {
 		return
 	}
 
-	kernel := *spec.ProfileBaseAttributes.Kernel
-	subfunctions := spec.ProfileBaseAttributes.SubFunctions
+	kernel := *spec.Kernel
+	subfunctions := spec.SubFunctions
 
 	if kernel == "lowlatency" {
 		subfunctions = append(subfunctions, "lowlatency")
@@ -188,7 +188,7 @@ func FixKernelSubfunction(spec *starlingxv1.HostProfileSpec) {
 		subfunctions = lo.Without(subfunctions, "lowlatency")
 	}
 
-	spec.ProfileBaseAttributes.SubFunctions = subfunctions
+	spec.SubFunctions = subfunctions
 }
 
 // GetHostProfileSpec retrieves a HostProfileSpec from the kubernetes API
@@ -598,7 +598,7 @@ func SyncIFNameByUuid(
 				logProfileUtils.Info(
 					"Ethernet name sync", "profile", info_profile.Name,
 					"current", info_current.Name, "uuid", info_profile.UUID)
-				if_profile[idx_profile].CommonInterfaceInfo.Name = info_current.Name
+				if_profile[idx_profile].Name = info_current.Name
 				if_profile[idx_profile].Port.Name = port_current
 				break
 			}
