@@ -1009,4 +1009,164 @@ var _ = Describe("Profile utils", func() {
 			})
 		})
 	})
+
+	Describe("validateBoardManagement", func() {
+		var reconciler *HostReconciler
+		host := &starlingxv1.Host{}
+
+		BeforeEach(func() {
+			reconciler = &HostReconciler{}
+		})
+
+		Context("when board management is nil", func() {
+			It("should return nil", func() {
+				profile := &starlingxv1.HostProfileSpec{}
+				Expect(reconciler.validateBoardManagement(host, profile)).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("when type is nil", func() {
+			It("should return error", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{},
+				}
+				err := reconciler.validateBoardManagement(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("type"))
+			})
+		})
+
+		Context("when type is none", func() {
+			It("should return nil", func() {
+				t := "none"
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{Type: &t},
+				}
+				Expect(reconciler.validateBoardManagement(host, profile)).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("when credentials are nil", func() {
+			It("should return error", func() {
+				t := "bmc"
+				addr := "10.0.0.1"
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{Type: &t, Address: &addr},
+				}
+				err := reconciler.validateBoardManagement(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("credentials"))
+			})
+		})
+
+		Context("when password is nil", func() {
+			It("should return error", func() {
+				t := "bmc"
+				addr := "10.0.0.1"
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{
+						Type:        &t,
+						Address:     &addr,
+						Credentials: &starlingxv1.BMCredentials{},
+					},
+				}
+				err := reconciler.validateBoardManagement(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("password"))
+			})
+		})
+
+		Context("when address is nil", func() {
+			It("should return error", func() {
+				t := "bmc"
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{
+						Type: &t,
+						Credentials: &starlingxv1.BMCredentials{
+							Password: &starlingxv1.BMPasswordInfo{Secret: "bmc-secret"},
+						},
+					},
+				}
+				err := reconciler.validateBoardManagement(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("address"))
+			})
+		})
+
+		Context("when all fields are valid", func() {
+			It("should return nil", func() {
+				t := "bmc"
+				addr := "10.0.0.1"
+				profile := &starlingxv1.HostProfileSpec{
+					BoardManagement: &starlingxv1.BMInfo{
+						Type:    &t,
+						Address: &addr,
+						Credentials: &starlingxv1.BMCredentials{
+							Password: &starlingxv1.BMPasswordInfo{Secret: "bmc-secret"},
+						},
+					},
+				}
+				Expect(reconciler.validateBoardManagement(host, profile)).ToNot(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("validateProfileAddresses", func() {
+		var reconciler *HostReconciler
+		host := &starlingxv1.Host{}
+
+		BeforeEach(func() {
+			reconciler = &HostReconciler{}
+		})
+
+		Context("when addresses are valid", func() {
+			It("should return nil", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Addresses: starlingxv1.AddressList{
+						{Interface: "eth0", Address: "10.0.0.1", Prefix: 24},
+					},
+				}
+				Expect(reconciler.validateProfileAddresses(host, profile)).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("when address is invalid", func() {
+			It("should return error", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Addresses: starlingxv1.AddressList{
+						{Interface: "eth0", Address: "not-an-ip", Prefix: 24},
+					},
+				}
+				err := reconciler.validateProfileAddresses(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("not-an-ip"))
+			})
+		})
+
+		Context("when route network is invalid", func() {
+			It("should return error", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Routes: starlingxv1.RouteList{
+						{Interface: "eth0", Network: "bad-net", Prefix: 0, Gateway: "10.0.0.1"},
+					},
+				}
+				err := reconciler.validateProfileAddresses(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("bad-net"))
+			})
+		})
+
+		Context("when route gateway is invalid", func() {
+			It("should return error", func() {
+				profile := &starlingxv1.HostProfileSpec{
+					Routes: starlingxv1.RouteList{
+						{Interface: "eth0", Network: "10.0.0.0", Prefix: 24, Gateway: "bad-gw"},
+					},
+				}
+				err := reconciler.validateProfileAddresses(host, profile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("bad-gw"))
+			})
+		})
+	})
 })

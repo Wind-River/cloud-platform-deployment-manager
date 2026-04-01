@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2024-2025 Wind River Systems, Inc. */
+/* Copyright(c) 2024-2026 Wind River Systems, Inc. */
 package host
 
 import (
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/networkAddressPools"
@@ -1456,27 +1457,31 @@ func GetPlatformNetworksFromFixtures(namespace string) (map[string]*starlingxv1.
 	return PlatformNetworks, AddressPoolInstances
 }
 
+var hostAPIHandlersOnce sync.Once
+
 func HostControllerAPIHandlers() {
-	HostsListBodyResponse = HostsListBody
-	SingleSystemBodyResponse = SingleSystemBody
-	AddressPoolAPIS()
-	NetworkAPIS()
-	OAMNetworkAPIS()
-	SystemAPIS()
-	HostAPIS()
-	OtherAPIS()
+	hostAPIHandlersOnce.Do(func() {
+		HostsListBodyResponse = HostsListBody
+		SingleSystemBodyResponse = SingleSystemBody
+		AddressPoolAPIS()
+		NetworkAPIS()
+		OAMNetworkAPIS()
+		SystemAPIS()
+		HostAPIS()
+		OtherAPIS()
 
-	var Networks struct {
-		NetworkList []networks.Network `json:"networks"`
-	}
-	_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
-
-	for _, network := range Networks.NetworkList {
-		if network.Type == cloudManager.OAMNetworkType {
-			th.Mux.HandleFunc("/iextoam/"+network.UUID, HandleOAMNetworkRequests)
-		} else {
-			th.Mux.HandleFunc("/networks/"+network.UUID, HandleNetworkRequests)
+		var Networks struct {
+			NetworkList []networks.Network `json:"networks"`
 		}
-		th.Mux.HandleFunc("/addrpools/"+network.PoolUUID, HandleAddressPoolRequests)
-	}
+		_ = json.Unmarshal([]byte(NetworkListBody), &Networks)
+
+		for _, network := range Networks.NetworkList {
+			if network.Type == cloudManager.OAMNetworkType {
+				th.Mux.HandleFunc("/iextoam/"+network.UUID, HandleOAMNetworkRequests)
+			} else {
+				th.Mux.HandleFunc("/networks/"+network.UUID, HandleNetworkRequests)
+			}
+			th.Mux.HandleFunc("/addrpools/"+network.PoolUUID, HandleAddressPoolRequests)
+		}
+	})
 }

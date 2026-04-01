@@ -19,6 +19,7 @@ import (
 
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
+	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 )
 
 var _ = Describe("Host controller", func() {
@@ -1108,6 +1109,227 @@ var _ = Describe("Host controller", func() {
 			Expect(opts).NotTo(BeNil())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(BeTrue())
+		})
+	})
+
+	Describe("CompareDisabledAttributes", func() {
+		var r *HostReconciler
+
+		BeforeEach(func() {
+			r = &HostReconciler{
+				CloudManager: &cloudManager.Dummymanager{},
+			}
+		})
+
+		Context("when other is nil", func() {
+			It("should return false", func() {
+				in := &starlingxv1.HostProfileSpec{}
+				Expect(r.CompareDisabledAttributes(in, nil, "default", "controller", false)).To(BeFalse())
+			})
+		})
+
+		Context("when profiles are identical", func() {
+			It("should return true", func() {
+				personality := "controller"
+				admin := "unlocked"
+				in := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{},
+				}
+				other := in.DeepCopy()
+				Expect(r.CompareDisabledAttributes(in, other, "default", "controller", false)).To(BeTrue())
+			})
+		})
+
+		Context("when base attributes differ", func() {
+			It("should return false", func() {
+				p1 := "controller"
+				p2 := "worker"
+				admin := "unlocked"
+				in := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &p1,
+						AdministrativeState: &admin,
+					},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &p2,
+						AdministrativeState: &admin,
+					},
+				}
+				Expect(r.CompareDisabledAttributes(in, other, "default", "controller", false)).To(BeFalse())
+			})
+		})
+
+		Context("when board management differs", func() {
+			It("should return false", func() {
+				personality := "controller"
+				admin := "unlocked"
+				bmType := "bmc"
+				in := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin,
+					},
+					BoardManagement: &starlingxv1.BMInfo{Type: &bmType},
+					Interfaces:      &starlingxv1.InterfaceInfo{},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{},
+				}
+				Expect(r.CompareDisabledAttributes(in, other, "default", "controller", false)).To(BeFalse())
+			})
+		})
+
+		Context("when interfaces differ", func() {
+			It("should return false", func() {
+				personality := "controller"
+				admin := "unlocked"
+				in := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{Name: "eth0"}},
+						},
+					},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{},
+				}
+				Expect(r.CompareDisabledAttributes(in, other, "default", "controller", false)).To(BeFalse())
+			})
+		})
+
+		Context("when in reconfig mode with different admin state", func() {
+			It("should ignore admin state difference", func() {
+				personality := "controller"
+				admin1 := "unlocked"
+				admin2 := "locked"
+				in := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin1,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					ProfileBaseAttributes: starlingxv1.ProfileBaseAttributes{
+						Personality:         &personality,
+						AdministrativeState: &admin2,
+					},
+					Interfaces: &starlingxv1.InterfaceInfo{},
+				}
+				Expect(r.CompareDisabledAttributes(in, other, "default", "controller", true)).To(BeTrue())
+			})
+		})
+	})
+
+	Describe("CompareEnabledAttributes", func() {
+		var r *HostReconciler
+
+		BeforeEach(func() {
+			r = &HostReconciler{
+				CloudManager: &cloudManager.Dummymanager{},
+			}
+		})
+
+		Context("when other is nil", func() {
+			It("should return false", func() {
+				in := &starlingxv1.HostProfileSpec{}
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, nil, instance, "controller", info)).To(BeFalse())
+			})
+		})
+
+		Context("when profiles are identical", func() {
+			It("should return true", func() {
+				in := &starlingxv1.HostProfileSpec{}
+				other := in.DeepCopy()
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeTrue())
+			})
+		})
+
+		Context("when routes differ", func() {
+			It("should return false", func() {
+				in := &starlingxv1.HostProfileSpec{
+					Routes: starlingxv1.RouteList{
+						{Interface: "eth0", Network: "10.0.0.0", Prefix: 24, Gateway: "10.0.0.1"},
+					},
+				}
+				other := &starlingxv1.HostProfileSpec{}
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeFalse())
+			})
+		})
+
+		Context("when filesystem sizes differ", func() {
+			It("should return false", func() {
+				in := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						FileSystems: starlingxv1.FileSystemList{
+							{Name: "backup", Size: 50},
+						},
+					},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						FileSystems: starlingxv1.FileSystemList{
+							{Name: "backup", Size: 30},
+						},
+					},
+				}
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("FindExistingHost", func() {
+		It("should find a host by boot MAC match", func() {
+			HostControllerAPIHandlers()
+			client := gcClient.ServiceClient()
+			bootMAC := "08:08:08:08:08:08"
+			match := starlingxv1.MatchInfo{BootMAC: &bootMAC}
+
+			hostList, err := hosts.ListHosts(client)
+			Expect(err).ToNot(HaveOccurred())
+
+			found := FindExistingHost(hostList, "", &match, &bootMAC)
+			Expect(found).ToNot(BeNil())
+			Expect(found.Hostname).To(Equal("controller-0"))
+		})
+
+		It("should return nil when no match", func() {
+			HostControllerAPIHandlers()
+			client := gcClient.ServiceClient()
+			bootMAC := "ff:ff:ff:ff:ff:ff"
+			match := starlingxv1.MatchInfo{BootMAC: &bootMAC}
+
+			hostList, err := hosts.ListHosts(client)
+			Expect(err).ToNot(HaveOccurred())
+
+			found := FindExistingHost(hostList, "", &match, &bootMAC)
+			Expect(found).To(BeNil())
 		})
 	})
 })
