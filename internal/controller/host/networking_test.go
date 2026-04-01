@@ -15,6 +15,8 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
+
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/addresspools"
 )
 
 var _ = Describe("Networking utils", func() {
@@ -815,6 +817,214 @@ var _ = Describe("Networking utils", func() {
 					Expect(reflect.DeepEqual(got, tt.want)).To(BeTrue())
 					Expect(got1).To(Equal(tt.want1))
 				}
+			})
+		})
+	})
+
+	Describe("hasIPv4StaticAddresses", func() {
+		It("should return true when matching IPv4 address exists", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "10.0.0.1", Prefix: 24},
+				},
+			}
+			Expect(hasIPv4StaticAddresses(info, profile)).To(BeTrue())
+		})
+
+		It("should return false when no matching address", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth1"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "10.0.0.1", Prefix: 24},
+				},
+			}
+			Expect(hasIPv4StaticAddresses(info, profile)).To(BeFalse())
+		})
+	})
+
+	Describe("hasIPv6StaticAddresses", func() {
+		It("should return true when matching IPv6 address exists", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "fd00::1", Prefix: 64},
+				},
+			}
+			Expect(hasIPv6StaticAddresses(info, profile)).To(BeTrue())
+		})
+
+		It("should return false when address is IPv4", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "10.0.0.1", Prefix: 24},
+				},
+			}
+			Expect(hasIPv6StaticAddresses(info, profile)).To(BeFalse())
+		})
+	})
+
+	Describe("hasIPv4DynamicAddresses", func() {
+		It("should return true when platform network has IPv4 pool", func() {
+			info := starlingxv1.CommonInterfaceInfo{
+				Name:             "eth0",
+				PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
+			}
+			host := &v1info.HostInfo{
+				Pools: []addresspools.AddressPool{
+					{Name: "mgmt", Network: "10.0.0.0"},
+				},
+			}
+			pool, ok := hasIPv4DynamicAddresses(info, host)
+			Expect(ok).To(BeTrue())
+			Expect(pool).ToNot(BeNil())
+		})
+
+		It("should return false when platform networks is nil", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			host := &v1info.HostInfo{}
+			_, ok := hasIPv4DynamicAddresses(info, host)
+			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("hasIPv6DynamicAddresses", func() {
+		It("should return true when platform network has IPv6 pool", func() {
+			info := starlingxv1.CommonInterfaceInfo{
+				Name:             "eth0",
+				PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
+			}
+			host := &v1info.HostInfo{
+				Pools: []addresspools.AddressPool{
+					{Name: "mgmt", Network: "fd00::"},
+				},
+			}
+			pool, ok := hasIPv6DynamicAddresses(info, host)
+			Expect(ok).To(BeTrue())
+			Expect(pool).ToNot(BeNil())
+		})
+	})
+
+	Describe("getInterfaceIPv4Addressing", func() {
+		It("should return static when IPv4 static address exists", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "10.0.0.1", Prefix: 24},
+				},
+			}
+			host := &v1info.HostInfo{}
+			mode, pool := getInterfaceIPv4Addressing(info, profile, host)
+			Expect(mode).To(Equal(interfaces.AddressModeStatic))
+			Expect(pool).To(BeNil())
+		})
+
+		It("should return pool when dynamic IPv4 pool exists", func() {
+			info := starlingxv1.CommonInterfaceInfo{
+				Name:             "eth0",
+				PlatformNetworks: starlingxv1.PlatformNetworkItemList{"mgmt"},
+			}
+			profile := &starlingxv1.HostProfileSpec{}
+			host := &v1info.HostInfo{
+				Pools: []addresspools.AddressPool{
+					{ID: "pool-uuid", Name: "mgmt", Network: "10.0.0.0"},
+				},
+			}
+			mode, pool := getInterfaceIPv4Addressing(info, profile, host)
+			Expect(mode).To(Equal(interfaces.AddressModePool))
+			Expect(pool).ToNot(BeNil())
+		})
+
+		It("should return disabled when no addresses", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{}
+			host := &v1info.HostInfo{}
+			mode, _ := getInterfaceIPv4Addressing(info, profile, host)
+			Expect(mode).To(Equal(interfaces.AddressModeDisabled))
+		})
+	})
+
+	Describe("getInterfaceIPv6Addressing", func() {
+		It("should return static when IPv6 static address exists", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{
+				Addresses: starlingxv1.AddressList{
+					{Interface: "eth0", Address: "fd00::1", Prefix: 64},
+				},
+			}
+			host := &v1info.HostInfo{}
+			mode, pool := getInterfaceIPv6Addressing(info, profile, host)
+			Expect(mode).To(Equal(interfaces.AddressModeStatic))
+			Expect(pool).To(BeNil())
+		})
+
+		It("should return disabled when no addresses", func() {
+			info := starlingxv1.CommonInterfaceInfo{Name: "eth0"}
+			profile := &starlingxv1.HostProfileSpec{}
+			host := &v1info.HostInfo{}
+			mode, _ := getInterfaceIPv6Addressing(info, profile, host)
+			Expect(mode).To(Equal(interfaces.AddressModeDisabled))
+		})
+	})
+
+	Describe("interfaceUpdateRequired", func() {
+		Context("when name differs on ethernet interface", func() {
+			It("should return true", func() {
+				info := starlingxv1.CommonInterfaceInfo{Name: "eth0", Class: "platform"}
+				iface := &interfaces.Interface{Name: "enp0s3", Type: interfaces.IFTypeEthernet, Class: "platform"}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				opts, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Name).To(Equal("eth0"))
+			})
+		})
+
+		Context("when name differs on virtual interface", func() {
+			It("should not rename", func() {
+				info := starlingxv1.CommonInterfaceInfo{Name: "lo2", Class: "platform"}
+				iface := &interfaces.Interface{Name: "lo", Type: interfaces.IFTypeVirtual, Class: "platform"}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				_, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("when class differs", func() {
+			It("should return true", func() {
+				info := starlingxv1.CommonInterfaceInfo{Name: "eth0", Class: interfaces.IFClassData}
+				iface := &interfaces.Interface{Name: "eth0", Type: interfaces.IFTypeEthernet, Class: "platform"}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				opts, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Class).To(Equal(interfaces.IFClassData))
+			})
+		})
+
+		Context("when MTU differs", func() {
+			It("should return true", func() {
+				mtu := 9000
+				info := starlingxv1.CommonInterfaceInfo{Name: "eth0", Class: "platform", MTU: &mtu}
+				iface := &interfaces.Interface{Name: "eth0", Type: interfaces.IFTypeEthernet, Class: "platform", MTU: 1500}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				opts, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeTrue())
+				Expect(*opts.MTU).To(Equal(9000))
+			})
+		})
+
+		Context("when all fields match", func() {
+			It("should return false", func() {
+				info := starlingxv1.CommonInterfaceInfo{Name: "eth0", Class: "platform"}
+				iface := &interfaces.Interface{Name: "eth0", Type: interfaces.IFTypeEthernet, Class: "platform"}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				_, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeFalse())
 			})
 		})
 	})
