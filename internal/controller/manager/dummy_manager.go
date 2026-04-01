@@ -38,6 +38,7 @@ type Dummymanager struct {
 	defaultUpdated     bool          // Simulate default update status
 	DefaultUpdateError error         // Simulate error for default update method
 	Client             client.Client // Added client field for the Kubernetes client
+	ActiveHost         *starlingxv1.Host
 }
 
 func (m *Dummymanager) ResetPlatformClient(namespace string) error {
@@ -156,6 +157,9 @@ func (m *Dummymanager) GetStrategyExpectedByOtherReconcilers() bool {
 	return false
 }
 func (m *Dummymanager) GetHostByPersonality(namespace string, client *gophercloud.ServiceClient, personality string) (*starlingxv1.Host, *hosts.Host, error) {
+	if m.ActiveHost != nil {
+		return m.ActiveHost, nil, nil
+	}
 	return nil, nil, nil
 }
 func (m *Dummymanager) GcShow(c *gophercloud.ServiceClient) (*systemconfigupdate.SystemConfigUpdate, error) {
