@@ -1332,4 +1332,61 @@ var _ = Describe("Host controller", func() {
 			Expect(found).To(BeNil())
 		})
 	})
+
+	Context("when calling hasCephStoreBackend", func() {
+		It("should return true when ceph-store backend exists", func() {
+			HostControllerAPIHandlers()
+			client := gcClient.ServiceClient()
+			hasCeph, err := hasCephStoreBackend(client)
+
+			if _, ok := err.(gophercloud.ErrDefault404); ok {
+				Skip("404 error encountered, skipping")
+			}
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(hasCeph).To(BeTrue())
+		})
+	})
+
+	Context("when calling removeCephFileSystem", func() {
+		It("should remove ceph filesystem from profile", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					FileSystems: starlingxv1.FileSystemList{
+						{Name: "scratch", Size: 16},
+						{Name: "ceph", Size: 20},
+						{Name: "docker", Size: 30},
+					},
+				},
+			}
+			removeCephFileSystem(profile)
+			Expect(profile.Storage.FileSystems).To(HaveLen(2))
+			for _, fs := range profile.Storage.FileSystems {
+				Expect(fs.Name).ToNot(Equal("ceph"))
+			}
+		})
+
+		It("should not modify profile without ceph filesystem", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					FileSystems: starlingxv1.FileSystemList{
+						{Name: "scratch", Size: 16},
+						{Name: "docker", Size: 30},
+					},
+				},
+			}
+			removeCephFileSystem(profile)
+			Expect(profile.Storage.FileSystems).To(HaveLen(2))
+		})
+
+		It("should handle nil profile safely", func() {
+			removeCephFileSystem(nil)
+		})
+
+		It("should handle nil storage safely", func() {
+			profile := &starlingxv1.HostProfileSpec{}
+			removeCephFileSystem(profile)
+			Expect(profile.Storage).To(BeNil())
+		})
+	})
 })

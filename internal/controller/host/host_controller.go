@@ -1721,6 +1721,13 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	//  configuration.
 	profile.ProvisioningMode = nil
 
+	// When the system has a ceph-store backend, the ceph filesystem is
+	// managed by the backend itself and must not be reconciled by DM.
+	err = filterCephFileSystem(client, profile, current)
+	if err != nil {
+		return err
+	}
+
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {
 		logHost.Info("syncing interface name", "host", host.ID)
@@ -2015,6 +2022,53 @@ func (r *HostReconciler) ReconcileResource(
 	}
 
 	return err
+}
+
+// hasCephStoreBackend checks whether the system has a storage backend
+// with type "ceph". When true, the "ceph" host filesystem is managed
+// by the backend and must be ignored during host reconciliation.
+func hasCephStoreBackend(client *gophercloud.ServiceClient) (bool, error) {
+	result, err := storagebackends.ListBackends(client)
+	if err != nil {
+		return false, err
+	}
+	for _, sb := range result {
+		if sb.Backend == "ceph" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// filterCephFileSystem checks whether the system has a ceph storage
+// backend and, when true, removes the "ceph" entry from the provided
+// profiles so that it is not considered during comparison or reconciliation.
+func filterCephFileSystem(client *gophercloud.ServiceClient, profile *starlingxv1.HostProfileSpec, current *starlingxv1.HostProfileSpec) error {
+	hasCeph, err := hasCephStoreBackend(client)
+	if err != nil {
+		return err
+	}
+	if hasCeph {
+		removeCephFileSystem(profile)
+		removeCephFileSystem(current)
+	}
+	return nil
+}
+
+// removeCephFileSystem removes the "ceph" entry from a profile's
+// storage filesystem list so that it is not considered during
+// comparison or reconciliation.
+func removeCephFileSystem(profile *starlingxv1.HostProfileSpec) {
+	if profile == nil || profile.Storage == nil || profile.Storage.FileSystems == nil {
+		return
+	}
+	filtered := make(starlingxv1.FileSystemList, 0, len(profile.Storage.FileSystems))
+	for _, fs := range profile.Storage.FileSystems {
+		if fs.Name != "ceph" {
+			filtered = append(filtered, fs)
+		}
+	}
+	profile.Storage.FileSystems = filtered
 }
 
 // Function to obtain ceph replication factor

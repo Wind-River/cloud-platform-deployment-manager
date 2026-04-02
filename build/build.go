@@ -793,6 +793,12 @@ func (db *DeploymentBuilder) buildHostsAndProfiles(d *Deployment) error {
 		// The host already has the boot MAC stored
 		profile.Spec.BootMAC = nil
 
+		// When the system has a ceph store storage backend, the ceph filesystem
+		// is managed by the backend and should not be included in the profile.
+		if hasCephStoreBackend(d) {
+			filterCephHostFS(&profile.Spec)
+		}
+
 		// Force the provisioning mode to static until there is a need to make
 		// this optional.
 		static := starlingxv1.ProvioningModeStatic
@@ -898,4 +904,33 @@ func (db *DeploymentBuilder) simplifyHostProfiles(d *Deployment) error {
 	d.Profiles = profiles
 
 	return nil
+}
+
+// hasCephStoreBackend checks whether the system has a storage backend
+// with type "ceph". When true, the "ceph" host filesystem is managed
+func hasCephStoreBackend(d *Deployment) bool {
+	if d.System.Spec.Storage == nil {
+		return false
+	}
+	for _, b := range d.System.Spec.Storage.Backends {
+		if b.Type == "ceph" {
+			return true
+		}
+	}
+	return false
+}
+
+// filterCephHostFS checks whether the system has a ceph storage
+// backend and, when true, removes the "ceph" entry from the provided profile.
+func filterCephHostFS(spec *starlingxv1.HostProfileSpec) {
+	if spec.Storage == nil || spec.Storage.FileSystems == nil {
+		return
+	}
+	filtered := make(starlingxv1.FileSystemList, 0, len(spec.Storage.FileSystems))
+	for _, fs := range spec.Storage.FileSystems {
+		if fs.Name != "ceph" {
+			filtered = append(filtered, fs)
+		}
+	}
+	spec.Storage.FileSystems = filtered
 }
