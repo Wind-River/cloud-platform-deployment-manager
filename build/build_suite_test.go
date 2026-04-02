@@ -1104,4 +1104,94 @@ var _ = Describe("Build utilities", func() {
 			})
 		})
 	})
+
+	Describe("hasCephStoreBackend", func() {
+		Context("when system has a ceph-store backend", func() {
+			It("should return true", func() {
+				d := &Deployment{
+					System: starlingxv1.System{
+						Spec: starlingxv1.SystemSpec{
+							Storage: &starlingxv1.SystemStorageInfo{
+								Backends: starlingxv1.StorageBackendList{
+									{Name: "ceph-store", Type: "ceph"},
+								},
+							},
+						},
+					},
+				}
+				Expect(hasCephStoreBackend(d)).To(BeTrue())
+			})
+		})
+
+		Context("when system has no ceph-store backend", func() {
+			It("should return false", func() {
+				d := &Deployment{
+					System: starlingxv1.System{
+						Spec: starlingxv1.SystemSpec{
+							Storage: &starlingxv1.SystemStorageInfo{
+								Backends: starlingxv1.StorageBackendList{
+									{Name: "shared_services", Type: "external"},
+								},
+							},
+						},
+					},
+				}
+				Expect(hasCephStoreBackend(d)).To(BeFalse())
+			})
+		})
+
+		Context("when system has nil storage", func() {
+			It("should return false", func() {
+				d := &Deployment{
+					System: starlingxv1.System{
+						Spec: starlingxv1.SystemSpec{},
+					},
+				}
+				Expect(hasCephStoreBackend(d)).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("filterCephHostFS", func() {
+		Context("when profile has ceph filesystem", func() {
+			It("should remove only the ceph entry", func() {
+				spec := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						FileSystems: starlingxv1.FileSystemList{
+							{Name: "scratch", Size: 16},
+							{Name: "ceph", Size: 20},
+							{Name: "docker", Size: 30},
+						},
+					},
+				}
+				filterCephHostFS(spec)
+				Expect(spec.Storage.FileSystems).To(Equal(starlingxv1.FileSystemList{
+					{Name: "scratch", Size: 16},
+					{Name: "docker", Size: 30},
+				}))
+			})
+		})
+
+		Context("when profile has no ceph filesystem", func() {
+			It("should not modify the list", func() {
+				spec := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						FileSystems: starlingxv1.FileSystemList{
+							{Name: "scratch", Size: 16},
+						},
+					},
+				}
+				filterCephHostFS(spec)
+				Expect(spec.Storage.FileSystems).To(HaveLen(1))
+			})
+		})
+
+		Context("when storage is nil", func() {
+			It("should not panic", func() {
+				spec := &starlingxv1.HostProfileSpec{}
+				filterCephHostFS(spec)
+				Expect(spec.Storage).To(BeNil())
+			})
+		})
+	})
 })
