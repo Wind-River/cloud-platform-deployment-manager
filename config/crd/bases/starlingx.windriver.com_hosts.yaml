@@ -922,7 +922,7 @@ spec:
                               count:
                                 description: Count defines the number of cores to
                                   allocate to a specific function.
-                                maximum: 64
+                                maximum: 1024
                                 minimum: 0
                                 type: integer
                               function:
