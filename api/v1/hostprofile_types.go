@@ -76,7 +76,7 @@ type ProcessorFunctionInfo struct {
 
 	// Count defines the number of cores to allocate to a specific function.
 	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=64
+	// +kubebuilder:validation:Maximum=1024
 	Count int `json:"count"`
 }
 
