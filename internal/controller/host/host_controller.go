@@ -781,7 +781,11 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
-	// Update/Add routes
+	err = r.ReconcileStaleRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	err = r.ReconcileRoutes(client, instance, profile, host)
 	if err != nil {
 		return err
@@ -1699,6 +1703,12 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		Credentials: nil,
 	}
 	defaults.BoardManagement = &bmInfo
+
+	// Routes should only come from the user's HostProfile CR, not from
+	// system defaults. Clear routes from defaults to prevent default routes
+	// from being merged into the user's profile, which can cause duplicate
+	// or conflicting route entries.
+	defaults.Routes = nil
 
 	// Create a new composite profile that is backed by the host's default
 	// configuration.  This will ensure that if a user deletes an optional

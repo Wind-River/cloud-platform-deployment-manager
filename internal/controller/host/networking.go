@@ -1898,7 +1898,7 @@ func (r *HostReconciler) ReconcileRoutes(client *gophercloud.ServiceClient, inst
 	}
 
 	for _, routeInfo := range profile.Routes {
-		_, found := host.FindRouteUUID(routeInfo.Interface, routeInfo.Network, routeInfo.Prefix)
+		_, found := host.FindRouteUUID(routeInfo.Interface, routeInfo.Network, routeInfo.Prefix, routeInfo.Gateway)
 		if found {
 			continue
 		}
