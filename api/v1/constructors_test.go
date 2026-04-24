@@ -2230,4 +2230,118 @@ var _ = Describe("Constructor utils for kind", func() {
 			})
 		})
 	})
+
+	Describe("NewHostProfileSpec should collect routes from system API", func() {
+		It("should have Routes populated when host has system routes", func() {
+			worker := "worker"
+			console := "console"
+			bootMAC := "00:11:22:33"
+			installOutput := "text"
+			fakeClock := "ntp"
+			bmiInfoType := "none"
+			host := platform.HostInfo{
+				Host: hosts.Host{
+					Hostname:            "test-host",
+					Personality:         worker,
+					SubFunctions:        "worker",
+					AdministrativeState: "locked",
+					BootMAC:             bootMAC,
+					InstallOutput:       installOutput,
+				},
+			}
+			host.Console = console
+			host.BootDevice = "sda"
+			host.RootDevice = "sda"
+			host.ClockSynchronization = &fakeClock
+
+			// Add routes to the host — these come from the system API
+			host.Routes = []routes.Route{
+				{
+					InterfaceName: "eth0",
+					Network:       "10.10.10.0",
+					Prefix:        24,
+					Gateway:       "10.10.10.1",
+					Metric:        1,
+				},
+				{
+					InterfaceName: "eth0",
+					Network:       "172.16.0.0",
+					Prefix:        16,
+					Gateway:       "172.16.0.1",
+					Metric:        1,
+				},
+			}
+
+			spec, err := NewHostProfileSpec(host)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(spec).NotTo(BeNil())
+
+			// NewHostProfileSpec should collect routes for deployctl snapshot use.
+			// The controller clears defaults.Routes before merging, so user-defined
+			// routes remain the sole source of truth during reconciliation.
+			Expect(spec.Routes).To(HaveLen(2))
+			Expect(spec.Routes[0].Interface).To(Equal("eth0"))
+			Expect(spec.Routes[0].Network).To(Equal("10.10.10.0"))
+			Expect(spec.Routes[1].Network).To(Equal("172.16.0.0"))
+
+			// Verify non-route attributes are still populated (sanity check)
+			Expect(spec.Personality).NotTo(BeNil())
+			Expect(*spec.Personality).To(Equal(worker))
+			Expect(spec.BoardManagement).NotTo(BeNil())
+			Expect(*spec.BoardManagement.Type).To(Equal(bmiInfoType))
+		})
+	})
+
+	Describe("NewHostProfileSpec non-route attributes preservation", func() {
+		It("should populate non-route attributes correctly from host info", func() {
+			worker := "worker"
+			console := "console"
+			bootMAC := "00:11:22:33"
+			installOutput := "text"
+			fakeClock := "ntp"
+			host := platform.HostInfo{
+				Host: hosts.Host{
+					Hostname:            "test-host",
+					Personality:         worker,
+					SubFunctions:        "worker",
+					AdministrativeState: "locked",
+					BootMAC:             bootMAC,
+					InstallOutput:       installOutput,
+				},
+			}
+			host.Console = console
+			host.BootDevice = "sda"
+			host.RootDevice = "sda"
+			host.ClockSynchronization = &fakeClock
+
+			// Add routes to the host
+			host.Routes = []routes.Route{
+				{
+					InterfaceName: "eth0",
+					Network:       "10.10.10.0",
+					Prefix:        24,
+					Gateway:       "10.10.10.1",
+					Metric:        1,
+				},
+			}
+
+			spec, err := NewHostProfileSpec(host)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(spec).NotTo(BeNil())
+
+			// Verify non-route attributes are populated correctly
+			Expect(spec.Personality).NotTo(BeNil())
+			Expect(*spec.Personality).To(Equal(worker))
+			Expect(spec.AdministrativeState).NotTo(BeNil())
+			Expect(*spec.AdministrativeState).To(Equal("locked"))
+			Expect(spec.BootMAC).NotTo(BeNil())
+			Expect(*spec.BootMAC).To(Equal(bootMAC))
+			Expect(spec.Console).NotTo(BeNil())
+			Expect(*spec.Console).To(Equal(console))
+			Expect(spec.InstallOutput).NotTo(BeNil())
+			Expect(*spec.InstallOutput).To(Equal(installOutput))
+			Expect(spec.BoardManagement).NotTo(BeNil())
+			Expect(*spec.BoardManagement.Type).To(Equal("none"))
+		})
+	})
 })

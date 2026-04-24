@@ -30,15 +30,41 @@ var _ = Describe("AddressInfo", func() {
 
 var _ = Describe("RouteInfo", func() {
 	Describe("IsKeyEqual", func() {
-		It("should return true when interface, network and prefix match", func() {
+		It("should return false when gateways differ", func() {
 			a := RouteInfo{Interface: "Interface", Network: "11.22.33.44", Prefix: 2, Gateway: "1.1.1.1"}
 			b := RouteInfo{Interface: "Interface", Network: "11.22.33.44", Prefix: 2, Gateway: "1.1.1.2"}
-			Expect(a.IsKeyEqual(b)).To(BeTrue())
+			Expect(a.IsKeyEqual(b)).To(BeFalse())
 		})
 
 		It("should return false when prefix differs", func() {
 			a := RouteInfo{Interface: "Interface", Network: "11.22.33.44", Prefix: 2}
 			b := RouteInfo{Interface: "Interface", Network: "11.22.33.44", Prefix: 6}
+			Expect(a.IsKeyEqual(b)).To(BeFalse())
+		})
+
+		It("should return true when interface, network, prefix, and gateway all match (preservation)", func() {
+			metric1 := 1
+			metric2 := 100
+			a := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1", Metric: &metric1}
+			b := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1", Metric: &metric2}
+			Expect(a.IsKeyEqual(b)).To(BeTrue())
+		})
+
+		It("should return false when interfaces differ (preservation)", func() {
+			a := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"}
+			b := RouteInfo{Interface: "eth1", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"}
+			Expect(a.IsKeyEqual(b)).To(BeFalse())
+		})
+
+		It("should return false when networks differ (preservation)", func() {
+			a := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"}
+			b := RouteInfo{Interface: "eth0", Network: "192.168.0.0", Prefix: 8, Gateway: "192.168.0.1"}
+			Expect(a.IsKeyEqual(b)).To(BeFalse())
+		})
+
+		It("should return false when prefixes differ (preservation)", func() {
+			a := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"}
+			b := RouteInfo{Interface: "eth0", Network: "10.0.0.0", Prefix: 24, Gateway: "10.0.0.1"}
 			Expect(a.IsKeyEqual(b)).To(BeFalse())
 		})
 	})

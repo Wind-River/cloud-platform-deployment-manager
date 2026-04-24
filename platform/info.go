@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022,2025 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022,2025-2026 Wind River Systems, Inc. */
 
 package platform
 
@@ -509,13 +509,15 @@ func (in *HostInfo) FindAddressUUID(ifname string, address string, prefix int) (
 }
 
 // findRouteUUID is a utility function which finds a system route object
-// by its unique attributes.
-func (in *HostInfo) FindRouteUUID(ifname string, network string, prefix int) (*routes.Route, bool) {
+// by its unique attributes including gateway.
+func (in *HostInfo) FindRouteUUID(ifname string, network string, prefix int, gateway string) (*routes.Route, bool) {
 	for _, r := range in.Routes {
 		if r.InterfaceName == ifname {
 			if strings.EqualFold(r.Network, network) {
 				if r.Prefix == prefix {
-					return &r, true
+					if strings.EqualFold(r.Gateway, gateway) {
+						return &r, true
+					}
 				}
 			}
 		}
