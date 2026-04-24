@@ -1,7 +1,11 @@
-FROM golang:1.23.0-bullseye
+FROM golang:1.25.7-trixie
 
 # Install our required version of Kustomize to generate the examples
-RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -q -O /usr/local/bin/kustomize && chmod 755 /usr/local/bin/kustomize
+RUN wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -q -O /tmp/kustomize.tar.gz && \
+    tar -zxf /tmp/kustomize.tar.gz -C /tmp && \
+    mv /tmp/kustomize /usr/local/bin/kustomize && \
+    chmod 755 /usr/local/bin/kustomize && \
+    rm -rf /tmp/kustomize.tar.gz
 
 # Install Helm v3.17.1
 RUN wget https://get.helm.sh/helm-v3.17.1-linux-amd64.tar.gz -O /tmp/helm.tar.gz && \
@@ -15,17 +19,27 @@ RUN curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(
 
 # Install the latest version of Docker although we should probably try and
 # align the container version and the host version to ensure compatibility.
-RUN apt-get update && \
-apt-get -y --no-install-recommends install software-properties-common ca-certificates gnupg && \
-install -m 0755 -d /etc/apt/keyrings && \
-curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-chmod a+r /etc/apt/keyrings/docker.gpg && \
-echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-apt-get update && \
-apt-get -y install docker-ce
+# https://docs.docker.com/engine/install/debian/
+RUN <<EOF
+apt update
+apt install ca-certificates curl
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+cat > /etc/apt/sources.list.d/docker.sources <<-SOURCES
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+SOURCES
+
+apt update
+apt -y install docker-ce
+EOF
+
 
 ENV PATH="${PATH}:/usr/local/kubebuilder/bin:/bin"
 
