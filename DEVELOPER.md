@@ -33,13 +33,13 @@ cd downloads
 ```
 
 The Deployment Manager was developed during the period when GoLang version
-1.23.0 was prominent.  A newer version may work fine, but the minimum guaranteed
-version that will work with the tools and Makefile provided is v1.23.0.
+1.25.7 was prominent.  A newer version may work fine, but the minimum guaranteed
+version that will work with the tools and Makefile provided is v1.25.7.
 
 ```bash
 cd ${GOPATH}/downloads
-wget https://dl.google.com/go/go1.23.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -zxf go1.23.0.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.25.7.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxf go1.25.7.linux-amd64.tar.gz
 export PATH=${PATH}:/usr/local/go/bin
 ```
 
@@ -487,8 +487,8 @@ public key to ~/.ssh/authorized_keys.
 
 #### Versions
 
-Try using Go 1.23.0 if newer versions aren't working. Check with:
+Try using Go 1.25.7 if newer versions aren't working. Check with:
 ```bash
 > go version
-go version go1.23.0 linux/amd64
+go version go1.25.7 linux/amd64
 ```

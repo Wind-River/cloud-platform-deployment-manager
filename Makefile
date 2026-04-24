@@ -78,7 +78,7 @@ publish: helm-package docker-push
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./api/..." paths="./internal/..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
 generate: controller-gen deepequal-gen ## Generate code containing DeepCopy, DeepEqual, DeepCopyInto, and DeepCopyObject method implementations.
@@ -162,7 +162,7 @@ DEEPEQUAL_GEN ?= $(LOCALBIN)/deepequal-gen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.3
-CONTROLLER_TOOLS_VERSION ?= v0.16.3
+CONTROLLER_TOOLS_VERSION ?= v0.20.1
 SETUP_ENVTEST_VERSION ?= release-0.20
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
