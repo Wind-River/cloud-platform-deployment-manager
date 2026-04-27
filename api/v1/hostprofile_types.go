@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019-2022 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2022, 2026 Wind River Systems, Inc. */
 
 package v1
 
@@ -669,17 +669,12 @@ func (in AddressInfo) IsKeyEqual(x AddressInfo) bool {
 // they refer to the same instance.  All other attributes will be merged during
 // profile merging.
 func (in RouteInfo) IsKeyEqual(x RouteInfo) bool {
-	// Routes can be duplicated on a node but must be unique on an interface
-	// therefore to allow a routes metric or gateway to be changed we match
-	// on interface + network + prefix.
-	if in.Interface == x.Interface {
-		if in.Network == x.Network {
-			if in.Prefix == x.Prefix {
-				return true
-			}
-		}
-	}
-	return false
+	// Routes are uniquely identified by (interface, network, prefix, gateway).
+	// Only metric is overridable during merge.
+	return in.Interface == x.Interface &&
+		in.Network == x.Network &&
+		in.Prefix == x.Prefix &&
+		in.Gateway == x.Gateway
 }
 
 // +kubebuilder:validation:Enum=controller;worker;storage;lowlatency

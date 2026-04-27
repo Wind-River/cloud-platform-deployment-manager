@@ -437,8 +437,9 @@ var _ = Describe("Profile utils", func() {
 						wantErr: false,
 						want: &starlingxv1.HostProfileSpec{
 							Routes: starlingxv1.RouteList{
-								{Network: "10.10.10.0", Prefix: 24, Gateway: "10.10.10.2", Interface: "eth0"},
+								{Network: "10.10.10.0", Prefix: 24, Gateway: "10.10.10.1", Interface: "eth0"},
 								{Network: "172.16.0.0", Prefix: 16, Gateway: "172.16.0.1", Interface: "eth1"},
+								{Network: "10.10.10.0", Prefix: 24, Gateway: "10.10.10.2", Interface: "eth0"},
 								{Network: "172.16.0.0", Prefix: 24, Gateway: "172.16.0.1", Interface: "eth2"},
 								{Network: "fd00:1::", Prefix: 64, Gateway: "fd00:1::1", Interface: "eth1"},
 							},
@@ -1167,6 +1168,132 @@ var _ = Describe("Profile utils", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("bad-gw"))
 			})
+		})
+	})
+
+	// Bug condition exploration test: MergeProfiles with different-gateway routes.
+	// Two profiles each contain a route to the same subnet via different gateways.
+	// On unfixed code, one route is lost during merge. After fix, both should be preserved.
+	// **Validates: Requirements 1.1, 1.2**
+	Describe("MergeProfiles with different-gateway routes (bug condition exploration)", func() {
+		It("should preserve both routes when gateways differ", func() {
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.10.10.0", Prefix: 24, Gateway: "10.10.10.1"},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.10.10.0", Prefix: 24, Gateway: "10.10.10.2"},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			// Both routes should be preserved as distinct entries
+			Expect(merged.Routes).To(HaveLen(2))
+		})
+	})
+
+	Describe("MergeProfiles same-gateway merge preservation", func() {
+		It("should overwrite metric when routes share the same gateway", func() {
+			metric1 := 1
+			metric2 := 100
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1", Metric: &metric1},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1", Metric: &metric2},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			// Only one route should remain (same key), with metric overwritten
+			Expect(merged.Routes).To(HaveLen(1))
+			Expect(merged.Routes[0].Gateway).To(Equal("10.0.0.1"))
+			Expect(*merged.Routes[0].Metric).To(Equal(100))
+		})
+	})
+
+	Describe("MergeProfiles different-interface preservation", func() {
+		It("should preserve both routes when interfaces differ", func() {
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth1", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			Expect(merged.Routes).To(HaveLen(2))
+		})
+	})
+
+	Describe("MergeProfiles different-network preservation", func() {
+		It("should preserve both routes when networks differ", func() {
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "192.168.0.0", Prefix: 8, Gateway: "192.168.0.1"},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			Expect(merged.Routes).To(HaveLen(2))
+		})
+	})
+
+	Describe("MergeProfiles different-prefix preservation", func() {
+		It("should preserve both routes when prefixes differ", func() {
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 24, Gateway: "10.0.0.1"},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			Expect(merged.Routes).To(HaveLen(2))
+		})
+	})
+
+	Describe("MergeProfiles non-overlapping routes preservation", func() {
+		It("should produce combined list of all routes", func() {
+			profileA := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth0", Network: "10.0.0.0", Prefix: 8, Gateway: "10.0.0.1"},
+					{Interface: "eth1", Network: "172.16.0.0", Prefix: 16, Gateway: "172.16.0.1"},
+				},
+			}
+			profileB := &starlingxv1.HostProfileSpec{
+				Routes: starlingxv1.RouteList{
+					{Interface: "eth2", Network: "192.168.1.0", Prefix: 24, Gateway: "192.168.1.1"},
+					{Interface: "eth3", Network: "fd00::", Prefix: 64, Gateway: "fd00::1"},
+				},
+			}
+			merged, err := MergeProfiles(profileA, profileB)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(merged).NotTo(BeNil())
+			Expect(merged.Routes).To(HaveLen(4))
 		})
 	})
 })
