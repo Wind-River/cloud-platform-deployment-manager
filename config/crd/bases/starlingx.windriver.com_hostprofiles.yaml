@@ -1056,6 +1056,12 @@ spec:
                           - thin
                           - thick
                           type: string
+                        lvmFunction:
+                          description: |-
+                            LVMFunction defines if this volume group will be used for LVM functionality or not.
+                          enum:
+                          - lvm-csi
+                          type: string
                         name:
                           description: SystemName defines the name of the logical
                             volume group

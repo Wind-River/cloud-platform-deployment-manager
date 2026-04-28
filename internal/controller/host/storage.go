@@ -314,6 +314,11 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 				capabilitiesPtr = &capabilities
 			}
 
+			if vgInfo.LVMFunction != nil {
+				capabilities.LVMFunction = vgInfo.LVMFunction
+				capabilitiesPtr = &capabilities
+			}
+
 			opts.Capabilities = capabilitiesPtr
 
 			logHost.Info("creating Volume Group", "opts", opts)
