@@ -773,6 +773,11 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		return r.StartMonitor(m, msg)
 	}
 
+	err = r.ReconcileVolumeGroups(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	switch r.OSDProvisioningState(instance.Namespace, host.Personality) {
 	case RequiredStateEnabled, RequiredStateAny:
 		err = r.ReconcileOSDs(client, instance, profile, host)

@@ -286,49 +286,62 @@ func (r *HostReconciler) ReconcilePhysicalVolumes(client *gophercloud.ServiceCli
 // ReconcileVolumeGroups is responsible for reconciling the volume group
 // configuration of a host resource.
 func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
-	updated := false
+	if !common.IsReconcilerEnabled(common.VolumeGroup) {
+		return nil
+	}
 
 	if profile.Storage.VolumeGroups == nil {
 		return nil
 	}
 
-	if !common.IsReconcilerEnabled(common.VolumeGroup) {
-		return nil
+	updated, err := r.DeleteVolumeGroups(client, instance, profile, host)
+	if err != nil {
+		return err
 	}
-
+	logHost.Info("Updated", "value", updated)
+	// Update existing volume groups capabilities and create any new volume
+	// groups as needed.
 	for _, vgInfo := range profile.Storage.VolumeGroups {
-		var ok bool
-
-		if _, ok = host.FindVolumeGroup(vgInfo.Name); !ok {
-			// Create a new volume group.
-			var capabilitiesPtr *volumegroups.CapabilitiesOpts
-			opts := volumegroups.VolumeGroupOpts{
-				HostID: &host.ID,
-				Name:   &vgInfo.Name,
-			}
-
+		// Considering that the capabilities object will be required to create
+		// or update the VG, create the object here to avoid duplicity
+		var capabilitiesPtr *volumegroups.CapabilitiesOpts
+		if vgInfo.LVMType != nil || vgInfo.LVMFunction != nil || vgInfo.LVMPoolSize != nil {
 			capabilities := volumegroups.CapabilitiesOpts{}
 
 			if vgInfo.LVMType != nil {
 				capabilities.LVMType = vgInfo.LVMType
-				capabilitiesPtr = &capabilities
 			}
+			if vgInfo.LVMFunction != nil {
+				capabilities.LVMFunction = vgInfo.LVMFunction
+			}
+			if vgInfo.LVMPoolSize != nil {
+				capabilities.LVMPoolSize = vgInfo.LVMPoolSize
+			}
+			capabilitiesPtr = &capabilities
+		}
 
-			opts.Capabilities = capabilitiesPtr
-
-			logHost.Info("creating Volume Group", "opts", opts)
-
-			_, err := volumegroups.Create(client, opts).Extract()
+		if vgHost, ok := host.FindVolumeGroup(vgInfo.Name); ok {
+			upd, err := r.UpdateVolumeGroup(client, vgHost, capabilitiesPtr)
 			if err != nil {
-				err = perrors.Wrapf(err, "failed to create volume group, %s",
-					ctrlcommon.FormatStruct(opts))
 				return err
 			}
-
-			r.NormalEvent(instance, ctrlcommon.ResourceCreated,
-				"volume Group %q has been created", vgInfo.Name)
-
-			updated = true
+			updated = updated || upd
+			if upd {
+				r.NormalEvent(instance, ctrlcommon.ResourceUpdated,
+					"volume Group %q has been updated", vgInfo.Name)
+			}
+			logHost.Info("Updated update", "value", updated)
+		} else {
+			upd, err := r.AddVolumeGroup(client, host, &vgInfo, capabilitiesPtr)
+			if err != nil {
+				return err
+			}
+			updated = updated || upd
+			if upd {
+				r.NormalEvent(instance, ctrlcommon.ResourceCreated,
+					"volume Group %q has been created", vgInfo.Name)
+			}
+			logHost.Info("Updated add", "value", updated)
 		}
 	}
 
@@ -351,6 +364,101 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 	}
 
 	return nil
+}
+
+// DeleteVolumeGroups is responsible for removing volume groups that are
+// no longer present in the host profile.
+func (r *HostReconciler) DeleteVolumeGroups(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (bool, error) {
+	updated := false
+
+	for _, vgHost := range host.VolumeGroups {
+		// CGTS-VG is the default volume group, so ignore it.
+		if vgHost.Name == ctrlcommon.LVG_CGTS_VG {
+			continue
+		}
+
+		found := false
+		for _, vgInfo := range profile.Storage.VolumeGroups {
+			if vgHost.Name == vgInfo.Name {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			logHost.Info("deleting volume group", "name", vgHost.Name)
+
+			err := volumegroups.Delete(client, vgHost.ID).ExtractErr()
+			if err != nil {
+				err = perrors.Wrapf(err, "failed to delete volume group, %s [%s]",
+					vgHost.Name, vgHost.ID)
+				// Return to avoid problems with other deletions. Force 'updated'
+				// flag state to the next loop.
+				return true, err
+			}
+
+			r.NormalEvent(instance, ctrlcommon.ResourceDeleted,
+				"volume Group %q has been deleted", vgHost.Name)
+
+			updated = true
+		}
+	}
+	return updated, nil
+}
+
+// AddVolumeGroup is responsible for add a volume group
+func (r *HostReconciler) AddVolumeGroup(client *gophercloud.ServiceClient, host *v1info.HostInfo, vgInfo *starlingxv1.VolumeGroupInfo, capabilitiesPtr *volumegroups.CapabilitiesOpts) (bool, error) {
+	// Create a new volume group.
+	opts := volumegroups.VolumeGroupOpts{
+		HostID: &host.ID,
+		Name:   &vgInfo.Name,
+	}
+
+	opts.Capabilities = capabilitiesPtr
+
+	logHost.Info("creating Volume Group", "opts", opts)
+
+	_, err := volumegroups.Create(client, opts).Extract()
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to create volume group, %s",
+			ctrlcommon.FormatStruct(opts))
+		return false, err
+	}
+	return true, nil
+}
+
+// UpdateVolumeGroup is responsible for update capabilities in volume group
+func (r *HostReconciler) UpdateVolumeGroup(client *gophercloud.ServiceClient, vgHost *volumegroups.VolumeGroup, capabilitiesPtr *volumegroups.CapabilitiesOpts) (bool, error) {
+	var opts volumegroups.VolumeGroupOpts
+
+	if capabilitiesPtr == nil {
+		// If Host and Profile have no capabilities, only returns
+		if vgHost.Capabilities == (volumegroups.Capabilities{}) {
+			return false, nil
+		}
+		opts.Capabilities = &volumegroups.CapabilitiesOpts{}
+	} else {
+		// Validate changes in capabilites, in case that capabilities
+		// are the same, only returns
+		if ctrlcommon.CompareStructs(capabilitiesPtr,
+			&volumegroups.CapabilitiesOpts{
+				LVMType:     vgHost.Capabilities.LVMType,
+				LVMFunction: vgHost.Capabilities.LVMFunction,
+				LVMPoolSize: vgHost.Capabilities.LVMPoolSize}) {
+			return false, nil
+		}
+		opts.Capabilities = capabilitiesPtr
+	}
+	logHost.Info("updating volume group", "name", vgHost.Name, "opts", opts)
+	_, err := volumegroups.Update(client, vgHost.ID, opts).Extract()
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to update volume group, %s",
+			ctrlcommon.FormatStruct(opts))
+		return false, err
+	}
+
+	logHost.Info("volume group updated", "volumegroup", vgHost.Name)
+	return true, nil
 }
 
 func osdUpdateRequired(osdInfo *starlingxv1.OSDInfo, osd *osds.OSD) (opts osds.OSDOpts, result bool) {
