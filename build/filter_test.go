@@ -438,6 +438,48 @@ var _ = Describe("Test filters utilities:", func() {
 				Expect(expectedFilteredServiceParams).To(Equal(system.Spec.ServiceParameters))
 			})
 		})
+
+		Context("when spec has platform TLS service parameters", func() {
+			It("should exclude TLS params as defaults", func() {
+				filter := &ServiceParameterFilter{}
+
+				system := &v1.System{
+					Spec: v1.SystemSpec{
+						ServiceParameters: []v1.ServiceParameterInfo{
+							{
+								Service:   utils.ServiceTypePlatform,
+								Section:   utils.ServiceParamSectionPlatformConfig,
+								ParamName: utils.ServiceParamNamePlatformTLSMinVersion,
+							},
+							{
+								Service:   utils.ServiceTypePlatform,
+								Section:   utils.ServiceParamSectionPlatformConfig,
+								ParamName: utils.ServiceParamNamePlatformTLSCipherSuite,
+							},
+							{
+								Service:   "custom",
+								Section:   "section",
+								ParamName: "param",
+							},
+						},
+					},
+				}
+
+				deployment := &Deployment{}
+
+				err := filter.Filter(system, deployment)
+				Expect(err).ToNot(HaveOccurred())
+
+				expectedFilteredServiceParams := v1.ServiceParameterList{
+					{
+						Service:   "custom",
+						Section:   "section",
+						ParamName: "param",
+					},
+				}
+				Expect(expectedFilteredServiceParams).To(Equal(system.Spec.ServiceParameters))
+			})
+		})
 	})
 
 	Describe("Test InterfaceRemoveUuidFilter", func() {

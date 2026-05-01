@@ -27,6 +27,8 @@ const ServiceParamNamePlatformMaxCpuPercentage = "cpu_max_freq_min_percentage"
 
 const ServiceParamNamePlatConfigIntelNicDriverVersion = "intel_nic_driver_version"
 const ServiceParamNamePlatConfigIntelPstate = "intel_pstate"
+const ServiceParamNamePlatformTLSMinVersion = "tls-min-version"
+const ServiceParamNamePlatformTLSCipherSuite = "tls-cipher-suite"
 const ServiceParamNameRadosgwFsSizeMB = "fs_size_mb"
 const ServiceParamNameRadosgwServiceEnabled = "service_enabled"
 const ServiceParamNameSecurityComplianceLockoutDuration = "lockout_seconds"
@@ -103,6 +105,14 @@ var DefaultParameters = [...]ServiceParam{
 	ServiceParam{Service: ServiceTypePlatform,
 		Section:   ServiceParamSectionPlatformConfig,
 		ParamName: ServiceParamNamePlatConfigIntelPstate,
+	},
+	ServiceParam{Service: ServiceTypePlatform,
+		Section:   ServiceParamSectionPlatformConfig,
+		ParamName: ServiceParamNamePlatformTLSMinVersion,
+	},
+	ServiceParam{Service: ServiceTypePlatform,
+		Section:   ServiceParamSectionPlatformConfig,
+		ParamName: ServiceParamNamePlatformTLSCipherSuite,
 	},
 	ServiceParam{Service: ServiceTypeRadosgw,
 		Section:   ServiceParamSectionRadosgwConfig,
