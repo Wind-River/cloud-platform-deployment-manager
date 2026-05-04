@@ -1471,6 +1471,51 @@ func FindExistingHost(objects []hosts.Host, hostname string, match *starlingxv1.
 	return nil
 }
 
+// reinstallAllowed checks whether a host reinstall action can be sent.
+// It requires board management and power-on to be configured, and the
+// host must not yet be inventoried.
+func (r *HostReconciler) reinstallAllowed(
+	host *hosts.Host, profile *starlingxv1.HostProfileSpec,
+) bool {
+	if profile.BoardManagement == nil {
+		return false
+	}
+
+	if profile.PowerOn == nil {
+		return false
+	}
+
+	if !*profile.PowerOn {
+		return false
+	}
+
+	if host == nil {
+		return false
+	}
+
+	if host.InventoryState == nil {
+		return true
+	}
+
+	return *host.InventoryState == ""
+}
+
+// hostReinstall sends a host reinstall action to power-on the host.
+func (r *HostReconciler) hostReinstall(
+	host *hosts.Host, client *gophercloud.ServiceClient, instance *starlingxv1.Host,
+) (*hosts.Host, error) {
+	action := hosts.ActionReinstall
+	opts := hosts.HostOpts{Action: &action}
+	host, err := hosts.Update(client, host.ID, opts).Extract()
+	if err != nil {
+		err = perrors.Wrapf(err, "failed to power-on host")
+		return nil, err
+	}
+
+	r.NormalEvent(instance, common.ResourceUpdated, "host action reinstall has been sent")
+	return host, nil
+}
+
 // ReconcileNewHost is responsible for dealing with the initial provisioning of
 // a host. This handles both static and dynamic provisioning of hosts.  If a
 // new host is created then the 'host' return parameter will be updated with a
@@ -1520,20 +1565,14 @@ func (r *HostReconciler) ReconcileNewHost(client *gophercloud.ServiceClient, ins
 				return nil, err
 			}
 
-			if profile.BoardManagement != nil && (profile.PowerOn != nil && *profile.PowerOn) {
-				// Attempt to power-on the host; otherwise the user will need
-				// to do this manually.
-				action := hosts.ActionReinstall
-				opts = hosts.HostOpts{Action: &action}
-				host, err = hosts.Update(client, host.ID, opts).Extract()
-				if err != nil {
-					err = perrors.Wrapf(err, "failed to power-on host")
+			r.NormalEvent(instance, common.ResourceCreated,
+				"static host has been created")
+
+			if r.reinstallAllowed(host, profile) {
+				if _, err := r.hostReinstall(host, client, instance); err != nil {
 					return nil, err
 				}
 			}
-
-			r.NormalEvent(instance, common.ResourceCreated,
-				"static host has been created")
 
 		} else {
 			msg := "waiting for system to allow creating static hosts"
@@ -1550,6 +1589,11 @@ func (r *HostReconciler) ReconcileNewHost(client *gophercloud.ServiceClient, ins
 			err := r.ReconcileAttributes(client, instance, profile, host)
 			if err != nil {
 				return host, err
+			}
+
+			if r.reinstallAllowed(host, profile) {
+				logHost.Info("sending reinstall action")
+				return r.hostReinstall(host, client, instance)
 			}
 
 		} else {
