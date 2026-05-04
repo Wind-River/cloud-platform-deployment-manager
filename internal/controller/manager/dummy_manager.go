@@ -39,6 +39,9 @@ type Dummymanager struct {
 	DefaultUpdateError error         // Simulate error for default update method
 	Client             client.Client // Added client field for the Kubernetes client
 	ActiveHost         *starlingxv1.Host
+
+	MonitorStarted bool   // Track if StartMonitor was called
+	MonitorMessage string // Track the message passed to StartMonitor
 }
 
 func (m *Dummymanager) ResetPlatformClient(namespace string) error {
@@ -74,10 +77,13 @@ func (m *Dummymanager) GetSystemType(namespace string) SystemType {
 	return ""
 }
 func (m *Dummymanager) StartMonitor(monitor *Monitor, message string) error {
+	m.MonitorStarted = true
+	m.MonitorMessage = message
 	return nil
 }
 func (m *Dummymanager) CancelMonitor(object client.Object) {
-
+	m.MonitorStarted = false
+	m.MonitorMessage = ""
 }
 func (m *Dummymanager) GetActiveHost(namespace string, client *gophercloud.ServiceClient) (*starlingxv1.Host, error) {
 	return nil, nil
