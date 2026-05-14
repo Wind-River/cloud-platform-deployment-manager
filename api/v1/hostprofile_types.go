@@ -235,6 +235,12 @@ type VolumeGroupInfo struct {
 	// +optional
 	LVMType *string `json:"lvmType,omitempty"`
 
+	// LVMFunction defines if this volume group will be used for LVM
+	// functionality or not.
+	// +kubebuilder:validation:Enum=lvm-csi
+	// +optional
+	LVMFunction *string `json:"lvmFunction,omitempty"`
+
 	// PhysicalVolumes defines the list of volumes to be created on the host.
 	PhysicalVolumes PhysicalVolumeList `json:"physicalVolumes"`
 }

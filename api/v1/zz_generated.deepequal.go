@@ -2714,6 +2714,16 @@ func (in *VolumeGroupInfo) DeepEqual(other *VolumeGroupInfo) bool {
 		}
 	}
 
+	if in.LVMFunction != nil {
+		if (in.LVMFunction == nil) != (other.LVMFunction == nil) {
+			return false
+		} else if in.LVMFunction != nil {
+			if *in.LVMFunction != *other.LVMFunction {
+				return false
+			}
+		}
+	}
+
 	if ((in.PhysicalVolumes != nil) && (other.PhysicalVolumes != nil)) || ((in.PhysicalVolumes == nil) != (other.PhysicalVolumes == nil)) {
 		in, other := &in.PhysicalVolumes, &other.PhysicalVolumes
 		if other == nil || !in.DeepEqual(other) {

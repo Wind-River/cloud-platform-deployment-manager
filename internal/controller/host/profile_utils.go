@@ -131,6 +131,7 @@ func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInf
 		vgInfo := starlingxv1.VolumeGroupInfo{
 			Name:            vg.Name,
 			LVMType:         vg.LVMType,
+			LVMFunction:     vg.LVMFunction,
 			PhysicalVolumes: pvs,
 		}
 
