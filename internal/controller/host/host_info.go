@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019, 2026 Wind River Systems, Inc. */
 
 package host
 
@@ -23,6 +23,10 @@ func (r *HostReconciler) BuildHostDefaults(instance *starlingxv1.Host, host v1in
 		err = perrors.Wrap(err, "failed to create host profile spec")
 		return nil, err
 	}
+
+	// Routes should only come from the user's HostProfile CR.
+	// Clear from defaults so they are never merged as system defaults.
+	defaults.Routes = nil
 
 	logHost.V(2).Info("host profile spec created", "defaults", defaults)
 

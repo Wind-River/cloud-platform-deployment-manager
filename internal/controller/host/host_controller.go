@@ -781,7 +781,11 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		}
 	}
 
-	// Update/Add routes
+	err = r.ReconcileStaleRoutes(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	err = r.ReconcileRoutes(client, instance, profile, host)
 	if err != nil {
 		return err
