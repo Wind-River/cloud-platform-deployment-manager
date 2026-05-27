@@ -154,6 +154,9 @@ var (
 // Constant for processLines and searchParameters when gathering the Delta config
 const ParentFound = "parent_found"
 
+// Constant for standard volume group
+const LVG_CGTS_VG = "cgts-vg"
+
 // Common event record reasons
 const (
 	ResourceCreated    = "Created"

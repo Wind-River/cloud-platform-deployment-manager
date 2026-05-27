@@ -2346,6 +2346,16 @@ func (in *VolumeGroupInfo) DeepCopyInto(out *VolumeGroupInfo) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LVMFunction != nil {
+		in, out := &in.LVMFunction, &out.LVMFunction
+		*out = new(string)
+		**out = **in
+	}
+	if in.LVMPoolSize != nil {
+		in, out := &in.LVMPoolSize, &out.LVMPoolSize
+		*out = new(int)
+		**out = **in
+	}
 	if in.PhysicalVolumes != nil {
 		in, out := &in.PhysicalVolumes, &out.PhysicalVolumes
 		*out = make(PhysicalVolumeList, len(*in))

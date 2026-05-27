@@ -457,6 +457,111 @@ var _ = Describe("Profile utils", func() {
 		})
 	})
 
+	Describe("MergeVolumeGroups", func() {
+		Context("when the applied profile changes lvmFunction of an existing VG", func() {
+			It("should use the applied profile's lvmFunction value", func() {
+				lvmCSI := "lvm-csi"
+				lvmNone := "none"
+				lvmThick := "thick"
+				size := 261
+
+				hostStorage := &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{
+							Name:        "cgts-vg",
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
+							},
+						},
+						{
+							Name:        "lvm-provisioner",
+							LVMType:     &lvmThick,
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-3.0", Type: "disk"},
+							},
+						},
+					},
+				}
+
+				appliedStorage := &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{
+							Name:        "cgts-vg",
+							LVMFunction: &lvmNone,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
+							},
+						},
+						{
+							Name:        "lvm-provisioner",
+							LVMType:     &lvmThick,
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-3.0", Type: "disk"},
+							},
+						},
+					},
+				}
+
+				result := MergeVolumeGroups(hostStorage, appliedStorage)
+
+				Expect(result).To(HaveLen(2))
+				Expect(result[0].Name).To(Equal("cgts-vg"))
+				Expect(*result[0].LVMFunction).To(Equal("none"))
+				Expect(result[1].Name).To(Equal("lvm-provisioner"))
+				Expect(*result[1].LVMFunction).To(Equal("lvm-csi"))
+			})
+		})
+
+		Context("when the applied profile removes a VG", func() {
+			It("should keep only VGs present in the applied profile", func() {
+				lvmCSI := "lvm-csi"
+				lvmThick := "thick"
+				size := 261
+
+				hostStorage := &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{
+							Name:        "cgts-vg",
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
+							},
+						},
+						{
+							Name:        "lvm-provisioner",
+							LVMType:     &lvmThick,
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-3.0", Type: "disk"},
+							},
+						},
+					},
+				}
+
+				appliedStorage := &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{
+							Name:        "cgts-vg",
+							LVMFunction: &lvmCSI,
+							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
+							},
+						},
+					},
+				}
+
+				result := MergeVolumeGroups(hostStorage, appliedStorage)
+
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].Name).To(Equal("cgts-vg"))
+				Expect(*result[0].LVMFunction).To(Equal("lvm-csi"))
+			})
+		})
+	})
+
 	Describe("FixKernelSubfunction", func() {
 		Context("with profile spec data", func() {
 			It("should fix the subfunctions successfully", func() {

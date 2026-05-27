@@ -542,6 +542,16 @@ func parseVolumeGroupInfo(profile *HostProfileSpec, host v1info.HostInfo) error 
 			group.LVMType = &lvmType
 		}
 
+		if value := vg.Capabilities.LVMFunction; value != nil {
+			lvmFunction := *value
+			group.LVMFunction = &lvmFunction
+		}
+
+		if value := vg.Capabilities.LVMPoolSize; value != nil {
+			lvmPoolSize := *value
+			group.LVMPoolSize = &lvmPoolSize
+		}
+
 		err := parsePhysicalVolumeInfo(&group, &vg, host)
 		if err != nil {
 			return err

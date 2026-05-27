@@ -34,7 +34,27 @@ func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileS
 		return nil, err
 	}
 
+	if b.Storage != nil && b.Storage.VolumeGroups != nil &&
+		a.Storage != nil && a.Storage.VolumeGroups != nil {
+		a.Storage.VolumeGroups = MergeVolumeGroups(a.Storage, b.Storage)
+	}
+
 	return a, nil
+}
+
+// MergeVolumeGroups keeps only VGs defined in the source profile (b),
+// using b as the source of truth.
+func MergeVolumeGroups(a, b *starlingxv1.ProfileStorageInfo) starlingxv1.VolumeGroupList {
+	filtered := make(starlingxv1.VolumeGroupList, 0, len(b.VolumeGroups))
+	for _, srcVG := range b.VolumeGroups {
+		for _, vg := range a.VolumeGroups {
+			if vg.Name == srcVG.Name {
+				filtered = append(filtered, srcVG)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 // FixProfileAttributes makes some adjustments to profile attributes
@@ -131,6 +151,8 @@ func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInf
 		vgInfo := starlingxv1.VolumeGroupInfo{
 			Name:            vg.Name,
 			LVMType:         vg.LVMType,
+			LVMFunction:     vg.LVMFunction,
+			LVMPoolSize:     vg.LVMPoolSize,
 			PhysicalVolumes: pvs,
 		}
 

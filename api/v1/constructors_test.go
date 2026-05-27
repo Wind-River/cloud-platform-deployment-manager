@@ -1548,6 +1548,8 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				lvmType := "LVMType"
+				lvmFunction := "LVMFunction"
+				lvmPoolSize := 1
 				host := platform.HostInfo{
 					VolumeGroups: []volumegroups.VolumeGroup{
 						{
@@ -1555,7 +1557,9 @@ var _ = Describe("Constructor utils for kind", func() {
 								Name: "volumegroupName",
 							},
 							Capabilities: volumegroups.Capabilities{
-								LVMType: &lvmType,
+								LVMType:     &lvmType,
+								LVMFunction: &lvmFunction,
+								LVMPoolSize: &lvmPoolSize,
 							},
 							ID: "vgID",
 						},
@@ -1580,8 +1584,10 @@ var _ = Describe("Constructor utils for kind", func() {
 				size := 1
 				exp := VolumeGroupList{
 					{
-						Name:    "volumegroupName",
-						LVMType: &lvmType,
+						Name:        "volumegroupName",
+						LVMType:     &lvmType,
+						LVMFunction: &lvmFunction,
+						LVMPoolSize: &lvmPoolSize,
 						PhysicalVolumes: PhysicalVolumeList{
 							{
 								Type: "partition",
@@ -1608,6 +1614,8 @@ var _ = Describe("Constructor utils for kind", func() {
 					},
 				}
 				lvmType := "LVMType"
+				lvmFunction := "LVMFunction"
+				lvmPoolSize := 1
 				host := platform.HostInfo{
 					VolumeGroups: []volumegroups.VolumeGroup{
 						{
@@ -1615,7 +1623,9 @@ var _ = Describe("Constructor utils for kind", func() {
 								Name: "volumegroupName",
 							},
 							Capabilities: volumegroups.Capabilities{
-								LVMType: &lvmType,
+								LVMType:     &lvmType,
+								LVMFunction: &lvmFunction,
+								LVMPoolSize: &lvmPoolSize,
 							},
 							ID: "vgID",
 						},

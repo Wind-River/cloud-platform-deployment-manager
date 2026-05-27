@@ -1048,6 +1048,20 @@ spec:
                         VolumeGroupInfo defines the attributes specific to a single
                         volume group.
                       properties:
+                        lvmFunction:
+                          description: |-
+                            LVMFunction defines if this volume group will be used for LVM
+                            functionality or not.
+                          enum:
+                          - lvm-csi
+                          - none
+                          type: string
+                        lvmPoolSize:
+                          description: |-
+                            LVMPoolSize defines the size of the LVM pool in gigabytes
+                            Only valid when lvmType is 'thin'
+                          minimum: 1
+                          type: integer
                         lvmType:
                           description: |-
                             LVMType defines the provisioning type for volumes defines with 'Type'
@@ -1098,6 +1112,13 @@ spec:
                       - name
                       - physicalVolumes
                       type: object
+                      x-kubernetes-validations:
+                      - message: lvmPoolSize can only be set when lvmType is 'thin'
+                        rule: '!has(self.lvmPoolSize) || (has(self.lvmType) && self.lvmType
+                          == ''thin'')'
+                      - message: lvmType can only be set when lvmFunction is 'lvm-csi'
+                        rule: '!has(self.lvmType) || (has(self.lvmFunction) && self.lvmFunction
+                          == ''lvm-csi'')'
                     nullable: true
                     type: array
                 type: object
