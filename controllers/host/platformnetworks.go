@@ -539,6 +539,29 @@ func (r *HostReconciler) IsReconfiguration(client *gophercloud.ServiceClient, ne
 	return nil, false
 }
 
+// isAddrPoolIncomplete returns true if the system address pool is missing
+// controller addresses that are specified in the AddressPool CR spec.
+// This handles the case where a host was deleted and re-added, causing
+// its address to be removed from the pool without triggering a re-reconcile.
+func (r *HostReconciler) isAddrPoolIncomplete(client *gophercloud.ServiceClient, addrpool_instance *starlingxv1.AddressPool) bool {
+	system_addrpool, err := GetSystemAddrPool(client, addrpool_instance)
+	if err != nil || system_addrpool == nil {
+		return false
+	}
+
+	spec := addrpool_instance.Spec
+
+	if spec.Controller1Address != nil && system_addrpool.Controller1Address == "" {
+		return true
+	}
+
+	if spec.Controller0Address != nil && system_addrpool.Controller0Address == "" {
+		return true
+	}
+
+	return false
+}
+
 // ReconcileOtherPlatformNetworksExpected returns true if the network or the address pool
 // has to be newly configured for network types other than oam / admin / mgmt.
 func (r *HostReconciler) ReconcileOtherPlatformNetworksExpected(client *gophercloud.ServiceClient,
@@ -558,6 +581,14 @@ func (r *HostReconciler) ReconcileOtherPlatformNetworksExpected(client *gophercl
 			return err, false
 		}
 		if !is_reconfig {
+			return nil, true
+		}
+
+		// Allow reconciliation when the pool exists but is missing
+		// controller addresses that are defined in the spec. This
+		// handles host delete + re-add where the address was removed
+		// from the pool without triggering a re-reconcile.
+		if r.isAddrPoolIncomplete(client, addrpool_instance) {
 			return nil, true
 		}
 	} else {
