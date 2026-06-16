@@ -1845,6 +1845,15 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return common.NewUserDataError(msg)
 	}
 
+	// For non-active controller hosts, ensure the active controller has
+	// reconciled platform networks to populate any missing pool addresses
+	// before proceeding with networking configuration.
+	if !is_active_host && host.Personality == hosts.PersonalityController {
+		if err := r.ensurePoolsComplete(client, instance, reqNs); err != nil {
+			return err
+		}
+	}
+
 	logHost.Info("comparing profile attributes", "host", host.ID)
 	instance.Status.InSync = r.CompareAttributes(profile, current, instance, host.Personality, system_info)
 	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Status(), logHost)
@@ -1887,6 +1896,44 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	}
 
 	logHost.V(2).Info("final configuration is set", "profile", current)
+
+	return nil
+}
+
+// ensurePoolsComplete checks if any address pool used by this host's platform
+// networks is missing controller addresses. If so, it directly updates the
+// pool to populate the missing address before proceeding with networking.
+// Only acts when the active controller is reconciled to avoid concurrency.
+func (r *HostReconciler) ensurePoolsComplete(client *gophercloud.ServiceClient, instance *starlingxv1.Host, namespace string) error {
+	activeHost, _, err := r.GetHostByPersonality(namespace, client, cloudManager.ActiveController)
+	if err != nil {
+		return err
+	}
+
+	if !activeHost.Status.Reconciled {
+		return nil
+	}
+
+	platformNets, _ := r.ListPlatformNetworks(namespace)
+	for _, pn := range platformNets {
+		pools, _ := r.GetAddressPoolsFromPlatformNetwork(pn.Spec.AssociatedAddressPools, namespace)
+
+		for _, pool := range pools {
+			if r.isAddrPoolIncomplete(client, pool) {
+				systemPool, err := GetSystemAddrPool(client, pool)
+				if err != nil || systemPool == nil {
+					continue
+				}
+				opts, updateRequired, uuid := r.IsAddrPoolUpdateRequired(pn, pool, systemPool)
+				if updateRequired && uuid != "" {
+					logHost.Info("populating incomplete address pool", "pool", pool.Name)
+					if err := r.CreateOrUpdateAddrPools(client, opts, uuid, pool); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
 
 	return nil
 }
