@@ -2039,11 +2039,6 @@ func (r *HostReconciler) ReconcileResource(
 
 	if !instance.DeletionTimestamp.IsZero() {
 		if utils.ContainsString(instance.Finalizers, HostFinalizerName) {
-
-			// Remove the finalizer so we don't try to do this delete action again.
-			// Defer the removal of the finalizer until the end of the function
-			defer r.removeHostFinalizer(instance)
-
 			// A finalizer is still present so we need to try to delete the
 			// host from the system.
 			if host != nil {
@@ -2051,6 +2046,10 @@ func (r *HostReconciler) ReconcileResource(
 				if err != nil {
 					return err
 				}
+
+				logHost.Info("Host successfully removed")
+				// Only remove the finalizer after successful deletion
+				defer r.removeHostFinalizer(instance)
 			} else {
 				logHost.Info("host being deleted is no longer present on system")
 			}
