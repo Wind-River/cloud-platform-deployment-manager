@@ -659,6 +659,85 @@ var _ = Describe("System controller", func() {
 		})
 	})
 
+	Describe("kubernetesServiceParametersUpdated", func() {
+		Context("when spec contains kubernetes/kube_apiserver parameters", func() {
+			It("should return true", func() {
+				spec := &starlingxv1.SystemSpec{
+					ServiceParameters: []starlingxv1.ServiceParameterInfo{
+						{
+							Service:    "kubernetes",
+							Section:    "kube_apiserver",
+							ParamName:  "tls-min-version",
+							ParamValue: "VersionTLS13",
+						},
+					},
+				}
+				Expect(kubernetesServiceParametersUpdated(spec)).To(BeTrue())
+			})
+		})
+
+		Context("when spec contains mixed parameters including kubernetes", func() {
+			It("should return true", func() {
+				spec := &starlingxv1.SystemSpec{
+					ServiceParameters: []starlingxv1.ServiceParameterInfo{
+						{
+							Service:    "platform",
+							Section:    "maintenance",
+							ParamName:  "worker_boot_timeout",
+							ParamValue: "720",
+						},
+						{
+							Service:    "kubernetes",
+							Section:    "kube_apiserver",
+							ParamName:  "tls-cipher-suites",
+							ParamValue: "TLS_AES_256_GCM_SHA384",
+						},
+					},
+				}
+				Expect(kubernetesServiceParametersUpdated(spec)).To(BeTrue())
+			})
+		})
+
+		Context("when spec contains no kubernetes/kube_apiserver parameters", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{
+					ServiceParameters: []starlingxv1.ServiceParameterInfo{
+						{
+							Service:    "platform",
+							Section:    "maintenance",
+							ParamName:  "worker_boot_timeout",
+							ParamValue: "720",
+						},
+					},
+				}
+				Expect(kubernetesServiceParametersUpdated(spec)).To(BeFalse())
+			})
+		})
+
+		Context("when spec contains kubernetes but different section", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{
+					ServiceParameters: []starlingxv1.ServiceParameterInfo{
+						{
+							Service:    "kubernetes",
+							Section:    "kube_controller_manager",
+							ParamName:  "some-param",
+							ParamValue: "some-value",
+						},
+					},
+				}
+				Expect(kubernetesServiceParametersUpdated(spec)).To(BeFalse())
+			})
+		})
+
+		Context("when spec has no service parameters", func() {
+			It("should return false", func() {
+				spec := &starlingxv1.SystemSpec{}
+				Expect(kubernetesServiceParametersUpdated(spec)).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("FillOptionalMergedSystemSpec", func() {
 		Context("when a ceph backend has no network", func() {
 			It("should fill the default mgmt network", func() {

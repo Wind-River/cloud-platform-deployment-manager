@@ -540,7 +540,34 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 		}
 	}
 
+	// Apply service parameters for services that require an explicit apply
+	// to take effect. Kubernetes kube_apiserver parameters are not consumed
+	// by puppet classes during unlock; they require service-parameter-apply
+	// to trigger the change_k8s_control_plane_params.py script.
+	if kubernetesServiceParametersUpdated(spec) {
+		service := utils.ServiceTypeKubernetes
+		opts := serviceparameters.ServiceApplyOpts{
+			Service: &service,
+		}
+		if err := serviceparameters.Apply(client, opts).Err; err != nil {
+			return err
+		}
+		r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameters have been applied for service %q", service)
+	}
+
 	return nil
+}
+
+// kubernetesServiceParametersUpdated returns true if the spec contains
+// kubernetes/kube_apiserver service parameters that require an explicit apply.
+func kubernetesServiceParametersUpdated(spec *starlingxv1.SystemSpec) bool {
+	for _, sp := range spec.ServiceParameters {
+		if sp.Service == utils.ServiceTypeKubernetes &&
+			sp.Section == utils.ServiceParamSectionKubernetesApiserver {
+			return true
+		}
+	}
+	return false
 }
 
 func ControllerNodesAvailable(objects []hosts.Host, required int) bool {
