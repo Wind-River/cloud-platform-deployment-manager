@@ -445,6 +445,7 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 		return nil
 	}
 	updated := false
+	kubeApiserverUpdated := false
 	for _, spec_sp := range spec.ServiceParameters {
 		found := false
 		for _, info_sp := range info.ServiceParameters {
@@ -460,6 +461,10 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 					}
 					// success
 					updated = true
+					if spec_sp.Service == utils.ServiceTypeKubernetes &&
+						spec_sp.Section == utils.ServiceParamSectionKubernetesApiserver {
+						kubeApiserverUpdated = true
+					}
 					r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameter %q %q %q has been modified", result.Service, result.Section, result.ParamName)
 				}
 				break
@@ -482,6 +487,10 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 			}
 			// success
 			updated = true
+			if spec_sp.Service == utils.ServiceTypeKubernetes &&
+				spec_sp.Section == utils.ServiceParamSectionKubernetesApiserver {
+				kubeApiserverUpdated = true
+			}
 			r.NormalEvent(instance, common.ResourceCreated, "ServiceParameter %q %q %q has been created", result.Service, result.Section, result.ParamName)
 		}
 	}
@@ -540,7 +549,42 @@ func (r *SystemReconciler) ReconcileServiceParameters(client *gophercloud.Servic
 		}
 	}
 
+	// Apply service parameters for services that require an explicit apply
+	// to take effect. Kubernetes kube_apiserver parameters are not consumed
+	// by puppet classes during unlock; they require service-parameter-apply
+	// to trigger the change_k8s_control_plane_params.py script.
+	//
+	// The apply is only issued when both conditions are met:
+	// 1. The user's deployment configuration explicitly contains
+	//    kubernetes/kube_apiserver service parameters (not inherited from
+	//    system defaults via the merge).
+	// 2. A kubernetes/kube_apiserver parameter was actually created or
+	//    updated during this reconciliation cycle.
+	if kubeApiserverUpdated && kubernetesServiceParametersInSpec(&instance.Spec) {
+		service := utils.ServiceTypeKubernetes
+		opts := serviceparameters.ServiceApplyOpts{
+			Service: &service,
+		}
+		if err := serviceparameters.Apply(client, opts).Err; err != nil {
+			return err
+		}
+		r.NormalEvent(instance, common.ResourceUpdated, "ServiceParameters have been applied for service %q", service)
+	}
+
 	return nil
+}
+
+// kubernetesServiceParametersInSpec returns true if the user's deployment
+// configuration explicitly contains kubernetes/kube_apiserver service
+// parameters that require an explicit apply.
+func kubernetesServiceParametersInSpec(spec *starlingxv1.SystemSpec) bool {
+	for _, sp := range spec.ServiceParameters {
+		if sp.Service == utils.ServiceTypeKubernetes &&
+			sp.Section == utils.ServiceParamSectionKubernetesApiserver {
+			return true
+		}
+	}
+	return false
 }
 
 func ControllerNodesAvailable(objects []hosts.Host, required int) bool {
