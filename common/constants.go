@@ -5,9 +5,13 @@ package common
 
 // Service Parameter Service Types
 const ServiceTypeIdentity = "identity"
+const ServiceTypeKubernetes = "kubernetes"
 const ServiceTypePlatform = "platform"
 const ServiceTypeRadosgw = "radosgw"
 const ServiceTypeHttp = "http"
+
+// Service Parameter Sections requiring apply
+const ServiceParamSectionKubernetesApiserver = "kube_apiserver"
 
 // Service Parameter Section
 const ServiceParamSectionHttpConfig = "config"
