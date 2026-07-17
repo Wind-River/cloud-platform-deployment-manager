@@ -1031,6 +1031,16 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
+	if utils.IsReconcilerEnabled(utils.VolumeGroup) {
+		if (in.Storage == nil) != (other.Storage == nil) {
+			return false
+		} else if in.Storage != nil {
+			if !in.Storage.VolumeGroups.DeepEqual(&other.Storage.VolumeGroups) {
+				return false
+			}
+		}
+	}
+
 	if utils.IsReconcilerEnabled(utils.Route) {
 		if !in.Routes.DeepEqual(&other.Routes) {
 			return false
