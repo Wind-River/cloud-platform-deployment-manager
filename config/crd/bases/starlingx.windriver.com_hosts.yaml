@@ -523,6 +523,11 @@ spec:
                               maxLength: 255
                               pattern: ^[a-zA-Z0-9\-_\.]+$
                               type: string
+                            ovsAccess:
+                              description: |-
+                                OVSAccess indicates whether OVS access is enabled for this interface.
+                                Only applicable for ethernet interfaces with a lower pci-sriov interface.
+                              type: boolean
                             platformNetworks:
                               description: |-
                                 PlatformNetworks defines the list of platform networks to be configured

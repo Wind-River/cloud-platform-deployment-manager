@@ -454,3 +454,357 @@ var _ = Describe("HostProfileWebhook wrappers", func() {
 		})
 	})
 })
+
+var _ = Describe("validateOVSAccessInfo", func() {
+	boolPtr := func(b bool) *bool { return &b }
+
+	Context("when ovsAccess is correctly configured", func() {
+		It("should validate successfully", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov0",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "pxeboot0",
+									Class:            "platform",
+									PlatformNetworks: []string{"pxeboot"},
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov0",
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("when ovsAccess is false", func() {
+		It("should validate successfully without any checks", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "eth0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "ens1f0"},
+								OVSAccess: boolPtr(false),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("when ovsAccess is nil (not set)", func() {
+		It("should validate successfully", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "eth0",
+									Class: "platform",
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens1f0"},
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("when ovsAccess is enabled but no lower interface is specified", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "pxeboot0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "ens1f0"},
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no lower interface specified"))
+		})
+	})
+
+	Context("when ovsAccess is enabled but lower interface is not pci-sriov", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "eth0",
+									Class: "platform",
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens1f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "pxeboot0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "eth0",
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not class pci-sriov"))
+		})
+	})
+
+	Context("when ovsAccess is enabled but lower pci-sriov has platform networks", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov0",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{"pxeboot"},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "pxeboot0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov0",
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("has platform networks assigned"))
+		})
+	})
+
+	Context("when multiple interfaces have ovsAccess enabled", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov0",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov1",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f1"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "ovs0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov0",
+								OVSAccess: boolPtr(true),
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "ovs1",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov1",
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("only one ethernet interface per host"))
+		})
+	})
+
+	Context("when a VLAN is configured on the same pci-sriov that has an upper with ovsAccess", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov0",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "pxeboot0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov0",
+								OVSAccess: boolPtr(true),
+							},
+						},
+						VLAN: starlingxv1.VLANList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "vlan100",
+									Class: "platform",
+								},
+								Lower: "sriov0",
+								VID:   100,
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("VLAN interface"))
+			Expect(err.Error()).To(ContainSubstring("ovsAccess enabled"))
+		})
+	})
+
+	Context("when a bond uses a pci-sriov that has an upper with ovsAccess", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov0",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f0"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:             "sriov1",
+									Class:            "pci-sriov",
+									PlatformNetworks: []string{},
+								},
+								Port: starlingxv1.EthernetPortInfo{Name: "ens2f1"},
+							},
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "ovs0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "sriov0",
+								OVSAccess: boolPtr(true),
+							},
+						},
+						Bond: starlingxv1.BondList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "bond0",
+									Class: "platform",
+								},
+								Mode:    "active_standby",
+								Members: []string{"sriov0", "sriov1"},
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("bond interface"))
+			Expect(err.Error()).To(ContainSubstring("ovsAccess enabled"))
+		})
+	})
+
+	Context("when lower interface is not found in the ethernet list", func() {
+		It("should return an error", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: &starlingxv1.InterfaceInfo{
+						Ethernet: starlingxv1.EthernetList{
+							{
+								CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+									Name:  "pxeboot0",
+									Class: "platform",
+								},
+								Port:      starlingxv1.EthernetPortInfo{Name: "dummy"},
+								Lower:     "nonexistent",
+								OVSAccess: boolPtr(true),
+							},
+						},
+					},
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+	})
+
+	Context("when interfaces is nil", func() {
+		It("should validate successfully", func() {
+			obj := &starlingxv1.HostProfile{
+				Spec: starlingxv1.HostProfileSpec{
+					Interfaces: nil,
+				},
+			}
+			err := validateOVSAccessInfo(obj)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+})

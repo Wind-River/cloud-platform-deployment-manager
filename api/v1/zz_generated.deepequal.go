@@ -729,6 +729,15 @@ func (in *EthernetInfo) DeepEqual(other *EthernetInfo) bool {
 	if in.Lower != other.Lower {
 		return false
 	}
+	if in.OVSAccess != nil {
+		if (in.OVSAccess == nil) != (other.OVSAccess == nil) {
+			return false
+		} else if in.OVSAccess != nil {
+			if *in.OVSAccess != *other.OVSAccess {
+				return false
+			}
+		}
+	}
 
 	return true
 }

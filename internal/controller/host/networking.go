@@ -884,6 +884,32 @@ func sriovUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Int
 	return opts, result
 }
 
+// ethernetUpdateRequired is a utility function which determines whether the
+// ethernet specific interface attributes (including OVSAccess) have changed
+// and if so fills in the opts struct with the values that must be passed to
+// the system API.
+func ethernetUpdateRequired(ethInfo starlingxv1.EthernetInfo, iface *interfaces.Interface, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) (opts interfaces.InterfaceOpts, result bool) {
+	var ok bool
+
+	if opts, ok = interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+		result = true
+	}
+
+	if ethInfo.OVSAccess != nil {
+		if iface.OVSAccess == nil || *ethInfo.OVSAccess != *iface.OVSAccess {
+			opts.OVSAccess = ethInfo.OVSAccess
+			result = true
+		}
+	} else if iface.OVSAccess != nil && *iface.OVSAccess {
+		// User wants to clear OVS access
+		falseVal := false
+		opts.OVSAccess = &falseVal
+		result = true
+	}
+
+	return opts, result
+}
+
 // ReconcileInterfaceNetworks implements a method to reconcile the list of
 // networks on an interface against the configured set of networks.
 func (r *HostReconciler) ReconcileInterfaceNetworks(client *gophercloud.ServiceClient, instance *starlingxv1.Host, info starlingxv1.CommonInterfaceInfo, iface interfaces.Interface, host *v1info.HostInfo) (updated bool, err error) {
@@ -1147,6 +1173,7 @@ func (r *HostReconciler) ReconcileEthernetInterfaces(client *gophercloud.Service
 				opts.Uses = &uses
 				opts.MaxTxRate = ethInfo.MaxTxRate
 				opts.MaxRxRate = ethInfo.MaxRxRate
+				opts.OVSAccess = ethInfo.OVSAccess
 
 				logHost.Info("creating ethernet interface", "opts", opts)
 
@@ -1164,7 +1191,7 @@ func (r *HostReconciler) ReconcileEthernetInterfaces(client *gophercloud.Service
 				updated = true
 			} else {
 				ifuuid = iface.ID
-				if opts, ok := interfaceUpdateRequired(ethInfo.CommonInterfaceInfo, iface, profile, host); ok {
+				if opts, ok := ethernetUpdateRequired(ethInfo, iface, profile, host); ok {
 					logHost.Info("updating ethernet interface", "uuid", ifuuid, "opts", opts)
 
 					_, err := interfaces.Update(client, ifuuid, opts).Extract()

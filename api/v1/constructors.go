@@ -378,6 +378,8 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 				ethernet.VFDriver = iface.VFDriver
 			}
 
+			ethernet.OVSAccess = iface.OVSAccess
+
 			ethernets = append(ethernets, ethernet)
 
 		case interfaces.IFTypeVLAN:
