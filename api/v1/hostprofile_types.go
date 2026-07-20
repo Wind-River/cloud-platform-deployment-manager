@@ -434,6 +434,11 @@ type EthernetInfo struct {
 	// configured.
 	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9\-_\.]+$
 	Lower string `json:"lower,omitempty"`
+
+	// OVSAccess indicates whether OVS access is enabled for this interface.
+	// Only applicable for ethernet interfaces with a lower pci-sriov interface.
+	// +optional
+	OVSAccess *bool `json:"ovsAccess,omitempty"`
 }
 
 // EthernetList defines a type to represent a slice of ethernet interfaces.

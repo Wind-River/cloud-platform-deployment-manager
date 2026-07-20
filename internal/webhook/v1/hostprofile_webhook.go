@@ -134,6 +134,93 @@ func validateStorageInfo(obj *starlingxv1.HostProfile) error {
 	return nil
 }
 
+// validateOVSAccessInfo validates the OVS access configuration for interfaces.
+func validateOVSAccessInfo(obj *starlingxv1.HostProfile) error {
+	if obj.Spec.Interfaces == nil {
+		return nil
+	}
+
+	ethernet := obj.Spec.Interfaces.Ethernet
+	if ethernet == nil {
+		return nil
+	}
+
+	// Build a map of ethernet interface names to their info for quick lookup
+	ethByName := make(map[string]*starlingxv1.EthernetInfo)
+	for i := range ethernet {
+		ethByName[ethernet[i].Name] = &ethernet[i]
+	}
+
+	ovsAccessCount := 0
+
+	for _, eth := range ethernet {
+		if eth.OVSAccess == nil || !*eth.OVSAccess {
+			continue
+		}
+
+		ovsAccessCount++
+
+		// OVSAccess requires a lower interface
+		if eth.Lower == "" {
+			return fmt.Errorf("interface %q has ovsAccess enabled but no lower interface specified", eth.Name)
+		}
+
+		// The lower interface must be pci-sriov class
+		lowerEth, found := ethByName[eth.Lower]
+		if !found {
+			return fmt.Errorf("interface %q has ovsAccess enabled but lower interface %q not found", eth.Name, eth.Lower)
+		}
+
+		if lowerEth.Class != "pci-sriov" {
+			return fmt.Errorf("interface %q has ovsAccess enabled but lower interface %q is not class pci-sriov (is %q)", eth.Name, eth.Lower, lowerEth.Class)
+		}
+
+		// The lower pci-sriov interface must not have platform networks
+		if len(lowerEth.PlatformNetworks) > 0 {
+			return fmt.Errorf("interface %q has ovsAccess enabled but lower pci-sriov interface %q has platform networks assigned", eth.Name, eth.Lower)
+		}
+
+		// Only one interface per host can have ovsAccess=true
+		if ovsAccessCount > 1 {
+			return fmt.Errorf("only one ethernet interface per host can have ovsAccess enabled, found multiple")
+		}
+	}
+
+	// If any ethernet has ovsAccess=true, check that no VLAN is configured
+	// on the same pci-sriov lower interface
+	if ovsAccessCount > 0 && obj.Spec.Interfaces.VLAN != nil {
+		for _, eth := range ethernet {
+			if eth.OVSAccess == nil || !*eth.OVSAccess {
+				continue
+			}
+			for _, vlan := range obj.Spec.Interfaces.VLAN {
+				if vlan.Lower == eth.Lower {
+					return fmt.Errorf("VLAN interface %q cannot be configured on pci-sriov %q which has an upper ethernet with ovsAccess enabled", vlan.Name, eth.Lower)
+				}
+			}
+		}
+	}
+
+	// If any ethernet has ovsAccess=true, check that no bond uses the same
+	// pci-sriov as a member
+	if ovsAccessCount > 0 && obj.Spec.Interfaces.Bond != nil {
+		for _, eth := range ethernet {
+			if eth.OVSAccess == nil || !*eth.OVSAccess {
+				continue
+			}
+			for _, bond := range obj.Spec.Interfaces.Bond {
+				for _, member := range bond.Members {
+					if member == eth.Lower {
+						return fmt.Errorf("bond interface %q cannot use pci-sriov %q as a member because it has an upper ethernet with ovsAccess enabled", bond.Name, eth.Lower)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func validateHostProfile(r *starlingxv1.HostProfile) error {
 	if r.Spec.Base != nil && *r.Spec.Base == "" {
 		return errors.New("profile base name must not be empty")
@@ -155,6 +242,13 @@ func validateHostProfile(r *starlingxv1.HostProfile) error {
 
 	if r.Spec.Storage != nil {
 		err := validateStorageInfo(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Spec.Interfaces != nil {
+		err := validateOVSAccessInfo(r)
 		if err != nil {
 			return err
 		}
