@@ -13,7 +13,7 @@ import (
 // +deepequal-gen=false
 type PtpInstanceSpec struct {
 	// Serivce defines the service type of the ptp instance
-	// +kubebuilder:validation:Enum=ptp4l;phc2sys;ts2phc;clock;gnss-monitor
+	// +kubebuilder:validation:Enum=ptp4l;phc2sys;ts2phc;clock;gnss-monitor;dpll-mgr
 	Service string `json:"service"`
 
 	// Parameters contains a list of parameters grouped by section assigned to the ptp instance

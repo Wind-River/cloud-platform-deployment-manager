@@ -68,6 +68,7 @@ spec:
                 - ts2phc
                 - clock
                 - gnss-monitor
+                - dpll-mgr
                 type: string
             required:
             - service
