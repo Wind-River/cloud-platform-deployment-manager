@@ -41,13 +41,3 @@ No imperative `system host-label-assign` or `kubectl label node` commands needed
 ```bash
 kubectl apply -k .
 ```
-
-## Notes
-
-- Author all labels in the HostProfile **before** the host first reconciles.
-  DM applies the full label set on initial reconcile.
-- If a label is removed out-of-band, DM detects `INSYNC=false` and re-applies
-  the declared state automatically.
-- KMM's `Module.spec.selector` uses a plain label map (AND logic). A single
-  shared `px-node=true` gate covers both storage and storageless nodes; the
-  `node-type` label is consumed separately by the Portworx StorageCluster spec.
