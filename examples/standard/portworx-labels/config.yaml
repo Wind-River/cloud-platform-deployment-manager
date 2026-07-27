@@ -1,0 +1,460 @@
+# Replace placeholders before applying:
+#   CONTROLLER0MAC, CONTROLLER1MAC, WORKER0MAC, WORKER1MAC, WORKER2MAC, WORKER3MAC, WORKER4MAC
+#   CHANGEME_BASE64 (base64-encoded admin password)
+#   OS_REGION_NAME value (from: system show | grep region_name)
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deployment
+spec: {}
+---
+apiVersion: v1
+data:
+  OS_PASSWORD: CHANGEME_BASE64
+  OS_USERNAME: YWRtaW4=
+kind: Secret
+metadata:
+  name: system-endpoint
+  namespace: deployment
+stringData:
+  OS_AUTH_URL: http://192.168.204.1:5000/v3
+  OS_INTERFACE: internal
+  OS_PROJECT_DOMAIN_NAME: Default
+  OS_PROJECT_NAME: admin
+  OS_REGION_NAME: CHANGEME_REGION_UUID
+type: Opaque
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0
+  namespace: deployment
+spec:
+  dnsServers:
+  - 8.8.8.8
+  - 8.8.4.4
+  ptp:
+    mechanism: e2e
+    mode: hardware
+    transport: l2
+  storage:
+    filesystems:
+    - name: database
+      size: 10
+  vswitchType: none
+---
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0-profile
+  namespace: deployment
+spec:
+  administrativeState: unlocked
+  appArmor: disabled
+  boardManagement:
+    type: none
+  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  clockSynchronization: ntp
+  console: ttyS0,115200
+  hwSettle: "0"
+  installOutput: graphical
+  interfaces:
+    ethernet:
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      name: oam0
+      platformNetworks:
+      - oam
+      port:
+        name: enp2s1
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      mtu: 1400
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      - cluster-host
+      port:
+        name: enp2s2
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+  memory:
+  - functions:
+    - function: platform
+      pageCount: 2048000
+      pageSize: 4KB
+    node: 0
+  personality: controller
+  powerOn: true
+  provisioningMode: static
+  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  storage:
+    filesystems:
+    - name: scratch
+      size: 16
+    - name: backup
+      size: 25
+    - name: docker
+      size: 40
+    - name: kubelet
+      size: 10
+    - name: log
+      size: 8
+    - name: var
+      size: 20
+    - name: root
+      size: 20
+    volumeGroups:
+    - name: cgts-vg
+      physicalVolumes:
+      - path: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+        size: 218
+        type: partition
+  subfunctions:
+  - controller
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0
+  namespace: deployment
+spec:
+  match:
+    bootMAC: CONTROLLER0MAC
+  overrides:
+    interfaces:
+      ethernet:
+      - class: none
+        dataNetworks: []
+        maxRxRate: 0
+        maxTxRate: 0
+        mtu: 1500
+        name: lo
+        platformNetworks: []
+        port:
+          name: lo
+        ptpInterfaces: []
+        ptpRole: none
+        uuid: ""
+    provisioningMode: dynamic
+  profile: controller-0-profile
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-1
+  namespace: deployment
+spec:
+  match:
+    bootMAC: CONTROLLER1MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: controller-0-profile
+---
+# Plain worker profile — no Portworx labels (pure compute).
+# Workers bound to this profile will NOT run Portworx pods or load px.ko.
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  administrativeState: unlocked
+  appArmor: disabled
+  boardManagement:
+    type: none
+  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  clockSynchronization: ntp
+  console: ttyS0,115200
+  hwSettle: "0"
+  installOutput: graphical
+  interfaces:
+    ethernet:
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      port:
+        name: enp2s2
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      name: cluster0
+      platformNetworks:
+      - cluster-host
+      port:
+        name: enp3s0
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+  memory:
+  - functions:
+    - function: platform
+      pageCount: 512000
+      pageSize: 4KB
+    node: 0
+  personality: worker
+  powerOn: true
+  provisioningMode: static
+  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  storage:
+    filesystems:
+    - name: scratch
+      size: 16
+    - name: docker
+      size: 40
+    - name: kubelet
+      size: 10
+    - name: log
+      size: 8
+    - name: var
+      size: 20
+    - name: root
+      size: 20
+    volumeGroups:
+    - name: cgts-vg
+      physicalVolumes:
+      - path: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+        size: 218
+        type: partition
+  subfunctions:
+  - worker
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-0
+  namespace: deployment
+spec:
+  match:
+    bootMAC: WORKER0MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: px-storageless-worker-profile
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-1
+  namespace: deployment
+spec:
+  match:
+    bootMAC: WORKER1MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: worker-profile
+---
+# Portworx storage worker profile — carries both placement labels.
+# Workers bound to this profile will have px.ko loaded by KMM and
+# join the Portworx cluster as storage nodes contributing local disks.
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: px-storage-worker-profile
+  namespace: deployment
+spec:
+  administrativeState: unlocked
+  appArmor: disabled
+  boardManagement:
+    type: none
+  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  clockSynchronization: ntp
+  console: ttyS0,115200
+  hwSettle: "0"
+  installOutput: graphical
+  interfaces:
+    ethernet:
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      mtu: 1400
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      port:
+        name: enp2s2
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      name: cluster0
+      platformNetworks:
+      - cluster-host
+      port:
+        name: enp3s0
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+  labels:
+    portworx.io/px-node: "true"
+    portworx.io/node-type: "storage"
+  memory:
+  - functions:
+    - function: platform
+      pageCount: 640000
+      pageSize: 4KB
+    node: 0
+  personality: worker
+  powerOn: true
+  provisioningMode: static
+  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  storage:
+    filesystems:
+    - name: scratch
+      size: 16
+    - name: docker
+      size: 40
+    - name: kubelet
+      size: 10
+    - name: log
+      size: 8
+    - name: var
+      size: 20
+    - name: root
+      size: 20
+  subfunctions:
+  - worker
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-2
+  namespace: deployment
+spec:
+  match:
+    bootMAC: WORKER2MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: px-storage-worker-profile
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-3
+  namespace: deployment
+spec:
+  match:
+    bootMAC: WORKER3MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: px-storage-worker-profile
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-4
+  namespace: deployment
+spec:
+  match:
+    bootMAC: WORKER4MAC
+  overrides:
+    provisioningMode: dynamic
+  profile: px-storage-worker-profile
+---
+# Portworx storageless worker profile — carries both placement labels.
+# Workers bound to this profile will have px.ko loaded by KMM and
+# join the Portworx cluster as storageless (compute-only) nodes.
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: px-storageless-worker-profile
+  namespace: deployment
+spec:
+  administrativeState: unlocked
+  appArmor: disabled
+  boardManagement:
+    type: none
+  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  clockSynchronization: ntp
+  console: ttyS0,115200
+  hwSettle: "0"
+  installOutput: graphical
+  interfaces:
+    ethernet:
+    - class: platform
+      dataNetworks: []
+      maxRxRate: 0
+      maxTxRate: 0
+      mtu: 1400
+      name: mgmt0
+      platformNetworks:
+      - mgmt
+      - cluster-host
+      port:
+        name: enp2s2
+      ptpInterfaces: []
+      ptpRole: none
+      uuid: ""
+  labels:
+    portworx.io/px-node: "true"
+    portworx.io/node-type: "storageless"
+  memory:
+  - functions:
+    - function: platform
+      pageCount: 640000
+      pageSize: 4KB
+    node: 0
+  personality: worker
+  powerOn: true
+  provisioningMode: static
+  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
+  storage:
+    filesystems:
+    - name: scratch
+      size: 16
+    - name: docker
+      size: 40
+    - name: kubelet
+      size: 10
+    - name: log
+      size: 8
+    - name: var
+      size: 20
+    - name: root
+      size: 20
+  subfunctions:
+  - worker
