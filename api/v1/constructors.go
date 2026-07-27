@@ -378,7 +378,12 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 				ethernet.VFDriver = iface.VFDriver
 			}
 
-			ethernet.OVSAccess = iface.OVSAccess
+			if iface.OVSAccess != nil && *iface.OVSAccess && len(iface.Uses) > 0 {
+				lowerIface, found := host.FindInterfaceByName(iface.Uses[0])
+				if found && strings.EqualFold(lowerIface.Class, interfaces.IFClassPCISRIOV) {
+					ethernet.OVSAccess = iface.OVSAccess
+				}
+			}
 
 			ethernets = append(ethernets, ethernet)
 
