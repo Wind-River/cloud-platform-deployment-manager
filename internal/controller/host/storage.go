@@ -302,6 +302,15 @@ func (r *HostReconciler) ReconcileVolumeGroups(client *gophercloud.ServiceClient
 	// Update existing volume groups capabilities and create any new volume
 	// groups as needed.
 	for _, vgInfo := range profile.Storage.VolumeGroups {
+		// Defer cgts-vg configuration until the host is enabled, this will
+		// avoid problems with free disk space
+		if vgInfo.Name == ctrlcommon.LVG_CGTS_VG &&
+			instance.Status.DeploymentScope == cloudManager.ScopeBootstrap &&
+			host.IsLockedDisabled() {
+			logHost.Info("deferring cgts-vg capability update until host is enabled")
+			continue
+		}
+
 		// Considering that the capabilities object will be required to create
 		// or update the VG, create the object here to avoid duplicity
 		var capabilitiesPtr *volumegroups.CapabilitiesOpts

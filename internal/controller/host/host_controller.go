@@ -1791,6 +1791,25 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 		return err
 	}
 
+	// Normalize volume group fields so that system-calculated lvmType and
+	// lvmPoolSize do not produce false deltas when not explicitly set by the user.
+	//
+	// This method only acts on volume group section (for lvm-csi purpose), as
+	// followed:
+	//   if one, or more, optional key is omitted by user on user profile and
+	//   the deployment manager detects the presence of a system calculated value,
+	//   the method will copy the value to the user profile, avoiding an
+	//   indesired delta and a cyclic reconciliation loop.
+	//   i.e.
+	//   volumeGroups:
+	//     - name: "cgts-vg"
+	//       lvmFunction: "lvm-csi"
+	//       <....>
+	//   System will configure the thin pool with 50% of the free space and the
+	//   default profile will detects this change. The thin pool size will be
+	//   copied to the user profile.
+	NormalizeVolumeGroupsForComparison(profile, current)
+
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {
 		logHost.Info("syncing interface name", "host", host.ID)

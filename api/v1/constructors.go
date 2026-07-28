@@ -518,7 +518,7 @@ func parsePhysicalVolumeInfo(group *VolumeGroupInfo, vg *volumegroups.VolumeGrou
 			if partition, ok := host.FindPartition(pv.DeviceUUID); ok {
 				size := partition.Gibibytes()
 				physicalVolume.Size = &size
-				physicalVolume.Path = stripPartitionNumber(partition.DevicePath)
+				physicalVolume.Path = partition.DevicePath
 			} else {
 				msg := fmt.Sprintf("failed to lookup partition %s", pv.DeviceUUID)
 				return NewMissingSystemResource(msg)
