@@ -66,21 +66,12 @@ spec:
   interfaces:
     ethernet:
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       name: oam0
       platformNetworks:
       - oam
       port:
         name: enp2s1
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       mtu: 1400
       name: mgmt0
       platformNetworks:
@@ -88,9 +79,6 @@ spec:
       - cluster-host
       port:
         name: enp2s2
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
   memory:
   - functions:
     - function: platform
@@ -140,17 +128,11 @@ spec:
     interfaces:
       ethernet:
       - class: none
-        dataNetworks: []
-        maxRxRate: 0
-        maxTxRate: 0
         mtu: 1500
         name: lo
         platformNetworks: []
         port:
           name: lo
-        ptpInterfaces: []
-        ptpRole: none
-        uuid: ""
     provisioningMode: dynamic
   profile: controller-0-profile
 ---
@@ -190,29 +172,17 @@ spec:
   interfaces:
     ethernet:
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       name: mgmt0
       platformNetworks:
       - mgmt
       port:
         name: enp2s2
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       name: cluster0
       platformNetworks:
       - cluster-host
       port:
         name: enp3s0
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
   memory:
   - functions:
     - function: platform
@@ -297,30 +267,18 @@ spec:
   interfaces:
     ethernet:
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       mtu: 1400
       name: mgmt0
       platformNetworks:
       - mgmt
       port:
         name: enp2s2
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       name: cluster0
       platformNetworks:
       - cluster-host
       port:
         name: enp3s0
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
   labels:
     portworx.io/px-node: "true"
     portworx.io/node-type: "storage"
@@ -416,9 +374,6 @@ spec:
   interfaces:
     ethernet:
     - class: platform
-      dataNetworks: []
-      maxRxRate: 0
-      maxTxRate: 0
       mtu: 1400
       name: mgmt0
       platformNetworks:
@@ -426,9 +381,6 @@ spec:
       - cluster-host
       port:
         name: enp2s2
-      ptpInterfaces: []
-      ptpRole: none
-      uuid: ""
   labels:
     portworx.io/px-node: "true"
     portworx.io/node-type: "storageless"
