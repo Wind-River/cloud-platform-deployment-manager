@@ -10,8 +10,12 @@ import (
 	"reflect"
 
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 )
+
+func intPtr(v int) *int       { return &v }
+func strPtr(v string) *string { return &v }
 
 var _ = Describe("Profile utils", func() {
 	Describe("MergeProfiles utility", func() {
@@ -461,14 +465,14 @@ var _ = Describe("Profile utils", func() {
 		Context("when the applied profile changes lvmFunction of an existing VG", func() {
 			It("should use the applied profile's lvmFunction value", func() {
 				lvmCSI := "lvm-csi"
-				lvmNone := "none"
+				lvmNone := common.LVMFunctionNone
 				lvmThick := "thick"
 				size := 261
 
 				hostStorage := &starlingxv1.ProfileStorageInfo{
 					VolumeGroups: starlingxv1.VolumeGroupList{
 						{
-							Name:        "cgts-vg",
+							Name:        common.LVG_CGTS_VG,
 							LVMFunction: &lvmCSI,
 							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
 								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
@@ -488,7 +492,7 @@ var _ = Describe("Profile utils", func() {
 				appliedStorage := &starlingxv1.ProfileStorageInfo{
 					VolumeGroups: starlingxv1.VolumeGroupList{
 						{
-							Name:        "cgts-vg",
+							Name:        common.LVG_CGTS_VG,
 							LVMFunction: &lvmNone,
 							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
 								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
@@ -508,8 +512,8 @@ var _ = Describe("Profile utils", func() {
 				result := MergeVolumeGroups(hostStorage, appliedStorage)
 
 				Expect(result).To(HaveLen(2))
-				Expect(result[0].Name).To(Equal("cgts-vg"))
-				Expect(*result[0].LVMFunction).To(Equal("none"))
+				Expect(result[0].Name).To(Equal(common.LVG_CGTS_VG))
+				Expect(*result[0].LVMFunction).To(Equal(common.LVMFunctionNone))
 				Expect(result[1].Name).To(Equal("lvm-provisioner"))
 				Expect(*result[1].LVMFunction).To(Equal("lvm-csi"))
 			})
@@ -524,7 +528,7 @@ var _ = Describe("Profile utils", func() {
 				hostStorage := &starlingxv1.ProfileStorageInfo{
 					VolumeGroups: starlingxv1.VolumeGroupList{
 						{
-							Name:        "cgts-vg",
+							Name:        common.LVG_CGTS_VG,
 							LVMFunction: &lvmCSI,
 							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
 								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
@@ -544,7 +548,7 @@ var _ = Describe("Profile utils", func() {
 				appliedStorage := &starlingxv1.ProfileStorageInfo{
 					VolumeGroups: starlingxv1.VolumeGroupList{
 						{
-							Name:        "cgts-vg",
+							Name:        common.LVG_CGTS_VG,
 							LVMFunction: &lvmCSI,
 							PhysicalVolumes: starlingxv1.PhysicalVolumeList{
 								{Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5", Type: "partition", Size: &size},
@@ -556,7 +560,7 @@ var _ = Describe("Profile utils", func() {
 				result := MergeVolumeGroups(hostStorage, appliedStorage)
 
 				Expect(result).To(HaveLen(1))
-				Expect(result[0].Name).To(Equal("cgts-vg"))
+				Expect(result[0].Name).To(Equal(common.LVG_CGTS_VG))
 				Expect(*result[0].LVMFunction).To(Equal("lvm-csi"))
 			})
 		})
@@ -1395,6 +1399,155 @@ var _ = Describe("Profile utils", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(merged).NotTo(BeNil())
 			Expect(merged.Routes).To(HaveLen(4))
+		})
+	})
+})
+
+var _ = Describe("MergeVolumeGroups LVM fields", func() {
+	Context("when defaults have lvmPoolSize but user omits it", func() {
+		It("should inherit lvmPoolSize from defaults since function is active", func() {
+			defaults := &starlingxv1.ProfileStorageInfo{
+				VolumeGroups: starlingxv1.VolumeGroupList{
+					{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(35)},
+				},
+			}
+			user := &starlingxv1.ProfileStorageInfo{
+				VolumeGroups: starlingxv1.VolumeGroupList{
+					{Name: common.LVG_CGTS_VG, LVMFunction: strPtr("lvm-csi")},
+				},
+			}
+
+			result := MergeVolumeGroups(defaults, user)
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].LVMPoolSize).NotTo(BeNil())
+			Expect(*result[0].LVMPoolSize).To(Equal(35))
+			Expect(result[0].LVMType).NotTo(BeNil())
+			Expect(*result[0].LVMType).To(Equal("thin"))
+		})
+	})
+
+	Context("when user sets lvmFunction to none", func() {
+		It("should NOT inherit lvmType/lvmPoolSize from defaults", func() {
+			defaults := &starlingxv1.ProfileStorageInfo{
+				VolumeGroups: starlingxv1.VolumeGroupList{
+					{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(35)},
+				},
+			}
+			user := &starlingxv1.ProfileStorageInfo{
+				VolumeGroups: starlingxv1.VolumeGroupList{
+					{Name: common.LVG_CGTS_VG, LVMFunction: strPtr(common.LVMFunctionNone)},
+				},
+			}
+
+			result := MergeVolumeGroups(defaults, user)
+
+			Expect(result).To(HaveLen(1))
+			Expect(*result[0].LVMFunction).To(Equal(common.LVMFunctionNone))
+			Expect(result[0].LVMType).To(BeNil())
+			Expect(result[0].LVMPoolSize).To(BeNil())
+		})
+	})
+})
+
+var _ = Describe("NormalizeVolumeGroupsForComparison", func() {
+	Context("when profile has active lvmFunction but omits lvmType/lvmPoolSize (day-2)", func() {
+		It("should adopt system-calculated values from current into profile", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMFunction: strPtr("lvm-csi")},
+					},
+				},
+			}
+			current := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(35)},
+					},
+				},
+			}
+
+			NormalizeVolumeGroupsForComparison(profile, current)
+
+			Expect(profile.Storage.VolumeGroups[0].LVMType).NotTo(BeNil())
+			Expect(*profile.Storage.VolumeGroups[0].LVMType).To(Equal("thin"))
+			Expect(profile.Storage.VolumeGroups[0].LVMPoolSize).NotTo(BeNil())
+			Expect(*profile.Storage.VolumeGroups[0].LVMPoolSize).To(Equal(35))
+		})
+	})
+
+	Context("when profile has no lvmFunction (nil)", func() {
+		It("should clear lvmType/lvmPoolSize from current", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG},
+					},
+				},
+			}
+			current := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(35)},
+					},
+				},
+			}
+
+			NormalizeVolumeGroupsForComparison(profile, current)
+
+			Expect(current.Storage.VolumeGroups[0].LVMType).To(BeNil())
+			Expect(current.Storage.VolumeGroups[0].LVMPoolSize).To(BeNil())
+		})
+	})
+
+	Context("when profile has lvmFunction=none", func() {
+		It("should clear lvmType/lvmPoolSize from current", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMFunction: strPtr(common.LVMFunctionNone)},
+					},
+				},
+			}
+			current := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(121)},
+					},
+				},
+			}
+
+			NormalizeVolumeGroupsForComparison(profile, current)
+
+			Expect(current.Storage.VolumeGroups[0].LVMType).To(BeNil())
+			Expect(current.Storage.VolumeGroups[0].LVMPoolSize).To(BeNil())
+		})
+	})
+
+	Context("for cgts-vg with active lvmFunction", func() {
+		It("should suppress system-calculated diffs by adopting current values", func() {
+			profile := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMFunction: strPtr("lvm-csi")},
+					},
+				},
+			}
+			current := &starlingxv1.HostProfileSpec{
+				Storage: &starlingxv1.ProfileStorageInfo{
+					VolumeGroups: starlingxv1.VolumeGroupList{
+						{Name: common.LVG_CGTS_VG, LVMType: strPtr("thin"), LVMFunction: strPtr("lvm-csi"), LVMPoolSize: intPtr(121)},
+					},
+				},
+			}
+
+			NormalizeVolumeGroupsForComparison(profile, current)
+
+			Expect(profile.Storage.VolumeGroups[0].LVMType).NotTo(BeNil())
+			Expect(*profile.Storage.VolumeGroups[0].LVMType).To(Equal("thin"))
+			Expect(profile.Storage.VolumeGroups[0].LVMPoolSize).NotTo(BeNil())
+			Expect(*profile.Storage.VolumeGroups[0].LVMPoolSize).To(Equal(121))
 		})
 	})
 })

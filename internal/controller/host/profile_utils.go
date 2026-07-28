@@ -42,17 +42,30 @@ func MergeProfiles(a, b *starlingxv1.HostProfileSpec) (*starlingxv1.HostProfileS
 	return a, nil
 }
 
-// MergeVolumeGroups keeps only VGs defined in the source profile (b),
-// using b as the source of truth.
+// MergeVolumeGroups uses b (user profile) as source of truth for which VGs
+// should exist. VGs in b that match by name in a (defaults) get their nil
+// fields filled from defaults. VGs in b with no match in a are new and
+// included as-is (to be created on the system).
 func MergeVolumeGroups(a, b *starlingxv1.ProfileStorageInfo) starlingxv1.VolumeGroupList {
 	filtered := make(starlingxv1.VolumeGroupList, 0, len(b.VolumeGroups))
 	for _, srcVG := range b.VolumeGroups {
 		for _, vg := range a.VolumeGroups {
 			if vg.Name == srcVG.Name {
-				filtered = append(filtered, srcVG)
+				if srcVG.LVMFunction == nil && vg.LVMFunction != nil {
+					srcVG.LVMFunction = vg.LVMFunction
+				}
+				if srcVG.LVMFunction != nil && *srcVG.LVMFunction != common.LVMFunctionNone {
+					if srcVG.LVMType == nil && vg.LVMType != nil {
+						srcVG.LVMType = vg.LVMType
+					}
+					if srcVG.LVMPoolSize == nil && vg.LVMPoolSize != nil {
+						srcVG.LVMPoolSize = vg.LVMPoolSize
+					}
+				}
 				break
 			}
 		}
+		filtered = append(filtered, srcVG)
 	}
 	return filtered
 }
@@ -159,6 +172,62 @@ func FixVolumeGroupPath(a *starlingxv1.HostProfileSpec, hostInfo *v1info.HostInf
 		result = append(result, vgInfo)
 	}
 	a.Storage.VolumeGroups = result
+}
+
+// NormalizeVolumeGroupsForComparison adjusts the profile and current VG lists
+// so that system-calculated fields (lvmType, lvmPoolSize) do not produce
+// false deltas during comparison.
+// During the configuration the user can omit lvmPoolSize or other keys, by
+// adding the keys in user profile DM will avoid false deltas.
+func NormalizeVolumeGroupsForComparison(profile, current *starlingxv1.HostProfileSpec) {
+	if profile == nil || current == nil {
+		return
+	}
+	if profile.Storage == nil || current.Storage == nil {
+		return
+	}
+
+	currentVGMap := make(map[string]*starlingxv1.VolumeGroupInfo, len(current.Storage.VolumeGroups))
+	for i := range current.Storage.VolumeGroups {
+		vg := &current.Storage.VolumeGroups[i]
+		currentVGMap[vg.Name] = vg
+	}
+
+	for i := range profile.Storage.VolumeGroups {
+		profileVG := &profile.Storage.VolumeGroups[i]
+		currentVG, found := currentVGMap[profileVG.Name]
+		if !found {
+			continue
+		}
+		normalizeVolumeGroup(profileVG, currentVG)
+	}
+}
+
+// normalizeVolumeGroup adjusts a single profile/current VG pair so that
+// system-calculated fields do not produce false deltas.
+func normalizeVolumeGroup(profileVG, currentVG *starlingxv1.VolumeGroupInfo) {
+	hasActiveFunction := profileVG.LVMFunction != nil && *profileVG.LVMFunction != common.LVMFunctionNone
+
+	if hasActiveFunction {
+		defaultFromCurrent(&profileVG.LVMType, currentVG.LVMType)
+		defaultFromCurrent(&profileVG.LVMPoolSize, currentVG.LVMPoolSize)
+	} else {
+		currentVG.LVMType = nil
+		currentVG.LVMPoolSize = nil
+	}
+
+	if profileVG.Name == common.LVG_CGTS_VG {
+		defaultFromCurrent(&profileVG.LVMType, currentVG.LVMType)
+		defaultFromCurrent(&profileVG.LVMPoolSize, currentVG.LVMPoolSize)
+		defaultFromCurrent(&profileVG.LVMFunction, currentVG.LVMFunction)
+	}
+}
+
+// defaultFromCurrent sets *dst to src when *dst is nil and src is non-nil.
+func defaultFromCurrent[T any](dst **T, src *T) {
+	if *dst == nil && src != nil {
+		*dst = src
+	}
 }
 
 // FixPhysicalVolumesPath is to fix device path in the profile's physical volume spec

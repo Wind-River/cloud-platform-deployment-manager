@@ -157,6 +157,9 @@ const ParentFound = "parent_found"
 // Constant for standard volume group
 const LVG_CGTS_VG = "cgts-vg"
 
+// LVMFunctionNone represents a volume group with no active LVM function.
+const LVMFunctionNone = "none"
+
 // Common event record reasons
 const (
 	ResourceCreated    = "Created"
