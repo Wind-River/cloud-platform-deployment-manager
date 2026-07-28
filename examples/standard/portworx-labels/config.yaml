@@ -130,7 +130,6 @@ spec:
       - class: none
         mtu: 1500
         name: lo
-        platformNetworks: []
         port:
           name: lo
     provisioningMode: dynamic
