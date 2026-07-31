@@ -279,7 +279,7 @@ spec:
       port:
         name: enp3s0
   labels:
-    portworx.io/px-node: "true"
+    px-node: "true"
     portworx.io/node-type: "storage"
   memory:
   - functions:
@@ -381,7 +381,7 @@ spec:
       port:
         name: enp2s2
   labels:
-    portworx.io/px-node: "true"
+    px-node: "true"
     portworx.io/node-type: "storageless"
   memory:
   - functions:
