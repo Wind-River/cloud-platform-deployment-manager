@@ -221,6 +221,59 @@ func validateOVSAccessInfo(obj *starlingxv1.HostProfile) error {
 	return nil
 }
 
+// validateChannelsInfo validates interface channel configuration.
+//   - channels (PFChannels): only applicable to ethernet or ae interface types.
+//   - sriov_vf_channels (VFChannels): only applicable to pci-sriov class with
+//     vf-driver 'netdevice', or vf interface type. The vf-driver must be
+//     'netdevice' when sriov_vf_channels is specified.
+func validateChannelsInfo(obj *starlingxv1.HostProfile) error {
+	if obj.Spec.Interfaces == nil {
+		return nil
+	}
+
+	// Validate ethernet interfaces
+	for _, eth := range obj.Spec.Interfaces.Ethernet {
+		// VFChannels on pci-sriov ethernet requires vf-driver netdevice
+		if eth.VFChannels != nil && eth.Class == "pci-sriov" {
+			if eth.VFDriver == nil || *eth.VFDriver != "netdevice" {
+				return fmt.Errorf("interface %q: sriov_vf_channels requires vf-driver to be 'netdevice' for pci-sriov interfaces", eth.Name)
+			}
+		}
+	}
+
+	// Validate VF interfaces, VFChannels requires vf-driver netdevice
+	for _, vf := range obj.Spec.Interfaces.VF {
+		if vf.VFChannels == nil {
+			continue
+		}
+
+		if vf.VFDriver == nil || *vf.VFDriver != "netdevice" {
+			return fmt.Errorf("interface %q: sriov_vf_channels requires vf-driver to be 'netdevice' for vf interfaces", vf.Name)
+		}
+	}
+
+	// Validate bond interfaces, PFChannels is valid on ae (bond) types,
+	// VFChannels is not applicable
+	for _, bond := range obj.Spec.Interfaces.Bond {
+		if bond.VFChannels != nil {
+			return fmt.Errorf("interface %q: sriov_vf_channels is not applicable to bond (ae) interfaces", bond.Name)
+		}
+	}
+
+	// Validate VLAN interfaces, neither channels nor sriov_vf_channels
+	// are applicable to vlan type
+	for _, vlan := range obj.Spec.Interfaces.VLAN {
+		if vlan.PFChannels != nil {
+			return fmt.Errorf("interface %q: channels is not applicable to vlan interfaces", vlan.Name)
+		}
+		if vlan.VFChannels != nil {
+			return fmt.Errorf("interface %q: sriov_vf_channels is not applicable to vlan interfaces", vlan.Name)
+		}
+	}
+
+	return nil
+}
+
 func validateHostProfile(r *starlingxv1.HostProfile) error {
 	if r.Spec.Base != nil && *r.Spec.Base == "" {
 		return errors.New("profile base name must not be empty")
@@ -249,6 +302,11 @@ func validateHostProfile(r *starlingxv1.HostProfile) error {
 
 	if r.Spec.Interfaces != nil {
 		err := validateOVSAccessInfo(r)
+		if err != nil {
+			return err
+		}
+
+		err = validateChannelsInfo(r)
 		if err != nil {
 			return err
 		}

@@ -322,6 +322,12 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 		maxRxRate := iface.MaxRxRate
 		data.MaxRxRate = &maxRxRate
 
+		pfChannels := iface.PFChannels
+		data.PFChannels = pfChannels
+
+		vfChannels := iface.VFChannels
+		data.VFChannels = vfChannels
+
 		if iface.Class == "" {
 			data.Class = interfaces.IFClassNone
 		}

@@ -485,6 +485,26 @@ func (in *CommonInterfaceInfo) DeepEqual(other *CommonInterfaceInfo) bool {
 		}
 	}
 
+	if in.PFChannels != nil {
+		if (in.PFChannels == nil) != (other.PFChannels == nil) {
+			return false
+		} else if in.PFChannels != nil {
+			if *in.PFChannels != *other.PFChannels {
+				return false
+			}
+		}
+	}
+
+	if in.VFChannels != nil {
+		if (in.VFChannels == nil) != (other.VFChannels == nil) {
+			return false
+		} else if in.VFChannels != nil {
+			if *in.VFChannels != *other.VFChannels {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 
