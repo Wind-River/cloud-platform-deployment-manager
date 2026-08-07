@@ -404,6 +404,19 @@ type CommonInterfaceInfo struct {
 	// "platform" and interface type is set to "ethernet" or "vlan" or "ae".
 	// +optional
 	MaxRxRate *int `json:"maxRxRate,omitempty"`
+
+	// PFChannels defines the number of NIC channels (queues) configured on
+	// the interface. Only applicable if the interface type is "ethernet" or
+	// "ae". A value of null indicates system defaults are used.
+	// +optional
+	PFChannels *int `json:"pfChannels,omitempty"`
+
+	// VFChannels defines the number of SR-IOV VF channels (queues) configured
+	// on the interface. Only applicable if the interface class is "pci-sriov"
+	// with vf-driver set to "netdevice", or if the interface type is "vf".
+	// A value of null indicates system defaults are used.
+	// +optional
+	VFChannels *int `json:"vfChannels,omitempty"`
 }
 
 // EthernetInfo defines the attributes specific to a single

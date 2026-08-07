@@ -325,6 +325,12 @@ spec:
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        pfChannels:
+                          description: |-
+                            PFChannels defines the number of NIC channels (queues) configured on
+                            the interface. Only applicable if the interface type is "ethernet" or
+                            "ae". A value of null indicates system defaults are used.
+                          type: integer
                         platformNetworks:
                           description: |-
                             PlatformNetworks defines the list of platform networks to be configured
@@ -370,6 +376,13 @@ spec:
                           description: The system assigned unique UUID value for the
                             interface
                           type: string
+                        vfChannels:
+                          description: |-
+                            VFChannels defines the number of SR-IOV VF channels (queues) configured
+                            on the interface. Only applicable if the interface class is "pci-sriov"
+                            with vf-driver set to "netdevice", or if the interface type is "vf".
+                            A value of null indicates system defaults are used.
+                          type: integer
                       required:
                       - class
                       - members
@@ -444,6 +457,12 @@ spec:
                             OVSAccess indicates whether OVS access is enabled for this interface.
                             Only applicable for ethernet interfaces with a lower pci-sriov interface.
                           type: boolean
+                        pfChannels:
+                          description: |-
+                            PFChannels defines the number of NIC channels (queues) configured on
+                            the interface. Only applicable if the interface type is "ethernet" or
+                            "ae". A value of null indicates system defaults are used.
+                          type: integer
                         platformNetworks:
                           description: |-
                             PlatformNetworks defines the list of platform networks to be configured
@@ -490,6 +509,13 @@ spec:
                           description: The system assigned unique UUID value for the
                             interface
                           type: string
+                        vfChannels:
+                          description: |-
+                            VFChannels defines the number of SR-IOV VF channels (queues) configured
+                            on the interface. Only applicable if the interface class is "pci-sriov"
+                            with vf-driver set to "netdevice", or if the interface type is "vf".
+                            A value of null indicates system defaults are used.
+                          type: integer
                         vfCount:
                           description: |-
                             VFCount defines the number of SRIOV VF interfaces to be allocated.  Only
@@ -570,6 +596,12 @@ spec:
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        pfChannels:
+                          description: |-
+                            PFChannels defines the number of NIC channels (queues) configured on
+                            the interface. Only applicable if the interface type is "ethernet" or
+                            "ae". A value of null indicates system defaults are used.
+                          type: integer
                         platformNetworks:
                           description: |-
                             PlatformNetworks defines the list of platform networks to be configured
@@ -602,6 +634,13 @@ spec:
                           description: The system assigned unique UUID value for the
                             interface
                           type: string
+                        vfChannels:
+                          description: |-
+                            VFChannels defines the number of SR-IOV VF channels (queues) configured
+                            on the interface. Only applicable if the interface class is "pci-sriov"
+                            with vf-driver set to "netdevice", or if the interface type is "vf".
+                            A value of null indicates system defaults are used.
+                          type: integer
                         vfCount:
                           description: VFCount defines the number of SRIOV virtual
                             functions for this VF interface.
@@ -682,6 +721,12 @@ spec:
                           maxLength: 255
                           pattern: ^[a-zA-Z0-9\-_\.]+$
                           type: string
+                        pfChannels:
+                          description: |-
+                            PFChannels defines the number of NIC channels (queues) configured on
+                            the interface. Only applicable if the interface type is "ethernet" or
+                            "ae". A value of null indicates system defaults are used.
+                          type: integer
                         platformNetworks:
                           description: |-
                             PlatformNetworks defines the list of platform networks to be configured
@@ -714,6 +759,13 @@ spec:
                           description: The system assigned unique UUID value for the
                             interface
                           type: string
+                        vfChannels:
+                          description: |-
+                            VFChannels defines the number of SR-IOV VF channels (queues) configured
+                            on the interface. Only applicable if the interface class is "pci-sriov"
+                            with vf-driver set to "netdevice", or if the interface type is "vf".
+                            A value of null indicates system defaults are used.
+                          type: integer
                         vid:
                           description: VID defines the VLAN ID value to be assigned
                             to this VLAN interface.

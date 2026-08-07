@@ -804,6 +804,20 @@ func interfaceUpdateRequired(info starlingxv1.CommonInterfaceInfo, iface *interf
 		result = true
 	}
 
+	if info.PFChannels != nil {
+		if iface.PFChannels == nil || *info.PFChannels != *iface.PFChannels {
+			opts.PFChannels = info.PFChannels
+			result = true
+		}
+	}
+
+	if info.VFChannels != nil {
+		if iface.VFChannels == nil || *info.VFChannels != *iface.VFChannels {
+			opts.VFChannels = info.VFChannels
+			result = true
+		}
+	}
+
 	if info.Class == interfaces.IFClassData || hasIPv4StaticAddresses(info, profile) || hasIPv6StaticAddresses(info, profile) {
 		// TODO(alegacy): We might need to remove this restriction and manage
 		//  these attributes for other interface classes, but for now limit our
@@ -1173,6 +1187,7 @@ func (r *HostReconciler) ReconcileEthernetInterfaces(client *gophercloud.Service
 				opts.Uses = &uses
 				opts.MaxTxRate = ethInfo.MaxTxRate
 				opts.MaxRxRate = ethInfo.MaxRxRate
+				opts.PFChannels = ethInfo.PFChannels
 				opts.OVSAccess = ethInfo.OVSAccess
 
 				logHost.Info("creating ethernet interface", "opts", opts)
@@ -1421,6 +1436,7 @@ func (r *HostReconciler) ReconcileBondInterfaces(client *gophercloud.ServiceClie
 			opts.Uses = &bondInfo.Members
 			opts.MaxTxRate = bondInfo.MaxTxRate
 			opts.MaxRxRate = bondInfo.MaxRxRate
+			opts.PFChannels = bondInfo.PFChannels
 
 			logHost.Info("creating bond interface", "opts", opts)
 
@@ -1774,6 +1790,7 @@ func (r *HostReconciler) ReconcileVFInterfaces(client *gophercloud.ServiceClient
 			opts.Type = &iftype
 			opts.VFDriver = vfInfo.VFDriver
 			opts.MaxTxRate = vfInfo.MaxTxRate
+			opts.VFChannels = vfInfo.VFChannels
 			opts.VFCount = &vfInfo.VFCount
 			uses := []string{vfInfo.Lower}
 			opts.Uses = &uses
