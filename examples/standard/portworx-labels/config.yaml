@@ -30,7 +30,7 @@ kind: System
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: controller-0
+  name: px-standard
   namespace: deployment
 spec:
   dnsServers:
@@ -40,10 +40,6 @@ spec:
     mechanism: e2e
     mode: hardware
     transport: l2
-  storage:
-    filesystems:
-    - name: database
-      size: 10
   vswitchType: none
 ---
 apiVersion: starlingx.windriver.com/v1
@@ -192,28 +188,40 @@ spec:
   powerOn: true
   provisioningMode: static
   rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-  storage:
-    filesystems:
-    - name: scratch
-      size: 16
-    - name: docker
-      size: 40
-    - name: kubelet
-      size: 10
-    - name: log
-      size: 8
-    - name: var
-      size: 20
-    - name: root
-      size: 20
-    volumeGroups:
-    - name: cgts-vg
-      physicalVolumes:
-      - path: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-        size: 218
-        type: partition
   subfunctions:
   - worker
+---
+# Portworx storage worker profile — inherits from worker-profile.
+# Workers bound to this profile will have px.ko loaded by KMM and
+# join the Portworx cluster as storage nodes contributing local disks.
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: px-storage-worker-profile
+  namespace: deployment
+spec:
+  base: worker-profile
+  labels:
+    px-node: "true"
+    portworx.io/node-type: "storage"
+---
+# Portworx storageless worker profile — inherits from worker-profile.
+# Workers bound to this profile will have px.ko loaded by KMM and
+# join the Portworx cluster as storageless (compute-only) nodes.
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: px-storageless-worker-profile
+  namespace: deployment
+spec:
+  base: worker-profile
+  labels:
+    px-node: "true"
+    portworx.io/node-type: "storageless"
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: Host
@@ -242,71 +250,6 @@ spec:
   overrides:
     provisioningMode: dynamic
   profile: worker-profile
----
-# Portworx storage worker profile — carries both placement labels.
-# Workers bound to this profile will have px.ko loaded by KMM and
-# join the Portworx cluster as storage nodes contributing local disks.
-apiVersion: starlingx.windriver.com/v1
-kind: HostProfile
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: px-storage-worker-profile
-  namespace: deployment
-spec:
-  administrativeState: unlocked
-  appArmor: disabled
-  boardManagement:
-    type: none
-  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-  clockSynchronization: ntp
-  console: ttyS0,115200
-  hwSettle: "0"
-  installOutput: graphical
-  interfaces:
-    ethernet:
-    - class: platform
-      mtu: 1400
-      name: mgmt0
-      platformNetworks:
-      - mgmt
-      port:
-        name: enp2s2
-    - class: platform
-      name: cluster0
-      platformNetworks:
-      - cluster-host
-      port:
-        name: enp3s0
-  labels:
-    px-node: "true"
-    portworx.io/node-type: "storage"
-  memory:
-  - functions:
-    - function: platform
-      pageCount: 640000
-      pageSize: 4KB
-    node: 0
-  personality: worker
-  powerOn: true
-  provisioningMode: static
-  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-  storage:
-    filesystems:
-    - name: scratch
-      size: 16
-    - name: docker
-      size: 40
-    - name: kubelet
-      size: 10
-    - name: log
-      size: 8
-    - name: var
-      size: 20
-    - name: root
-      size: 20
-  subfunctions:
-  - worker
 ---
 apiVersion: starlingx.windriver.com/v1
 kind: Host
@@ -349,63 +292,3 @@ spec:
   overrides:
     provisioningMode: dynamic
   profile: px-storage-worker-profile
----
-# Portworx storageless worker profile — carries both placement labels.
-# Workers bound to this profile will have px.ko loaded by KMM and
-# join the Portworx cluster as storageless (compute-only) nodes.
-apiVersion: starlingx.windriver.com/v1
-kind: HostProfile
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: px-storageless-worker-profile
-  namespace: deployment
-spec:
-  administrativeState: unlocked
-  appArmor: disabled
-  boardManagement:
-    type: none
-  bootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-  clockSynchronization: ntp
-  console: ttyS0,115200
-  hwSettle: "0"
-  installOutput: graphical
-  interfaces:
-    ethernet:
-    - class: platform
-      mtu: 1400
-      name: mgmt0
-      platformNetworks:
-      - mgmt
-      - cluster-host
-      port:
-        name: enp2s2
-  labels:
-    px-node: "true"
-    portworx.io/node-type: "storageless"
-  memory:
-  - functions:
-    - function: platform
-      pageCount: 640000
-      pageSize: 4KB
-    node: 0
-  personality: worker
-  powerOn: true
-  provisioningMode: static
-  rootDevice: /dev/disk/by-path/pci-0000:00:1f.2-ata-1.0
-  storage:
-    filesystems:
-    - name: scratch
-      size: 16
-    - name: docker
-      size: 40
-    - name: kubelet
-      size: 10
-    - name: log
-      size: 8
-    - name: var
-      size: 20
-    - name: root
-      size: 20
-  subfunctions:
-  - worker
