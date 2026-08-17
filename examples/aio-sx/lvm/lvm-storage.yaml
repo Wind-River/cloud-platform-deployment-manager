@@ -1,0 +1,32 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  labels:
+    openstack-control-plane: null
+    openstack-compute-node: null
+    lvm-csi: enabled
+    openvswitch: enabled
+    sriov: enabled
+  storage:
+    osds: []
+    volumeGroups:
+    - name: cgts-vg
+      lvmFunction: "lvm-csi"
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  storage:
+    backends:
+    - name: lvm-store
+      type: lvm

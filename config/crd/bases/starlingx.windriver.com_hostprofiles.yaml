@@ -1164,10 +1164,10 @@ spec:
                             - path
                             - type
                             type: object
+                          nullable: true
                           type: array
                       required:
                       - name
-                      - physicalVolumes
                       type: object
                       x-kubernetes-validations:
                       - message: lvmPoolSize can only be set when lvmType is 'thin'
@@ -1176,6 +1176,10 @@ spec:
                       - message: lvmType can only be set when lvmFunction is 'lvm-csi'
                         rule: '!has(self.lvmType) || (has(self.lvmFunction) && self.lvmFunction
                           == ''lvm-csi'')'
+                      - message: physicalVolumes is required unless the volume group
+                          name is 'cgts-vg'
+                        rule: self.name == 'cgts-vg' || (has(self.physicalVolumes)
+                          && size(self.physicalVolumes) > 0)
                     nullable: true
                     type: array
                 type: object

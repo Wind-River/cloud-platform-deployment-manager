@@ -1,0 +1,61 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  storage:
+    osds: []
+    volumeGroups:
+    - name: cgts-vg
+      lvmFunction: "lvm-csi"
+---
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: worker-profile
+  namespace: deployment
+spec:
+  labels:
+    openstack-compute-node: enabled
+    openvswitch: enabled
+    sriov: enabled
+    lvm-csi: enabled
+  storage:
+    volumeGroups:
+    - name: cgts-vg
+      lvmFunction: "lvm-csi"
+    - name: nova-local
+      physicalVolumes:
+      - type: partition
+        path: /dev/disk/by-path/pci-0000:00:0d.0-ata-1.0
+        size: 4
+---
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: compute-0
+  namespace: deployment
+spec:
+  overrides:
+    storage:
+      monitor:
+---
+apiVersion: starlingx.windriver.com/v1
+kind: System
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: vbox
+  namespace: deployment
+spec:
+  storage:
+    backends:
+    - name: lvm-store
+      type: lvm

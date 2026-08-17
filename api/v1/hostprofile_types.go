@@ -225,6 +225,7 @@ type PhysicalVolumeList []PhysicalVolumeInfo
 // +deepequal-gen:ignore-nil-fields=true
 // +kubebuilder:validation:XValidation:rule="!has(self.lvmPoolSize) || (has(self.lvmType) && self.lvmType == 'thin')",message="lvmPoolSize can only be set when lvmType is 'thin'"
 // +kubebuilder:validation:XValidation:rule="!has(self.lvmType) || (has(self.lvmFunction) && self.lvmFunction == 'lvm-csi')",message="lvmType can only be set when lvmFunction is 'lvm-csi'"
+// +kubebuilder:validation:XValidation:rule="self.name == 'cgts-vg' || (has(self.physicalVolumes) && size(self.physicalVolumes) > 0)",message="physicalVolumes is required unless the volume group name is 'cgts-vg'"
 type VolumeGroupInfo struct {
 	// SystemName defines the name of the logical volume group
 	// +kubebuilder:validation:MaxLength=255
@@ -250,7 +251,9 @@ type VolumeGroupInfo struct {
 	LVMPoolSize *int `json:"lvmPoolSize,omitempty"`
 
 	// PhysicalVolumes defines the list of volumes to be created on the host.
-	PhysicalVolumes PhysicalVolumeList `json:"physicalVolumes"`
+	// +nullable
+	// +optional
+	PhysicalVolumes PhysicalVolumeList `json:"physicalVolumes,omitempty"`
 }
 
 // VolumeGroupList defines a type to represent a slice of volume groups
