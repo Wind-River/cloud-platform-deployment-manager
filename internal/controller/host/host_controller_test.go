@@ -19,6 +19,7 @@ import (
 
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
+	ctrlcommon "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 )
 
@@ -1297,6 +1298,98 @@ var _ = Describe("Host controller", func() {
 						},
 					},
 				}
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeFalse())
+			})
+		})
+
+		Context("when cgts-vg exists only in the current config and is not declared in the user profile", func() {
+			It("should return true (in sync) ignoring the system-managed cgts-vg", func() {
+				lvmCSI := "lvm-csi"
+
+				// User profile declares only the lvm-provisioner volume group.
+				in := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						VolumeGroups: starlingxv1.VolumeGroupList{
+							{
+								Name:        "lvm-provisioner",
+								LVMFunction: &lvmCSI,
+								PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+									{Type: "disk", Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-3.0"},
+								},
+							},
+						},
+					},
+				}
+
+				// Current config reported by the system contains the default
+				// cgts-vg in addition to the lvm-provisioner volume group.
+				other := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						VolumeGroups: starlingxv1.VolumeGroupList{
+							{
+								Name: ctrlcommon.LVG_CGTS_VG,
+								PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+									{Type: "partition", Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-1.0-part5"},
+								},
+							},
+							{
+								Name:        "lvm-provisioner",
+								LVMFunction: &lvmCSI,
+								PhysicalVolumes: starlingxv1.PhysicalVolumeList{
+									{Type: "disk", Path: "/dev/disk/by-path/pci-0000:00:0d.0-ata-3.0"},
+								},
+							},
+						},
+					},
+				}
+
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeTrue())
+			})
+		})
+
+		Context("when cgts-vg is declared in the user profile and equals the current config", func() {
+			It("should return true (in sync)", func() {
+				lvmCSI := "lvm-csi"
+
+				in := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						VolumeGroups: starlingxv1.VolumeGroupList{
+							{Name: ctrlcommon.LVG_CGTS_VG, LVMFunction: &lvmCSI},
+						},
+					},
+				}
+				other := in.DeepCopy()
+
+				instance := &starlingxv1.Host{}
+				info := &cloudManager.SystemInfo{}
+				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeTrue())
+			})
+		})
+
+		Context("when cgts-vg is declared in the user profile and differs from the current config", func() {
+			It("should return false (out of sync)", func() {
+				lvmCSI := "lvm-csi"
+				lvmNone := ctrlcommon.LVMFunctionNone
+
+				in := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						VolumeGroups: starlingxv1.VolumeGroupList{
+							{Name: ctrlcommon.LVG_CGTS_VG, LVMFunction: &lvmCSI},
+						},
+					},
+				}
+				other := &starlingxv1.HostProfileSpec{
+					Storage: &starlingxv1.ProfileStorageInfo{
+						VolumeGroups: starlingxv1.VolumeGroupList{
+							{Name: ctrlcommon.LVG_CGTS_VG, LVMFunction: &lvmNone},
+						},
+					},
+				}
+
 				instance := &starlingxv1.Host{}
 				info := &cloudManager.SystemInfo{}
 				Expect(r.CompareEnabledAttributes(in, other, instance, "controller", info)).To(BeFalse())
