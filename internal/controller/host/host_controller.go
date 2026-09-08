@@ -961,6 +961,32 @@ func (r *HostReconciler) CompareAttributes(in *starlingxv1.HostProfileSpec, othe
 		r.CompareDisabledAttributes(in, other, instance.Namespace, personality, false)
 }
 
+// volumeGroupsEqualIgnoringCurrentCGTS reports whether the desired volume group
+// list (in) and the current volume group list (other) are equivalent once a
+// "cgts-vg" that is present only in the current config is disregarded.
+func volumeGroupsEqualIgnoringCurrentCGTS(in, other *starlingxv1.VolumeGroupList) bool {
+	// If the user profile declares "cgts-vg" then there is nothing special to
+	// ignore; fall back to the regular comparison.
+	for i := range *in {
+		if (*in)[i].Name == common.LVG_CGTS_VG {
+			return in.DeepEqual(other)
+		}
+	}
+
+	// Build a copy of "other" without the current-only "cgts-vg" entry.
+	// If there is no such entry to drop the copy is identical to "other",
+	// so this also handles the case where the lists are already equal.
+	filtered := make(starlingxv1.VolumeGroupList, 0, len(*other))
+	for i := range *other {
+		if (*other)[i].Name == common.LVG_CGTS_VG {
+			continue
+		}
+		filtered = append(filtered, (*other)[i])
+	}
+
+	return in.DeepEqual(&filtered)
+}
+
 // CompareEnabledAttributes determines if two profiles are identical for the
 // purpose of reconciling any attributes that can only be applied when the host
 // is enabled.  The only attributes that we can reconcile while enabled are the
@@ -1035,7 +1061,12 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		if (in.Storage == nil) != (other.Storage == nil) {
 			return false
 		} else if in.Storage != nil {
-			if !in.Storage.VolumeGroups.DeepEqual(&other.Storage.VolumeGroups) {
+			// Compare volume groups section. If CGTS-VG volume group is only
+			// present on current config, ignore it.
+			// This is a special case for the cgts-vg volume group which is
+			// automatically added by the system but is not part of the
+			// user-defined configuration.
+			if !volumeGroupsEqualIgnoringCurrentCGTS(&in.Storage.VolumeGroups, &other.Storage.VolumeGroups) {
 				return false
 			}
 		}
