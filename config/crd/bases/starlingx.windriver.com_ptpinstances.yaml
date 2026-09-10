@@ -69,6 +69,7 @@ spec:
                 - clock
                 - gnss-monitor
                 - dpll-mgr
+                - synce4l
                 type: string
             required:
             - service
