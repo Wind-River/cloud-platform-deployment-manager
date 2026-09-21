@@ -239,6 +239,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/aio-sx/vxlan > examples/aio-sx-vxlan.yaml
 	$(KUSTOMIZE) build examples/aio-sx/single-nic > examples/aio-sx-single-nic.yaml
 	$(KUSTOMIZE) build examples/aio-sx/vf-rate-limit > examples/aio-sx-vf-rate-limit.yaml
+	$(KUSTOMIZE) build examples/aio-sx/nic-channels > examples/aio-sx-nic-channels.yaml
 	$(KUSTOMIZE) build examples/aio-sx/geo-location > examples/aio-sx-geo-location.yaml
 	$(KUSTOMIZE) build examples/aio-sx/app-armor > examples/aio-sx-app-armor.yaml
 	$(KUSTOMIZE) build examples/aio-sx/hw-settle > examples/aio-sx-hw-settle.yaml

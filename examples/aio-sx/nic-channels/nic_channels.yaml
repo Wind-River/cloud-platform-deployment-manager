@@ -1,0 +1,31 @@
+apiVersion: starlingx.windriver.com/v1
+kind: HostProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-profile
+  namespace: deployment
+spec:
+  interfaces:
+    ethernet:
+    - class: pci-sriov
+      dataNetworks: []
+      name: sriov0
+      pfChannels: 4
+      platformNetworks: []
+      port:
+        name: eno1
+      ptpRole: none
+      vfCount: 12
+      vfDriver: netdevice
+    vf:
+    - class: pci-sriov
+      dataNetworks:
+      - physnet1
+      lower: sriov0
+      name: sriov01
+      platformNetworks: []
+      ptpRole: none
+      vfChannels: 2
+      vfCount: 5
+      vfDriver: netdevice

@@ -747,3 +747,99 @@ func getCommonInterfaceInfo[T any](iface *T) *starlingxv1.CommonInterfaceInfo {
 		return nil
 	}
 }
+
+// intPtrEqual compares two *int for value equality (both nil == equal).
+func intPtrEqual(a, b *int) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+	return *a == *b
+}
+
+// interfaceChannelsEqual reports whether the channel (queue) configuration
+// (pfChannels/vfChannels) is identical between two interface sets.  Channels
+// are keyed by interface name across the ethernet, bond and VF lists.  Used to
+// detect a runtime-applyable channel-only delta so it can be applied on an
+// unlocked host rather than forcing a lock.
+func interfaceChannelsEqual(a, b *starlingxv1.InterfaceInfo) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+
+	collect := func(in *starlingxv1.InterfaceInfo) map[string][2]*int {
+		m := map[string][2]*int{}
+		for i := range in.Ethernet {
+			c := &in.Ethernet[i].CommonInterfaceInfo
+			m[c.Name] = [2]*int{c.PFChannels, c.VFChannels}
+		}
+		for i := range in.Bond {
+			c := &in.Bond[i].CommonInterfaceInfo
+			m[c.Name] = [2]*int{c.PFChannels, c.VFChannels}
+		}
+		for i := range in.VF {
+			c := &in.VF[i].CommonInterfaceInfo
+			m[c.Name] = [2]*int{c.PFChannels, c.VFChannels}
+		}
+		return m
+	}
+
+	am, bm := collect(a), collect(b)
+	if len(am) != len(bm) {
+		return false
+	}
+	for name, av := range am {
+		bv, ok := bm[name]
+		if !ok {
+			return false
+		}
+		if !intPtrEqual(av[0], bv[0]) || !intPtrEqual(av[1], bv[1]) {
+			return false
+		}
+	}
+	return true
+}
+
+// maskChannels clears the channel fields on every interface so that
+// channel-only differences are ignored by a subsequent DeepEqual.
+func maskChannels(in *starlingxv1.InterfaceInfo) {
+	if in == nil {
+		return
+	}
+	for i := range in.Ethernet {
+		in.Ethernet[i].PFChannels = nil
+		in.Ethernet[i].VFChannels = nil
+	}
+	for i := range in.Bond {
+		in.Bond[i].PFChannels = nil
+		in.Bond[i].VFChannels = nil
+	}
+	for i := range in.VF {
+		in.VF[i].PFChannels = nil
+		in.VF[i].VFChannels = nil
+	}
+}
+
+// interfacesEqualIgnoringChannels reports whether two interface sets are equal
+// when channel (queue) fields are disregarded.  This lets a channels-only
+// delta be handled at runtime (see interfaceChannelsEqual) without forcing a
+// host lock, while any non-channel interface difference still requires a lock.
+func interfacesEqualIgnoringChannels(a, b *starlingxv1.InterfaceInfo) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+
+	ac := a.DeepCopy()
+	bc := b.DeepCopy()
+	maskChannels(ac)
+	maskChannels(bc)
+	return ac.DeepEqual(bc)
+}

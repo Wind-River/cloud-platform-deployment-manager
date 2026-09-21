@@ -2090,3 +2090,67 @@ func (r *HostReconciler) ReconcileNetworking(client *gophercloud.ServiceClient, 
 
 	return nil
 }
+
+// ReconcileInterfaceChannels applies channel (queue) configuration changes at
+// runtime on an unlocked host.  Only the pfChannels/vfChannels attributes are
+// sent, which sysinv accepts without a host lock.
+// This is invoked from the enabled (runtime) reconcile path so that a
+// channels-only delta does not force an unnecessary lock/unlock.
+func (r *HostReconciler) ReconcileInterfaceChannels(client *gophercloud.ServiceClient, instance *starlingxv1.Host, profile *starlingxv1.HostProfileSpec, host *v1info.HostInfo) error {
+	if !utils.IsReconcilerEnabled(utils.Interface) {
+		return nil
+	}
+	if profile.Interfaces == nil {
+		return nil
+	}
+
+	applyChannels := func(name string, pf, vf *int) error {
+		iface, found := host.FindInterfaceByName(name)
+		if !found {
+			// The interface does not exist yet; a non-channel reconcile
+			// (create) is required first and will be handled elsewhere.
+			return nil
+		}
+
+		var opts interfaces.InterfaceOpts
+		change := false
+		if pf != nil && (iface.PFChannels == nil || *pf != *iface.PFChannels) {
+			opts.PFChannels = pf
+			change = true
+		}
+		if vf != nil && (iface.VFChannels == nil || *vf != *iface.VFChannels) {
+			opts.VFChannels = vf
+			change = true
+		}
+		if !change {
+			return nil
+		}
+
+		logHost.Info("updating interface channels", "ifname", name, "opts", opts)
+		_, err := interfaces.Update(client, iface.ID, opts).Extract()
+		if err != nil {
+			return perrors.Wrapf(err, "failed to update channels on interface %q", name)
+		}
+		r.NormalEvent(instance, common.ResourceUpdated,
+			"interface %q channels have been updated", name)
+		return nil
+	}
+
+	for _, ethInfo := range profile.Interfaces.Ethernet {
+		if err := applyChannels(ethInfo.Name, ethInfo.PFChannels, ethInfo.VFChannels); err != nil {
+			return err
+		}
+	}
+	for _, bondInfo := range profile.Interfaces.Bond {
+		if err := applyChannels(bondInfo.Name, bondInfo.PFChannels, bondInfo.VFChannels); err != nil {
+			return err
+		}
+	}
+	for _, vfInfo := range profile.Interfaces.VF {
+		if err := applyChannels(vfInfo.Name, vfInfo.PFChannels, vfInfo.VFChannels); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
