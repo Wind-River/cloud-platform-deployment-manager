@@ -801,6 +801,11 @@ func (r *HostReconciler) ReconcileEnabledHost(client *gophercloud.ServiceClient,
 		return err
 	}
 
+	err = r.ReconcileInterfaceChannels(client, instance, profile, host)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1078,6 +1083,14 @@ func (r *HostReconciler) CompareEnabledAttributes(in *starlingxv1.HostProfileSpe
 		}
 	}
 
+	// Channels (pfChannels/vfChannels) are applyable at runtime
+	if utils.IsReconcilerEnabled(utils.Networking) &&
+		utils.IsReconcilerEnabled(utils.Interface) {
+		if !interfaceChannelsEqual(in.Interfaces, other.Interfaces) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -1130,7 +1143,12 @@ func (r *HostReconciler) CompareDisabledAttributes(in *starlingxv1.HostProfileSp
 			if (in.Interfaces == nil) != (other.Interfaces == nil) {
 				return false
 			} else if in.Interfaces != nil {
-				if !in.Interfaces.DeepEqual(other.Interfaces) {
+				// Channel-only differences (pfChannels/vfChannels) are applied
+				// at runtime via CompareEnabledAttributes/ReconcileEnabledHost
+				// and must not force a lock here, so compare with channels
+				// masked.  Any non-channel interface difference still requires
+				// a lock.
+				if !interfacesEqualIgnoringChannels(in.Interfaces, other.Interfaces) {
 					return false
 				}
 			} else {

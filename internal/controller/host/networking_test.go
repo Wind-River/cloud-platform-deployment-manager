@@ -1027,5 +1027,48 @@ var _ = Describe("Networking utils", func() {
 				Expect(result).To(BeFalse())
 			})
 		})
+
+		// Channels configured via an inherited HostProfile must be
+		// applied even when the interface currently reports no channels (nil),
+		// e.g. a freshly provisioned controller whose NIC channels were never
+		// set.
+		Context("when desired pfChannels is set but interface reports none", func() {
+			It("should return true and apply pfChannels", func() {
+				pf := 8
+				info := starlingxv1.CommonInterfaceInfo{
+					Name: "common0", Class: interfaces.IFClassPCISRIOV, PFChannels: &pf,
+				}
+				iface := &interfaces.Interface{
+					Name: "common0", Type: interfaces.IFTypeEthernet,
+					Class: interfaces.IFClassPCISRIOV,
+					// PFChannels nil: never applied on this host.
+				}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				opts, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeTrue())
+				Expect(opts.PFChannels).NotTo(BeNil())
+				Expect(*opts.PFChannels).To(Equal(8))
+			})
+		})
+
+		Context("when desired vfChannels is set but interface reports none", func() {
+			It("should return true and apply vfChannels", func() {
+				vf := 4
+				info := starlingxv1.CommonInterfaceInfo{
+					Name: "common0", Class: interfaces.IFClassPCISRIOV, VFChannels: &vf,
+				}
+				iface := &interfaces.Interface{
+					Name: "common0", Type: interfaces.IFTypeEthernet,
+					Class: interfaces.IFClassPCISRIOV,
+				}
+				profile := &starlingxv1.HostProfileSpec{}
+				host := &v1info.HostInfo{}
+				opts, result := interfaceUpdateRequired(info, iface, profile, host)
+				Expect(result).To(BeTrue())
+				Expect(opts.VFChannels).NotTo(BeNil())
+				Expect(*opts.VFChannels).To(Equal(4))
+			})
+		})
 	})
 })
