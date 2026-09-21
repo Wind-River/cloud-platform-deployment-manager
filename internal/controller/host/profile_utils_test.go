@@ -9,6 +9,7 @@ import (
 
 	"reflect"
 
+	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/interfaces"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
@@ -1548,6 +1549,121 @@ var _ = Describe("NormalizeVolumeGroupsForComparison", func() {
 			Expect(*profile.Storage.VolumeGroups[0].LVMType).To(Equal("thin"))
 			Expect(profile.Storage.VolumeGroups[0].LVMPoolSize).NotTo(BeNil())
 			Expect(*profile.Storage.VolumeGroups[0].LVMPoolSize).To(Equal(121))
+		})
+	})
+})
+
+// Regression guard verify MergeProfiles carries an authored
+// pfChannels/vfChannels through onto an interface whose "defaults"
+// (inventory-derived) entry reports no channels.
+var _ = Describe("MergeProfiles channel inheritance", func() {
+	It("preserves pfChannels/vfChannels inherited from the authored profile", func() {
+		pf := 8
+		vf := 4
+
+		// defaults: built from the running (freshly provisioned) host; the
+		// interface exists but reports no channels.
+		defaults := &starlingxv1.HostProfileSpec{
+			Interfaces: &starlingxv1.InterfaceInfo{
+				Ethernet: starlingxv1.EthernetList{
+					starlingxv1.EthernetInfo{
+						CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+							Name:  "common0",
+							Class: interfaces.IFClassPCISRIOV,
+						},
+						Port: starlingxv1.EthernetPortInfo{Name: "eno8303"},
+					},
+				},
+			},
+		}
+
+		// authored profile: sets pfChannels/vfChannels on the interface.
+		authored := &starlingxv1.HostProfileSpec{
+			Interfaces: &starlingxv1.InterfaceInfo{
+				Ethernet: starlingxv1.EthernetList{
+					starlingxv1.EthernetInfo{
+						CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+							Name:       "common0",
+							Class:      interfaces.IFClassPCISRIOV,
+							PFChannels: &pf,
+							VFChannels: &vf,
+						},
+						Port: starlingxv1.EthernetPortInfo{Name: "eno8303"},
+					},
+				},
+			},
+		}
+
+		merged, err := MergeProfiles(defaults, authored)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(merged.Interfaces.Ethernet).To(HaveLen(1))
+
+		got := merged.Interfaces.Ethernet[0]
+		Expect(got.PFChannels).NotTo(BeNil(),
+			"pfChannels inherited from the authored profile must survive the merge")
+		Expect(*got.PFChannels).To(Equal(8))
+		Expect(got.VFChannels).NotTo(BeNil(),
+			"vfChannels inherited from the authored profile must survive the merge")
+		Expect(*got.VFChannels).To(Equal(4))
+	})
+})
+
+// Channels (pfChannels/vfChannels) are runtime-applyable without a host lock.
+// The DM must therefore (a) detect a channel-only delta as a
+// runtime/enabled change, and (b) NOT treat a channel-only delta as a
+// lock-required (disabled) change.  These verify the two helper predicates that
+// implement that split.
+var _ = Describe("Channel comparison helpers", func() {
+	makeIfaces := func(pf, vf *int) *starlingxv1.InterfaceInfo {
+		return &starlingxv1.InterfaceInfo{
+			Ethernet: starlingxv1.EthernetList{
+				starlingxv1.EthernetInfo{
+					CommonInterfaceInfo: starlingxv1.CommonInterfaceInfo{
+						Name:       "common0",
+						Class:      interfaces.IFClassPCISRIOV,
+						PFChannels: pf,
+						VFChannels: vf,
+					},
+					Port: starlingxv1.EthernetPortInfo{Name: "eno8303"},
+				},
+			},
+		}
+	}
+
+	Describe("interfaceChannelsEqual", func() {
+		It("returns false when pfChannels differ (nil vs 8)", func() {
+			pf := 8
+			Expect(interfaceChannelsEqual(makeIfaces(nil, nil), makeIfaces(&pf, nil))).To(BeFalse())
+		})
+		It("returns true when channels match", func() {
+			pf := 8
+			Expect(interfaceChannelsEqual(makeIfaces(&pf, nil), makeIfaces(&pf, nil))).To(BeTrue())
+		})
+		It("returns false when vfChannels differ", func() {
+			vf := 4
+			Expect(interfaceChannelsEqual(makeIfaces(nil, nil), makeIfaces(nil, &vf))).To(BeFalse())
+		})
+	})
+
+	Describe("interfacesEqualIgnoringChannels", func() {
+		It("returns true when only channels differ (so no lock is forced)", func() {
+			pf := 8
+			Expect(interfacesEqualIgnoringChannels(makeIfaces(nil, nil), makeIfaces(&pf, nil))).To(BeTrue())
+		})
+		It("returns false when a non-channel attribute differs", func() {
+			mtu := 9000
+			a := makeIfaces(nil, nil)
+			a.Ethernet[0].MTU = &mtu // desired (receiver) side sets a non-channel attr
+			b := makeIfaces(nil, nil)
+			Expect(interfacesEqualIgnoringChannels(a, b)).To(BeFalse())
+		})
+		It("does not mutate the inputs (channels preserved after compare)", func() {
+			pf := 8
+			a := makeIfaces(&pf, nil)
+			b := makeIfaces(nil, nil)
+			_ = interfacesEqualIgnoringChannels(a, b)
+			Expect(a.Ethernet[0].PFChannels).NotTo(BeNil())
+			Expect(*a.Ethernet[0].PFChannels).To(Equal(8))
 		})
 	})
 })

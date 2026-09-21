@@ -1,0 +1,5 @@
+resources:
+  - ../single-nic
+
+patches:
+  - path: nic_channels.yaml
