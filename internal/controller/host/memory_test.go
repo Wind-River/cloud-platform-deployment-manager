@@ -239,5 +239,73 @@ var _ = Describe("Memory utils", func() {
 				Expect(*opts.Platform).To(Equal(1024))
 			})
 		})
+
+		Context("when the platform page count is not a whole number of MiB", func() {
+			// 5000000 4K pages == 19531.25 MiB.  The system API stores whole
+			// MiB only, so this is applied as 19531 MiB and reads back as
+			// 4999936 pages.  The reconciler must treat the two as equal so it
+			// does not request an update on every reconcile (CGTS-108443).
+			It("should not require an update when the current value is the MiB-truncated equivalent", func() {
+				f := starlingxv1.MemoryFunctionInfo{
+					Function:  memory.MemoryFunctionPlatform,
+					PageSize:  string(starlingxv1.PageSize4K),
+					PageCount: 5000000,
+				}
+				_, result := memoryUpdateRequired(f, 4999936)
+				Expect(result).To(BeFalse())
+			})
+
+			It("should request an update sized in whole MiB when the host differs", func() {
+				f := starlingxv1.MemoryFunctionInfo{
+					Function:  memory.MemoryFunctionPlatform,
+					PageSize:  string(starlingxv1.PageSize4K),
+					PageCount: 5000000, // -> 19531 MiB
+				}
+				// current host has 19530 MiB == 4999680 pages
+				opts, result := memoryUpdateRequired(f, 4999680)
+				Expect(result).To(BeTrue())
+				Expect(*opts.Platform).To(Equal(19531))
+			})
+		})
+
+		Context("when the platform page count is a whole number of MiB", func() {
+			It("should not require an update when the counts match exactly", func() {
+				f := starlingxv1.MemoryFunctionInfo{
+					Function:  memory.MemoryFunctionPlatform,
+					PageSize:  string(starlingxv1.PageSize4K),
+					PageCount: 5242880, // 20480 MiB (20 GiB) exactly
+				}
+				_, result := memoryUpdateRequired(f, 5242880)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("platformPageCountToMiB", func() {
+		It("should truncate a sub-MiB remainder to whole MiB", func() {
+			// 5000000 * 4096 / 1048576 = 19531.25 -> 19531
+			Expect(platformPageCountToMiB(5000000, starlingxv1.PageSize4K)).To(Equal(19531))
+		})
+		It("should convert a whole-MiB page count exactly", func() {
+			Expect(platformPageCountToMiB(5242880, starlingxv1.PageSize4K)).To(Equal(20480))
+		})
+	})
+
+	Describe("platformMiBToPageCount", func() {
+		It("should convert MiB to the equivalent 4K page count", func() {
+			Expect(platformMiBToPageCount(19531, starlingxv1.PageSize4K)).To(Equal(4999936))
+		})
+		It("should round-trip stably with platformPageCountToMiB", func() {
+			// First conversion snaps 5000000 pages (19531.25 MiB) down to the
+			// MiB granularity of the system API.
+			mib := platformPageCountToMiB(5000000, starlingxv1.PageSize4K)
+			Expect(mib).To(Equal(19531))
+			pages := platformMiBToPageCount(mib, starlingxv1.PageSize4K)
+			Expect(pages).To(Equal(4999936))
+
+			// Once snapped, further round-trips are stable (idempotent).
+			Expect(platformPageCountToMiB(pages, starlingxv1.PageSize4K)).To(Equal(mib))
+			Expect(platformMiBToPageCount(mib, starlingxv1.PageSize4K)).To(Equal(pages))
+		})
 	})
 })
