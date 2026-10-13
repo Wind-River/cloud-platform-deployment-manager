@@ -327,6 +327,49 @@ var _ = Describe("Constructor utils for kind", func() {
 				Expect(profile.Addresses).To(BeNil())
 			})
 		})
+		Context("when host is a multiplex controller beyond the SM pair", func() {
+			It("should skip ALL addresses (pool and auto-assigned non-pool)", func() {
+				profile := &HostProfileSpec{}
+				host := platform.HostInfo{}
+				host.Hostname = "controller-2"
+				host.Personality = hosts.PersonalityController
+				poolID := "poolID"
+				host.Addresses = []addresses.Address{
+					{
+						InterfaceName: "oam0",
+						Address:       "10.10.20.9",
+						Prefix:        24,
+						PoolUUID:      &poolID,
+					},
+					{
+						InterfaceName: "mgmt0",
+						Address:       "192.168.204.35",
+						Prefix:        24,
+					},
+				}
+				err := parseAddressInfo(profile, host)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(profile.Addresses).To(BeNil())
+			})
+		})
+		Context("when host is an SM-pair controller", func() {
+			It("should skip pool-associated addresses", func() {
+				profile := &HostProfileSpec{}
+				host := platform.HostInfo{}
+				host.Hostname = hosts.Controller0
+				host.Personality = hosts.PersonalityController
+				poolID := "poolID"
+				host.Addresses = []addresses.Address{{
+					InterfaceName: "oam0",
+					Address:       "Address",
+					Prefix:        64,
+					PoolUUID:      &poolID,
+				}}
+				err := parseAddressInfo(profile, host)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(profile.Addresses).To(BeNil())
+			})
+		})
 	})
 
 	Describe("Test parseRouteInfo", func() {

@@ -169,8 +169,9 @@ type SystemMode string
 
 // Defines the current list of system modes
 const (
-	SystemModeSimplex SystemMode = "simplex"
-	SystemModeDuplex  SystemMode = "duplex"
+	SystemModeSimplex   SystemMode = "simplex"
+	SystemModeDuplex    SystemMode = "duplex"
+	SystemModeMultiplex SystemMode = "multiplex"
 )
 
 type SystemNamespace struct {
