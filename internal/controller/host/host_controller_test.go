@@ -391,10 +391,11 @@ var _ = Describe("Host controller", func() {
 	})
 
 	Context("when calling provisioningAllowed", func() {
-		It("should return true when host name is controller-0 and is unlocked enabled", func() {
+		It("should return true when controller-0 (SM pair) is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
 					Hostname:            hosts.Controller0,
+					Personality:         hosts.PersonalityController,
 					AdministrativeState: hosts.AdminUnlocked,
 					OperationalStatus:   hosts.OperEnabled,
 				},
@@ -402,10 +403,11 @@ var _ = Describe("Host controller", func() {
 			got := provisioningAllowed(objects)
 			Expect(got).To(BeTrue())
 		})
-		It("should return true when host name is controller-1 and is unlocked enabled", func() {
+		It("should return true when controller-1 (SM pair) is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
-					Hostname:            "controller-1",
+					Hostname:            ControllerSMPairMate,
+					Personality:         hosts.PersonalityController,
 					AdministrativeState: hosts.AdminUnlocked,
 					OperationalStatus:   hosts.OperEnabled,
 				},
@@ -413,16 +415,41 @@ var _ = Describe("Host controller", func() {
 			got := provisioningAllowed(objects)
 			Expect(got).To(BeTrue())
 		})
-		It("should return true when host name is not controller-0 or controller-1 and is unlocked enabled", func() {
+		It("should return false when only a non-SM-pair controller (multiplex controller-2) is unlocked enabled", func() {
 			objects := []hosts.Host{
 				{
 					Hostname:            "controller-2",
+					Personality:         hosts.PersonalityController,
 					AdministrativeState: hosts.AdminUnlocked,
 					OperationalStatus:   hosts.OperEnabled,
 				},
 			}
 			got := provisioningAllowed(objects)
 			Expect(got).To(BeFalse())
+		})
+		It("should return true for a multiplex system when the SM pair is up alongside controller-2", func() {
+			objects := []hosts.Host{
+				{
+					Hostname:            hosts.Controller0,
+					Personality:         hosts.PersonalityController,
+					AdministrativeState: hosts.AdminUnlocked,
+					OperationalStatus:   hosts.OperEnabled,
+				},
+				{
+					Hostname:            ControllerSMPairMate,
+					Personality:         hosts.PersonalityController,
+					AdministrativeState: hosts.AdminUnlocked,
+					OperationalStatus:   hosts.OperEnabled,
+				},
+				{
+					Hostname:            "controller-2",
+					Personality:         hosts.PersonalityController,
+					AdministrativeState: hosts.AdminUnlocked,
+					OperationalStatus:   hosts.OperEnabled,
+				},
+			}
+			got := provisioningAllowed(objects)
+			Expect(got).To(BeTrue())
 		})
 	})
 

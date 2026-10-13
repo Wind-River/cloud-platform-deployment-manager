@@ -39,6 +39,8 @@ const HostControllerName = "host-controller"
 
 const HostFinalizerName = "host.finalizers.windriver.com"
 
+const ControllerSMPairMate = "controller-1"
+
 // RequiredState defines an alias that represents in which host state(s) is a
 // resource allowed to be provisioned.
 type RequiredState string
@@ -190,7 +192,7 @@ func (r *HostReconciler) buildInitialHostOpts(instance *starlingxv1.Host, profil
 
 func provisioningAllowed(objects []hosts.Host) bool {
 	for _, host := range objects {
-		if host.Hostname == hosts.Controller0 || host.Hostname == "controller-1" {
+		if host.Hostname == hosts.Controller0 || host.Hostname == ControllerSMPairMate {
 			if host.IsUnlockedEnabled() {
 				return true
 			}
