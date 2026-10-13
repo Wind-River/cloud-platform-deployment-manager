@@ -165,6 +165,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should return ChangeAfterInSync error", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -197,6 +198,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should create the host via API", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -241,6 +243,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should create the host via API", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -282,6 +285,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should create the host and send reinstall action", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -332,6 +336,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should return an error", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -364,6 +369,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should return an error after creating the host", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -419,6 +425,7 @@ var _ = Describe("ReconcileNewHost", func() {
 		It("should return an error from buildInitialHostOpts", func() {
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -455,6 +462,7 @@ var _ = Describe("ReconcileNewHost", func() {
 			}
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -495,6 +503,7 @@ var _ = Describe("ReconcileNewHost", func() {
 			}
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -552,6 +561,7 @@ var _ = Describe("ReconcileNewHost", func() {
 			}
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}
@@ -614,6 +624,7 @@ var _ = Describe("ReconcileNewHost", func() {
 			}
 			controllerHost := hosts.Host{
 				Hostname:            hosts.Controller0,
+				Personality:         hosts.PersonalityController,
 				AdministrativeState: hosts.AdminUnlocked,
 				OperationalStatus:   hosts.OperEnabled,
 			}

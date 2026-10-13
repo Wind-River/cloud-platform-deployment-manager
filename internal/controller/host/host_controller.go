@@ -190,7 +190,7 @@ func (r *HostReconciler) buildInitialHostOpts(instance *starlingxv1.Host, profil
 
 func provisioningAllowed(objects []hosts.Host) bool {
 	for _, host := range objects {
-		if host.Hostname == hosts.Controller0 || host.Hostname == "controller-1" {
+		if host.Hostname == hosts.Controller0 || host.Hostname == hosts.ControllerSMPairMate {
 			if host.IsUnlockedEnabled() {
 				return true
 			}

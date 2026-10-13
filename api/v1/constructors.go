@@ -456,8 +456,15 @@ func parseInterfaceInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 func parseAddressInfo(profile *HostProfileSpec, host v1info.HostInfo) error {
 	result := make([]AddressInfo, 0)
 
+	// Controllers beyond the SM pair (controller-2+) have no controllerN slot
+	// in any AddressPool; their platform addresses are auto-assigned and must
+	// not be captured in the profile or they create a perpetual delta.
+	skipAllAddresses := host.Personality == hosts.PersonalityController &&
+		host.Hostname != hosts.Controller0 &&
+		host.Hostname != hosts.ControllerSMPairMate
+
 	for _, a := range host.Addresses {
-		if host.IsSystemAddress(&a) {
+		if skipAllAddresses || host.IsSystemAddress(&a) {
 			// ignore these because they appear after creating or modifying
 			// interfaces and that makes it difficult to compare the current
 			// config to the desired profile because it always looks like we
