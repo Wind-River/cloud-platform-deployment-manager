@@ -48,3 +48,22 @@
   environment:
     KUBECONFIG: "/etc/kubernetes/admin.conf"
   when: "software_version is version('25.09' , '<')"
+
+- name: Get the desired administrative state from host/hostprofile resources
+  include_role:
+    name: initial-config
+    tasks_from: get-administrative-state
+
+- name: Monitor unlock and wait until all resources are reconciled
+  when: administrative_state == "unlocked"
+  block:
+    - name: Wait for the unlock reboot triggered by the deployment manager
+      include_role:
+        name: initial-config
+        tasks_from: lock-unlock
+      when: current_administrative_state == "locked"
+
+    - name: Wait until hosts are configurable and resources are reconciled
+      include_role:
+        name: initial-config
+        tasks_from: monitor-deployment
