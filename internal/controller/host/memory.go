@@ -68,6 +68,32 @@ func vmCountMemoryByFunction(memories []memory.Memory, node int, pagesize starli
 	return count, nil
 }
 
+// platformMiBToPageCount converts a platform memory reservation expressed in
+// whole MiB (as tracked by the system API in imemorys.platform_reserved_mib)
+// into the equivalent number of pages of the given page size.  Platform memory
+// is only ever expressed in 4K pages, so pagesize is always PageSize4K here;
+// it is kept as a parameter to mirror the other memory conversion helpers.
+//
+// The system API only stores platform memory in whole MiB, so this conversion
+// is lossy for any page count that is not a whole number of MiB (i.e. not a
+// multiple of 256 4K pages).  Both the readback of the current configuration
+// and the comparison of the desired configuration must use this same
+// calculation, otherwise the current and desired page counts are expressed in
+// different granularities and the reconciler reports a difference that can
+// never converge.
+func platformMiBToPageCount(mib int, pagesize starlingxv1.PageSize) int {
+	return (mib * int(units.Mebibyte)) / pagesize.Bytes()
+}
+
+// platformPageCountToMiB converts a platform memory page count into the whole
+// MiB value accepted by the system API.  This is the inverse of
+// platformMiBToPageCount and truncates to whole MiB, matching the granularity
+// of the system API.  As with platformMiBToPageCount, platform memory is only
+// ever expressed in 4K pages, so pagesize is always PageSize4K.
+func platformPageCountToMiB(pageCount int, pagesize starlingxv1.PageSize) int {
+	return (pageCount * pagesize.Bytes()) / int(units.Mebibyte)
+}
+
 // platformCountMemoryByFunction returns the number of pages of a particular
 // size that the platform function is using on a given processor node/socket.
 func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize starlingxv1.PageSize) (int, error) {
@@ -80,9 +106,9 @@ func platformCountMemoryByFunction(memories []memory.Memory, node int, pagesize 
 
 		if pagesize == starlingxv1.PageSize4K {
 			// Return the equivalent number of 4K pages that are currently
-			// configured on the host.  Size the returned by the API as MiB we
-			// need to multiply by 1MB and divide by 4K.
-			count += (mem.Platform * int(units.Mebibyte)) / 4096
+			// configured on the host.  The size reported by the API is in MiB
+			// so convert it to the equivalent page count.
+			count += platformMiBToPageCount(mem.Platform, pagesize)
 		}
 	}
 
@@ -109,9 +135,31 @@ func memoryCountByFunction(data []memory.Memory, node int, function string, page
 // update is required to adjust the memory configuration
 func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts memory.MemoryOpts, result bool) {
 
-	if count != f.PageCount {
-		pageSize := starlingxv1.PageSize(f.PageSize)
+	pageSize := starlingxv1.PageSize(f.PageSize)
 
+	// Platform memory is tracked by the system API in whole MiB
+	// (imemorys.platform_reserved_mib), not as a 4K page count, so the system
+	// can only honour a page count that is a whole number of MiB (a multiple
+	// of 256 4K pages).  The current page count (count) has already been
+	// derived from the stored MiB value via platformMiBToPageCount, so the
+	// desired page count must be put through the same MiB round-trip before
+	// comparing.  Otherwise a configured page count that is not a whole number
+	// of MiB (for example 5000000 pages == 19531.25 MiB) would be truncated on
+	// write to 19531 MiB, read back as 4999936 pages, and a raw comparison of
+	// 4999936 != 5000000 would request an update on every reconcile so the
+	// host would never reach the in-sync state.
+	if f.Function == memory.MemoryFunctionPlatform {
+		desiredMiB := platformPageCountToMiB(f.PageCount, pageSize)
+		desiredCount := platformMiBToPageCount(desiredMiB, pageSize)
+		if count != desiredCount {
+			opts.Function = f.Function
+			opts.Platform = &desiredMiB
+			result = true
+		}
+		return opts, result
+	}
+
+	if count != f.PageCount {
 		opts.Function = f.Function
 
 		switch f.Function {
@@ -134,10 +182,6 @@ func memoryUpdateRequired(f starlingxv1.MemoryFunctionInfo, count int) (opts mem
 				hpSize := 2
 				opts.VSwitchHugepageSize = &hpSize
 			}
-
-		case memory.MemoryFunctionPlatform:
-			size := f.PageCount * pageSize.Bytes() / int(units.Mebibyte)
-			opts.Platform = &size
 		}
 
 		result = true
