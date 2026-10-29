@@ -1,0 +1,44 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2026 Wind River Systems, Inc.
+
+# The host may reboot again at any time while being monitored (e.g. a grub
+# update after the unlock). Task-level retries/until cannot recover from an
+# SSH drop (the task ends UNREACHABLE), so retry at the connection layer.
+# Every task in this role is read-only, so re-running a command is safe.
+#
+# Backoff between attempts is 0,1,3,7,15 then 30s: 40 retries gives at
+# least ~18 minutes of host downtime (up to ~25 min with connect timeouts).
+ansible_ssh_retries: "{{ dm_ssh_retries | default(40) }}"
+
+# Detect a dead SSH session (e.g. hard reset mid-command) within ~60s so the
+# retry above can start, instead of hanging on a half-open TCP connection.
+ansible_ssh_extra_args: >-
+  {{ dm_ssh_extra_args
+     | default('-o ServerAliveInterval=15 -o ServerAliveCountMax=4') }}
+
+# The polling tasks rely on bash (pipefail, source).
+ansible_shell_executable: /bin/bash
+
+# Success conditions of the polling tasks, used both as their `until` and by
+# the matching "Fail if" tasks. Variables are evaluated lazily, so each use
+# sees the latest registered result. A reboot can kill the module (the
+# result has no stdout/rc/stderr) or the command (pipefail makes rc != 0),
+# so both are checked first and short-circuit the rest of the condition.
+hosts_appeared: >-
+  {{ get_host_count.stdout is defined
+     and get_host_count.rc == 0
+     and get_host_count.stderr == ''
+     and get_host_count.stdout | int >= configured_hosts | int }}
+
+hosts_configurable: >-
+  {{ get_offline_hosts.stdout is defined
+     and get_offline_hosts.rc == 0
+     and get_offline_hosts.stderr == ''
+     and get_offline_hosts.stdout == '0' }}
+
+resources_reconciled: >-
+  {{ unreconciled.stdout is defined
+     and unreconciled.rc == 0
+     and unreconciled.stderr == ''
+     and unreconciled.stdout | int == 0 }}

@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2025 Wind River Systems, Inc.
+# Copyright(c) 2025-2026 Wind River Systems, Inc.
 - name: Mark the bootstrap as finalized
   file:
     path: "{{ config_permdir }}/.bootstrap_finalized"
@@ -11,12 +11,12 @@
     file: apply-app.yaml
 
 - include_role:
-    name: common
-    tasks_from: apply-config
+    name: common/apply-config
   when: deploy_config is defined
 
-- include_tasks:
-    file: get-administrative-state.yaml
+- name: Get the desired administrative state from host/hostprofile resources
+  include_role:
+    name: common/get-administrative-state
   when: deploy_config is defined
 
 - name: Monitor unlock and wait until all resources are reconciled
@@ -25,9 +25,11 @@
     - administrative_state == "unlocked"
     - distributed_cloud_role == "subcloud"
   block:
-    - include_tasks:
-        file: lock-unlock.yaml
+    - name: Wait for the unlock reboot triggered by the deployment manager
+      include_role:
+        name: common/lock-unlock
       when: current_administrative_state == "locked"
 
-    - include_tasks:
-        file: monitor-deployment.yaml
+    - name: Wait until hosts are configurable and resources are reconciled
+      include_role:
+        name: common/monitor-deployment
