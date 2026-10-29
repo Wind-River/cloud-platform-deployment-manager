@@ -1,14 +1,13 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2021-2025 Wind River Systems, Inc.
+# Copyright(c) 2021-2026 Wind River Systems, Inc.
 - name: Deployment Manager Playbook
   hosts: all
   gather_facts: false
   become: false
+  roles:
+    - common/prepare-env
   tasks:
-    - import_role:
-        name: common
-
     - include_role:
         name: initial-config
       when:
