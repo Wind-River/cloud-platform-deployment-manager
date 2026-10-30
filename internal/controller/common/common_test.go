@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/gophercloud/gophercloud"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
 	v1 "k8s.io/api/core/v1"
@@ -100,7 +102,57 @@ var _ = Describe("Common utils", func() {
 				Expect(result).To(Equal(RetryUserError))
 			})
 		})
+		Context("when error is a rejected system API request", func() {
+			It("should log info with only the server reason and return RetryUserError", func() {
+				body := []byte(`{"error_message": "{\"faultcode\": \"Client\", \"faultstring\": \"Route gateway not reachable\", \"debuginfo\": null}"}`)
+				testError := perrors.Wrap(gophercloud.ErrDefault409{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+					Method: "POST", URL: "http://sysinv/v1/iroutes", Actual: 409, Body: body}}, "failed to create route")
+				result, err := testHandler.HandleReconcilerError(request, testError)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(RetryUserError))
+				Expect(sink.infoCalled).To(BeTrue())
+				Expect(sink.errorCalled).To(BeFalse())
+				Expect(sink.message).To(Equal("request rejected by system API"))
+				Expect(sink.keysAndValues).To(ContainElements("reason", "Route gateway not reachable"))
+				Expect(sink.keysAndValues).To(ContainElements("status", 409))
+				Expect(sink.keysAndValues).To(ContainElements("operation", "failed to create route"))
+			})
+		})
+		Context("when error is an authentication failure", func() {
+			resp := gophercloud.ErrUnexpectedResponseCode{Method: "POST", URL: "http://keystone/v3/auth/tokens", Actual: 401}
+
+			It("should report credentials for a plain 401", func() {
+				result, err := testHandler.HandleReconcilerError(request, gophercloud.ErrDefault401{ErrUnexpectedResponseCode: resp})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(RetryUserError))
+				Expect(sink.errorCalled).To(BeFalse())
+				Expect(sink.message).To(Equal("Failed to authenticate, please verify the system-endpoint secret values."))
+			})
+		})
+		Context("when error is a rejected unlock request", func() {
+			It("should log info and return RetryTransientError", func() {
+				body := []byte(`{"error_message": "{\"faultcode\": \"Client\", \"faultstring\": \"Operation Rejected: host not ready. unlock.\", \"debuginfo\": null}"}`)
+				rejected := gophercloud.ErrDefault400{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+					Method: "PATCH", URL: "http://sysinv/v1/ihosts/1", Actual: 400, Body: body}}
+				testError := NewSystemAPIError("unlock host controller-0", rejected).WithRetry(RetryTransientError)
+				result, err := testHandler.HandleReconcilerError(request, testError)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(RetryTransientError))
+				Expect(sink.errorCalled).To(BeFalse())
+			})
+		})
 		Context("when error is some text error", func() {
+			It("should log error and not return it to controller-runtime", func() {
+				_, err := testHandler.HandleReconcilerError(request, errpkg.New("unexpected"))
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sink.errorCalled).To(BeTrue())
+				Expect(sink.message).To(Equal("an unhandled error occurred"))
+			})
+
 			It("should log error and return RetryTransientError", func() {
 				testError := errpkg.New("error msg")
 				result, _ := testHandler.HandleReconcilerError(request, testError)
@@ -202,9 +254,11 @@ var _ = Describe("Common utils", func() {
 })
 
 type DummyLogSink struct {
-	infoCalled  bool
-	errorCalled bool
-	message     string
+	infoCalled    bool
+	errorCalled   bool
+	message       string
+	err           error
+	keysAndValues []interface{}
 }
 
 func (l *DummyLogSink) Init(info logr.RuntimeInfo) {
@@ -216,10 +270,12 @@ func (l *DummyLogSink) Enabled(level int) bool {
 func (l *DummyLogSink) Info(level int, msg string, keysAndValues ...interface{}) {
 	l.infoCalled = true
 	l.message = msg
+	l.keysAndValues = keysAndValues
 }
 func (l *DummyLogSink) Error(err error, msg string, keysAndValues ...interface{}) {
 	l.errorCalled = true
 	l.message = msg
+	l.err = err
 }
 func (l *DummyLogSink) WithValues(keysAndValues ...interface{}) logr.LogSink {
 	return nil

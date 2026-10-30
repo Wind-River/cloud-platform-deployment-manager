@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright(c) 2019 Wind River Systems, Inc. */
+/* Copyright(c) 2019-2026 Wind River Systems, Inc. */
 
 package common
 
 import (
 	"fmt"
-	"regexp"
+	"net/http"
+	"strings"
+
+	perrors "github.com/pkg/errors"
+	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Defines common log strings from commonly performed validation checks across
@@ -16,23 +21,6 @@ const (
 	NoProvisioningAfterReconciled      = "resource provisioning ignored after initial synchronization has completed"
 	ProvisioningAllowedAfterReconciled = "manual override; allowing resource provisioning after initial synchronization"
 )
-
-// extractFaultString extracts the fault message from the fault error.
-// It searches for the faultstring pattern and returns the extracted message,
-// or the original error string if no pattern is found.
-func extractFaultString(err error) string {
-	var reason string
-	if err != nil {
-		reason = err.Error()
-	}
-
-	faultRe := regexp.MustCompile(`faultstring.*?:.*?"(.*?)\\`)
-	if result := faultRe.FindStringSubmatch(reason); len(result) > 0 {
-		return result[1]
-	}
-
-	return reason
-}
 
 // BaseError defines the common error reporting struct for all other errors
 // defined in this package
@@ -75,10 +63,98 @@ type ErrResourceConfigurationDependency struct {
 	BaseError
 }
 
-// ErrUnlockError defines an error to be returned when the RPC call
-// to unlock the host fails.
-type ErrUnlockError struct {
-	BaseError
+// ErrSystemAPI defines an error to be used when a request to a StarlingX system
+// API (i.e., sysinv-api) failed or was rejected.  It carries the operation that
+// was attempted, the HTTP status code returned and the reason reported by the
+// server (the sysinv faultstring, without any remote traceback) so that the
+// error can be classified and reported uniformly regardless of which API
+// request produced it.
+//
+// Call sites do not need to create these explicitly; the reconciler error
+// handler converts any rejected gophercloud request (other than authentication
+// failures) into an ErrSystemAPI.
+// Create one with NewSystemAPIError only to describe the operation more
+// precisely or to override the default retry policy with WithRetry.
+type ErrSystemAPI struct {
+	// Operation describes the request that failed (e.g., "unlock host
+	// controller-0").  May be empty.
+	Operation string
+
+	// StatusCode is the HTTP status code returned by the API, or 0 if no
+	// valid response was received.
+	StatusCode int
+
+	// Reason is the human readable explanation reported by the server.
+	Reason string
+
+	// retry optionally overrides the retry policy derived from StatusCode.
+	retry *reconcile.Result
+
+	// cause is the original error returned by gophercloud.
+	cause error
+}
+
+// Error implements the error interface.
+func (in ErrSystemAPI) Error() string {
+	msg := in.Reason
+	if in.StatusCode != 0 {
+		msg = fmt.Sprintf("%s (HTTP %d)", msg, in.StatusCode)
+	}
+	if in.Operation != "" {
+		return fmt.Sprintf("failed to %s: %s", strings.TrimPrefix(in.Operation, "failed to "), msg)
+	}
+	return msg
+}
+
+// Unwrap returns the original API error so that errors.As/errors.Is can still
+// inspect the underlying gophercloud error.
+func (in ErrSystemAPI) Unwrap() error {
+	return in.cause
+}
+
+// WithRetry returns a copy of the error which overrides the retry policy that
+// would otherwise be derived from the HTTP status code.  For example, unlock
+// rejections are usually transient and worth retrying sooner.
+func (in ErrSystemAPI) WithRetry(result reconcile.Result) ErrSystemAPI {
+	in.retry = &result
+	return in
+}
+
+// Transient returns true if the request is likely to succeed if retried
+// without any change to the configuration (i.e., request timeout, rate
+// limiting, or no valid response received).
+func (in ErrSystemAPI) Transient() bool {
+	switch in.StatusCode {
+	case 0, http.StatusRequestTimeout, http.StatusTooManyRequests:
+		return true
+	}
+	return false
+}
+
+// ServerError returns true if the server failed to process the request.  Note
+// that sysinv also reports some invalid input (e.g., a ValueError raised by a
+// controller) as an HTTP 500.
+func (in ErrSystemAPI) ServerError() bool {
+	return in.StatusCode >= http.StatusInternalServerError
+}
+
+// Retry returns the retry policy for this error.  Unless overridden with
+// WithRetry the policy is derived from the HTTP status code:
+//   - no response, 408, 429: transient, retry soon
+//   - 5xx: server error
+//   - other 4xx (incl. sysinv 409 Conflict): rejected, the configuration
+//     likely needs to be corrected
+func (in ErrSystemAPI) Retry() reconcile.Result {
+	switch {
+	case in.retry != nil:
+		return *in.retry
+	case in.Transient():
+		return RetryTransientError
+	case in.ServerError():
+		return RetryServerError
+	default:
+		return RetryUserError
+	}
 }
 
 // ErrUserDataError defines an error to be used when reporting that an operation
@@ -146,10 +222,33 @@ func NewResourceConfigurationDependency(msg string) error {
 	return ErrResourceConfigurationDependency{BaseError{msg}}
 }
 
-// NewUnlockError defines a constructor for the UnlockError error type.
-func NewUnlockError(hostname string, in error) error {
-	msg := fmt.Sprintf("Failed to unlock %s: %s", hostname, extractFaultString(in))
-	return ErrUnlockError{BaseError{msg}}
+// NewSystemAPIError defines a constructor for the ErrSystemAPI error type.  The
+// operation describes the request that was attempted; if empty, any context
+// added to the error with perrors.Wrap is used instead.  A nil error can be
+// passed when the API returned no error but also no usable result.
+func NewSystemAPIError(operation string, in error) ErrSystemAPI {
+	if existing, ok := perrors.Cause(in).(ErrSystemAPI); ok {
+		if operation != "" {
+			existing.Operation = operation
+		}
+		return existing
+	}
+
+	if operation == "" && in != nil {
+		operation = utils.APIErrorOperation(in)
+	}
+
+	reason := "no valid response received from the system API"
+	if in != nil {
+		reason = utils.APIErrorReason(in)
+	}
+
+	return ErrSystemAPI{
+		Operation:  operation,
+		StatusCode: utils.APIErrorStatusCode(in),
+		Reason:     reason,
+		cause:      perrors.Cause(in),
+	}
 }
 
 // NewUserDataError defines a constructor for the ErrUserDataError error type.

@@ -598,12 +598,12 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if factory {
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 	}
 
@@ -621,7 +621,7 @@ func (r *PtpInstanceReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		if !utils.ContainsString(instance.Finalizers, PtpInstanceFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, PtpInstanceFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as the update is going to cause

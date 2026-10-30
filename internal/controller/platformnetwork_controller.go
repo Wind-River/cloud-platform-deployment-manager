@@ -284,12 +284,12 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if factory {
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 	}
 
@@ -306,7 +306,7 @@ func (r *PlatformNetworkReconciler) Reconcile(ctx context.Context, request ctrl.
 		if !utils.ContainsString(instance.Finalizers, PlatformNetworkFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, PlatformNetworkFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as the update is going to cause
