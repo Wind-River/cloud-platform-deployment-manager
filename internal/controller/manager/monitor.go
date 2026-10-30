@@ -12,6 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
+	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -261,7 +262,7 @@ func monitorStrategyState(management CloudManager) bool {
 	// Obtain current strategy status
 	s, err := management.GcShow(client)
 	if s == nil || err != nil {
-		log.Error(err, "Obtain strategy status failed")
+		comm.LogAPIError(log, err, "Obtain strategy status failed")
 		return false
 	}
 	log.Info("Strategy status", "state", s.State)
@@ -277,7 +278,7 @@ func monitorStrategyState(management CloudManager) bool {
 		log.Info("Sending stragety action", "StrategyActionOpts", action)
 		_, err = management.GcActionStrategy(client, action)
 		if err != nil {
-			log.Error(err, "Strategy apply failed.")
+			comm.LogAPIError(log, err, "Strategy apply failed.")
 			c, err := management.GetStrategyRetryCount()
 			if err != nil {
 				log.Error(err, "Fail to obtain strategy retry count")
@@ -353,7 +354,7 @@ func IsFinishedStrategy(strategy_status *systemconfigupdate.SystemConfigUpdate) 
 func DeleteFinishedStrategy(management CloudManager, client *gophercloud.ServiceClient) error {
 	err := management.GcDelete(client).ExtractErr()
 	if err != nil {
-		log.Error(err, "Failed to delete finished strategy.")
+		comm.LogAPIError(log, err, "Failed to delete finished strategy.")
 	}
 
 	return err
@@ -365,7 +366,7 @@ func DeleteFinishedStrategy(management CloudManager, client *gophercloud.Service
 func IsExistingStrategy(management CloudManager, client *gophercloud.ServiceClient) (bool, *systemconfigupdate.SystemConfigUpdate, error) {
 	strategy_status, err := management.GcShow(client)
 	if err != nil {
-		log.Error(err, "Failed to fetch existing strategy")
+		comm.LogAPIError(log, err, "Failed to fetch existing strategy")
 		return false, nil, err
 	}
 
@@ -486,7 +487,7 @@ func ManageStrategy(management CloudManager) bool {
 			_, err = management.GcCreate(client, request)
 			management.SetStrategyExpectedByOtherReconcilers(false)
 			if err != nil {
-				log.Error(err, "Strategy creation failed")
+				comm.LogAPIError(log, err, "Strategy creation failed")
 				c, err := management.GetStrategyRetryCount()
 				if err != nil {
 					log.Error(err, "Fail to obtain strategy retry count")

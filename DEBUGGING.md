@@ -82,7 +82,7 @@ The "Args:" section would look like the following if the log level was changed f
 the default 'info' to a new value (2). Log level should be one of 'debug', 'info',
 'error', or any integer value > 0 which corresponds to custom debug levels of
 increasing verbosity. Stack trace level can be also modified with the
-"--zap-stack trace-level" parameter. The following shows to change stack trace level
+"--zap-stacktrace-level" parameter. The following shows to change stack trace level
 from the default 'panic' to 'info'. Stack trace level should be one of 'info',
 'error', 'panic'.
 

@@ -18,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
+	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -640,7 +641,7 @@ func (m *PlatformManager) GetSystemInfo(namespace string, client *gophercloud.Se
 
 	default_system, err := system.GetDefaultSystem(client)
 	if err != nil {
-		log.Error(err, "failed to query host list")
+		comm.LogAPIError(log, err, "failed to query host list")
 		return system_info, err
 	}
 
@@ -664,7 +665,7 @@ func (m *PlatformManager) GetHostByPersonality(namespace string, client *gopherc
 
 	host_list, err := hosts.ListHosts(client)
 	if err != nil {
-		log.Error(err, "failed to query host list")
+		comm.LogAPIError(log, err, "failed to query host list")
 		return host_instance, host_obj, err
 	}
 

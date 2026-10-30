@@ -740,7 +740,11 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 
 	result, err := hosts.Update(client, host.ID, opts).Extract()
 	if err != nil || result == nil {
-		return common.NewUnlockError(host.Hostname, err)
+		// Most unlock rejections are transient (e.g., the host or its
+		// services are not ready yet), so retry sooner than for other
+		// rejected requests.
+		return common.NewSystemAPIError(fmt.Sprintf("unlock host %s", host.Hostname), err).
+			WithRetry(common.RetryTransientError)
 	}
 
 	host.Host = *result
@@ -2544,7 +2548,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err, updateRequired := r.PlatformNetworkUpdateRequired(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	err, scope_updated := r.UpdateDeploymentScope(instance)
@@ -2554,7 +2558,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err = r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	// TODO(wasnio): remove this once migration from helm chart to fluxcd is done
@@ -2578,7 +2582,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		if !utils.ContainsString(instance.Finalizers, HostFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, HostFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as that update is going to cause
@@ -2617,14 +2621,14 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(profile, instance, request.Namespace)
 	if err != nil {
-		logHost.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
-		return reconcile.Result{}, err
+		err = perrors.Wrap(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
+		return r.HandleReconcilerError(request, err)
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if target {
 		// If the node is storage but not in the ceph primary group,
@@ -2632,7 +2636,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		// and available.
 		ready, err := r.GetCephPrimaryGroupReady(platformClient)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 		if !ready {
 			logHost.Info("waiting for ceph primary group nodes unlocked-available")
