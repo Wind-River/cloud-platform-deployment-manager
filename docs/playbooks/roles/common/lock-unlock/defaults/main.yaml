@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2026 Wind River Systems, Inc.
+
+# How long to wait for the unlock reboot triggered by the deployment manager.
+dm_unlock_timeout: 1200
+
+# How long the deployment configuration must have been applied before the
+# unlock rejections are reported: sysinv rejecting the unlock while puppet is
+# still applying the configuration is expected for the first few minutes.
+dm_unlock_monitor_delay: 180
+
+# How often the unlock progress is checked while waiting for the reboot.
+dm_unlock_monitor_interval: 20
+
+# Where the unlock diagnostics are collected. Defaults to a temporary file in
+# the home directory of the ansible user, see tasks/prepare.yaml. Override it
+# with an absolute path on a persistent filesystem that the ansible user can
+# write: no task of this role uses become, and /tmp is wiped by the reboot.
+# dm_unlock_monitor_log: /home/sysadmin/dm-unlock-monitor.log

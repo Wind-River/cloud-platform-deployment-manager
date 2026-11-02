@@ -1,0 +1,57 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2026 Wind River Systems, Inc.
+#
+# Stages the scripts needed to wait for the unlock reboot: the fake shutdown
+# used by the reboot task, and the unlock monitor.
+#
+# main.yaml includes this file if it has not run yet, but the deployment
+# manager can unlock the host as soon as the deployment configuration is
+# applied, and copying a file to a host that is already going down fails. Stage
+# the scripts before applying the configuration instead:
+#
+#   - include_role:
+#       name: common/lock-unlock
+#       tasks_from: prepare
+- name: Create a temporary directory for the unlock scripts
+  tempfile:
+    state: directory
+    prefix: dm-unlock.
+  register: dm_unlock_tempdir
+
+- set_fact:
+    dm_unlock_staging_dir: "{{ dm_unlock_tempdir.path }}"
+
+# Not in the staging directory: the diagnostics are reported once the host is
+# back, and /tmp is a tmpfs that the unlock reboot wipes. The home directory
+# of the ansible user is on a persistent filesystem and is writable without
+# become, unlike /var/log (root:root 0750).
+- name: Create a temporary file for the unlock diagnostics
+  tempfile:
+    state: file
+    # Keep the quotes: a bare ~ is null in YAML, so the file would be created
+    # in /tmp and lost in the reboot.
+    path: "~"
+    prefix: dm-unlock-monitor.
+    suffix: .log
+  register: dm_unlock_tempfile
+  when: dm_unlock_monitor_log is not defined
+
+- set_fact:
+    dm_unlock_monitor_log: "{{ dm_unlock_tempfile.path }}"
+  when: dm_unlock_monitor_log is not defined
+
+# The reboot task looks for the shutdown command in this directory only, so it
+# must hold nothing else named shutdown.
+- name: Copy the unlock scripts to remote host
+  copy:
+    src: "{{ item }}"
+    dest: "{{ dm_unlock_staging_dir }}/{{ item }}"
+    mode: "0755"
+  loop:
+    # TODO: Remove this workaround once Ansible 2.11+ is available in WRCP.
+    # Replace with reboot_command: /bin/true in the reboot task.
+    # The reboot task will not trigger the shutdown, but will follow the
+    # system power off/on triggered by unlock operation.
+    - shutdown
+    - dm-unlock-monitor.sh

@@ -1,26 +1,126 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2025-2026 Wind River Systems, Inc.
-- set_fact:
-    dm_unlock_timeout: "{{ dm_unlock_timeout | default(1200) }}"
+#
+# Waits for the unlock reboot triggered by the deployment manager, and reports
+# why the host was not unlocked if it never reboots. The role is tuned through
+# the variables in defaults/main.yaml.
+- name: Stage the unlock scripts
+  include_tasks: prepare.yaml
+  when: dm_unlock_staging_dir is not defined
 
-# TODO: Remove this workaround once Ansible 2.11+ is available in WRCP.
-# Replace with reboot_command: /bin/true in the reboot task below.
-# The reboot task will not trigger the shutdown, but will follow the
-# system power off/on triggered by unlock operation.
-- name: Copy fake shutdown script to remote host
-  copy:
-    src: shutdown
-    dest: /tmp/shutdown
-    mode: "0755"
+# The reboot task below blocks until the host has rebooted, so the playbook
+# cannot report anything while the deployment manager is still retrying the
+# unlock. Collect the rejections in the background instead and report them
+# once the wait is over, see files/dm-unlock-monitor.sh.
+- name: Start monitoring the unlock progress in the background
+  command: >-
+    {{ dm_unlock_staging_dir }}/dm-unlock-monitor.sh
+    {{ hostname }}
+    {{ pod_namespace }}
+    {{ dm_unlock_monitor_delay }}
+    {{ dm_unlock_monitor_interval }}
+    {{ dm_unlock_monitor_log }}
+  # Detached: the playbook does not wait for the collector, and the async
+  # timeout stops it in case the host never reboots.
+  async: "{{ (dm_unlock_timeout | int) + (dm_unlock_monitor_interval | int) }}"
+  poll: 0
+  register: unlock_monitor
+  changed_when: false
+  # The host may already be going down if the unlock was accepted right away.
+  # Waiting for the reboot matters more than collecting diagnostics.
+  failed_when: false
+  ignore_unreachable: true
 
-- name: Wait unlock reboot
-  reboot:
-    # did you read the comment above?
-    # The search_paths is defined to restrict the reboot task to look
-    # for shutdown in /tmp/, so the fake shutdown will be executed.
-    # The reboot is triggered by the unlock operation.
-    search_paths:
-      - "/tmp/"
-    reboot_timeout: "{{ dm_unlock_timeout }}"
-  register: unlock_reboot_status
+- name: Show that the unlock progress is not monitored
+  debug:
+    msg: >-
+      Could not start the unlock monitor, no unlock diagnostics will be
+      collected: {{ unlock_monitor.msg | default('see the task above') }}
+  when: unlock_monitor.started | default(0) | int != 1
+
+- name: Wait for the unlock reboot and report any unlock rejection
+  block:
+    - name: Wait unlock reboot
+      reboot:
+        # did you read the comment in prepare.yaml?
+        # The search_paths is defined to restrict the reboot task to look
+        # for shutdown in the staging directory, so the fake shutdown will
+        # be executed.
+        # The reboot is triggered by the unlock operation.
+        search_paths:
+          - "{{ dm_unlock_staging_dir }}"
+        reboot_timeout: "{{ dm_unlock_timeout }}"
+      register: unlock_reboot_status
+
+  rescue:
+    # Reported further down, once the collected diagnostics are shown.
+    - set_fact:
+        unlock_reboot_failed: true
+
+  always:
+    # The collector is killed by the unlock reboot, but not when the host
+    # never rebooted.
+    - name: Stop monitoring the unlock progress
+      shell: |
+        pidfile="{{ dm_unlock_monitor_log }}.pid"
+        if [ -f "${pidfile}" ]; then
+          pid=$(cat "${pidfile}")
+          # The pid file survives the unlock reboot, so make sure the pid is
+          # still the collector and not an unrelated process that reused it.
+          if grep -qs dm-unlock-monitor "/proc/${pid}/cmdline"; then
+            kill "${pid}" 2>/dev/null
+          fi
+          rm -f "${pidfile}"
+        fi
+      changed_when: false
+      # The pid file is gone after the reboot, and the host may be
+      # unreachable if it is rebooting right now.
+      failed_when: false
+      ignore_unreachable: true
+
+    # Empty unless the collector had something to report, e.g. when the host
+    # was unlocked before the first check.
+    - name: Get the collected unlock diagnostics
+      command: cat {{ dm_unlock_monitor_log }}
+      register: unlock_monitor_log
+      changed_when: false
+      failed_when: false
+      ignore_unreachable: true
+
+    - name: Show the collected unlock diagnostics
+      debug:
+        msg: "{{ unlock_monitor_log.stdout_lines }}"
+      when: unlock_monitor_log.stdout | default('') != ''
+
+- name: Fail if the host did not reboot after the unlock
+  fail:
+    msg: "{{ unlock_failure_msg + unlock_diagnostics }}"
+  vars:
+    unlock_failure_msg:
+      - >-
+        {{ hostname }} did not reboot within {{ dm_unlock_timeout }}s after
+        the deployment configuration was applied:
+        {{ unlock_reboot_status.msg | default('see the reboot task above') }}
+      - >-
+        The diagnostics collected while waiting are kept in
+        {{ dm_unlock_monitor_log }} on the host. The full deployment manager
+        log is available with: kubectl -n {{ pod_namespace }} logs
+        deployments/platform-deployment-manager manager
+    unlock_diagnostics: >-
+      {{
+        unlock_monitor_log.stdout_lines
+        | default(['No diagnostics were collected.'])
+      }}
+  when: unlock_reboot_failed | default(false) | bool
+
+# Only reached once the host has rebooted, i.e. the unlock succeeded. The
+# diagnostics are kept on the host otherwise.
+- name: Remove the unlock scripts and diagnostics from the host
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ dm_unlock_staging_dir }}"
+    - "{{ dm_unlock_monitor_log }}"
+    - "{{ dm_unlock_monitor_log }}.pid"
