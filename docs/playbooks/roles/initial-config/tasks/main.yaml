@@ -10,6 +10,16 @@
 - import_tasks:
     file: apply-app.yaml
 
+# Before the configuration is applied: the deployment manager unlocks the host
+# as soon as it has been, and copying to a host that is going down fails.
+- name: Stage the unlock scripts
+  include_role:
+    name: common/lock-unlock
+    tasks_from: prepare
+  when:
+    - deploy_config is defined
+    - distributed_cloud_role == "subcloud"
+
 - include_role:
     name: common/apply-config
   when: deploy_config is defined
