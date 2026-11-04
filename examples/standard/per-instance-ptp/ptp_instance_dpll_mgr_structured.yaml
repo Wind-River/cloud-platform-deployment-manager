@@ -1,0 +1,54 @@
+# dpll-mgr structured configuration example
+#
+# Deployment Manager provisions a dpll-mgr PtpInstance using the structured,
+# defaults-driven 'config' section instead of a hand-written config_json blob.
+# The operator supplies only the site-specific tunables as flat name=value
+# parameters; sysinv merges them over a shipped, validated template to produce
+# the full config_json the daemon consumes, deriving the UDS channels from the
+# named ptp4l/ts2phc instances and the PTP domain from the backhaul ptp4l.
+#
+# No DM CRD change is needed: 'config' is just another section key in the
+# existing parameters map[string][]string. sysinv echoes the 'config' section
+# back verbatim, so DM reconciliation is stable (no perpetual diff).
+#
+# The referenced instances (ptp01bh, ts1, ts2) must be provisioned on the same
+# host as the dpll-mgr instance (GNR-D hybrid layout). This example shows the
+# default GNSS-primary case; both DPLL planes ship with a GNSS-primary default,
+# so the dpll0/dpll1 pin maps below are optional overrides. To prefer the
+# backhaul (PTP-primary), override the phase plane with
+# 'dpll1_pin_priority_map=GNSS_REF4P:12, SDP0_REF0N:0'.
+
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: dpll-mgr1
+  namespace: deployment
+spec:
+  service: dpll-mgr
+  parameters:
+    config:
+      - phc_interface=eno8703
+      - operation_mode=SW_BASED
+      - channel_ptp_bh=ptp01bh
+      - channel_ts2_0=ts1
+      - channel_ts2_1=ts2
+      # Optional pin-priority overrides (both planes default to GNSS-primary:
+      # dpll0/EEC "GNSS_REF4P:0, SDP0_REF0N:15" disconnects the backhaul SDP
+      # pin on the frequency plane; dpll1/PPS "GNSS_REF4P:0, SDP0_REF0N:12"
+      # keeps it as a phase-plane failover). Priority 0 is highest, 15 is the
+      # disconnect sentinel.
+      #   - dpll0_pin_priority_map=GNSS_REF4P:0, SDP0_REF0N:15
+      # For PTP(backhaul)-primary, swap the phase plane:
+      #   - dpll1_pin_priority_map=GNSS_REF4P:12, SDP0_REF0N:0
+      # Optional holdover alarm tiers in minutes (default 30/60/240):
+      #   - ho_0=480
+
+# Raw config_json fallback (still supported, mutually exclusive with 'config'):
+#
+# spec:
+#   service: dpll-mgr
+#   parameters:
+#     config_json:
+#       - 'config_json={"global":{...},"channels":{...},"dpll":{...},...}'
