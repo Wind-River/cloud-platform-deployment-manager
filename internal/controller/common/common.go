@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
@@ -267,17 +268,16 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		err = nil
 		result = h.handleSystemAPIError(request, typed)
 
-	case gophercloud.ErrDefault400, gophercloud.ErrDefault403,
-		gophercloud.ErrDefault404, gophercloud.ErrDefault405,
-		gophercloud.ErrDefault408, gophercloud.ErrDefault409,
-		gophercloud.ErrDefault429, gophercloud.ErrDefault500,
-		gophercloud.ErrDefault503, gophercloud.ErrUnexpectedResponseCode,
-		*gophercloud.ErrUnexpectedResponseCode:
+	case starlingx.FaultError, *starlingx.FaultError,
+		gophercloud.ErrUnexpectedResponseCode, *gophercloud.ErrUnexpectedResponseCode:
 		// Requests rejected by the system API (sysinv-api) are handled
-		// uniformly regardless of which request failed.  The server
-		// successfully processed the request so the client is still valid
-		// and does not need to be reset.  Authentication failures (401) are
-		// handled above.
+		// uniformly regardless of which request failed.  The StarlingX
+		// client returns a starlingx.FaultError for every rejected (non 2xx)
+		// request through its default error context; the bare
+		// ErrUnexpectedResponseCode is kept as a fallback for any request
+		// that did not go through that client.  The server successfully
+		// processed the request so the client is still valid and does not
+		// need to be reset.  Authentication failures (401) are handled above.
 		resetClient = false
 		err = nil
 		result = h.handleSystemAPIError(request, NewSystemAPIError("", in))

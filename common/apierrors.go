@@ -4,161 +4,65 @@
 package common
 
 import (
-	"encoding/json"
-	"reflect"
-	"regexp"
+	"errors"
 	"strings"
 
-	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud"
 	perrors "github.com/pkg/errors"
 )
 
-// faultRe matches the faultstring embedded (and JSON escaped) in the body of a
-// rejected StarlingX API request.
-var faultRe = regexp.MustCompile(`faultstring.*?:.*?"(.*?)\\`)
+// apiResponseError is the subset of the gophercloud StarlingX FaultError that
+// carries the details of a rejected (non 2xx) API response.  FaultError is
+// installed as the StarlingX client's default error context, so every rejected
+// StarlingX request is returned as one, regardless of the status code.  The
+// interface is matched with errors.As so that errors annotated with
+// perrors.Wrap (which implements Unwrap) are also recognized.
+type apiResponseError interface {
+	error
+	GetStatusCode() int
+	GetBody() []byte
+}
 
-// responseCodeType is the type of the gophercloud error carrying the details
-// of a rejected (non 2xx) API response.
-var responseCodeType = reflect.TypeOf(gophercloud.ErrUnexpectedResponseCode{})
-
-// apiResponseError returns the HTTP response details carried by a gophercloud
-// error.  The error is unwrapped first so that errors annotated with
-// perrors.Wrap are also recognized.  The second return value is false if the
-// error was not produced by a rejected (non 2xx) API response.
-//
-// gophercloud reports a rejected response either as an ErrUnexpectedResponseCode
-// or as one of the ErrDefaultXXX types (ErrDefault400, ErrDefault409, ...),
-// which all embed it.  The embedded struct is looked up generically so that
-// every status-specific type is handled without listing each one.
-func apiResponseError(err error) (*gophercloud.ErrUnexpectedResponseCode, bool) {
-	if err == nil {
-		return nil, false
+// extractAPIResponseError returns the gophercloud response error carried by
+// err, or false if err was not produced by a rejected (non 2xx) StarlingX API
+// response.
+func extractAPIResponseError(err error) (apiResponseError, bool) {
+	var respErr apiResponseError
+	if errors.As(err, &respErr) {
+		return respErr, true
 	}
-
-	v := reflect.ValueOf(perrors.Cause(err))
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return nil, false
-		}
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Struct {
-		return nil, false
-	}
-
-	if v.Type() != responseCodeType {
-		// Look for the embedded ErrUnexpectedResponseCode of an ErrDefaultXXX.
-		field, ok := v.Type().FieldByName(responseCodeType.Name())
-		if !ok || !field.Anonymous || field.Type != responseCodeType {
-			return nil, false
-		}
-		v = v.FieldByIndex(field.Index)
-	}
-
-	resp := v.Interface().(gophercloud.ErrUnexpectedResponseCode)
-	return &resp, true
+	return nil, false
 }
 
 // IsAPIResponseError returns true if the error (or the error it wraps) was
 // produced because the system API rejected a request with a non 2xx status.
 func IsAPIResponseError(err error) bool {
-	_, ok := apiResponseError(err)
+	_, ok := extractAPIResponseError(err)
 	return ok
 }
 
 // APIErrorStatusCode returns the HTTP status code associated to a rejected
 // system API request, or 0 if the error is not an API response error.
 func APIErrorStatusCode(err error) int {
-	if resp, ok := apiResponseError(err); ok {
-		return resp.Actual
+	if resp, ok := extractAPIResponseError(err); ok {
+		return resp.GetStatusCode()
 	}
 	return 0
 }
 
-// parseFaultBody extracts a human readable message from the body of a rejected
-// system API request.  The StarlingX APIs encode their errors as:
-//
-//	{"error_message": "{\"debuginfo\": null, \"faultcode\": \"Client\", \"faultstring\": \"<reason>\"}"}
-//
-// Other OpenStack style bodies such as {"error": {"message": "..."}} or
-// {"message": "..."} are also handled.  An empty string is returned if no
-// message could be extracted.
-func parseFaultBody(body []byte) string {
-	text := strings.TrimSpace(string(body))
-	if text == "" {
-		return ""
-	}
-
-	var outer map[string]interface{}
-	if err := json.Unmarshal([]byte(text), &outer); err == nil {
-		if msg, ok := outer["error_message"].(string); ok {
-			var inner map[string]interface{}
-			if err := json.Unmarshal([]byte(msg), &inner); err == nil {
-				if fault, ok := inner["faultstring"].(string); ok && fault != "" {
-					return fault
-				}
-			}
-			if msg != "" {
-				return msg
-			}
-		}
-		if fault, ok := outer["faultstring"].(string); ok && fault != "" {
-			return fault
-		}
-		if nested, ok := outer["error"].(map[string]interface{}); ok {
-			if msg, ok := nested["message"].(string); ok && msg != "" {
-				return msg
-			}
-		}
-		if msg, ok := outer["message"].(string); ok && msg != "" {
-			return msg
-		}
-	}
-
-	if result := faultRe.FindStringSubmatch(text); len(result) > 0 {
-		return result[1]
-	}
-
-	return text
-}
-
 // APIErrorReason returns a concise, human readable explanation of why an
 // operation failed.  For rejected system API requests the reason reported by
-// the server (i.e., the sysinv faultstring) is returned instead of the raw
-// response body.  For any other error the error string is returned.
+// the server (i.e., the sysinv faultstring) is returned: the gophercloud
+// FaultError already extracts it from the response body and strips any remote
+// Python traceback, so its Error() string is the reason.  For any other error
+// the error string is returned.
 func APIErrorReason(err error) string {
 	if err == nil {
 		return ""
 	}
-
-	if resp, ok := apiResponseError(err); ok {
-		if reason := stripRemoteTraceback(parseFaultBody(resp.Body)); reason != "" {
-			return reason
-		}
-		return perrors.Cause(err).Error()
+	if resp, ok := extractAPIResponseError(err); ok {
+		return resp.Error()
 	}
-
-	reason := err.Error()
-	if result := faultRe.FindStringSubmatch(reason); len(result) > 0 {
-		reason = result[1]
-	}
-	return stripRemoteTraceback(reason)
-}
-
-// remoteTracebackMarker is the marker of a Python traceback.  sysinv-api does
-// not install its NoExceptionTracebackHook, so exceptions raised by
-// sysinv-conductor and relayed over RPC are returned to the client with the
-// remote traceback appended to the faultstring.
-const remoteTracebackMarker = "Traceback (most recent call last):"
-
-// stripRemoteTraceback removes any Python traceback (and trailing whitespace)
-// appended to a server provided error message.
-func stripRemoteTraceback(msg string) string {
-	if idx := strings.Index(msg, remoteTracebackMarker); idx >= 0 {
-		msg = msg[:idx]
-	}
-	return strings.TrimSpace(msg)
+	return err.Error()
 }
 
 // APIErrorOperation returns the annotations added on top of the root cause of
@@ -177,26 +81,4 @@ func APIErrorOperation(err error) string {
 		return ""
 	}
 	return strings.TrimSuffix(err.Error(), ": "+cause.Error())
-}
-
-// LogAPIError logs an error returned by a system API request.  A request the
-// system API rejected is an expected outcome that is retried, so it is logged
-// at the informational level with only the reason reported by the server (the
-// sysinv faultstring), the operation and the status code, rather than at the
-// error level with the raw response body and a stack trace.  Any other error is
-// logged as an error.
-func LogAPIError(log logr.Logger, err error, msg string, keysAndValues ...interface{}) {
-	if IsAPIResponseError(err) {
-		kv := append([]interface{}{}, keysAndValues...)
-		if op := APIErrorOperation(err); op != "" {
-			kv = append(kv, "operation", op)
-		}
-		if code := APIErrorStatusCode(err); code != 0 {
-			kv = append(kv, "status", code)
-		}
-		kv = append(kv, "reason", APIErrorReason(err))
-		log.Info(msg, kv...)
-		return
-	}
-	log.Error(err, msg, keysAndValues...)
 }

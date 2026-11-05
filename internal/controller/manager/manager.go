@@ -6,6 +6,7 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strconv"
 	"sync"
 
@@ -19,6 +20,7 @@ import (
 	perrors "github.com/pkg/errors"
 	v1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
+	"github.com/wind-river/cloud-platform-deployment-manager/logger"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var log = logf.Log.WithName("manager")
+var log = logger.New(logf.Log.WithName("manager"))
 
 const HTTPSNotEnabled = "server gave HTTP response to HTTPS client"
 
@@ -641,7 +643,7 @@ func (m *PlatformManager) GetSystemInfo(namespace string, client *gophercloud.Se
 
 	default_system, err := system.GetDefaultSystem(client)
 	if err != nil {
-		comm.LogAPIError(log, err, "failed to query host list")
+		log.Error(err, "failed to query host list")
 		return system_info, err
 	}
 
@@ -665,7 +667,7 @@ func (m *PlatformManager) GetHostByPersonality(namespace string, client *gopherc
 
 	host_list, err := hosts.ListHosts(client)
 	if err != nil {
-		comm.LogAPIError(log, err, "failed to query host list")
+		log.Error(err, "failed to query host list")
 		return host_instance, host_obj, err
 	}
 
@@ -968,11 +970,15 @@ func isVimAuthError(err error) bool {
 	if err == nil {
 		return false
 	}
-	switch err.(type) {
-	case gophercloud.ErrDefault401, gophercloud.ErrDefault403:
+	// A 403 is returned as a starlingx.FaultError (the VIM client installs the
+	// fault error context), so match it by status code.  A 401 is not routed
+	// through that context because gophercloud attempts reauthentication first,
+	// so it still arrives as an ErrDefault401.
+	if comm.APIErrorStatusCode(err) == http.StatusForbidden {
 		return true
 	}
-	return false
+	_, ok := err.(gophercloud.ErrDefault401)
+	return ok
 }
 
 // refreshVimClient resets the cached VIM client and rebuilds it with

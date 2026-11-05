@@ -12,7 +12,6 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	"github.com/pkg/errors"
-	comm "github.com/wind-river/cloud-platform-deployment-manager/common"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -262,7 +261,7 @@ func monitorStrategyState(management CloudManager) bool {
 	// Obtain current strategy status
 	s, err := management.GcShow(client)
 	if s == nil || err != nil {
-		comm.LogAPIError(log, err, "Obtain strategy status failed")
+		log.Error(err, "Obtain strategy status failed")
 		return false
 	}
 	log.Info("Strategy status", "state", s.State)
@@ -278,7 +277,7 @@ func monitorStrategyState(management CloudManager) bool {
 		log.Info("Sending stragety action", "StrategyActionOpts", action)
 		_, err = management.GcActionStrategy(client, action)
 		if err != nil {
-			comm.LogAPIError(log, err, "Strategy apply failed.")
+			log.Error(err, "Strategy apply failed.")
 			c, err := management.GetStrategyRetryCount()
 			if err != nil {
 				log.Error(err, "Fail to obtain strategy retry count")
@@ -309,12 +308,17 @@ func monitorStrategyState(management CloudManager) bool {
 			}
 		}
 	case StrategyBuildFailed:
-		log.Error(err, "Strategy build failed", "reason", s.BuildPhase.Reason)
+		// The platform reported a terminal strategy state in a successful
+		// (2xx) VIM response, not a rejected request, so this is expected
+		// operational output (e.g. active alarms block the build) rather than
+		// a Go error.  Log at info level with the server reason and avoid the
+		// misleading stack trace a log.Error would attach.
+		log.Info("Strategy build failed", "reason", s.BuildPhase.Reason)
 		deleteStrategy(management, client)
 		return true
 
 	case StrategyApplyFailed:
-		log.Error(err, "Strategy apply failed", "reason", s.ApplyPhase.Reason)
+		log.Info("Strategy apply failed", "reason", s.ApplyPhase.Reason)
 		deleteStrategy(management, client)
 		return true
 
@@ -322,7 +326,7 @@ func monitorStrategyState(management CloudManager) bool {
 		log.Info("Strategy applying", "percentage", s.ApplyPhase.CompletionPercentage, "stage", s.ApplyPhase.CurrentStage)
 
 	case StrategyBuildTimeout, StrategyApplyTimeout, StrategyAbortFailed, StrategyAbortTimeout, StrategyAborted:
-		log.Error(err, "Error occuured in strategy", "state", s.State)
+		log.Info("Error occuured in strategy", "state", s.State)
 		deleteStrategy(management, client)
 		return true
 
@@ -354,7 +358,7 @@ func IsFinishedStrategy(strategy_status *systemconfigupdate.SystemConfigUpdate) 
 func DeleteFinishedStrategy(management CloudManager, client *gophercloud.ServiceClient) error {
 	err := management.GcDelete(client).ExtractErr()
 	if err != nil {
-		comm.LogAPIError(log, err, "Failed to delete finished strategy.")
+		log.Error(err, "Failed to delete finished strategy.")
 	}
 
 	return err
@@ -366,7 +370,7 @@ func DeleteFinishedStrategy(management CloudManager, client *gophercloud.Service
 func IsExistingStrategy(management CloudManager, client *gophercloud.ServiceClient) (bool, *systemconfigupdate.SystemConfigUpdate, error) {
 	strategy_status, err := management.GcShow(client)
 	if err != nil {
-		comm.LogAPIError(log, err, "Failed to fetch existing strategy")
+		log.Error(err, "Failed to fetch existing strategy")
 		return false, nil, err
 	}
 
@@ -487,7 +491,7 @@ func ManageStrategy(management CloudManager) bool {
 			_, err = management.GcCreate(client, request)
 			management.SetStrategyExpectedByOtherReconcilers(false)
 			if err != nil {
-				comm.LogAPIError(log, err, "Strategy creation failed")
+				log.Error(err, "Strategy creation failed")
 				c, err := management.GetStrategyRetryCount()
 				if err != nil {
 					log.Error(err, "Fail to obtain strategy retry count")

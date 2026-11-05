@@ -60,7 +60,7 @@ func GetSystemAddrPool(client *gophercloud.ServiceClient, addrpool_instance *sta
 	var found_addrpool *addresspools.AddressPool
 	addrpool_list, err := addresspools.ListAddressPools(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch addresspools from system")
+		logHost.Error(err, "failed to fetch addresspools from system")
 		return nil, err
 	}
 	// Preferably fetch the addresspool using UUID.
@@ -81,7 +81,7 @@ func GetSystemNetwork(client *gophercloud.ServiceClient, network_instance *starl
 	var found_network *networks.Network
 	network_list, err := networks.ListNetworks(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch networks from system")
+		logHost.Error(err, "failed to fetch networks from system")
 		return nil, err
 	}
 
@@ -163,7 +163,7 @@ func (r *HostReconciler) ValidateAddressPool(
 func (r *HostReconciler) IsOAMNetworkDualStackConfigured(client *gophercloud.ServiceClient) bool {
 	network_list, err := networks.ListNetworks(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch networks from system")
+		logHost.Error(err, "failed to fetch networks from system")
 		return false
 	}
 
@@ -175,7 +175,7 @@ func (r *HostReconciler) IsOAMNetworkDualStackConfigured(client *gophercloud.Ser
 
 	network_addrpool_list, err := networkAddressPools.ListNetworkAddressPools(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch network-addresspools from system")
+		logHost.Error(err, "failed to fetch network-addresspools from system")
 		return false
 	}
 
@@ -671,7 +671,7 @@ func (r *HostReconciler) CreateOrUpdateNetworks(client *gophercloud.ServiceClien
 	if uuid == "" {
 		_, err := networks.Create(client, opts).Extract()
 		if err != nil {
-			utils.LogAPIError(logHost, err, fmt.Sprintf("failed to create platform network: %s", common.FormatStruct(opts)))
+			logHost.Error(err, fmt.Sprintf("failed to create platform network: %s", common.FormatStruct(opts)))
 			return err
 		}
 
@@ -680,7 +680,7 @@ func (r *HostReconciler) CreateOrUpdateNetworks(client *gophercloud.ServiceClien
 	} else {
 		_, err := networks.Update(client, uuid, opts).Extract()
 		if err != nil {
-			utils.LogAPIError(logHost, err, fmt.Sprintf("failed to update platform network: %s", common.FormatStruct(opts)))
+			logHost.Error(err, fmt.Sprintf("failed to update platform network: %s", common.FormatStruct(opts)))
 			return err
 		}
 
@@ -696,7 +696,7 @@ func (r *HostReconciler) CreateOrUpdateAddrPools(client *gophercloud.ServiceClie
 	if uuid == "" {
 		_, err := addresspools.Create(client, opts).Extract()
 		if err != nil {
-			utils.LogAPIError(logHost, err, fmt.Sprintf("failed to create addresspool: %s", common.FormatStruct(opts)))
+			logHost.Error(err, fmt.Sprintf("failed to create addresspool: %s", common.FormatStruct(opts)))
 			return err
 		}
 
@@ -705,7 +705,7 @@ func (r *HostReconciler) CreateOrUpdateAddrPools(client *gophercloud.ServiceClie
 	} else {
 		_, err := addresspools.Update(client, uuid, opts).Extract()
 		if err != nil {
-			utils.LogAPIError(logHost, err, fmt.Sprintf("failed to update addresspool: %s", common.FormatStruct(opts)))
+			logHost.Error(err, fmt.Sprintf("failed to update addresspool: %s", common.FormatStruct(opts)))
 			return err
 		}
 
@@ -759,13 +759,13 @@ func (r *HostReconciler) GetAllNetworkAddressPoolData(
 
 	system_network_addrpools, err := networkAddressPools.ListNetworkAddressPools(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch network-addresspools from system")
+		logHost.Error(err, "failed to fetch network-addresspools from system")
 		return nil, nil, nil, err
 	}
 
 	addrpool_list, err := addresspools.ListAddressPools(client)
 	if err != nil {
-		utils.LogAPIError(logHost, err, "failed to fetch addresspools from system")
+		logHost.Error(err, "failed to fetch addresspools from system")
 		return nil, nil, nil, err
 	}
 
@@ -809,7 +809,7 @@ func (r *HostReconciler) UpdateNetworkAddrPools(client *gophercloud.ServiceClien
 			// linked to same address pool as the address pool spec.
 			err := networkAddressPools.Delete(client, network_addrpool.UUID).ExtractErr()
 			if err != nil {
-				utils.LogAPIError(logHost, err, "failed to delete associated network-addresspool")
+				logHost.Error(err, "failed to delete associated network-addresspool")
 				return err
 			} else {
 				log_msg := fmt.Sprintf(
@@ -846,7 +846,7 @@ func (r *HostReconciler) UpdateNetworkAddrPools(client *gophercloud.ServiceClien
 		r.NormalEvent(network_instance, common.ResourceCreated,
 			msg)
 	} else {
-		utils.LogAPIError(logHost, err, "there was an error creating new network-addresspool.")
+		logHost.Error(err, "there was an error creating new network-addresspool.")
 	}
 
 	return err
@@ -1283,7 +1283,7 @@ func (r *HostReconciler) ReconcilePlatformNetworkPrincipalMultinodesMgmt(
 
 		host_list, err := hosts.ListHosts(client)
 		if err != nil {
-			utils.LogAPIError(logHost, err, "failed to query host list")
+			logHost.Error(err, "failed to query host list")
 			return err
 		}
 

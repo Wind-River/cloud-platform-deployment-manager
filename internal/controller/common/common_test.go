@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	perrors "github.com/pkg/errors"
@@ -105,7 +106,7 @@ var _ = Describe("Common utils", func() {
 		Context("when error is a rejected system API request", func() {
 			It("should log info with only the server reason and return RetryUserError", func() {
 				body := []byte(`{"error_message": "{\"faultcode\": \"Client\", \"faultstring\": \"Route gateway not reachable\", \"debuginfo\": null}"}`)
-				testError := perrors.Wrap(gophercloud.ErrDefault409{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+				testError := perrors.Wrap(starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
 					Method: "POST", URL: "http://sysinv/v1/iroutes", Actual: 409, Body: body}}, "failed to create route")
 				result, err := testHandler.HandleReconcilerError(request, testError)
 
@@ -134,7 +135,7 @@ var _ = Describe("Common utils", func() {
 		Context("when error is a rejected unlock request", func() {
 			It("should log info and return RetryTransientError", func() {
 				body := []byte(`{"error_message": "{\"faultcode\": \"Client\", \"faultstring\": \"Operation Rejected: host not ready. unlock.\", \"debuginfo\": null}"}`)
-				rejected := gophercloud.ErrDefault400{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+				rejected := starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
 					Method: "PATCH", URL: "http://sysinv/v1/ihosts/1", Actual: 400, Body: body}}
 				testError := NewSystemAPIError("unlock host controller-0", rejected).WithRetry(RetryTransientError)
 				result, err := testHandler.HandleReconcilerError(request, testError)
