@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -224,18 +225,17 @@ func (r *PtpInterfaceReconciler) ReconciledDeleted(client *gophercloud.ServiceCl
 			// Unless it was already deleted go ahead and attempt to delete it.
 			err := ptpinterfaces.Delete(client, i.UUID).ExtractErr()
 			if err != nil {
-				if code, ok := err.(gophercloud.ErrDefault400); !ok {
-					err = perrors.Wrap(err, "failed to delete ptp interface")
-					return err
-				} else if code.Actual == 400 {
+				switch {
+				case !utils.IsAPIResponseError(err):
+					return perrors.Wrap(err, "failed to delete ptp interface")
+				case utils.APIErrorStatusCode(err) == http.StatusBadRequest:
 					logPtpInterface.Info("PTP interface is still in use; deleting local resource anayway")
 					// NOTE: there is no way to block the kubernetes delete beyond
 					//  delaying it a little while we delete an external resource so
 					//  since we can't fail this then log it and allow it to
 					//  continue for now.
-				} else {
-					err = perrors.Wrap(err, "unexpected response code on PTP interface deletion")
-					return err
+				default:
+					return perrors.Wrap(err, "unexpected response code on PTP interface deletion")
 				}
 			}
 
@@ -289,7 +289,7 @@ func (r *PtpInterfaceReconciler) FindExistingPTPInterface(client *gophercloud.Se
 		// This PTP interface was previously provisioned.
 		found, err = ptpinterfaces.Get(client, *id).Extract()
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if utils.APIErrorStatusCode(err) != http.StatusNotFound {
 				err = perrors.Wrapf(err, "failed to get: %s", *id)
 				return nil, err
 			}

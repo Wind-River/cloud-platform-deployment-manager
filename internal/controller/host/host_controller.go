@@ -6,6 +6,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/logger"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var logHost = log.Log.WithName("controller").WithName("host")
+var logHost = logger.New(log.Log.WithName("controller").WithName("host"))
 
 const HostControllerName = "host-controller"
 
@@ -1938,7 +1940,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 
 	logHost.Info("comparing profile attributes", "host", host.ID)
 	instance.Status.InSync = r.CompareAttributes(profile, current, instance, host.Personality, system_info)
-	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Status(), logHost)
+	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Status(), logHost.Logger)
 
 	// strategy not finished
 	if instance.Status.InSync && (instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
@@ -2099,7 +2101,7 @@ func (r *HostReconciler) ReconcileResource(
 		// re-added so we will need to deal with that scenario.
 		host, err = hosts.Get(client, *id).Extract()
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if utils.APIErrorStatusCode(err) != http.StatusNotFound {
 				if !instance.DeletionTimestamp.IsZero() {
 					if utils.ContainsString(instance.Finalizers, HostFinalizerName) {
 						// Remove the finalizer
@@ -2795,10 +2797,10 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logHost}
+		Logger:       logHost.Logger}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostControllerName),
-		Logger:        logHost}
+		Logger:        logHost.Logger}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.Host{}).
 		Complete(r)

@@ -38,7 +38,7 @@ const DefaultPartitionMonitorInterval = 15 * time.Second
 // NewPartitionStateMonitor defines a convenience function to instantiate
 // a new partition monitor with all required attributes.
 func NewPartitionStateMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
-	logger := logHost.WithName("partition-monitor")
+	logger := logHost.Logger.WithName("partition-monitor")
 	return &manager.Monitor{
 		MonitorBody: &partitionStateMonitor{
 			id: id,
@@ -89,7 +89,7 @@ type clusterPresenceMonitor struct {
 // NewClusterPresenceMonitor defines a convenience function to instantiate
 // a new cluster presence monitor with all required attributes.
 func NewClusterPresenceMonitor(instance *starlingxv1.Host, cluster string) *manager.Monitor {
-	logger := logHost.WithName("cluster-presence-monitor")
+	logger := logHost.Logger.WithName("cluster-presence-monitor")
 	return &manager.Monitor{
 		MonitorBody: &clusterPresenceMonitor{
 			clusterName: cluster,
@@ -141,7 +141,7 @@ type clusterDeploymentModelMonitor struct {
 // NewClusterDeploymentModelMonitor defines a convenience function to
 // instantiate a new cluster deployment model monitor.
 func NewClusterDeploymentModelMonitor(instance *starlingxv1.Host, clusterId string) *manager.Monitor {
-	logger := logHost.WithName("deployment-model-monitor")
+	logger := logHost.Logger.WithName("deployment-model-monitor")
 	return &manager.Monitor{
 		MonitorBody: &clusterDeploymentModelMonitor{
 			clusterId: clusterId,
@@ -188,7 +188,7 @@ type storageMonitorCountMonitor struct {
 // NewMonitorCountMonitor defines a convenience function to
 // instantiate a new storage monitor count monitor with all required attributes.
 func NewStorageMonitorCountMonitor(instance *starlingxv1.Host, required int) *manager.Monitor {
-	logger := logHost.WithName("storage-mon-monitor")
+	logger := logHost.Logger.WithName("storage-mon-monitor")
 	return &manager.Monitor{
 		MonitorBody: &storageMonitorCountMonitor{
 			required: required,
@@ -236,7 +236,7 @@ type storageTierMonitor struct {
 // NewStorageTierMonitor defines a convenience function to instantiate a new
 // storage monitor count monitor with all required attributes.
 func NewStorageTierMonitor(instance *starlingxv1.Host, clusterID, tierName string) *manager.Monitor {
-	logger := logHost.WithName("storage-tier-monitor")
+	logger := logHost.Logger.WithName("storage-tier-monitor")
 	return &manager.Monitor{
 		MonitorBody: &storageTierMonitor{
 			clusterID: clusterID,
@@ -315,7 +315,7 @@ func (m *stateMonitor) desiredState() string {
 // NewMonitorCountMonitor defines a convenience function to instantiate
 // a new host state monitor with all required attributes.
 func NewStateMonitor(instance *starlingxv1.Host, id string, admin, oper, avail *string) *manager.Monitor {
-	logger := logHost.WithName("state-monitor")
+	logger := logHost.Logger.WithName("state-monitor")
 	return &manager.Monitor{
 		MonitorBody: &stateMonitor{
 			hostID:              id,
@@ -418,7 +418,7 @@ type stableHostMonitor struct {
 // NewStableHostMonitor defines a convenience function to instantiate a new
 // stable host monitor with all required attributes.
 func NewStableHostMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
-	logger := logHost.WithName("stable-host-monitor")
+	logger := logHost.Logger.WithName("stable-host-monitor")
 	return &manager.Monitor{
 		MonitorBody: &stableHostMonitor{
 			hostID: id,
@@ -475,7 +475,7 @@ type inventoryCollectedMonitor struct {
 // NewInventoryCollectedMonitor defines a convenience function to
 // instantiate a new inventory collected monitor with all required attributes.
 func NewInventoryCollectedMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
-	logger := logHost.WithName("inventory-monitor")
+	logger := logHost.Logger.WithName("inventory-monitor")
 	return &manager.Monitor{
 		MonitorBody: &inventoryCollectedMonitor{
 			id: id,
@@ -528,7 +528,7 @@ type enabledControllerNodeMonitor struct {
 // NewEnabledControllerNodeMonitor defines a convenience function to
 // instantiate a new enabled controller monitor with all required attributes.
 func NewEnabledControllerNodeMonitor(instance *starlingxv1.Host, required int) *manager.Monitor {
-	logger := logHost.WithName("controller-node-monitor")
+	logger := logHost.Logger.WithName("controller-node-monitor")
 	return &manager.Monitor{
 		MonitorBody: &enabledControllerNodeMonitor{
 			required: required,
@@ -575,7 +575,7 @@ type provisioningAllowedMonitor struct {
 // NewProvisioningAllowedMonitor defines a convenience function to
 // instantiate a new provisioning allowed monitor with all required attributes.
 func NewProvisioningAllowedMonitor(instance *starlingxv1.Host) *manager.Monitor {
-	logger := logHost.WithName("provisioning-monitor")
+	logger := logHost.Logger.WithName("provisioning-monitor")
 	return &manager.Monitor{
 		MonitorBody: &provisioningAllowedMonitor{},
 		Logger:      logger,
@@ -623,7 +623,7 @@ type dynamicHostMonitor struct {
 // NewDynamicHostMonitor defines a convenience function to instantiate a
 // new kubernetes resource monitor with all required attributes.
 func NewDynamicHostMonitor(instance *starlingxv1.Host, hostname string, match *starlingxv1.MatchInfo, bootMAC *string) *manager.Monitor {
-	logger := logHost.WithName("dynamic-host-monitor")
+	logger := logHost.Logger.WithName("dynamic-host-monitor")
 	return &manager.Monitor{
 		MonitorBody: &dynamicHostMonitor{
 			hostname: hostname,
@@ -674,7 +674,7 @@ type kubernetesResourceMonitor struct {
 // NewKubernetesResourceMonitor defines a convenience function to instantiate a
 // new kubernetes resource monitor with all required attributes.
 func NewKubernetesResourceMonitor(instance *starlingxv1.Host, target runtime.Object, name types.NamespacedName) *manager.Monitor {
-	logger := logHost.WithName("kubernetes-monitor")
+	logger := logHost.Logger.WithName("kubernetes-monitor")
 	return &manager.Monitor{
 		MonitorBody: &kubernetesResourceMonitor{
 			CommonMonitorBody: manager.CommonMonitorBody{},
@@ -739,7 +739,7 @@ type stateChangeMonitor struct {
 // NewMonitorCountMonitor defines a convenience function to instantiate
 // a new host state monitor with all required attributes.
 func NewStateChangeMonitor(instance *starlingxv1.Host, id string) *manager.Monitor {
-	logger := logHost.WithName("state-change-monitor")
+	logger := logHost.Logger.WithName("state-change-monitor")
 	return &manager.Monitor{
 		MonitorBody: &stateChangeMonitor{
 			hostID: id,

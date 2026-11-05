@@ -4,11 +4,36 @@
 package manager
 
 import (
+	"errors"
+
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Manager utils", func() {
+	Describe("Function isVimAuthError", func() {
+		fault := func(code int) error {
+			return starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+				Method: "POST", URL: "http://vim/nfvi/v1", Actual: code}}
+		}
+
+		It("should detect a 403 returned as a FaultError (token expiry)", func() {
+			Expect(isVimAuthError(fault(403))).To(BeTrue())
+		})
+
+		It("should detect a plain 401 that was not routed through the fault context", func() {
+			Expect(isVimAuthError(gophercloud.ErrDefault401{})).To(BeTrue())
+		})
+
+		It("should not treat other errors as auth errors", func() {
+			Expect(isVimAuthError(nil)).To(BeFalse())
+			Expect(isVimAuthError(errors.New("boom"))).To(BeFalse())
+			Expect(isVimAuthError(fault(409))).To(BeFalse())
+		})
+	})
+
 	Describe("Function getNextCount", func() {
 		Context("with a count value", func() {
 			It("should return the next value", func() {

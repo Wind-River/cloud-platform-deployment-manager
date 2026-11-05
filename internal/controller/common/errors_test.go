@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	perrors "github.com/pkg/errors"
@@ -72,14 +73,17 @@ var _ = Describe("Test Build utilities:", func() {
 	})
 
 	Describe("ErrSystemAPI", func() {
-		// sysinvError mimics the body produced by sysinv-api's
-		// ParsableErrorMiddleware wrapping a WSME fault.
-		sysinvError := func(code int, faultcode, faultstring string) gophercloud.ErrUnexpectedResponseCode {
+		// sysinvError mimics the error gophercloud returns for a rejected
+		// StarlingX request: a starlingx.FaultError wrapping the response,
+		// whose body is produced by sysinv-api's ParsableErrorMiddleware
+		// wrapping a WSME fault.  The FaultError already extracts the
+		// faultstring and strips any remote traceback.
+		sysinvError := func(code int, faultcode, faultstring string) starlingx.FaultError {
 			inner, _ := json.Marshal(map[string]interface{}{
 				"faultcode": faultcode, "faultstring": faultstring, "debuginfo": nil})
 			body, _ := json.Marshal(map[string]string{"error_message": string(inner)})
-			return gophercloud.ErrUnexpectedResponseCode{
-				Method: "PATCH", URL: "http://sysinv/v1/ihosts/1", Actual: code, Body: body}
+			return starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+				Method: "PATCH", URL: "http://sysinv/v1/ihosts/1", Actual: code, Body: body}}
 		}
 
 		It("should keep a simple message", func() {
@@ -88,9 +92,10 @@ var _ = Describe("Test Build utilities:", func() {
 			Expect(got.StatusCode).To(Equal(0))
 		})
 
-		It("should extract the fault string from an unparsed message", func() {
-			reason := errors.New(`Some kind of error codes, faultstring\\: \\\\\"Kernel upgrade in progress\\\", more error codes here`)
+		It("should use the plain message of a non response error as the reason", func() {
+			reason := errors.New("Kernel upgrade in progress")
 			got := NewSystemAPIError("unlock host controller-0", reason)
+			Expect(got.StatusCode).To(Equal(0))
 			Expect(got.Reason).To(Equal("Kernel upgrade in progress"))
 		})
 
@@ -101,21 +106,20 @@ var _ = Describe("Test Build utilities:", func() {
 		})
 
 		It("should parse a sysinv rejection", func() {
-			in := gophercloud.ErrDefault400{ErrUnexpectedResponseCode: sysinvError(400, "Client",
-				"Operation Rejected: host not ready. unlock.")}
+			in := sysinvError(400, "Client", "Operation Rejected: host not ready. unlock.")
 			got := NewSystemAPIError("unlock host controller-0", in)
 			Expect(got.StatusCode).To(Equal(400))
 			Expect(got.Reason).To(Equal("Operation Rejected: host not ready. unlock."))
 			Expect(got.Error()).To(Equal(
 				"failed to unlock host controller-0: Operation Rejected: host not ready. unlock. (HTTP 400)"))
-			var original gophercloud.ErrDefault400
+			var original starlingx.FaultError
 			Expect(errors.As(got, &original)).To(BeTrue())
 			Expect(original.Actual).To(Equal(400))
 		})
 
 		It("should strip remote tracebacks from server errors", func() {
-			in := gophercloud.ErrDefault500{ErrUnexpectedResponseCode: sysinvError(500, "Server",
-				"Failed to apply\nTraceback (most recent call last):\n  File \"x.py\"\nSysinvException: x\n")}
+			in := sysinvError(500, "Server",
+				"Failed to apply\nTraceback (most recent call last):\n  File \"x.py\"\nSysinvException: x\n")
 			got := NewSystemAPIError("", perrors.Wrap(in, "failed to create route"))
 			Expect(got.Reason).To(Equal("Failed to apply"))
 			Expect(got.Operation).To(Equal("failed to create route"))
@@ -136,14 +140,14 @@ var _ = Describe("Test Build utilities:", func() {
 		})
 
 		It("should allow the retry policy to be overridden", func() {
-			in := gophercloud.ErrDefault400{ErrUnexpectedResponseCode: sysinvError(400, "Client", "x")}
+			in := sysinvError(400, "Client", "x")
 			Expect(NewSystemAPIError("unlock host controller-0", in).Retry()).To(Equal(RetryUserError))
 			got := NewSystemAPIError("unlock host controller-0", in).WithRetry(RetryTransientError)
 			Expect(got.Retry()).To(Equal(RetryTransientError))
 		})
 
 		It("should not wrap an existing ErrSystemAPI twice", func() {
-			first := NewSystemAPIError("create route", gophercloud.ErrDefault409{ErrUnexpectedResponseCode: sysinvError(409, "Client", "x")})
+			first := NewSystemAPIError("create route", sysinvError(409, "Client", "x"))
 			got := NewSystemAPIError("", perrors.Wrap(first, "reconcile routes"))
 			Expect(got.Operation).To(Equal("create route"))
 			Expect(got.StatusCode).To(Equal(409))

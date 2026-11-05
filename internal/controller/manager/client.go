@@ -15,6 +15,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/acceptance/clients"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/starlingx"
 	"github.com/gophercloud/gophercloud/starlingx/inventory/v1/system"
 	"github.com/gophercloud/gophercloud/starlingx/nfv/v1/systemconfigupdate"
 	perrors "github.com/pkg/errors"
@@ -341,7 +342,14 @@ func (m *PlatformManager) BuildPlatformClient(namespace string, endpointName str
 	c := &gophercloud.ServiceClient{
 		ProviderClient: provider,
 		Endpoint:       urlEndpoint,
-		ResourceBase:   urlEndpoint}
+		ResourceBase:   urlEndpoint,
+		// Install the StarlingX fault error context so that rejected (non 2xx)
+		// requests return a starlingx.FaultError carrying the server reason
+		// (the sysinv faultstring) instead of a generic per-status message.
+		// This applies to both the system (inventory) and VIM (nfv) clients,
+		// which are built here rather than through gophercloud's StarlingX
+		// service constructors.
+		DefaultErrorContext: starlingx.FaultErrorContext()}
 
 	debug, err := strconv.ParseBool(string(secret.Data[DebugKey]))
 	if err == nil && debug {
