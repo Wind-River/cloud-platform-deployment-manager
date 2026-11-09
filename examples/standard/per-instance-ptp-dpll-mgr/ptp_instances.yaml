@@ -11,13 +11,46 @@
 # existing parameters map[string][]string. sysinv echoes the 'config' section
 # back verbatim, so DM reconciliation is stable (no perpetual diff).
 #
-# The referenced instances (ptp01bh, ts1, ts2) must be provisioned on the same
-# host as the dpll-mgr instance (GNR-D hybrid layout). This example shows the
-# default GNSS-primary case; both DPLL planes ship with a GNSS-primary default,
-# so the dpll0/dpll1 pin maps below are optional overrides. To prefer the
-# backhaul (PTP-primary), override the phase plane with
-# 'dpll1_pin_priority_map=GNSS_REF4P:12, SDP0_REF0N:0'.
+# The dpll-mgr instance references the backhaul ptp4l (ptp01bh) and the two
+# ts2phc instances (ts1, ts2) defined below; all are attached to the same host
+# via the kustomize patch (GNR-D hybrid layout). This example shows the default
+# GNSS-primary case; both DPLL planes ship with a GNSS-primary default, so the
+# dpll0/dpll1 pin maps are optional overrides (see commented block below).
 
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ptp01bh
+  namespace: deployment
+spec:
+  service: ptp4l
+  parameters:
+    global:
+      - domainNumber=24
+      - clientOnly=0
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ts1
+  namespace: deployment
+spec:
+  service: ts2phc
+---
+apiVersion: starlingx.windriver.com/v1
+kind: PtpInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ts2
+  namespace: deployment
+spec:
+  service: ts2phc
+---
 apiVersion: starlingx.windriver.com/v1
 kind: PtpInstance
 metadata:
