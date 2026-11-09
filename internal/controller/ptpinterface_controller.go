@@ -691,7 +691,10 @@ func (r *PtpInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logPtpInterface}
+		Logger:       logPtpInterface,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "PtpInterface",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(PtpInterfaceControllerName),
 		Logger:        logPtpInterface}

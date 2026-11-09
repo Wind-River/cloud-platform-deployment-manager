@@ -10,9 +10,9 @@
   when: dm_unlock_staging_dir is not defined
 
 # The reboot task below blocks until the host has rebooted, so the playbook
-# cannot report anything while the deployment manager is still retrying the
-# unlock. Collect the rejections in the background instead and report them
-# once the wait is over, see files/dm-unlock-monitor.sh.
+# cannot report anything while the deployment manager is still retrying. Collect
+# the requests that failed on the system API in the background instead and
+# report them once the wait is over, see files/dm-unlock-monitor.sh.
 - name: Start monitoring the unlock progress in the background
   command: >-
     {{ dm_unlock_staging_dir }}/dm-unlock-monitor.sh
@@ -21,6 +21,7 @@
     {{ dm_unlock_monitor_delay }}
     {{ dm_unlock_monitor_interval }}
     {{ dm_unlock_monitor_log }}
+    {{ dm_config_applied_at | default('') | quote }}
   # Detached: the playbook does not wait for the collector, and the async
   # timeout stops it in case the host never reboots.
   async: "{{ (dm_unlock_timeout | int) + (dm_unlock_monitor_interval | int) }}"
@@ -93,9 +94,17 @@
         msg: "{{ unlock_monitor_log.stdout_lines }}"
       when: unlock_monitor_log.stdout | default('') != ''
 
+# The collector only reports a change of status, with the time it noticed it.
+# Report the failures as they stand now too, with when they were last seen and
+# how many times.
+- name: Report the requests that failed on the system API
+  include_role:
+    name: common/monitor-errors
+  when: unlock_reboot_failed | default(false) | bool
+
 - name: Fail if the host did not reboot after the unlock
   fail:
-    msg: "{{ unlock_failure_msg + unlock_diagnostics }}"
+    msg: "{{ unlock_failure_msg + unlock_failures + unlock_diagnostics }}"
   vars:
     unlock_failure_msg:
       - >-
@@ -107,10 +116,19 @@
         {{ dm_unlock_monitor_log }} on the host. The full deployment manager
         log is available with: kubectl -n {{ pod_namespace }} logs
         deployments/platform-deployment-manager manager
+    unlock_failures: >-
+      {{
+        ['Requests that failed on the system API'
+         ' (last seen, count, reason, resource, message):']
+        + (system_api_failures.stdout_lines | default([]) or ['none'])
+        if system_api_failures.rc | default(1) == 0
+        else ['The requests that failed on the system API are unknown.']
+      }}
     unlock_diagnostics: >-
       {{
-        unlock_monitor_log.stdout_lines
-        | default(['No diagnostics were collected.'])
+        ['Diagnostics collected while waiting:']
+        + (unlock_monitor_log.stdout_lines | default([])
+           or ['No diagnostics were collected.'])
       }}
   when: unlock_reboot_failed | default(false) | bool
 

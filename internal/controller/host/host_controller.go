@@ -2800,7 +2800,10 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logHost.Logger}
+		Logger:       logHost.Logger,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "Host",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostControllerName),
 		Logger:        logHost.Logger}

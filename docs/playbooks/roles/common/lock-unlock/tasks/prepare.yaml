@@ -46,7 +46,7 @@
 - name: Copy the unlock scripts to remote host
   copy:
     src: "{{ item }}"
-    dest: "{{ dm_unlock_staging_dir }}/{{ item }}"
+    dest: "{{ dm_unlock_staging_dir }}/{{ item | basename }}"
     mode: "0755"
   loop:
     # TODO: Remove this workaround once Ansible 2.11+ is available in WRCP.
@@ -55,3 +55,5 @@
     # system power off/on triggered by unlock operation.
     - shutdown
     - dm-unlock-monitor.sh
+    # Called by dm-unlock-monitor.sh, and shared with the other roles.
+    - "{{ role_path }}/../monitor-errors/files/dm-monitor-errors.sh"

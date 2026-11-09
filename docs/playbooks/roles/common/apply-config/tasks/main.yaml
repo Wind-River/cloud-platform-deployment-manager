@@ -10,6 +10,17 @@
     distributed_cloud_role == "subcloud" or
     distributed_cloud_role == ""
 
+# Taken on the target, in the format of the Kubernetes event timestamps: only
+# the system API failures seen since then are reported, so that the events
+# left by a previous run are not, see roles/common/monitor-errors.
+- name: Get the time the deployment configuration is applied
+  command: date -u +%Y-%m-%dT%H:%M:%SZ
+  register: dm_config_apply_date
+  changed_when: false
+
+- set_fact:
+    dm_config_applied_at: "{{ dm_config_apply_date.stdout }}"
+
 - name: Apply deployment configuration with retries
   block:
     - name: Apply deployment configuration file

@@ -599,7 +599,10 @@ func (r *DataNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logDataNetwork}
+		Logger:       logDataNetwork,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "DataNetwork",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(DataNetworkControllerName),
 		Logger:        logDataNetwork}

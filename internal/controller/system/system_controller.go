@@ -1801,7 +1801,10 @@ func (r *SystemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logSystem}
+		Logger:       logSystem,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "System",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(SystemControllerName),
 		Logger:        logSystem}

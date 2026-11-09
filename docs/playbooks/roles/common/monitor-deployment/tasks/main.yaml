@@ -91,28 +91,9 @@
   until: resources_reconciled | bool
   delay: 30
   failed_when: false
-- name: Get DM pod error logs
-  shell: >-
-    kubectl -n {{ pod_namespace }} logs
-    deployments/platform-deployment-manager manager |
-    awk
-    '/ERROR/
-    && !/validation/
-    && !/waiting/
-    && !/Reconciler error/
-    && !(seen[$10, $NF]++)
-    {print $0}'
-  environment:
-    KUBECONFIG: "/etc/kubernetes/admin.conf"
-  register: pod_error_logs
-  # Informational only: never fail the deployment because logs are
-  # unavailable (e.g. the host is rebooting or the pod is restarting).
-  failed_when: false
 
-- name: Fail if resources are not reconciled
-  fail:
-    msg:
-      - "stderr: {{ unreconciled.stderr | default(unreconciled.msg) }}"
-      - "Unreconciled resources: {{ unreconciled.stdout_lines | default([]) }}"
-      - "Pod logs: {{ pod_error_logs.stdout | default('unavailable') }}"
-  when: not resources_reconciled | bool
+- name: Report the requests that failed on the system API
+  include_role:
+    name: common/monitor-errors
+  vars:
+    reconcile_timed_out: "{{ not resources_reconciled | bool }}"

@@ -188,6 +188,13 @@ type ReconcilerErrorHandler interface {
 type ErrorHandler struct {
 	logr.Logger
 	manager.CloudManager
+
+	// Events and Kind are optional.  When Events is set, a failed system API
+	// request is also recorded as a Warning event on the deployment manager
+	// pod, see SystemAPIEvents.  Kind is the kind of the reconciled resource,
+	// which is part of the event message.
+	Events *SystemAPIEvents
+	Kind   string
 }
 
 func (h *ErrorHandler) webhookUnavailable(err error) bool {
@@ -232,6 +239,9 @@ func (h *ErrorHandler) handleSystemAPIError(request reconcile.Request, apiErr Er
 	keysAndValues = append(keysAndValues, "reason", apiErr.Reason)
 
 	h.Info(msg, keysAndValues...)
+	if h.Events != nil {
+		h.Events.Record(h.Kind, request, apiErr)
+	}
 
 	return apiErr.Retry()
 }

@@ -358,7 +358,10 @@ func (r *PlatformNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logPlatformNetwork}
+		Logger:       logPlatformNetwork,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "PlatformNetwork",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(PlatformNetworkControllerName),
 		Logger:        logPlatformNetwork}

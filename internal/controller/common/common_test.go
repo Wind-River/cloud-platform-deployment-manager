@@ -5,6 +5,7 @@ package common
 
 import (
 	errpkg "errors"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -19,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -118,6 +121,67 @@ var _ = Describe("Common utils", func() {
 				Expect(sink.keysAndValues).To(ContainElements("reason", "Route gateway not reachable"))
 				Expect(sink.keysAndValues).To(ContainElements("status", 409))
 				Expect(sink.keysAndValues).To(ContainElements("operation", "failed to create route"))
+			})
+		})
+		Context("when the handler is configured to record events", func() {
+			var recorder *record.FakeRecorder
+
+			BeforeEach(func() {
+				recorder = record.NewFakeRecorder(10)
+				testHandler.Events = &SystemAPIEvents{
+					EventRecorder: recorder,
+					Target:        &v1.ObjectReference{Kind: "Deployment", Namespace: "platform-deployment-manager", Name: "dm"},
+				}
+				testHandler.Kind = "Host"
+				request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "controller-0", Namespace: "deployment"}}
+			})
+
+			It("should record a warning event on the deployment for a rejected system API request", func() {
+				body := []byte(`{"error_message": "{\"faultcode\": \"Client\", \"faultstring\": \"Processor 0: vSwitch huge pages must be 0\", \"debuginfo\": null}"}`)
+				rejected := starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
+					Method: "PATCH", URL: "http://sysinv/v1/imemorys/1", Actual: 400, Body: body}}
+				testError := NewSystemAPIError("update memory", rejected)
+
+				result, err := testHandler.HandleReconcilerError(request, testError)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(RetryUserError))
+				Expect(recorder.Events).To(Receive(Equal(
+					"Warning SystemAPIRejected Host deployment/controller-0: " +
+						"failed to update memory: Processor 0: vSwitch huge pages must be 0 (HTTP 400)")))
+			})
+
+			DescribeTable("should use a reason matching the failure",
+				func(status int, reason string) {
+					rejected := starlingx.FaultError{ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{Actual: status}}
+
+					_, err := testHandler.HandleReconcilerError(request, NewSystemAPIError("update memory", rejected))
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(recorder.Events).To(Receive(HavePrefix("Warning " + reason + " ")))
+				},
+				Entry("4xx", 409, SystemAPIRejected),
+				Entry("5xx", 500, SystemAPIServerError),
+				Entry("429", 429, SystemAPITransient),
+				Entry("no response", 0, SystemAPITransient),
+			)
+
+			It("should truncate a message longer than the API server accepts", func() {
+				long := ErrSystemAPI{Operation: "update memory", StatusCode: 400, Reason: strings.Repeat("x", 2000)}
+
+				testHandler.Events.Record("Host", request, long)
+
+				var event string
+				Expect(recorder.Events).To(Receive(&event))
+				Expect(strings.TrimPrefix(event, "Warning SystemAPIRejected ")).To(HaveLen(maxEventMessageLen))
+				Expect(event).To(HaveSuffix("..."))
+			})
+
+			It("should not record an event for other errors", func() {
+				_, err := testHandler.HandleReconcilerError(request, errpkg.New("unexpected"))
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(recorder.Events).To(BeEmpty())
 			})
 		})
 		Context("when error is an authentication failure", func() {

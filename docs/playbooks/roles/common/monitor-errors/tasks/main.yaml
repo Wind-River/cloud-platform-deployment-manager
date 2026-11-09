@@ -1,0 +1,41 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2026 Wind River Systems, Inc.
+#
+# Reports the requests that failed on the system API since the deployment
+# configuration was applied, see files/dm-monitor-errors.sh.
+- name: Get errors from deployment manager
+  script: >-
+    dm-monitor-errors.sh
+    {{ pod_namespace | quote }}
+    {{ dm_config_applied_at | default('') | quote }}
+  register: system_api_failures
+  changed_when: false
+  # Informational only: never fail the deployment because the events cannot
+  # be read (e.g. the kube-apiserver is unreachable).
+  failed_when: false
+  ignore_unreachable: true
+
+- name: Show errors from deployment manager
+  debug:
+    msg: "{{ system_api_failures.stdout_lines | default([]) or ['none'] }}"
+  when: system_api_failures.rc | default(1) == 0
+
+- name: Failed show errors from deployment manager
+  debug:
+    msg: >-
+      Could not read the errors from the deployment manager:
+      {{ system_api_failures.stderr | default(system_api_failures.msg) | default('') }}
+  when: system_api_failures.rc | default(1) != 0
+
+# Only set by common/monitor-deployment, when waiting for the resources to be
+# reconciled timed out. The resources are listed by its "unreconciled" result.
+# Fail last, so that the errors above are reported first.
+- name: Fail if timed out waiting for the resources to be reconciled
+  fail:
+    msg: >-
+      Timed out waiting for resources to be reconciled.
+      Not reconciled:
+      {{ unreconciled.stdout_lines | default([]) | join(', ')
+         | default('unknown', true) }}
+  when: reconcile_timed_out | default(false) | bool

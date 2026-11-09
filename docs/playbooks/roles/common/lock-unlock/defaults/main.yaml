@@ -6,8 +6,9 @@
 dm_unlock_timeout: 1200
 
 # How long the deployment configuration must have been applied before the
-# unlock rejections are reported: sysinv rejecting the unlock while puppet is
-# still applying the configuration is expected for the first few minutes.
+# requests that failed on the system API are reported: sysinv rejecting the
+# unlock while puppet is still applying the configuration is expected for the
+# first few minutes.
 dm_unlock_monitor_delay: 180
 
 # How often the unlock progress is checked while waiting for the reboot.
