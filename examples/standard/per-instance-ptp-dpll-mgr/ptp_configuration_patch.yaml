@@ -1,0 +1,19 @@
+# Patch applied over the ../default base: enable PTP clock synchronization on
+# controller-0 and attach the dpll-mgr instance together with the backhaul
+# ptp4l and ts2phc instances it references. Only the dpll-mgr-specific delta
+# is expressed here; everything else is inherited from ../default.
+apiVersion: starlingx.windriver.com/v1
+kind: Host
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: controller-0
+  namespace: deployment
+spec:
+  overrides:
+    clockSynchronization: ptp
+    ptpInstances:
+      - ptp01bh
+      - ts1
+      - ts2
+      - dpll-mgr1
