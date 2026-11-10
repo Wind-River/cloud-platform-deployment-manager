@@ -229,6 +229,7 @@ examples: kustomize
 	$(KUSTOMIZE) build examples/standard/vxlan > examples/standard-vxlan.yaml
 	$(KUSTOMIZE) build examples/standard/bond > examples/standard-bond.yaml
 	$(KUSTOMIZE) build examples/standard/per-instance-ptp > examples/standard-per-instance-ptp.yaml
+	$(KUSTOMIZE) build examples/standard/per-instance-ptp-dpll-mgr > examples/standard-per-instance-ptp-dpll-mgr.yaml
 	$(KUSTOMIZE) build examples/standard/app-armor > examples/standard-app-armor.yaml
 	$(KUSTOMIZE) build examples/standard/hw-settle > examples/standard-hw-settle.yaml
 	$(KUSTOMIZE) build examples/standard/rate-limit/ae > examples/standard-ae-rate-limit.yaml
