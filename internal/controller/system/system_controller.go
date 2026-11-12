@@ -1700,17 +1700,17 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	platformClient := r.GetPlatformClient(request.Namespace)
 	if err, _ := r.UpdateDeploymentScope(instance); err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if factory {
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 	}
 
@@ -1726,8 +1726,8 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 			instance.Spec.Certificates = filteredCerts
 			err = r.Update(ctx, instance)
 			if err != nil {
-				logSystem.Error(err, "Failed to update System instance after removing certificates")
-				return reconcile.Result{}, err
+				err = perrors.Wrap(err, "failed to update System instance after removing certificates")
+				return r.HandleReconcilerError(request, err)
 			}
 		}
 	}
@@ -1742,7 +1742,7 @@ func (r *SystemReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	err = r.installRootCertificates(instance)
 	if err != nil {
-		logSystem.Error(err, "failed to install root certificates")
+		err = perrors.Wrap(err, "failed to install root certificates")
 		return r.HandleReconcilerError(request, err)
 	}
 

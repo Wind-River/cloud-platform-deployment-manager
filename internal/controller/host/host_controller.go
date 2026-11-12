@@ -6,6 +6,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	utils "github.com/wind-river/cloud-platform-deployment-manager/common"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/common"
 	cloudManager "github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
+	"github.com/wind-river/cloud-platform-deployment-manager/logger"
 	v1info "github.com/wind-river/cloud-platform-deployment-manager/platform"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var logHost = log.Log.WithName("controller").WithName("host")
+var logHost = logger.New(log.Log.WithName("controller").WithName("host"))
 
 const HostControllerName = "host-controller"
 
@@ -740,7 +742,11 @@ func (r *HostReconciler) ReconcileFinalState(client *gophercloud.ServiceClient, 
 
 	result, err := hosts.Update(client, host.ID, opts).Extract()
 	if err != nil || result == nil {
-		return common.NewUnlockError(host.Hostname, err)
+		// Most unlock rejections are transient (e.g., the host or its
+		// services are not ready yet), so retry sooner than for other
+		// rejected requests.
+		return common.NewSystemAPIError(fmt.Sprintf("unlock host %s", host.Hostname), err).
+			WithRetry(common.RetryTransientError)
 	}
 
 	host.Host = *result
@@ -1937,7 +1943,7 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 
 	logHost.Info("comparing profile attributes", "host", host.ID)
 	instance.Status.InSync = r.CompareAttributes(profile, current, instance, host.Personality, system_info)
-	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Status(), logHost)
+	common.SetInstanceDelta(instance, profile, current, common.HostProperties, r.Status(), logHost.Logger)
 
 	// strategy not finished
 	if instance.Status.InSync && (instance.Status.StrategyRequired == cloudManager.StrategyNotRequired) {
@@ -2098,7 +2104,7 @@ func (r *HostReconciler) ReconcileResource(
 		// re-added so we will need to deal with that scenario.
 		host, err = hosts.Get(client, *id).Extract()
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if utils.APIErrorStatusCode(err) != http.StatusNotFound {
 				if !instance.DeletionTimestamp.IsZero() {
 					if utils.ContainsString(instance.Finalizers, HostFinalizerName) {
 						// Remove the finalizer
@@ -2547,7 +2553,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err, updateRequired := r.PlatformNetworkUpdateRequired(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	err, scope_updated := r.UpdateDeploymentScope(instance)
@@ -2557,7 +2563,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 
 	err = r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 
 	// TODO(wasnio): remove this once migration from helm chart to fluxcd is done
@@ -2581,7 +2587,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		if !utils.ContainsString(instance.Finalizers, HostFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, HostFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as that update is going to cause
@@ -2620,14 +2626,14 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 	logHost.V(2).Info("before UpdateConfigStatus", "instance", instance)
 	err = r.UpdateConfigStatus(profile, instance, request.Namespace)
 	if err != nil {
-		logHost.Error(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
-		return reconcile.Result{}, err
+		err = perrors.Wrap(err, "unable to update ReconciledAfterInSync or ObservedGeneration")
+		return r.HandleReconcilerError(request, err)
 	}
 	logHost.V(2).Info("after UpdateConfigStatus", "instance", instance)
 
 	target, err := r.IsCephDelayTargetGroup(platformClient, instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if target {
 		// If the node is storage but not in the ceph primary group,
@@ -2635,7 +2641,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, request ctrl.Request) (r
 		// and available.
 		ready, err := r.GetCephPrimaryGroupReady(platformClient)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 		if !ready {
 			logHost.Info("waiting for ceph primary group nodes unlocked-available")
@@ -2794,10 +2800,10 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logHost}
+		Logger:       logHost.Logger}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostControllerName),
-		Logger:        logHost}
+		Logger:        logHost.Logger}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&starlingxv1.Host{}).
 		Complete(r)

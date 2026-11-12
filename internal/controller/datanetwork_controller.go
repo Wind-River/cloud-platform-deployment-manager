@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -219,18 +220,17 @@ func (r *DataNetworkReconciler) ReconciledDeleted(client *gophercloud.ServiceCli
 			// Unless it was already deleted go ahead and attempt to delete it.
 			err := datanetworks.Delete(client, network.ID).ExtractErr()
 			if err != nil {
-				if code, ok := err.(gophercloud.ErrDefault400); !ok {
-					err = perrors.Wrap(err, "failed to delete data network")
-					return err
-				} else if code.Actual == 400 {
+				switch {
+				case !utils.IsAPIResponseError(err):
+					return perrors.Wrap(err, "failed to delete data network")
+				case utils.APIErrorStatusCode(err) == http.StatusBadRequest:
 					logDataNetwork.Info("data network is still in use; deleting local resource anyway")
 					// NOTE: there is no way to block the kubernetes delete beyond
 					//  delaying it a little while we delete an external resource so
 					//  since we can't fail this then log it and allow it to
 					//  continue for now.
-				} else {
-					err = perrors.Wrap(err, "unexpected response code on data network delete")
-					return err
+				default:
+					return perrors.Wrap(err, "unexpected response code on data network delete")
 				}
 			}
 
@@ -283,7 +283,7 @@ func (r *DataNetworkReconciler) FindExistingResource(client *gophercloud.Service
 		// This network was previously provisioned.
 		network, err = datanetworks.Get(client, *id).Extract()
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if utils.APIErrorStatusCode(err) != http.StatusNotFound {
 				err = perrors.Wrapf(err, "failed to get: %s", *id)
 				return nil, err
 			}
@@ -521,12 +521,12 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 
 	factory, err := r.GetFactoryInstall(request.Namespace)
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.HandleReconcilerError(request, err)
 	}
 	if factory {
 		err := r.UpdateStatusForFactoryInstall(request.Namespace, instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			return r.HandleReconcilerError(request, err)
 		}
 	}
 
@@ -544,7 +544,7 @@ func (r *DataNetworkReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		if !utils.ContainsString(instance.Finalizers, DataNetworkFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, DataNetworkFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as the update is going to cause
