@@ -1864,6 +1864,9 @@ func (r *HostReconciler) ReconcileExistingHost(client *gophercloud.ServiceClient
 	//   default profile will detects this change. The thin pool size will be
 	//   copied to the user profile.
 	NormalizeVolumeGroupsForComparison(profile, current)
+	// Platform memory is stored by the system in whole MiB; avoid a false
+	// delta when the desired 4K page count is not MiB aligned.
+	NormalizePlatformMemoryForComparison(profile)
 
 	// N3000 interface name change apply
 	if host.IsUnlockedEnabled() {

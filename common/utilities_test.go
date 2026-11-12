@@ -337,6 +337,88 @@ var _ = Describe("Common utils", func() {
 		})
 	})
 
+	Describe("dpll-mgr structured config reconcile (no perpetual diff)", func() {
+		// The dpll-mgr structured interface lets a PtpInstance
+		// carry a small 'config' section of flat name=value tunables. sysinv
+		// merges them over a shipped template to build the full config_json,
+		// but ECHOES the 'config' section back verbatim. Deployment Manager
+		// compares desired Spec.InstanceParameters against the echoed actual
+		// via MapsDelta; the reconcile is stable only if the echo is byte-
+		// identical to what the operator wrote. These cases pin that property.
+		config := func() map[string][]string {
+			return map[string][]string{
+				"config": {
+					"phc_interface=eno8703",
+					"operation_mode=SW_BASED",
+					"channel_ptp_bh=ptp01bh",
+					"channel_ts2_0=ts1",
+					"channel_ts2_1=ts2",
+					"dpll0_pin_priority_map=GNSS_REF4P:0, SDP0_REF0N:15",
+					"dpll1_pin_priority_map=GNSS_REF4P:0, SDP0_REF0N:12",
+				},
+			}
+		}
+
+		Context("when sysinv echoes the config section verbatim", func() {
+			It("produces no delta (no perpetual re-apply)", func() {
+				desired := config()
+				echoed := config() // what a conforming sysinv returns
+				added, removed, same := MapsDelta(echoed, desired)
+				Expect(added).To(BeEmpty())
+				Expect(removed).To(BeEmpty())
+				Expect(same["config"]).To(ConsistOf(desired["config"]))
+			})
+		})
+
+		Context("order-independence of the echoed param list", func() {
+			It("still produces no delta when sysinv reorders the list", func() {
+				desired := config()
+				reordered := map[string][]string{
+					"config": {
+						"dpll1_pin_priority_map=GNSS_REF4P:0, SDP0_REF0N:12",
+						"dpll0_pin_priority_map=GNSS_REF4P:0, SDP0_REF0N:15",
+						"operation_mode=SW_BASED",
+						"channel_ts2_1=ts2",
+						"phc_interface=eno8703",
+						"channel_ts2_0=ts1",
+						"channel_ptp_bh=ptp01bh",
+					},
+				}
+				added, removed, _ := MapsDelta(reordered, desired)
+				Expect(added).To(BeEmpty())
+				Expect(removed).To(BeEmpty())
+			})
+		})
+
+		Context("regression: echoing the merged blob instead of the section", func() {
+			It("would produce a perpetual diff (the failure this guards)", func() {
+				desired := config()
+				// A NON-conforming sysinv that surfaced the rendered config_json
+				// under the 'config' key would never match the small overlay.
+				merged := map[string][]string{
+					"config": {
+						`config_json={"channels":{"ptp_bh":{"call_channel":"uds:/var/run/ptp4l-ptp01bh"}},"dpll":{"dpll0":{"name":"zl3073x"}},"global":{"phc_interface":"eno8703"}}`,
+					},
+				}
+				added, removed, _ := MapsDelta(merged, desired)
+				Expect(len(added) > 0 || len(removed) > 0).To(BeTrue())
+			})
+		})
+
+		Context("raw config_json fallback remains stable", func() {
+			It("produces no delta when echoed unchanged", func() {
+				blob := map[string][]string{
+					"config_json": {
+						`config_json={"global":{"operation_mode":"SW_BASED"}}`,
+					},
+				}
+				added, removed, _ := MapsDelta(blob, blob)
+				Expect(added).To(BeEmpty())
+				Expect(removed).To(BeEmpty())
+			})
+		})
+	})
+
 	Describe("ListChanged utility", func() {
 		Context("with two string arrays", func() {
 			It("should identify changed", func() {

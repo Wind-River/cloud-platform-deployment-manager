@@ -1,0 +1,6 @@
+resources:
+  - ../default
+  - ptp_instances.yaml
+
+patches:
+  - path: ptp_configuration_patch.yaml
