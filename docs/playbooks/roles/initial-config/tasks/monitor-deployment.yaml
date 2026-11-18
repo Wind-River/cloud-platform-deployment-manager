@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2025 Wind River Systems, Inc.
+# Copyright(c) 2025-2026 Wind River Systems, Inc.
 - name: Fail if failed to get the number of hosts
   fail:
     msg: "Failed to get host resource from cluster"
@@ -77,24 +77,21 @@
 
 - name: Wait until all resources are reconciled
   shell: >-
-    (kubectl -n {{ deployment_namespace }} get --no-headers -o custom-columns='R:.status.reconciled'
+    (kubectl -n {{ deployment_namespace }} get --no-headers
+    -o custom-columns='K:.kind,N:.metadata.name,R:.status.reconciled'
     system,datanetwork,platformnetwork,addresspool,ptpinstance,ptpinterface;
-    kubectl -n {{ deployment_namespace }} get --no-headers -o custom-columns='R:.status.reconciled'
-    hosts {{ hostname }}) | awk '/false/' | wc -l
+    kubectl -n {{ deployment_namespace }} get --no-headers
+    -o custom-columns='K:.kind,N:.metadata.name,R:.status.reconciled'
+    hosts {{ hostname }}) | awk '$3 == "false"'
   environment:
     KUBECONFIG: "/etc/kubernetes/admin.conf"
   register: unreconciled
   retries: "{{ host_reconcile_retries  }}"
   until:
     - unreconciled.stderr == ""
-    - unreconciled.stdout | int == 0
+    - unreconciled.stdout_lines | length == 0
   delay: 30
   failed_when: false
-
-- debug:
-    msg:
-      - "stderr is: {{ unreconciled.stderr }}"
-      - "stdout is: {{ unreconciled.stdout }}"
 
 - name: Get DM pod error logs
   shell: >-
@@ -111,6 +108,11 @@
     KUBECONFIG: "/etc/kubernetes/admin.conf"
   register: pod_error_logs
 
-- name: Show errors from logs
-  debug:
-    msg: "Pod logs: {{ pod_error_logs.stdout }}"
+- name: Fail if resources are not reconciled
+  fail:
+    msg:
+      - "stderr: {{ unreconciled.stderr }}"
+      - "Unreconciled resources: {{ unreconciled.stdout_lines }}"
+      - "Pod logs: {{ pod_error_logs.stdout }}"
+  when: >-
+    unreconciled.stderr != "" or unreconciled.stdout_lines | length != 0
