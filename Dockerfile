@@ -25,6 +25,7 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY api/ api/
 COPY common/ common/
+COPY logger/ logger/
 COPY platform/ platform/
 COPY internal/ internal/
 COPY scripts/ scripts/

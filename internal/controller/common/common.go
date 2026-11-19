@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/starlingx"
 	perrors "github.com/pkg/errors"
 	starlingxv1 "github.com/wind-river/cloud-platform-deployment-manager/api/v1"
 	"github.com/wind-river/cloud-platform-deployment-manager/internal/controller/manager"
@@ -53,11 +54,6 @@ var (
 	// fails because of a transient error and needs to be re-attempted at a
 	// future time.
 	RetryTransientError = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
-
-	// RetryUnlockError is used when the RPC call to unlock the host fails.
-	// Most unlock failures are transient, so we retry the unlock operation
-	// after a short delay.
-	RetryUnlockError = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 
 	// RetryUserError should be used for any errors caught after an API request
 	// that is likely due to data validation errors.  These could theoretically
@@ -192,6 +188,13 @@ type ReconcilerErrorHandler interface {
 type ErrorHandler struct {
 	logr.Logger
 	manager.CloudManager
+
+	// Events and Kind are optional.  When Events is set, a failed system API
+	// request is also recorded as a Warning event on the deployment manager
+	// pod, see SystemAPIEvents.  Kind is the kind of the reconciled resource,
+	// which is part of the event message.
+	Events *SystemAPIEvents
+	Kind   string
 }
 
 func (h *ErrorHandler) webhookUnavailable(err error) bool {
@@ -208,6 +211,41 @@ func (h *ErrorHandler) webhookUnavailable(err error) bool {
 	return true
 }
 
+// handleSystemAPIError determines the retry policy for a failed system API
+// request and logs it.  A request the system API rejected is an expected
+// outcome (invalid configuration, a resource that is not ready yet, a host
+// that cannot be unlocked) that the reconciler retries, so it is logged at the
+// informational level with only the reason reported by the server (the sysinv
+// faultstring), the operation and the status code, rather than at the error
+// level with the raw response body and a stack trace.
+func (h *ErrorHandler) handleSystemAPIError(request reconcile.Request, apiErr ErrSystemAPI) reconcile.Result {
+	var msg string
+	switch {
+	case apiErr.Transient():
+		msg = "request temporarily rejected by system API"
+	case apiErr.ServerError():
+		msg = "request failed on system API server"
+	default:
+		msg = "request rejected by system API"
+	}
+
+	keysAndValues := []interface{}{"request", request}
+	if apiErr.Operation != "" {
+		keysAndValues = append(keysAndValues, "operation", apiErr.Operation)
+	}
+	if apiErr.StatusCode != 0 {
+		keysAndValues = append(keysAndValues, "status", apiErr.StatusCode)
+	}
+	keysAndValues = append(keysAndValues, "reason", apiErr.Reason)
+
+	h.Info(msg, keysAndValues...)
+	if h.Events != nil {
+		h.Events.Record(h.Kind, request, apiErr)
+	}
+
+	return apiErr.Retry()
+}
+
 // HandleReconcilerError is the common error handler implementation for all
 // controllers.  It is responsible for looking at the type of error that was
 // caught and determine what the best resolution might be.
@@ -218,14 +256,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	// at the initial error before determining what actually went wrong.
 	cause := perrors.Cause(in)
 
-	switch cause.(type) {
-
-	case ErrUnlockError:
-		resetClient = false
-		result = RetryUnlockError
-		err = nil
-
-		h.Info(in.Error())
+	switch typed := cause.(type) {
 
 	case *gophercloud.ErrUnableToReauthenticate, gophercloud.ErrUnableToReauthenticate:
 		resetClient = true
@@ -241,28 +272,25 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 
 		h.Info("Failed to authenticate, please verify the system-endpoint secret values.")
 
-	case gophercloud.ErrDefault400, gophercloud.ErrDefault403,
-		gophercloud.ErrDefault404, gophercloud.ErrDefault405:
-		// These errors are resource based errors.  This means we successfully
-		// submitted the request but the server rejected it therefore the client
-		// is still valid.  There is likely a problem with the data provided
-		// by the user so wait for the user to correct the data.  Retrying is
-		// pointless
+	case ErrSystemAPI:
+		// Explicitly created by a call site (e.g., host unlock).
 		resetClient = false
-		result = RetryUserError
 		err = nil
+		result = h.handleSystemAPIError(request, typed)
 
-		h.Error(in, "user error", "request", request)
-
-	case gophercloud.ErrDefault500, gophercloud.ErrDefault503:
-		// These errors are server based errors.  This means we successfully
-		// submitted the request but the server encountered an unexpected or
-		// unhandled exception
+	case starlingx.FaultError, *starlingx.FaultError,
+		gophercloud.ErrUnexpectedResponseCode, *gophercloud.ErrUnexpectedResponseCode:
+		// Requests rejected by the system API (sysinv-api) are handled
+		// uniformly regardless of which request failed.  The StarlingX
+		// client returns a starlingx.FaultError for every rejected (non 2xx)
+		// request through its default error context; the bare
+		// ErrUnexpectedResponseCode is kept as a fallback for any request
+		// that did not go through that client.  The server successfully
+		// processed the request so the client is still valid and does not
+		// need to be reset.  Authentication failures (401) are handled above.
 		resetClient = false
-		result = RetryServerError
 		err = nil
-
-		h.Error(in, "server error", "request", request)
+		result = h.handleSystemAPIError(request, NewSystemAPIError("", in))
 
 	case *errors.StatusError:
 		// These errors are rest client errors from client-go.
@@ -285,7 +313,7 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 	case *url.Error:
 		// These errors are networking type errors.  We failed to reach or
 		// connect to the server.  Reset the client in all cases
-		urlError := cause.(*url.Error)
+		urlError := typed
 
 		result = RetryNetworkError
 		err = nil
@@ -390,9 +418,12 @@ func (h *ErrorHandler) HandleReconcilerError(request reconcile.Request, in error
 		resetClient = false
 
 		if !errors.IsNotFound(cause) {
-			h.Error(in, "an unhandled error occurred", "type", reflect.TypeOf(cause))
+			// Log the unexpected error once here and requeue explicitly
+			// rather than returning the error, which would cause
+			// controller-runtime to log it a second time.
+			h.Error(in, "an unhandled error occurred", "type", reflect.TypeOf(cause), "request", request)
 			result = RetryTransientError
-			err = in
+			err = nil
 		} else {
 			// A request to the kubernetes client failed because of a missing
 			// resource.  Assume that a user resource is not installed or

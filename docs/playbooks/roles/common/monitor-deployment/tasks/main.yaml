@@ -18,7 +18,7 @@
       }}
     host_appear_retries: >-
       {{
-        host_appear_retries | default(30)
+        host_appear_retries | default(60)
       }}
     host_appear_timeout: >-
       {{
@@ -31,30 +31,31 @@
       - "host_reconcile_retries: {{ host_reconcile_retries }}"
       - "host_appear_retries: {{ host_appear_retries }}"
 
+# The polling tasks below must survive the host rebooting under them, see
+# vars/main.yaml. They use pipefail so that a killed command is detected,
+# and their success conditions are defined once in vars/main.yaml.
 - name: Wait until all hosts appear in the inventory
   shell: >-
+    set -o pipefail;
     source /etc/platform/openrc > /dev/stderr;
     system host-list --format value | wc -l
   register: get_host_count
   retries: "{{ host_appear_retries }}"
   delay: "{{ host_appear_timeout }}"
-  until:
-    - get_host_count.stderr == ""
-    - get_host_count.stdout|int >= configured_hosts|int
+  until: hosts_appeared | bool
   failed_when: false
 
 - name: Fail if expected hosts are missing from inventory
   fail:
     msg: >-
       Expected {{ configured_hosts }} hosts but only found
-      {{ get_host_count.stdout }} in the inventory,
+      {{ get_host_count.stdout | default('none') }} in the inventory,
       please check the host inventory: system host-list
-  when: >-
-    get_host_count.stderr != "" or
-    configured_hosts|int > get_host_count.stdout|int
+  when: not hosts_appeared | bool
 
 - name: Wait until all hosts can be configured by dm
   shell: >-
+    set -o pipefail;
     source /etc/platform/openrc > /dev/stderr;
     system host-list --format value |
     awk '$4 == "locked" && $6 != "available" && $6 != "online" { print $2 }' |
@@ -62,9 +63,7 @@
   register: get_offline_hosts
   retries: "{{ host_offline_retries }}"
   delay: 60
-  until:
-    - get_offline_hosts.stderr == ""
-    - get_offline_hosts.stdout == "0"
+  until: hosts_configurable | bool
   failed_when: false
 
 - name: Fail if host(s) cannot be configured
@@ -72,14 +71,16 @@
     msg: >-
       Host(s) cannot be configured, please check the host inventory:
       system host-list
-  when: >-
-    get_offline_hosts.stderr != "" or get_offline_hosts.stdout != "0"
+  when: not hosts_configurable | bool
 
+# The kubectl calls are chained with && so that a failure of the first one
+# fails the pipeline too (pipefail only sees the subshell exit code).
 - name: Wait until all resources are reconciled
   shell: >-
+    set -o pipefail;
     (kubectl -n {{ deployment_namespace }} get --no-headers
     -o custom-columns='K:.kind,N:.metadata.name,R:.status.reconciled'
-    system,datanetwork,platformnetwork,addresspool,ptpinstance,ptpinterface;
+    system,datanetwork,platformnetwork,addresspool,ptpinstance,ptpinterface &&
     kubectl -n {{ deployment_namespace }} get --no-headers
     -o custom-columns='K:.kind,N:.metadata.name,R:.status.reconciled'
     hosts {{ hostname }}) | awk '$3 == "false"'
@@ -87,32 +88,12 @@
     KUBECONFIG: "/etc/kubernetes/admin.conf"
   register: unreconciled
   retries: "{{ host_reconcile_retries  }}"
-  until:
-    - unreconciled.stderr == ""
-    - unreconciled.stdout_lines | length == 0
+  until: resources_reconciled | bool
   delay: 30
   failed_when: false
 
-- name: Get DM pod error logs
-  shell: >-
-    kubectl {{ pod_namespace }} logs
-    deployments/platform-deployment-manager manager |
-    awk
-    '/ERROR/
-    && !/validation/
-    && !/waiting/
-    && !/Reconciler error/
-    && !(seen[$10, $NF]++)
-    {print $0}'
-  environment:
-    KUBECONFIG: "/etc/kubernetes/admin.conf"
-  register: pod_error_logs
-
-- name: Fail if resources are not reconciled
-  fail:
-    msg:
-      - "stderr: {{ unreconciled.stderr }}"
-      - "Unreconciled resources: {{ unreconciled.stdout_lines }}"
-      - "Pod logs: {{ pod_error_logs.stdout }}"
-  when: >-
-    unreconciled.stderr != "" or unreconciled.stdout_lines | length != 0
+- name: Report the requests that failed on the system API
+  include_role:
+    name: common/monitor-errors
+  vars:
+    reconcile_timed_out: "{{ not resources_reconciled | bool }}"

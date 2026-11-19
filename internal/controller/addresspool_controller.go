@@ -153,7 +153,7 @@ func (r *AddressPoolReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		if !utils.ContainsString(instance.Finalizers, AddressPoolFinalizerName) {
 			instance.Finalizers = append(instance.Finalizers, AddressPoolFinalizerName)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return r.HandleReconcilerError(request, err)
 			}
 
 			// Might as well return immediately as the update is going to cause
@@ -205,7 +205,10 @@ func (r *AddressPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CloudManager = tMgr
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
-		Logger:       logAddressPool}
+		Logger:       logAddressPool,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "AddressPool",
+	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(AddressPoolControllerName),
 		Logger:        logAddressPool}

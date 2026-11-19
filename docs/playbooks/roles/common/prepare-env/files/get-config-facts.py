@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2025 Wind River Systems, Inc.
+# Copyright(c) 2025-2026 Wind River Systems, Inc.
 
 DM Configuration Parser
 

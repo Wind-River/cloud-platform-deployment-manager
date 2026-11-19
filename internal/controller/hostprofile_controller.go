@@ -161,6 +161,8 @@ func (r *HostProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.ReconcilerErrorHandler = &common.ErrorHandler{
 		CloudManager: tMgr,
 		Logger:       logAddressPool,
+		Events:       common.GetSystemAPIEvents(mgr),
+		Kind:         "HostProfile",
 	}
 	r.ReconcilerEventLogger = &common.EventLogger{
 		EventRecorder: mgr.GetEventRecorderFor(HostProfileControllerName),

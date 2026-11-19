@@ -26,5 +26,8 @@ helm/wind-river-cloud-platform-deployment-manager/templates/rbac
 .vscode
 .kiro
 
+# log file
+*.log
+
 # Controller-gen generated empty CRD file
 config/crd/bases/_.yaml

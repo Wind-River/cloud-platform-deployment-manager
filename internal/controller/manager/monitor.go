@@ -308,12 +308,17 @@ func monitorStrategyState(management CloudManager) bool {
 			}
 		}
 	case StrategyBuildFailed:
-		log.Error(err, "Strategy build failed", "reason", s.BuildPhase.Reason)
+		// The platform reported a terminal strategy state in a successful
+		// (2xx) VIM response, not a rejected request, so this is expected
+		// operational output (e.g. active alarms block the build) rather than
+		// a Go error.  Log at info level with the server reason and avoid the
+		// misleading stack trace a log.Error would attach.
+		log.Info("Strategy build failed", "reason", s.BuildPhase.Reason)
 		deleteStrategy(management, client)
 		return true
 
 	case StrategyApplyFailed:
-		log.Error(err, "Strategy apply failed", "reason", s.ApplyPhase.Reason)
+		log.Info("Strategy apply failed", "reason", s.ApplyPhase.Reason)
 		deleteStrategy(management, client)
 		return true
 
@@ -321,7 +326,7 @@ func monitorStrategyState(management CloudManager) bool {
 		log.Info("Strategy applying", "percentage", s.ApplyPhase.CompletionPercentage, "stage", s.ApplyPhase.CurrentStage)
 
 	case StrategyBuildTimeout, StrategyApplyTimeout, StrategyAbortFailed, StrategyAbortTimeout, StrategyAborted:
-		log.Error(err, "Error occuured in strategy", "state", s.State)
+		log.Info("Error occuured in strategy", "state", s.State)
 		deleteStrategy(management, client)
 		return true
 
